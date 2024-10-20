@@ -1,33 +1,51 @@
 "use strict";
 
-(() => {
-    // TODO: Fetch the headline data from the backend here.
-    let conversions = {
-        "iltalehti.fi": { "titles": {} },
-        "hs.fi":        { "titles": {} },
-        "yle.fi":       { "titles": {} },
-    };
+(async () => {
+    const newsSite = window.location;
+    const API_URL = "http://localhost:8000/assets/testData.json";
+    const apiResponse = await fetch(API_URL);
+    const data = await apiResponse.json();
 
-    for (let link of document.querySelectorAll("a")) {
+    const site = data[newsSite.hostname];
+    if (site == undefined) {
+        console.log(`'${newsSite.hostname}' is not supported.`);
+        return;
+    }
+    console.log(`Casting our nets on ${newsSite.hostname}`);
+
+    let failedLinks = [];
+    for (const link of document.querySelectorAll("a")) {
+        // Filter out the links not processed in backend.
         let titleElem;
-        if (window.location.href.match(/https:\/\/.*.iltalehti.fi\/.*/)) {
-            console.log("Processing Iltalehti");
-            titleElem = link.querySelector(".front-title");
-        } else if (window.location.href.match(/https:\/\/*.*hs.fi\/*/)) {
-            console.log("Processing HS");
-            titleElem = link.querySelector("a:nth-child(1) > section:nth-child(1) > div:nth-child(1) > div:nth-child(1) > h2:nth-child(1) > span:nth-child(2)");
-        } else if (window.location.href.match(/https:\/\/yle.fi\/*/)) {
-            console.log("Processing Yle");
-            titleElem = link;
-        } else {
-            console.log(`'${window.location.href}' is not supported.`);
+        // TODO: Calculate real hash.
+        const linkHash = "1";
+        const matcher = new RegExp(site.urlMatcher);
+        if (newsSite.href.match(matcher) && site.conversions[linkHash]) {
+            // TODO: Could/might want to select with a per-element selector
+            // instead of a common per-site convention?
+            titleElem = site.linkTitleQuerySelector
+                ? link.querySelector(site.linkTitleQuerySelector)
+                : link;
         }
-        if (!titleElem) { continue; }
 
-        // TODO: Check for converted title here.
-        let newTitle = "Paatin nappaama";
-        if (!newTitle) { continue; }
+        // Get the converted title.
+        const siteKey = (new URL(newsSite.href)).hostname;
+        const articleData = site.conversions[linkHash];
+        const newTitle = articleData.title
+            ?? site.conversions[articleData.canonical].title;
+
+        if (!titleElem || !newTitle) {
+            failedLinks.push({
+                "href": link.href,
+                "hash": linkHash
+            });
+            continue;
+        }
 
         titleElem.textContent = newTitle;
     }
+
+    // TODO: log error to some backend.
+    console.log(`There were ${failedLinks.length} links not processed.`);
+    console.log(failedLinks);
 })();

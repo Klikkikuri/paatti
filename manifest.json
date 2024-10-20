@@ -7,5 +7,9 @@
       "matches": ["https://*.iltalehti.fi/*", "https://*.hs.fi/*", "https://yle.fi/*"],
       "js": ["./src/index.js"]
     }
+  ],
+  // TODO: Add API address matcher here.
+  "permissions": [
+      "http://localhost/*"
   ]
 }
