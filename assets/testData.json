@@ -1,37 +1,22 @@
 {
-    "www.iltalehti.fi": {
-        "urlMatcher": "https:\/\/.*.iltalehti.fi\/.*",
-        "linkTitleQuerySelector": ".front-title",
-        "conversions": {
-            "0": {
-                "title": "Paatin nappaama"
-            },
-            "1": {
-                "canonical": "0"
-            }
+    "hashesToTitles": {
+        "0": {
+            "title": "Paatin nappaama"
+        },
+        "1": {
+            "canonical": "0"
+        },
+        "2": {
+            "title": "Mertaan jäänyt"
+        },
+        "3": {
+            "canonical": "2"
+        },
+        "4": {
+            "title": "Vonkale verkossa"
+        },
+        "5": {
+            "canonical": "4"
         }
-     },
-     "www.hs.fi": {
-        "urlMatcher": "https:\/\/.*.hs.fi\/.*",
-        "linkTitleQuerySelector": "a:nth-child(1) > section:nth-child(1) > div:nth-child(1) > div:nth-child(1) > h2:nth-child(1) > span:nth-child(2)",
-        "conversions": {
-            "1": {
-                "title": "Mertaan jäänyt"
-            },
-            "0": {
-                "canonical": "1"
-            }
-        }
-    },
-    "yle.fi": {
-        "urlMatcher": "https:\/\/yle.fi\/*",
-        "conversions": {
-            "2": {
-                "title": "Vonkale verkossa"
-            },
-            "1": {
-                "canonical": "2"
-            }
-        }
-     }
+    }
 }

@@ -1,12 +1,23 @@
 "use strict";
 
+/* Configurations used per newssite */
+const SITE_CONFIGS = {
+    "www.iltalehti.fi": {
+        "linkTitleQuerySelector": ".front-title"
+    },
+    "www.hs.fi": {
+        "linkTitleQuerySelector": "a:nth-child(1) > section:nth-child(1) > div:nth-child(1) > div:nth-child(1) > h2:nth-child(1) > span:nth-child(2)"
+    },
+    "yle.fi": {},
+};
+
 (async () => {
     const newsSite = window.location;
     const API_URL = "http://localhost:8000/assets/testData.json";
     const apiResponse = await fetch(API_URL);
-    const data = await apiResponse.json();
+    const titleData = (await apiResponse.json()).hashesToTitles;
 
-    const site = data[newsSite.hostname];
+    const site = SITE_CONFIGS[newsSite.hostname];
     if (site == undefined) {
         console.log(`'${newsSite.hostname}' is not supported.`);
         return;
@@ -18,21 +29,19 @@
         // Filter out the links not processed in backend.
         let titleElem;
         // TODO: Calculate real hash.
-        const linkHash = "1";
-        const matcher = new RegExp(site.urlMatcher);
-        if (newsSite.href.match(matcher) && site.conversions[linkHash]) {
-            // TODO: Could/might want to select with a per-element selector
-            // instead of a common per-site convention?
+        const linkHash = Math.floor(Math.random() * 6);
+        if (titleData[linkHash]) {
+            // TODO: There might be more than just one way on a site to query
+            // the text elements of the links.
             titleElem = site.linkTitleQuerySelector
                 ? link.querySelector(site.linkTitleQuerySelector)
                 : link;
         }
 
         // Get the converted title.
-        const siteKey = (new URL(newsSite.href)).hostname;
-        const articleData = site.conversions[linkHash];
+        const articleData = titleData[linkHash];
         const newTitle = articleData.title
-            ?? site.conversions[articleData.canonical].title;
+            ?? titleData[articleData.canonical].title;
 
         if (!titleElem || !newTitle) {
             failedLinks.push({
