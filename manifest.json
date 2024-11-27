@@ -3,24 +3,24 @@
   "name": "Klikkikuri Paatti",
   "version": "0.0.1",
   "icons": {
-      "48": "assets/klikkikuri-48.png"
+      "48": "icons/klikkikuri-48.png"
   },
   "browser_action": {
     "default_icon": {
-      "19": "assets/klikkikuri-19.png",
-      "38": "assets/klikkikuri-38.png"
+      "19": "icons/klikkikuri-19.png",
+      "38": "icons/klikkikuri-38.png"
     },
     "default_title": "Paatti",
-    "default_popup": "./popup/index.html"
+    "default_popup": "popup/index.html"
   },
   "content_scripts": [
     {
       "matches": ["https://*.iltalehti.fi/*", "https://*.hs.fi/*", "https://yle.fi/*"],
-      "js": ["./src/index.js"]
+      "js": ["content_scripts/changeHeadlines.js"]
     }
   ],
-  // TODO: Add API address matcher here.
   "permissions": [
+    // TODO: Add API address here.
       "http://localhost/*"
   ]
 }
