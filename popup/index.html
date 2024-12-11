@@ -4,12 +4,49 @@
         <meta charset="UTF-8"/>
         <title>Klikkikuri ⛵"</title>
         <style>
+            #top-navi {
+                display: flex;
+                justify-content: space-between;
+            }
+            #top-navi details > summary {
+                list-style-type: '⚙';
+            }
+            .hidden {
+                display: none;
+            }
         </style>
     </head>
     <body>
         <div id="root">
             <div id="processingControls">
-                <input class="toggle" id="enabled" type="checkbox" checked/>
+                <div>
+                    <div id="top-navi">
+                        <input class="toggle" id="enabled" type="checkbox" checked/>
+                        <button id="open-settings">⚙</button>
+                    </div>
+                    <div id="permissionControls"> 
+                        <div id="settings" class="hidden">
+                            <ul>
+                                <li>
+                                    <input class="toggle" id="il" type="checkbox" checked/>
+                                    <label for="il">Iltalehti</label>
+                                </li>
+                                <li>
+                                    <input class="toggle" id="hs" type="checkbox"/>
+                                    <label for="hs">Helsingin sanomat</label>
+                                </li>
+                                <li>
+                                    <input class="toggle" id="yle" type="checkbox" checked/>
+                                    <label for="yle">YLE</label>
+                                </li>
+                                <li>
+                                    <input class="toggle" id="al" type="checkbox" checked/>
+                                    <label for="al">Aamulehti</label>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
                 <details>
                     <summary>69 klikkiotsikkoa haavissa</summary>
                     <div>
@@ -39,31 +76,6 @@
                     </div>
                 </details>
             </div>
-            <div id="permissionControls"> 
-                <details>
-                    <summary>3 sivustoa koukussa</summary>
-                    <div>
-                        <ul>
-                            <li>
-                                <input class="toggle" id="il" type="checkbox" checked/>
-                                <label for="il">Iltalehti</label>
-                            </li>
-                            <li>
-                                <input class="toggle" id="hs" type="checkbox"/>
-                                <label for="hs">Helsingin sanomat</label>
-                            </li>
-                            <li>
-                                <input class="toggle" id="yle" type="checkbox" checked/>
-                                <label for="yle">YLE</label>
-                            </li>
-                            <li>
-                                <input class="toggle" id="al" type="checkbox" checked/>
-                                <label for="al">Aamulehti</label>
-                            </li>
-                        </ul>
-                    </div>
-                </details>
-            </div>
             <div id="ratingControls">
                 <details>
                     <summary>Arvostele tämä klikkiotsikko</summary>
@@ -82,7 +94,7 @@
                </details>
             </div>
         </div>
-        <script src="index.js"> </script>
+        <script src="index.js"></script>
     </body>
 </html>
 
