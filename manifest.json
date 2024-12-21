@@ -21,6 +21,8 @@
   ],
   "permissions": [
     // TODO: Add API address here.
-      "http://localhost/*"
+      "http://localhost/*",
+      "storage",
+      "activeTab"
   ]
 }

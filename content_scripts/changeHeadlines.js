@@ -67,6 +67,7 @@ const getReplaceableTitleElements = async (titleData) => {
 
         if (canonicalHash == undefined || titleElem == undefined) {
             failedLinks.push({
+                "elem": link,
                 "href": link.href,
                 "hash": linkHash
             });
@@ -89,6 +90,7 @@ const replaceClickbaits = async (apiUrl) => {
     for (const {titleElem, canonicalHash} of await getReplaceableTitleElements(titleData)) {
         // Store the original title in memory for converting back.
         titleData[canonicalHash].restoreTitle = titleElem.textContent;
+
         titleElem.textContent = titleData[canonicalHash].title;
     }
 
@@ -101,10 +103,13 @@ const restoreClickbaits = async (titleData) => {
     }
 };
 
-window.onload = async () => {
+// Main.
+(async () => {
     const API_URL = "http://localhost:8000/headlines/testData.json";
-    // Do initial replacement TODO based on saved user configuration.
-    let tabRestoreTitleData = await replaceClickbaits(API_URL);
+
+    // TODO: How to perform first conversion at page load time based on
+    // localstorage settings (can't seem to read localstorage in this script)?
+    let tabRestoreTitleData;
 
     /**
      * Listen for messages from the background script.
@@ -122,4 +127,4 @@ window.onload = async () => {
                 break;
         }
     });
-};
+})();
