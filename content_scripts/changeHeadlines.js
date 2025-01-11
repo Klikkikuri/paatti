@@ -1,5 +1,9 @@
 "use strict";
 
+const log = (...args) => {
+    console.log("content_script:", args);
+};
+
 /* Configurations used per newssite */
 const SITE_CONFIGS = {
     "www.iltalehti.fi": {
@@ -32,10 +36,10 @@ const getReplaceableTitleElements = async (titleData) => {
     const newsSite = window.location;
     const site = SITE_CONFIGS[newsSite.hostname];
     if (site == undefined) {
-        console.log(`'${newsSite.hostname}' is not supported.`);
+        log(`'${newsSite.hostname}' is not supported.`);
         return [];
     }
-    console.log(`Casting our nets on ${newsSite.hostname}`);
+    log(`Casting our nets on ${newsSite.hostname}`);
 
     const failedLinks = [];
     const elems = [];
@@ -77,11 +81,11 @@ const getReplaceableTitleElements = async (titleData) => {
         elems.push({ titleElem: titleElem, canonicalHash: canonicalHash });
     }
     // TODO: log error to some backend.
-    console.log(`There were ${failedLinks.length} links not processed.`);
-    console.log(failedLinks);
+    log(`There were ${failedLinks.length} links not processed.`);
+    log(failedLinks);
  
     return elems;
-}
+};
 
 const replaceClickbaits = async (apiUrl) => {
     const apiResponse = await fetch(apiUrl);
@@ -115,6 +119,7 @@ const restoreClickbaits = async (titleData) => {
      * Listen for messages from the background script.
      */
     browser.runtime.onMessage.addListener(async (message) => {
+        log(`Received message ${message}`);
         switch (message.command) {
             case "replaceClickbaits":
                 tabRestoreTitleData = await replaceClickbaits(API_URL);
@@ -123,8 +128,10 @@ const restoreClickbaits = async (titleData) => {
                 await restoreClickbaits(tabRestoreTitleData);
                 break;
             default:
-                console.log(`Unknown command '${message.command}'`);
+                log(`Unknown command '${message.command}'`);
                 break;
         }
     });
+
+    log("Loaded");
 })();
