@@ -8,7 +8,24 @@ const log = (...args) => {
 browser.runtime.onInstalled.addListener(async () => {
     // Initialize settings.
     await browser.storage.local.clear();
-    await browser.storage.local.set({ "enabled": true });
+    await browser.storage.local.set(
+        {
+            "enabled": true,
+            "siteConfigs": {
+                "www.iltalehti.fi": {
+                    "linkTitleQuerySelector": ".front-title",
+                    "enabled": false,
+                },
+                "www.hs.fi": {
+                    "linkTitleQuerySelector": "a:nth-child(1) > section:nth-child(1) > div:nth-child(1) > div:nth-child(1) > h2:nth-child(1) > span:nth-child(2)",
+                    "enabled": false,
+                },
+                "yle.fi": {
+                    "enabled": false,
+                },
+            }
+        }
+    );
     log("Loaded");
 });
 

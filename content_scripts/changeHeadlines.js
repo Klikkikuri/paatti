@@ -5,16 +5,6 @@ const log = (...args) => {
 };
 
 /* Configurations used per newssite */
-const SITE_CONFIGS = {
-    "www.iltalehti.fi": {
-        "linkTitleQuerySelector": ".front-title"
-    },
-    "www.hs.fi": {
-        "linkTitleQuerySelector": "a:nth-child(1) > section:nth-child(1) > div:nth-child(1) > div:nth-child(1) > h2:nth-child(1) > span:nth-child(2)"
-    },
-    "yle.fi": {},
-};
-
 /**
  * Copied from:
  * https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest#converting_a_digest_to_a_hex_string
@@ -33,21 +23,31 @@ const hashUrl = async (url) => {
  * Filter out the links not processed in backend.
  */
 const getReplaceableTitleElements = async (titleData) => {
-    const newsSite = window.location;
-    const site = SITE_CONFIGS[newsSite.hostname];
-    if (site == undefined) {
-        log(`'${newsSite.hostname}' is not supported.`);
+    const newsSite = window.location.hostname;
+
+    const siteConfigs = await browser.storage.local.get("siteConfigs");
+    const siteConfig = siteConfigs["siteConfigs"][newsSite];
+    log("Site config:", siteConfig);
+    if (siteConfig == undefined) {
+        log(`'${newsSite}' is not supported.`);
         return [];
     }
-    log(`Casting our nets on ${newsSite.hostname}`);
+
+    // Guard against running on unenabled site.
+    if (!siteConfig["enabled"]) {
+        log(`Processing ${newsSite} is disabled`);
+        return [];
+    }
+
+    log(`Casting our nets on ${newsSite}`);
 
     const failedLinks = [];
     const elems = [];
     for (const link of document.querySelectorAll("a")) {
         // TODO: There might be more than just one way on a site to query
         // the text elements of the links.
-        const titleElem = site.linkTitleQuerySelector
-            ? link.querySelector(site.linkTitleQuerySelector)
+        const titleElem = siteConfig.linkTitleQuerySelector
+            ? link.querySelector(siteConfig.linkTitleQuerySelector)
             : link;
 
         const linkHash = await hashUrl(link.href);
