@@ -2,6 +2,12 @@
   "manifest_version": 2,
   "name": "Klikkikuri Paatti",
   "version": "0.0.1",
+  // This is needed to use settings across the different scripts.
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "klikkikuri@example.com"
+    }
+  },
   "icons": {
       "48": "icons/klikkikuri-48.png"
   },
@@ -16,11 +22,15 @@
   "content_scripts": [
     {
       "matches": ["https://*.iltalehti.fi/*", "https://*.hs.fi/*", "https://yle.fi/*"],
-      "js": ["content_scripts/changeHeadlines.js"]
+      "js": ["constants.js", "content_scripts/changeHeadlines.js"]
     }
   ],
+  "background": {
+    "scripts": ["constants.js", "background.js"],
+    "persistent": false
+  },
   "permissions": [
-    // TODO: Add API address here.
+      // TODO: Add API address here.
       "http://localhost/*",
       "storage",
       "activeTab"

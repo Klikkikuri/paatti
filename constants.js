@@ -1,0 +1,1 @@
+const CONVERSION_ENABLED_GLOBAL = "enabled";

@@ -1,7 +1,7 @@
 "use strict";
 
 const log = (...args) => {
-    console.log("content_script:", args);
+    console.log("content_script:", ...args);
 };
 
 /* Configurations used per newssite */
@@ -90,6 +90,7 @@ const getReplaceableTitleElements = async (titleData) => {
 const replaceClickbaits = async (apiUrl) => {
     const apiResponse = await fetch(apiUrl);
     const titleData = (await apiResponse.json()).hashesToTitles;
+    log(titleData);
 
     for (const {titleElem, canonicalHash} of await getReplaceableTitleElements(titleData)) {
         // Store the original title in memory for converting back.
@@ -113,19 +114,22 @@ const restoreClickbaits = async (titleData) => {
 
     // TODO: How to perform first conversion at page load time based on
     // localstorage settings (can't seem to read localstorage in this script)?
-    let tabRestoreTitleData;
+    let tabRestoreTitleData = null;
 
     /**
      * Listen for messages from the background script.
      */
     browser.runtime.onMessage.addListener(async (message) => {
-        log(`Received message ${message}`);
+        log("Received message:", message);
         switch (message.command) {
             case "replaceClickbaits":
                 tabRestoreTitleData = await replaceClickbaits(API_URL);
                 break;
             case "restoreClickbaits":
-                await restoreClickbaits(tabRestoreTitleData);
+                if (tabRestoreTitleData != null) {
+                    // If the conversion has not run yet, there's nothing to restore.
+                    await restoreClickbaits(tabRestoreTitleData);
+                }
                 break;
             default:
                 log(`Unknown command '${message.command}'`);
