@@ -1,11 +1,15 @@
 "use strict";
 
 const SWITCHES_TO_CONFIG_KEYS = {
-    "il-enabled": "www.iltalehti.fi",
-    "hs-enabled": "www.hs.fi",
+    "il-enabled":  "www.iltalehti.fi",
+    "hs-enabled":  "www.hs.fi",
     "yle-enabled": "yle.fi",
-    //"al-enabled": null,
+    "al-enabled":  "www.aamulehti.fi",
 };
+const CONFIG_KEYS_TO_SWITCHES = Object.fromEntries(
+    Object.entries(SWITCHES_TO_CONFIG_KEYS)
+        .map(([k, v]) => [v, k])
+);
 
 const log = (...args) => {
     console.log("popup:", ...args);
@@ -31,7 +35,8 @@ document.addEventListener("click", async (e) => {
 
     // Run processing always when switches are interacted with.
     if (e.target.classList.contains("conversion-switch")) {
-        log("Local storage:", await browser.storage.local.get());
+        const config = await browser.storage.local.get();
+        log("Local storage:", config);
 
         // Update the persistent settings.
         let configUpdateObject;
@@ -42,13 +47,9 @@ document.addEventListener("click", async (e) => {
             if (switchConfigKey == undefined) {
                 return;
             }
-            configUpdateObject = {
-                "siteConfigs": {
-                    [switchConfigKey]: {
-                        "enabled": e.target.checked
-                    }
-                }
-            };
+            // Replace the old config with a new one entirely.
+            configUpdateObject = config;
+            configUpdateObject["siteConfigs"][switchConfigKey]["enabled"] = e.target.checked;
         }
 
         await browser.storage.local.set(configUpdateObject);
@@ -58,9 +59,7 @@ document.addEventListener("click", async (e) => {
             .query({ active: true, currentWindow: true }))[0].id;
 
         await browser.tabs.sendMessage(activeTabId, {
-            command: e.target.checked
-                ? "replaceClickbaits"
-                : "restoreClickbaits",
+            command: "convertClickbaits",
         });
     }
 });
@@ -71,4 +70,10 @@ document.addEventListener("DOMContentLoaded", async (e) => {
     const isConversionEnabled = (await browser.storage.local.get("enabled"))["enabled"];
     log(isConversionEnabled);
     document.getElementById("extension-enabled").checked = isConversionEnabled;
+
+    // Per site settings.
+    const siteConfigs = (await browser.storage.local.get("siteConfigs"))["siteConfigs"];
+    for (const [k, v] of Object.entries(siteConfigs)) {
+        document.getElementById(CONFIG_KEYS_TO_SWITCHES[k]).checked = v["enabled"];
+    }
 });

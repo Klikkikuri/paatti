@@ -23,6 +23,9 @@ browser.runtime.onInstalled.addListener(async () => {
                 "yle.fi": {
                     "enabled": false,
                 },
+                "www.aamulehti.fi": {
+                    "enabled": false,
+                },
             }
         }
     );
@@ -40,6 +43,6 @@ browser.tabs.onUpdated.addListener(async () => {
         const activeTabId = (await browser.tabs
             .query({ active: true, currentWindow: true }))[0].id;
 
-        await browser.tabs.sendMessage(activeTabId, { command: "replaceClickbaits" });
+        await browser.tabs.sendMessage(activeTabId, { command: "convertClickbaits" });
     }
 });

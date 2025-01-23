@@ -19,28 +19,27 @@ const hashUrl = async (url) => {
     return hashHex;
 };
 
+const getGlobalConfig = async () => {
+    const config = await browser.storage.local.get();
+
+    log("Global config:", config);
+
+    return config;
+};
+
+const getSiteConfig = async (newsSite) => {
+    const siteConfigs = await browser.storage.local.get("siteConfigs");
+    const siteConfig = siteConfigs["siteConfigs"][newsSite];
+
+    log("Site config:", siteConfig);
+
+    return siteConfig;
+};
+
 /**
  * Filter out the links not processed in backend.
  */
-const getReplaceableTitleElements = async (titleData) => {
-    const newsSite = window.location.hostname;
-
-    const siteConfigs = await browser.storage.local.get("siteConfigs");
-    const siteConfig = siteConfigs["siteConfigs"][newsSite];
-    log("Site config:", siteConfig);
-    if (siteConfig == undefined) {
-        log(`'${newsSite}' is not supported.`);
-        return [];
-    }
-
-    // Guard against running on unenabled site.
-    if (!siteConfig["enabled"]) {
-        log(`Processing ${newsSite} is disabled`);
-        return [];
-    }
-
-    log(`Casting our nets on ${newsSite}`);
-
+const getReplaceableTitleElements = async (titleData, siteConfig) => {
     const failedLinks = [];
     const elems = [];
     for (const link of document.querySelectorAll("a")) {
@@ -87,12 +86,12 @@ const getReplaceableTitleElements = async (titleData) => {
     return elems;
 };
 
-const replaceClickbaits = async (apiUrl) => {
+const replaceClickbaits = async (apiUrl, siteConfig) => {
     const apiResponse = await fetch(apiUrl);
     const titleData = (await apiResponse.json()).hashesToTitles;
     log(titleData);
 
-    for (const {titleElem, canonicalHash} of await getReplaceableTitleElements(titleData)) {
+    for (const {titleElem, canonicalHash} of await getReplaceableTitleElements(titleData, siteConfig)) {
         // Store the original title in memory for converting back.
         titleData[canonicalHash].restoreTitle = titleElem.textContent;
 
@@ -102,33 +101,51 @@ const replaceClickbaits = async (apiUrl) => {
     return titleData;
 };
 
-const restoreClickbaits = async (titleData) => {
-    for (const {titleElem, canonicalHash} of await getReplaceableTitleElements(titleData)) {
+const restoreClickbaits = async (titleData, siteConfig) => {
+    log("Restoring using data:", titleData);
+    for (const {titleElem, canonicalHash} of await getReplaceableTitleElements(titleData, siteConfig)) {
         titleElem.textContent = titleData[canonicalHash].restoreTitle;
     }
 };
 
 // Main.
 (async () => {
+    // TODO: Read this from a config for dev and prod environments somehow?
     const API_URL = "http://localhost:8000/headlines/testData.json";
 
-    // TODO: How to perform first conversion at page load time based on
-    // localstorage settings (can't seem to read localstorage in this script)?
     let tabRestoreTitleData = null;
 
     /**
      * Listen for messages from the background script.
      */
     browser.runtime.onMessage.addListener(async (message) => {
-        log("Received message:", message);
+        const newsSite = window.location.hostname;
+
+        log(`Received message while browsing '${newsSite}':`, message);
+
         switch (message.command) {
-            case "replaceClickbaits":
-                tabRestoreTitleData = await replaceClickbaits(API_URL);
-                break;
-            case "restoreClickbaits":
-                if (tabRestoreTitleData != null) {
+            case "convertClickbaits":
+                // Always either toggle the converted headlines on or off based
+                // on enabled-status.
+
+                const globalConfig = await getGlobalConfig();
+                if (!globalConfig["enabled"]) {
+                    log("Conversion is globally disabled");
+                }
+
+                const siteConfig = await getSiteConfig(newsSite);
+                if (!siteConfig) {
+                    log(`'${newsSite}' is not supported.`);
+                }
+
+                const doReplaceNow = globalConfig["enabled"] && siteConfig["enabled"];
+                if (doReplaceNow) {
+                    log(`Casting our nets on ${newsSite}`);
+                    tabRestoreTitleData = await replaceClickbaits(API_URL, siteConfig);
+                } else if (tabRestoreTitleData != null) {
+                    log(`Restoring original state of ${newsSite}`);
                     // If the conversion has not run yet, there's nothing to restore.
-                    await restoreClickbaits(tabRestoreTitleData);
+                    await restoreClickbaits(tabRestoreTitleData, siteConfig);
                 }
                 break;
             default:
