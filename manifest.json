@@ -22,11 +22,11 @@
   "content_scripts": [
     {
       "matches": ["https://*.iltalehti.fi/*", "https://*.hs.fi/*", "https://yle.fi/*"],
-      "js": ["constants.js", "content_scripts/changeHeadlines.js"]
+      "js": ["utils/tools.js", "content_scripts/changeHeadlines.js"]
     }
   ],
   "background": {
-    "scripts": ["constants.js", "background.js"],
+    "scripts": ["utils/tools.js", "background.js"],
     "persistent": false
   },
   "permissions": [

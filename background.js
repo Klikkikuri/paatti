@@ -1,9 +1,6 @@
 "use strict";
 
-const log = (...args) => {
-    console.log("background:", ...args);
-};
-
+const log = getLogger("background");
 
 browser.runtime.onInstalled.addListener(async () => {
     // Initialize settings.

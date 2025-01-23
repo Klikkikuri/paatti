@@ -1,19 +1,18 @@
 "use strict";
 
+const log = getLogger("popup");
+
 const SWITCHES_TO_CONFIG_KEYS = {
     "il-enabled":  "www.iltalehti.fi",
     "hs-enabled":  "www.hs.fi",
     "yle-enabled": "yle.fi",
     "al-enabled":  "www.aamulehti.fi",
 };
+
 const CONFIG_KEYS_TO_SWITCHES = Object.fromEntries(
     Object.entries(SWITCHES_TO_CONFIG_KEYS)
         .map(([k, v]) => [v, k])
 );
-
-const log = (...args) => {
-    console.log("popup:", ...args);
-};
 
 document.addEventListener("click", async (e) => {
     // TODO Explicitly ignore buttons not inside popup?

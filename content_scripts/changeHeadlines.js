@@ -1,8 +1,6 @@
 "use strict";
 
-const log = (...args) => {
-    console.log("content_script:", ...args);
-};
+const log = getLogger("content_script");
 
 /* Configurations used per newssite */
 /**
