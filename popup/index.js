@@ -14,6 +14,14 @@ const CONFIG_KEYS_TO_SWITCHES = Object.fromEntries(
         .map(([k, v]) => [v, k])
 );
 
+const setCheckboxesToReadonly = (makeReadonly) => {
+    const checkboxes = document.querySelectorAll(".conversion-switch");
+    log(checkboxes);
+    for (let x of checkboxes) {
+        x.checked = !makeReadonly;
+    }
+};
+
 document.addEventListener("click", async (e) => {
     // TODO Explicitly ignore buttons not inside popup?
 
@@ -41,6 +49,9 @@ document.addEventListener("click", async (e) => {
         let configUpdateObject;
         if (e.target.id == "extension-enabled") {
             configUpdateObject =  { "enabled": e.target.checked };
+            // The main switch should toggle if the per-site conversion
+            // switches should work or not.
+            setCheckboxesToReadonly(!e.target.checked);
         } else {
             const switchConfigKey = SWITCHES_TO_CONFIG_KEYS[e.target.id];
             if (switchConfigKey == undefined) {
