@@ -143,7 +143,7 @@ const restoreClickbaits = async (titleData, siteConfig) => {
                 } else if (tabRestoreTitleData != null) {
                     log(`Restoring original state of ${newsSite}`);
                     // If the conversion has not run yet, there's nothing to restore.
-                    await restoreClickbaits(tabRestoreTitleData, siteConfig);
+                    tabRestoreTitleData = await restoreClickbaits(tabRestoreTitleData, siteConfig);
                 }
                 break;
             default:
