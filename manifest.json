@@ -9,7 +9,7 @@
     }
   },
   "icons": {
-      "48": "icons/klikkikuri-48.png"
+    "48": "icons/klikkikuri-48.png"
   },
   "browser_action": {
     "default_icon": {
@@ -21,18 +21,28 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://*.iltalehti.fi/*", "https://*.hs.fi/*", "https://yle.fi/*"],
-      "js": ["utils/tools.js", "content_scripts/changeHeadlines.js"]
+      "matches": [
+        "https://*.iltalehti.fi/*",
+        "https://*.hs.fi/*",
+        "https://yle.fi/*"
+      ],
+      "js": [
+        "utils/tools.js",
+        "content_scripts/changeHeadlines.js"
+      ]
     }
   ],
   "background": {
-    "scripts": ["utils/tools.js", "background.js"],
+    "scripts": [
+      "utils/tools.js",
+      "background.js"
+    ],
     "persistent": false
   },
   "permissions": [
-      // TODO: Add API address here.
-      "http://localhost/*",
-      "storage",
-      "activeTab"
+    "https://raw.githubusercontent.com/*",
+    "http://localhost/*",
+    "storage",
+    "activeTab"
   ]
 }

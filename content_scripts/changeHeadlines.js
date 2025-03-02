@@ -2,13 +2,13 @@
 
 const log = getLogger("content_script");
 
-/* Configurations used per newssite */
 /**
  * Copied from:
  * https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest#converting_a_digest_to_a_hex_string
  */
 const hashUrl = async (url) => {
-    const msgUint8 = new TextEncoder().encode(url); // encode as (utf-8) Uint8Array
+    const encoder = new TextEncoder();
+    const msgUint8 = encoder.encode(url); // encode as (utf-8) Uint8Array
     const hashBuffer = await window.crypto.subtle.digest("SHA-256", msgUint8); // hash the message
     const hashArray = Array.from(new Uint8Array(hashBuffer)); // convert buffer to byte array
     const hashHex = hashArray
@@ -47,19 +47,23 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
             ? link.querySelector(siteConfig.linkTitleQuerySelector)
             : link;
 
-        const linkHash = await hashUrl(link.href);
+        //const articleUrl = link.href;
+        // TODO START mock generating hashes that would be found in the data.json.
+        // TODO: Use real URLs hashes once there's a backend delivering real data.
+        const articleUrl = ["a", "b", "c", "d", "e", "f"][Array.from(link.href).reduce((sum, char) => sum + char.charCodeAt(0), 0)
+            % 6] + "\n";
+        // TODO END
 
-        // TODO START
-        // TODO: Use real hashes once there's a backend delivering real data.
-        const PLACEHOLDERHASH = Number("0x" + linkHash) % 6;
+        const linkHash = await hashUrl(articleUrl);
+
+        log(linkHash);
         if (!titleData[linkHash]) {
             titleData[linkHash] = {
-                title: (titleData[PLACEHOLDERHASH]?.title != undefined)
-                    ? titleData[PLACEHOLDERHASH].title
-                    : titleData[titleData[PLACEHOLDERHASH].canonical].title
+                title: (titleData[linkHash]?.title != undefined)
+                    ? titleData[linkHash].title
+                    : titleData[titleData[linkHash].canonical].title
             };
         }
-        // TODO END
 
         // Get the non-clickbait title.
         const canonicalHash = (titleData[linkHash]?.title != undefined)
@@ -80,16 +84,22 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
     // TODO: log error to some backend.
     log(`There were ${failedLinks.length} links not processed.`);
     log(failedLinks);
- 
+
     return elems;
 };
 
 const replaceClickbaits = async (apiUrl, siteConfig) => {
-    const apiResponse = await fetch(apiUrl);
+    let apiResponse;
+    try {
+        apiResponse = await fetch(apiUrl);
+    } catch (e) {
+        log(`Failed to fetch data from the API: ${e}`);
+        return;
+    }
     const titleData = (await apiResponse.json()).hashesToTitles;
     log(titleData);
 
-    for (const {titleElem, canonicalHash} of await getReplaceableTitleElements(titleData, siteConfig)) {
+    for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(titleData, siteConfig)) {
         // Store the original title in memory for converting back.
         titleData[canonicalHash].restoreTitle = titleElem.textContent;
 
@@ -101,7 +111,7 @@ const replaceClickbaits = async (apiUrl, siteConfig) => {
 
 const restoreClickbaits = async (titleData, siteConfig) => {
     log("Restoring using data:", titleData);
-    for (const {titleElem, canonicalHash} of await getReplaceableTitleElements(titleData, siteConfig)) {
+    for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(titleData, siteConfig)) {
         titleElem.textContent = titleData[canonicalHash].restoreTitle;
     }
 };
@@ -109,7 +119,7 @@ const restoreClickbaits = async (titleData, siteConfig) => {
 // Main.
 (async () => {
     // TODO: Read this from a config for dev and prod environments somehow?
-    const API_URL = "http://localhost:8000/headlines/testData.json";
+    const API_URL = "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json";
 
     let tabRestoreTitleData = null;
 
