@@ -2,18 +2,14 @@ body {
     width: 320px;
     font-family: Arial, sans-serif;
     color: #222;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     padding: 0;
     margin: 0;
 }
 
 #root {
     margin: 0;
-    background: linear-gradient(180deg, #b0b0b0, #e0e0e0);
+    background: #fafafa;
     padding: 10px;
-    border-radius: 10px;
-    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.2);
-    border: 1px solid #999;
 }
 
 #top-navi {
@@ -21,13 +17,10 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 5px;
-    background: #888;
-    border-radius: 5px;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 button {
-    background: linear-gradient(to bottom, #ddd, #bbb);
+    background: linear-gradient(to bottom, #fff #ddd);
     border: none;
     padding: 5px 10px;
     border-radius: 5px;
@@ -54,7 +47,7 @@ button:hover {
     appearance: none;
     width: 40px;
     height: 20px;
-    background: #bbb;
+    background: #ccc;
     border: none;
     border-radius: 10px;
     position: relative;
@@ -84,17 +77,32 @@ button:hover {
     transform: translateX(20px);
 }
 
-details {
-    background: #c0c0c0;
+details,
+#settings {
+    background: #f0f0f0;
     border-radius: 5px;
-    padding: 5px;
+    padding-left: 5px;
+    padding-right: 5px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+details {
+    padding-top: 5px;
+    padding-bottom: 5px;
     margin-top: 5px;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 details summary {
     font-weight: bold;
     cursor: pointer;
+}
+
+details:hover {
+    background: linear-gradient(to bottom, #eee, #dddddd);
+}
+
+details[open] {
+    background: #f0f0f0;
 }
 
 ul {
@@ -111,8 +119,4 @@ li {
 
 p {
     margin: 5px 0;
-}
-
-body, #root {
-    box-shadow: inset 0 2px 5px rgba(255, 255, 255, 0.6), 0 4px 10px rgba(0, 0, 0, 0.3);
 }
