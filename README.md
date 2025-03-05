@@ -6,6 +6,7 @@ Browser extension to sail the web.
 Clone and build dependencies by running:
 ```bash
 git submodule init
+git submodule update
 ./build.sh
 ```
 
