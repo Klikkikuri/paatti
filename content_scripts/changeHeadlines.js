@@ -6,7 +6,7 @@ const log = getLogger("content_script");
  * Copied from:
  * https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest#converting_a_digest_to_a_hex_string
  */
-const hashUrl = async (url) => {
+var hashUrl = async (url) => {
     const encoder = new TextEncoder();
     const msgUint8 = encoder.encode(url); // encode as (utf-8) Uint8Array
     const hashBuffer = await window.crypto.subtle.digest("SHA-256", msgUint8); // hash the message
@@ -116,8 +116,33 @@ const restoreClickbaits = async (titleData, siteConfig) => {
     }
 };
 
+
+/**
+ * Builder function that returns function to preprocess a news-URL into a hash
+ * that correctly indexes to converted title data.
+ */
+const getHashUrl = (suola) => {
+    return (url) => {
+        // TODO: Write the url to __STATIC__ WASM memory (fixed size, no
+        // allocation), processe it and return the computed hash.
+        return "Foo";
+    };
+};
+
 // Main.
 (async () => {
+    // Initialize WebAssembly components.
+    const suolaPath = browser.runtime.getURL("lib/suola.wasm");
+    try {
+        const suola = await WebAssembly.instantiateStreaming(fetch(suolaPath));
+        log(suola);
+        // Redefine the function in global scope.
+        hashUrl = getHashUrl(suola);
+    } catch (e) {
+        log(`[🧂 suola]: Failed loading WebAssembly function: ${e}`);
+        //TODO return?
+    }
+
     // TODO: Read this from a config for dev and prod environments somehow?
     const API_URL = "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json";
 
