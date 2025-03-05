@@ -47,11 +47,10 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
             ? link.querySelector(siteConfig.linkTitleQuerySelector)
             : link;
 
-        //const articleUrl = link.href;
+        const articleUrl = link.href;
         // TODO START mock generating hashes that would be found in the data.json.
         // TODO: Use real URLs hashes once there's a backend delivering real data.
-        const articleUrl = ["a", "b", "c", "d", "e", "f"][Array.from(link.href).reduce((sum, char) => sum + char.charCodeAt(0), 0)
-            % 6] + "\n";
+        //const articleUrl = ["a", "b", "c", "d", "e", "f"][Array.from(link.href).reduce((sum, char) => sum + char.charCodeAt(0), 0) % 6]+ "\n";
         // TODO END
 
         const linkHash = await hashUrl(articleUrl);
@@ -125,9 +124,29 @@ const getHashUrl = (suola) => {
     return (url) => {
         // TODO: Write the url to __STATIC__ WASM memory (fixed size, no
         // allocation), processe it and return the computed hash.
-        return "Foo";
+        const memory = new Uint8Array(suola.instance.exports.memory.buffer);
+        const bufferStart = suola.instance.exports.get_url_ptr();
+        for (const i in url) {
+            log(memory[bufferStart + i]);
+            memory[bufferStart + i] = url.charCodeAt(i);
+        }
+        // Terminate the string.
+        memory[bufferStart + url.length] = 0;
+
+        const returnCode = suola.instance.exports.static_normalize_and_hash_url();
+        if (returnCode != 0) {
+            log(`Failed to hash the URL '${url}' with status code: `, returnCode);
+            return;
+        };
+
+        let sha256Hash = "";
+        const SHA256_LENGTH = 64;
+        for (let i = 0; i < SHA256_LENGTH; i++) {
+            sha256Hash += String.fromCharCode(memory[bufferStart + i]);
+        };
+        log(`Hash for ${url} == ${sha256Hash}`);
     };
-};
+}
 
 // Main.
 (async () => {
