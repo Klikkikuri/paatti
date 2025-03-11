@@ -47,11 +47,8 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
             ? link.querySelector(siteConfig.linkTitleQuerySelector)
             : link;
 
-        const articleUrl = link.href;
-        // TODO START mock generating hashes that would be found in the data.json.
-        // TODO: Use real URLs hashes once there's a backend delivering real data.
-        //const articleUrl = ["a", "b", "c", "d", "e", "f"][Array.from(link.href).reduce((sum, char) => sum + char.charCodeAt(0), 0) % 6]+ "\n";
-        // TODO END
+        //const articleUrl = link.href;
+        const articleUrl = testUrls[Array.from(link.href).reduce((sum, char) => sum + char.charCodeAt(0), 0) % 6]; // For testing.
 
         const linkHash = await hashUrl(articleUrl);
 
@@ -122,18 +119,21 @@ const restoreClickbaits = async (titleData, siteConfig) => {
  */
 const getHashUrl = (suola) => {
     return (url) => {
+        log("Hashing URL:", url);
         // TODO: Write the url to __STATIC__ WASM memory (fixed size, no
         // allocation), processe it and return the computed hash.
-        const memory = new Uint8Array(suola.instance.exports.memory.buffer);
+        const memory = new DataView(suola.instance.exports.memory.buffer);
         const bufferStart = suola.instance.exports.get_url_ptr();
-        for (const i in url) {
-            log(memory[bufferStart + i]);
-            memory[bufferStart + i] = url.charCodeAt(i);
+        for (let i = 0; i < url.length; i++) {
+            const charByte = url.charCodeAt(i);
+            const idx = bufferStart + i;
+            memory.setUint8(idx, charByte);
         }
         // Terminate the string.
-        memory[bufferStart + url.length] = 0;
+        memory.setUint8(bufferStart + url.length, 0);
 
         const returnCode = suola.instance.exports.static_normalize_and_hash_url();
+        log("Hashing returned:", returnCode);
         if (returnCode != 0) {
             log(`Failed to hash the URL '${url}' with status code: `, returnCode);
             return;
@@ -141,8 +141,12 @@ const getHashUrl = (suola) => {
 
         let sha256Hash = "";
         const SHA256_LENGTH = 64;
+        // NOTE: For some reason refreshing the memory view is necessary.
+        const mem = new DataView(suola.instance.exports.memory.buffer);
         for (let i = 0; i < SHA256_LENGTH; i++) {
-            sha256Hash += String.fromCharCode(memory[bufferStart + i]);
+            const charByte = mem.getUint8(bufferStart + i);
+            const char = String.fromCharCode(charByte);
+            sha256Hash += char;
         };
         log(`Hash for ${url} == ${sha256Hash}`);
     };
@@ -163,7 +167,8 @@ const getHashUrl = (suola) => {
     }
 
     // TODO: Read this from a config for dev and prod environments somehow?
-    const API_URL = "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json";
+    //const API_URL = "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json";
+    const API_URL = "http://localhost:8000/data.json";
 
     let tabRestoreTitleData = null;
 

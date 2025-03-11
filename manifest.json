@@ -28,6 +28,7 @@
       ],
       "js": [
         "utils/tools.js",
+        "headlines/testUrls.js",
         "content_scripts/changeHeadlines.js"
       ]
     }
