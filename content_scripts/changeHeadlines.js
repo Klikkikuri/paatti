@@ -1,5 +1,8 @@
 "use strict";
 
+// Use this to access this source file in the browser debugger.
+debugger;
+
 const log = getLogger("content_script");
 
 /**
@@ -48,23 +51,15 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
             : link;
 
         //const articleUrl = link.href;
-        const articleUrl = testUrls[Array.from(link.href).reduce((sum, char) => sum + char.charCodeAt(0), 0) % 6]; // For testing.
+        const articleUrl = testUrls[Array.from(link.href).reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0) % 6]; // For testing.
 
         const linkHash = await hashUrl(articleUrl);
 
         log(linkHash);
-        if (!titleData[linkHash]) {
-            titleData[linkHash] = {
-                title: (titleData[linkHash]?.title != undefined)
-                    ? titleData[linkHash].title
-                    : titleData[titleData[linkHash].canonical].title
-            };
-        }
-
         // Get the non-clickbait title.
         const canonicalHash = (titleData[linkHash]?.title != undefined)
             ? linkHash
-            : titleData[titleData[linkHash]]?.canonical;
+            : titleData[linkHash]?.canonical;
 
         if (canonicalHash == undefined || titleElem == undefined) {
             failedLinks.push({
@@ -92,8 +87,7 @@ const replaceClickbaits = async (apiUrl, siteConfig) => {
         log(`Failed to fetch data from the API: ${e}`);
         return;
     }
-    const titleData = (await apiResponse.json()).hashesToTitles;
-    log(titleData);
+    const titleData = await apiResponse.json();
 
     for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(titleData, siteConfig)) {
         // Store the original title in memory for converting back.
@@ -145,10 +139,12 @@ const getHashUrl = (suola) => {
         const mem = new DataView(suola.instance.exports.memory.buffer);
         for (let i = 0; i < SHA256_LENGTH; i++) {
             const charByte = mem.getUint8(bufferStart + i);
-            const char = String.fromCharCode(charByte);
-            sha256Hash += char;
+            const charStr = String.fromCharCode(charByte);
+            sha256Hash += charStr;
         };
+
         log(`Hash for ${url} == ${sha256Hash}`);
+        return sha256Hash;
     };
 }
 
@@ -158,11 +154,11 @@ const getHashUrl = (suola) => {
     const suolaPath = browser.runtime.getURL("lib/suola.wasm");
     try {
         const suola = await WebAssembly.instantiateStreaming(fetch(suolaPath));
-        log(suola);
+        log("[🧂 suola]: WebAssembly hashing module loaded:", suola);
         // Redefine the function in global scope.
         hashUrl = getHashUrl(suola);
     } catch (e) {
-        log(`[🧂 suola]: Failed loading WebAssembly function: ${e}`);
+        log(`[🧂 suola]: Failed loading WebAssembly function: $ { e }`);
         //TODO return?
     }
 
@@ -178,7 +174,7 @@ const getHashUrl = (suola) => {
     browser.runtime.onMessage.addListener(async (message) => {
         const newsSite = window.location.hostname;
 
-        log(`Received message while browsing '${newsSite}':`, message);
+        log(`Received message while browsing '${newsSite}': `, message);
 
         switch (message.command) {
             case "convertClickbaits":
@@ -197,10 +193,10 @@ const getHashUrl = (suola) => {
 
                 const doReplaceNow = globalConfig["enabled"] && siteConfig["enabled"];
                 if (doReplaceNow) {
-                    log(`Casting our nets on ${newsSite}`);
+                    log(`Casting our nets on ${newsSite} `);
                     tabRestoreTitleData = await replaceClickbaits(API_URL, siteConfig);
                 } else if (tabRestoreTitleData != null) {
-                    log(`Restoring original state of ${newsSite}`);
+                    log(`Restoring original state of ${newsSite} `);
                     // If the conversion has not run yet, there's nothing to restore.
                     tabRestoreTitleData = await restoreClickbaits(tabRestoreTitleData, siteConfig);
                 }
