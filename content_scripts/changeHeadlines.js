@@ -1,24 +1,22 @@
 "use strict";
 
+/*
+ * README:
+ *
+ * This file/module depends on the following functions in its global scope:
+ * - `hashUrl(url: string) -> string | falsy`
+ *   - Function should normalize and return a sha256 hash of the input URL or a
+ *   falsy value in case of an error.
+ * - `initSuola(url: string) -> void`
+ *   - Function should make the hashUrl-function available based on the
+ *   provided URL/path of the WebAssembly module (browser extension accesses
+ *   the .wasm file differently compared to normal browser scripts/files).
+ */
+
 // Use this to access this source file in the browser debugger.
-debugger;
+//debugger;
 
 const log = getLogger("content_script");
-
-/**
- * Copied from:
- * https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest#converting_a_digest_to_a_hex_string
- */
-var hashUrl = async (url) => {
-    const encoder = new TextEncoder();
-    const msgUint8 = encoder.encode(url); // encode as (utf-8) Uint8Array
-    const hashBuffer = await window.crypto.subtle.digest("SHA-256", msgUint8); // hash the message
-    const hashArray = Array.from(new Uint8Array(hashBuffer)); // convert buffer to byte array
-    const hashHex = hashArray
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join(""); // convert bytes to hex string
-    return hashHex;
-};
 
 const getGlobalConfig = async () => {
     const config = await browser.storage.local.get();
@@ -107,66 +105,18 @@ const restoreClickbaits = async (titleData, siteConfig) => {
 };
 
 
-/**
- * Builder function that returns function to preprocess a news-URL into a hash
- * that correctly indexes to converted title data.
- */
-const getHashUrl = (suola) => {
-    return (url) => {
-        log("Hashing URL:", url);
-        // TODO: Write the url to __STATIC__ WASM memory (fixed size, no
-        // allocation), processe it and return the computed hash.
-        const memory = new DataView(suola.instance.exports.memory.buffer);
-        const bufferStart = suola.instance.exports.get_url_ptr();
-        for (let i = 0; i < url.length; i++) {
-            const charByte = url.charCodeAt(i);
-            const idx = bufferStart + i;
-            memory.setUint8(idx, charByte);
-        }
-        // Terminate the string.
-        memory.setUint8(bufferStart + url.length, 0);
 
-        const returnCode = suola.instance.exports.static_normalize_and_hash_url();
-        log("Hashing returned:", returnCode);
-        if (returnCode != 0) {
-            log(`Failed to hash the URL '${url}' with status code: `, returnCode);
-            return;
-        };
-
-        let sha256Hash = "";
-        const SHA256_LENGTH = 64;
-        // NOTE: For some reason refreshing the memory view is necessary.
-        const mem = new DataView(suola.instance.exports.memory.buffer);
-        for (let i = 0; i < SHA256_LENGTH; i++) {
-            const charByte = mem.getUint8(bufferStart + i);
-            const charStr = String.fromCharCode(charByte);
-            sha256Hash += charStr;
-        };
-
-        log(`Hash for ${url} == ${sha256Hash}`);
-        return sha256Hash;
-    };
-}
 
 // Main.
 (async () => {
-    // Initialize WebAssembly components.
-    const suolaPath = browser.runtime.getURL("lib/suola.wasm");
-    try {
-        const suola = await WebAssembly.instantiateStreaming(fetch(suolaPath));
-        log("[🧂 suola]: WebAssembly hashing module loaded:", suola);
-        // Redefine the function in global scope.
-        hashUrl = getHashUrl(suola);
-    } catch (e) {
-        log(`[🧂 suola]: Failed loading WebAssembly function: $ { e }`);
-        //TODO return?
-    }
-
     // TODO: Read this from a config for dev and prod environments somehow?
     //const API_URL = "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json";
     const API_URL = "http://localhost:8000/data.json";
 
+    await initSuola(browser.runtime.getURL("suola/build/suola.wasm"));
+
     let tabRestoreTitleData = null;
+
 
     /**
      * Listen for messages from the background script.
