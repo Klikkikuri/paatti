@@ -28,11 +28,13 @@
       ],
       "js": [
         "utils/tools.js",
-        "headlines/testUrls.js",
         // Glue code provided with Go.
         "suola/build/wasm_exec.js",
         // This script should contain an initialization function for the WebAssembly module.
         "suola/build/suola.js",
+        // Associated test data.
+        "test_data/urls.js",
+        // Main module.
         "content_scripts/changeHeadlines.js"
       ]
     }

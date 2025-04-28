@@ -80,6 +80,7 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
 const replaceClickbaits = async (apiUrl, siteConfig) => {
     let apiResponse;
     try {
+        debugger;
         apiResponse = await fetch(apiUrl);
     } catch (e) {
         log(`Failed to fetch data from the API: ${e}`);
@@ -111,7 +112,7 @@ const restoreClickbaits = async (titleData, siteConfig) => {
 (async () => {
     // TODO: Read this from a config for dev and prod environments somehow?
     //const API_URL = "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json";
-    const API_URL = "http://localhost:8000/data.json";
+    const API_URL = browser.runtime.getURL("test_data/data.json");
 
     await initSuola(browser.runtime.getURL("suola/build/suola.wasm"));
 
