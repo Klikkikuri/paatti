@@ -5,28 +5,35 @@ const log = getLogger("background");
 browser.runtime.onInstalled.addListener(async () => {
     // Initialize settings.
     await browser.storage.local.clear();
-    await browser.storage.local.set(
-        {
-            "enabled": true,
-            "siteConfigs": {
-                "www.iltalehti.fi": {
-                    "linkTitleQuerySelector": ".front-title",
-                    "enabled": false,
-                },
-                "www.hs.fi": {
-                    "linkTitleQuerySelector": "a:nth-child(1) > section:nth-child(1) > div:nth-child(1) > div:nth-child(1) > h2:nth-child(1) > span:nth-child(2)",
-                    "enabled": false,
-                },
-                "yle.fi": {
-                    "enabled": false,
-                },
-                "www.aamulehti.fi": {
-                    "enabled": false,
-                },
-            }
+    const config = {
+        // CONFIG: Configure extension to start enabled here.
+        "enabled": true,
+        // CONFIG: Configure per-site settings here.
+        "siteConfigs": {
+            "www.iltalehti.fi": {
+                "linkTitleQuerySelector": ".front-title",
+                "enabled": false,
+            },
+            "www.hs.fi": {
+                "linkTitleQuerySelector": "a:nth-child(1) > section:nth-child(1) > div:nth-child(1) > div:nth-child(1) > h2:nth-child(1) > span:nth-child(2)",
+                "enabled": false,
+            },
+            "yle.fi": {
+                "enabled": false,
+            },
+            "www.aamulehti.fi": {
+                "enabled": false,
+            },
+        },
+        "environmentConfigs": {
+            /* CONFIG: Un/comment these values to set dev mode on or off. */
+            //"environment": "production",
+            "environment": "development",
         }
-    );
-    log("Loaded");
+    };
+    await browser.storage.local.set(config);
+
+    log("Installed Paatti with initial configuration:", config);
 });
 
 // For every site load, perform the conversion as configured.

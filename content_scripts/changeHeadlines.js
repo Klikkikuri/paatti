@@ -18,6 +18,7 @@
 
 const log = getLogger("content_script");
 
+
 const getGlobalConfig = async () => {
     const config = await browser.storage.local.get();
 
@@ -28,7 +29,7 @@ const getGlobalConfig = async () => {
 
 const getSiteConfig = async (newsSite) => {
     const siteConfigs = await browser.storage.local.get("siteConfigs");
-    const siteConfig = siteConfigs["siteConfigs"][newsSite];
+    const siteConfig = siteConfigs.siteConfigs[newsSite];
 
     log("Site config:", siteConfig);
 
@@ -48,8 +49,21 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
             ? link.querySelector(siteConfig.linkTitleQuerySelector)
             : link;
 
-        //const articleUrl = link.href;
-        const articleUrl = testUrls[Array.from(link.href).reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0) % 6]; // For testing.
+        let articleUrl;
+       if (await isDevelopmentEnv()) {
+            articleUrl = testUrls[
+                Array.from(link.href)
+                    .reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0)
+                % 6
+            ];
+            // Highlight the element that was processed.
+            link.style.backgroundColor = "cyan";
+            link.style.borderStyle = "dashed";
+            link.style.borderColor = "#0981D1";
+            link.style.borderSize = "5px";
+        } else {
+            articleUrl = link.href;
+        }
 
         const linkHash = await hashUrl(articleUrl);
 
@@ -70,7 +84,6 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
 
         elems.push({ titleElem: titleElem, canonicalHash: canonicalHash });
     }
-    // TODO: log error to some backend.
     log(`There were ${failedLinks.length} links not processed.`);
     log(failedLinks);
 
@@ -80,7 +93,6 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
 const replaceClickbaits = async (apiUrl, siteConfig) => {
     let apiResponse;
     try {
-        debugger;
         apiResponse = await fetch(apiUrl);
     } catch (e) {
         log(`Failed to fetch data from the API: ${e}`);
@@ -110,14 +122,9 @@ const restoreClickbaits = async (titleData, siteConfig) => {
 
 // Main.
 (async () => {
-    // TODO: Read this from a config for dev and prod environments somehow?
-    //const API_URL = "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json";
-    const API_URL = browser.runtime.getURL("test_data/data.json");
-
     await initSuola(browser.runtime.getURL("suola/build/suola.wasm"));
 
     let tabRestoreTitleData = null;
-
 
     /**
      * Listen for messages from the background script.
@@ -145,7 +152,8 @@ const restoreClickbaits = async (titleData, siteConfig) => {
                 const doReplaceNow = globalConfig["enabled"] && siteConfig["enabled"];
                 if (doReplaceNow) {
                     log(`Casting our nets on ${newsSite} `);
-                    tabRestoreTitleData = await replaceClickbaits(API_URL, siteConfig);
+                    const apiUrl = await getApiDataUrl();
+                    tabRestoreTitleData = await replaceClickbaits(apiUrl, siteConfig);
                 } else if (tabRestoreTitleData != null) {
                     log(`Restoring original state of ${newsSite} `);
                     // If the conversion has not run yet, there's nothing to restore.
