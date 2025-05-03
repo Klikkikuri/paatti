@@ -1,7 +1,7 @@
 import os
 import json
 
-def main():
+if __name__ == "__main__":
     titles = ["Paatin nappaama", "Vonkale verkossa", "Mertaan jäänyt"]
     with open("test_data/urls.txt", "r") as fp:
         urls = list(filter(bool, map(lambda x: x.strip(), fp.readlines())))
@@ -38,6 +38,3 @@ def main():
     with open("test_data/data.json", "w") as fp:
         json.dump(data, fp, indent=2)
 
-if __name__ == "__main__":
-    assert os.path.isdir("suola"), "expected directory suola/ for hashing URLs but was not found"
-    main()
