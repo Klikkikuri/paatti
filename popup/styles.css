@@ -120,3 +120,11 @@ li {
 p {
     margin: 5px 0;
 }
+
+.toggle-readonly {
+    background: #999;
+}
+
+.toggle-readonly::before {
+    background: #ccc;
+}

@@ -15,10 +15,14 @@ const CONFIG_KEYS_TO_SWITCHES = Object.fromEntries(
 );
 
 const setCheckboxesToReadonly = (makeReadonly) => {
-    const checkboxes = document.querySelectorAll(".conversion-switch");
+    const checkboxes = document.querySelectorAll("#settings .conversion-switch");
     log(checkboxes);
     for (let x of checkboxes) {
-        x.checked = !makeReadonly;
+        if (makeReadonly) {
+            x.classList.add("toggle-readonly");
+        } else {
+            x.classList.remove("toggle-readonly");
+        }
     }
 };
 
