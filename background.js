@@ -31,6 +31,12 @@ browser.runtime.onInstalled.addListener(async () => {
             "environment": "development",
         }
     };
+
+    /* CONFIG: Configure your desired development thingies here. */
+    if (config["environmentConfigs"]["environment"] === "development") {
+        config["siteConfigs"]["www.iltalehti.fi"]["enabled"] = true;
+    }
+
     await browser.storage.local.set(config);
 
     log("Installed Paatti with initial configuration:", config);

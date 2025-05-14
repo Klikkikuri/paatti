@@ -50,17 +50,12 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
             : link;
 
         let articleUrl;
-       if (await isDevelopmentEnv()) {
-            articleUrl = testUrls[
-                Array.from(link.href)
-                    .reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0)
-                % 6
-            ];
-            // Highlight the element that was processed.
-            link.style.backgroundColor = "cyan";
-            link.style.borderStyle = "dashed";
-            link.style.borderColor = "#0981D1";
-            link.style.borderSize = "5px";
+        if (await isDevelopmentEnv()) {
+             articleUrl = testUrls[
+                 Array.from(link.href)
+                     .reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0)
+                 % 6
+             ];
         } else {
             articleUrl = link.href;
         }
@@ -74,6 +69,7 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
             : titleData[linkHash]?.canonical;
 
         if (canonicalHash == undefined || titleElem == undefined) {
+            await highlightElemError(link);
             failedLinks.push({
                 "elem": link,
                 "href": link.href,
@@ -105,6 +101,7 @@ const replaceClickbaits = async (apiUrl, siteConfig) => {
         titleData[canonicalHash].restoreTitle = titleElem.textContent;
 
         titleElem.textContent = titleData[canonicalHash].title;
+        await highlightElemConverted(titleElem);
     }
 
     return titleData;
@@ -116,9 +113,6 @@ const restoreClickbaits = async (titleData, siteConfig) => {
         titleElem.textContent = titleData[canonicalHash].restoreTitle;
     }
 };
-
-
-
 
 // Main.
 (async () => {

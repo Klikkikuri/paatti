@@ -21,3 +21,19 @@ const getApiDataUrl = async () => {
         ? browser.runtime.getURL("test_data/data.json")
         : "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json";
 };
+
+const highlightElemError = async (htmlElem) => {
+    if (await isDevelopmentEnv()) {
+        htmlElem.style.backgroundColor = "orange";
+        htmlElem.style.borderStyle = "dashed";
+        htmlElem.style.borderColor = "red";
+        htmlElem.style.borderSize = "5px";
+    }
+};
+
+const highlightElemConverted = async (htmlElem) => {
+    htmlElem.style.backgroundColor = "cyan";
+    htmlElem.style.borderStyle = "groove";
+    htmlElem.style.borderColor = "#0981D1";
+    htmlElem.style.borderSize = "5px";
+};
