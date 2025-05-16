@@ -92,37 +92,42 @@ const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
  * Filter out the links not processed in backend.
  */
 const getReplaceableTitleElements = async (titleData, siteConfig) => {
-    const failedLinks = [];
-    const elems = [];
+    const elemPromises = [];
     for (const link of document.querySelectorAll("a")) {
-        try {
-            elems.push(
-                await canonicallyHashizeElem(
-                    titleData,
-                    siteConfig.linkTitleQuerySelectors ?? [],
-                    link)
-            );
-        } catch (err) {
+        elemPromises.push(
+            canonicallyHashizeElem(
+                titleData,
+                siteConfig.linkTitleQuerySelectors ?? [],
+                link)
+        );
+    }
+
+    const elems = [];
+    const errors = [];
+    for (const x of await Promise.allSettled(elemPromises)) {
+        if (x.status === "fulfilled") {
+            elems.push(x.value);
+        } else {
+            const err = x.reason;
             switch (err.variant) {
                 case ERROR_VARIANTS.noElementMatchesForQuerySelector:
-                    await noElementMatchesForQuerySelector(link);
+                    await noElementMatchesForQuerySelector(err.elem);
                     break;
                 case ERROR_VARIANTS.noTitleMatchesForHash:
-                    await noTitleMatchesForHash(link);
+                    await noTitleMatchesForHash(err.elem);
                     break;
                 default:
                     err = {
                         variant: "UnknownError",
-                        obj: err,
-                        link: link,
+                        data: err,
                     };
-
+                    break
             }
-            failedLinks.push(err);
+            errors.push(err);
         }
     }
-    log(`There were ${failedLinks.length} links not processed.`);
-    log(failedLinks);
+    log(`There were ${errors.length} links not processed.`);
+    log(errors);
 
     return elems;
 };
