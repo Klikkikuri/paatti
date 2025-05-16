@@ -14,6 +14,8 @@ browser.runtime.onInstalled.addListener(async () => {
                 "linkTitleQuerySelectors": [
                     ".front-title",
                     ".title-container,.title-container-most-read > .title",
+                    ".newsticker-title-text",
+                    ".latest-pala-video-overlay > .latest-pala-title"
                 ],
                 "enabled": false,
             },
