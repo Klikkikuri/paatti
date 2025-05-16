@@ -29,7 +29,7 @@ const storeElemHightlight = (htmlElem) => {
     htmlElem.setAttribute("__klikkikuri_borderSize", htmlElem.style.borderSize);
 };
 
-const highlightElemNotFoundError = async (htmlElem) => {
+const noElementMatchesForQuerySelector = async (htmlElem) => {
     if (await isDevelopmentEnv()) {
         storeElemHightlight(htmlElem);
         htmlElem.style.backgroundColor = "gray";
@@ -39,7 +39,7 @@ const highlightElemNotFoundError = async (htmlElem) => {
     }
 };
 
-const highlightHashNotFoundError = async (htmlElem) => {
+const noTitleMatchesForHash = async (htmlElem) => {
     if (await isDevelopmentEnv()) {
         storeElemHightlight(htmlElem);
         htmlElem.style.backgroundColor = "orange";

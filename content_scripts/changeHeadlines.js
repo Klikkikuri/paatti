@@ -36,6 +36,58 @@ const getSiteConfig = async (newsSite) => {
     return siteConfig;
 };
 
+const ERROR_VARIANTS = {
+    noElementMatchesForQuerySelector: 1,
+    noTitleMatchesForHash: 2,
+};
+
+const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
+    const titleElem = querySelectors
+        .map((x) => link.querySelector(x))
+        .find((x) => x != null);
+
+    if (!titleElem) {
+        throw {
+            variant: ERROR_VARIANTS.noElementMatchesForQuerySelector,
+            elem: link,
+        };
+    } else {
+        let articleUrl;
+        if (await isDevelopmentEnv()) {
+            articleUrl = testUrls[
+                Array.from(link.href)
+                    .reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0)
+                % 6
+            ];
+        } else {
+            articleUrl = link.href;
+        }
+
+        const linkHash = await hashUrl(articleUrl);
+
+        log(linkHash);
+        // Get the non-clickbait title.
+        const canonicalHash = (titleData[linkHash]?.title != undefined)
+            ? linkHash
+            : titleData[linkHash]?.canonical;
+
+        if (!canonicalHash) {
+            throw {
+                variant: ERROR_VARIANTS.noTitleMatchesForHash,
+                elem: link,
+                href: link.href,
+                hash: linkHash,
+            };
+        } else {
+            return {
+                titleElem: titleElem,
+                canonicalHash: canonicalHash,
+            };
+        }
+    }
+
+};
+
 /**
  * Filter out the links not processed in backend.
  */
@@ -43,50 +95,30 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
     const failedLinks = [];
     const elems = [];
     for (const link of document.querySelectorAll("a")) {
-        const titleElem = (siteConfig.linkTitleQuerySelectors ?? [])
-            .map((x) => link.querySelector(x))
-            .find((x) => x != null);
+        try {
+            elems.push(
+                await canonicallyHashizeElem(
+                    titleData,
+                    siteConfig.linkTitleQuerySelectors ?? [],
+                    link)
+            );
+        } catch (err) {
+            switch (err.variant) {
+                case ERROR_VARIANTS.noElementMatchesForQuerySelector:
+                    await noElementMatchesForQuerySelector(link);
+                    break;
+                case ERROR_VARIANTS.noTitleMatchesForHash:
+                    await noTitleMatchesForHash(link);
+                    break;
+                default:
+                    err = {
+                        variant: "UnknownError",
+                        obj: err,
+                        link: link,
+                    };
 
-        if (!titleElem) {
-            await highlightElemNotFoundError(link);
-
-            failedLinks.push({
-                elem: link,
-            });
-        } else {
-            let articleUrl;
-            if (await isDevelopmentEnv()) {
-                articleUrl = testUrls[
-                    Array.from(link.href)
-                        .reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0)
-                    % 6
-                ];
-            } else {
-                articleUrl = link.href;
             }
-
-            const linkHash = await hashUrl(articleUrl);
-
-            log(linkHash);
-            // Get the non-clickbait title.
-            const canonicalHash = (titleData[linkHash]?.title != undefined)
-                ? linkHash
-                : titleData[linkHash]?.canonical;
-
-            if (!canonicalHash) {
-                await highlightHashNotFoundError(link);
-
-                failedLinks.push({
-                    elem: link,
-                    href: link.href,
-                    hash: linkHash,
-                });
-            } else {
-                elems.push({
-                    titleElem: titleElem,
-                    canonicalHash: canonicalHash,
-                });
-            }
+            failedLinks.push(err);
         }
     }
     log(`There were ${failedLinks.length} links not processed.`);
