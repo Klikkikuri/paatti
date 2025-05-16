@@ -43,42 +43,51 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
     const failedLinks = [];
     const elems = [];
     for (const link of document.querySelectorAll("a")) {
-        // TODO: There might be more than just one way on a site to query
-        // the text elements of the links.
-        const titleElem = siteConfig.linkTitleQuerySelector
-            ? link.querySelector(siteConfig.linkTitleQuerySelector)
-            : link;
+        const titleElem = (siteConfig.linkTitleQuerySelectors ?? [])
+            .map((x) => link.querySelector(x))
+            .find((x) => x != null);
 
-        let articleUrl;
-        if (await isDevelopmentEnv()) {
-             articleUrl = testUrls[
-                 Array.from(link.href)
-                     .reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0)
-                 % 6
-             ];
-        } else {
-            articleUrl = link.href;
-        }
+        if (!titleElem) {
+            await highlightElemNotFoundError(link);
 
-        const linkHash = await hashUrl(articleUrl);
-
-        log(linkHash);
-        // Get the non-clickbait title.
-        const canonicalHash = (titleData[linkHash]?.title != undefined)
-            ? linkHash
-            : titleData[linkHash]?.canonical;
-
-        if (canonicalHash == undefined || titleElem == undefined) {
-            await highlightElemError(link);
             failedLinks.push({
-                "elem": link,
-                "href": link.href,
-                "hash": linkHash
+                elem: link,
             });
-            continue;
-        }
+        } else {
+            let articleUrl;
+            if (await isDevelopmentEnv()) {
+                articleUrl = testUrls[
+                    Array.from(link.href)
+                        .reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0)
+                    % 6
+                ];
+            } else {
+                articleUrl = link.href;
+            }
 
-        elems.push({ titleElem: titleElem, canonicalHash: canonicalHash });
+            const linkHash = await hashUrl(articleUrl);
+
+            log(linkHash);
+            // Get the non-clickbait title.
+            const canonicalHash = (titleData[linkHash]?.title != undefined)
+                ? linkHash
+                : titleData[linkHash]?.canonical;
+
+            if (!canonicalHash) {
+                await highlightHashNotFoundError(link);
+
+                failedLinks.push({
+                    elem: link,
+                    href: link.href,
+                    hash: linkHash,
+                });
+            } else {
+                elems.push({
+                    titleElem: titleElem,
+                    canonicalHash: canonicalHash,
+                });
+            }
+        }
     }
     log(`There were ${failedLinks.length} links not processed.`);
     log(failedLinks);
@@ -111,6 +120,7 @@ const restoreClickbaits = async (titleData, siteConfig) => {
     log("Restoring using data:", titleData);
     for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(titleData, siteConfig)) {
         titleElem.textContent = titleData[canonicalHash].restoreTitle;
+        await highlightElemOriginal(titleElem);
     }
 };
 
