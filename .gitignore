@@ -1,0 +1,7 @@
+# Build artifacts.
+*.wasm
+
+# Generated test data fiels.
+test_data/urls.js
+test_data/hashes.txt
+test_data/data.json

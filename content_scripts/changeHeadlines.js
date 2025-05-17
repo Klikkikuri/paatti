@@ -1,21 +1,23 @@
 "use strict";
 
+/*
+ * README:
+ *
+ * This file/module depends on the following functions in its global scope:
+ * - `hashUrl(url: string) -> string | falsy`
+ *   - Function should normalize and return a sha256 hash of the input URL or a
+ *   falsy value in case of an error.
+ * - `initSuola(url: string) -> void`
+ *   - Function should make the hashUrl-function available based on the
+ *   provided URL/path of the WebAssembly module (browser extension accesses
+ *   the .wasm file differently compared to normal browser scripts/files).
+ */
+
+// Use this to access this source file in the browser debugger.
+//debugger;
+
 const log = getLogger("content_script");
 
-/**
- * Copied from:
- * https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest#converting_a_digest_to_a_hex_string
- */
-const hashUrl = async (url) => {
-    const encoder = new TextEncoder();
-    const msgUint8 = encoder.encode(url); // encode as (utf-8) Uint8Array
-    const hashBuffer = await window.crypto.subtle.digest("SHA-256", msgUint8); // hash the message
-    const hashArray = Array.from(new Uint8Array(hashBuffer)); // convert buffer to byte array
-    const hashHex = hashArray
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join(""); // convert bytes to hex string
-    return hashHex;
-};
 
 const getGlobalConfig = async () => {
     const config = await browser.storage.local.get();
@@ -27,7 +29,7 @@ const getGlobalConfig = async () => {
 
 const getSiteConfig = async (newsSite) => {
     const siteConfigs = await browser.storage.local.get("siteConfigs");
-    const siteConfig = siteConfigs["siteConfigs"][newsSite];
+    const siteConfig = siteConfigs.siteConfigs[newsSite];
 
     log("Site config:", siteConfig);
 
@@ -47,28 +49,29 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
             ? link.querySelector(siteConfig.linkTitleQuerySelector)
             : link;
 
-        //const articleUrl = link.href;
-        // TODO START mock generating hashes that would be found in the data.json.
-        // TODO: Use real URLs hashes once there's a backend delivering real data.
-        const articleUrl = ["a", "b", "c", "d", "e", "f"][Array.from(link.href).reduce((sum, char) => sum + char.charCodeAt(0), 0)
-            % 6] + "\n";
-        // TODO END
+        let articleUrl;
+       if (await isDevelopmentEnv()) {
+            articleUrl = testUrls[
+                Array.from(link.href)
+                    .reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0)
+                % testUrls.length
+            ];
+            // Highlight the element that was processed.
+            link.style.backgroundColor = "cyan";
+            link.style.borderStyle = "dashed";
+            link.style.borderColor = "#0981D1";
+            link.style.borderWidth = "5px";
+        } else {
+            articleUrl = link.href;
+        }
 
         const linkHash = await hashUrl(articleUrl);
 
         log(linkHash);
-        if (!titleData[linkHash]) {
-            titleData[linkHash] = {
-                title: (titleData[linkHash]?.title != undefined)
-                    ? titleData[linkHash].title
-                    : titleData[titleData[linkHash].canonical].title
-            };
-        }
-
         // Get the non-clickbait title.
         const canonicalHash = (titleData[linkHash]?.title != undefined)
             ? linkHash
-            : titleData[titleData[linkHash]]?.canonical;
+            : titleData[linkHash]?.canonical;
 
         if (canonicalHash == undefined || titleElem == undefined) {
             failedLinks.push({
@@ -81,7 +84,6 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
 
         elems.push({ titleElem: titleElem, canonicalHash: canonicalHash });
     }
-    // TODO: log error to some backend.
     log(`There were ${failedLinks.length} links not processed.`);
     log(failedLinks);
 
@@ -96,8 +98,7 @@ const replaceClickbaits = async (apiUrl, siteConfig) => {
         log(`Failed to fetch data from the API: ${e}`);
         return;
     }
-    const titleData = (await apiResponse.json()).hashesToTitles;
-    log(titleData);
+    const titleData = await apiResponse.json();
 
     for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(titleData, siteConfig)) {
         // Store the original title in memory for converting back.
@@ -116,10 +117,18 @@ const restoreClickbaits = async (titleData, siteConfig) => {
     }
 };
 
+
+
+
 // Main.
 (async () => {
-    // TODO: Read this from a config for dev and prod environments somehow?
-    const API_URL = "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json";
+    try {
+        await initSuola(browser.runtime.getURL("suola/build/suola.wasm"));
+    } catch (e) {
+        log("Paatti sailing in fresh water :/ ", e);
+        // TODO: Try a couple times and eventually set some error state for GUI.
+        return;
+    }
 
     let tabRestoreTitleData = null;
 
@@ -129,7 +138,7 @@ const restoreClickbaits = async (titleData, siteConfig) => {
     browser.runtime.onMessage.addListener(async (message) => {
         const newsSite = window.location.hostname;
 
-        log(`Received message while browsing '${newsSite}':`, message);
+        log(`Received message while browsing '${newsSite}': `, message);
 
         switch (message.command) {
             case "convertClickbaits":
@@ -148,10 +157,11 @@ const restoreClickbaits = async (titleData, siteConfig) => {
 
                 const doReplaceNow = globalConfig["enabled"] && siteConfig["enabled"];
                 if (doReplaceNow) {
-                    log(`Casting our nets on ${newsSite}`);
-                    tabRestoreTitleData = await replaceClickbaits(API_URL, siteConfig);
+                    log(`Casting our nets on ${newsSite} `);
+                    const apiUrl = await getApiDataUrl();
+                    tabRestoreTitleData = await replaceClickbaits(apiUrl, siteConfig);
                 } else if (tabRestoreTitleData != null) {
-                    log(`Restoring original state of ${newsSite}`);
+                    log(`Restoring original state of ${newsSite} `);
                     // If the conversion has not run yet, there's nothing to restore.
                     tabRestoreTitleData = await restoreClickbaits(tabRestoreTitleData, siteConfig);
                 }
