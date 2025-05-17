@@ -60,7 +60,7 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
             link.style.backgroundColor = "cyan";
             link.style.borderStyle = "dashed";
             link.style.borderColor = "#0981D1";
-            link.style.borderSize = "5px";
+            link.style.borderWidth = "5px";
         } else {
             articleUrl = link.href;
         }
