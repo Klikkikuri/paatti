@@ -11,11 +11,18 @@ browser.runtime.onInstalled.addListener(async () => {
         // CONFIG: Configure per-site settings here.
         "siteConfigs": {
             "www.iltalehti.fi": {
-                "linkTitleQuerySelector": ".front-title",
+                "linkTitleQuerySelectors": [
+                    ".front-title",
+                    ".title-container,.title-container-most-read > .title",
+                    ".newsticker-title-text",
+                    ".latest-pala-video-overlay > .latest-pala-title"
+                ],
                 "enabled": false,
             },
             "www.hs.fi": {
-                "linkTitleQuerySelector": "a:nth-child(1) > section:nth-child(1) > div:nth-child(1) > div:nth-child(1) > h2:nth-child(1) > span:nth-child(2)",
+                "linkTitleQuerySelectors": [
+                    "a:nth-child(1) > section:nth-child(1) > div:nth-child(1) > div:nth-child(1) > h2:nth-child(1) > span:nth-child(2)",
+                ],
                 "enabled": false,
             },
             "yle.fi": {
@@ -31,6 +38,12 @@ browser.runtime.onInstalled.addListener(async () => {
             "environment": "development",
         }
     };
+
+    /* CONFIG: Configure your desired development thingies here. */
+    if (config["environmentConfigs"]["environment"] === "development") {
+        config["siteConfigs"]["www.iltalehti.fi"]["enabled"] = true;
+    }
+
     await browser.storage.local.set(config);
 
     log("Installed Paatti with initial configuration:", config);
