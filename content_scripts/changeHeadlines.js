@@ -54,13 +54,13 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
             articleUrl = testUrls[
                 Array.from(link.href)
                     .reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0)
-                % 6
+                % testUrls.length
             ];
             // Highlight the element that was processed.
             link.style.backgroundColor = "cyan";
             link.style.borderStyle = "dashed";
             link.style.borderColor = "#0981D1";
-            link.style.borderSize = "5px";
+            link.style.borderWidth = "5px";
         } else {
             articleUrl = link.href;
         }
@@ -122,7 +122,13 @@ const restoreClickbaits = async (titleData, siteConfig) => {
 
 // Main.
 (async () => {
-    await initSuola(browser.runtime.getURL("suola/build/suola.wasm"));
+    try {
+        await initSuola(browser.runtime.getURL("suola/build/suola.wasm"));
+    } catch (e) {
+        log("Paatti sailing in fresh water :/ ", e);
+        // TODO: Try a couple times and eventually set some error state for GUI.
+        return;
+    }
 
     let tabRestoreTitleData = null;
 

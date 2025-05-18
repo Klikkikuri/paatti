@@ -13,7 +13,7 @@ const getLogger = (name) => {
 const isDevelopmentEnv = async () => {
     const environmentConfigs = (await browser.storage.local.get("environmentConfigs"))
         .environmentConfigs;
-    return environmentConfigs.environment === "development";;
+    return environmentConfigs.environment === "development";
 };
 
 const getApiDataUrl = async () => {
