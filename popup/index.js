@@ -26,7 +26,7 @@ const setCheckBoxReadonly = (checkbox, makeReadonly) => {
 const setCheckboxesReadonly = (makeReadonly) => {
     const checkboxes = document.querySelectorAll("#settings .conversion-switch");
     log(checkboxes);
-    for (let x of checkboxes) {
+    for (const x of checkboxes) {
         setCheckBoxReadonly(x, makeReadonly);
     }
 };
@@ -56,7 +56,7 @@ document.addEventListener("click", async (e) => {
 
         // Update the persistent settings.
         let configUpdateObject;
-        if (e.target.id == "extension-enabled") {
+        if (e.target.id === "extension-enabled") {
             configUpdateObject =  { "enabled": e.target.checked };
             // The main switch should toggle if the per-site conversion
             // switches should work or not.
@@ -99,7 +99,10 @@ document.addEventListener("DOMContentLoaded", async (e) => {
     log(isConversionEnabled);
     document.getElementById("extension-enabled").checked = isConversionEnabled;
 
-    // Per site settings.
+
+    // Visualize per site switches as "readonly" as per main switch state.
+    setCheckboxesReadonly(!isConversionEnabled);
+    // Set their enabled state based on the stored value.
     const siteConfigs = (await browser.storage.local.get("siteConfigs"))["siteConfigs"];
     for (const [k, v] of Object.entries(siteConfigs)) {
         document.getElementById(CONFIG_KEYS_TO_SWITCHES[k]).checked = v["enabled"];

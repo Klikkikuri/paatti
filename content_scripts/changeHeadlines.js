@@ -85,7 +85,6 @@ const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
             };
         }
     }
-
 };
 
 /**
@@ -161,9 +160,18 @@ const restoreClickbaits = async (titleData, siteConfig) => {
     }
 };
 
+
+
+
 // Main.
 (async () => {
-    await initSuola(browser.runtime.getURL("suola/build/suola.wasm"));
+    try {
+        await initSuola(browser.runtime.getURL("suola/build/suola.wasm"));
+    } catch (e) {
+        log("Paatti sailing in fresh water :/ ", e);
+        // TODO: Try a couple times and eventually set some error state for GUI.
+        return;
+    }
 
     let tabRestoreTitleData = null;
 

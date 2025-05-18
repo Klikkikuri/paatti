@@ -125,6 +125,10 @@ p {
     background: #999;
 }
 
+.toggle-readonly:checked {
+    background: #1177dd;
+}
+
 .toggle-readonly::before {
     background: #ccc;
 }
