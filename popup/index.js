@@ -14,11 +14,20 @@ const CONFIG_KEYS_TO_SWITCHES = Object.fromEntries(
         .map(([k, v]) => [v, k])
 );
 
-const setCheckboxesToReadonly = (makeReadonly) => {
-    const checkboxes = document.querySelectorAll(".conversion-switch");
+const setCheckBoxReadonly = (checkbox, makeReadonly) => {
+    if (makeReadonly) {
+        checkbox.classList.add("toggle-readonly");
+    } else {
+        checkbox.classList.remove("toggle-readonly");
+    }
+};
+
+/* Set the visual readonly state of checkboxes under settings */
+const setCheckboxesReadonly = (makeReadonly) => {
+    const checkboxes = document.querySelectorAll("#settings .conversion-switch");
     log(checkboxes);
-    for (let x of checkboxes) {
-        x.checked = !makeReadonly;
+    for (const x of checkboxes) {
+        setCheckBoxReadonly(x, makeReadonly);
     }
 };
 
@@ -47,11 +56,11 @@ document.addEventListener("click", async (e) => {
 
         // Update the persistent settings.
         let configUpdateObject;
-        if (e.target.id == "extension-enabled") {
+        if (e.target.id === "extension-enabled") {
             configUpdateObject =  { "enabled": e.target.checked };
             // The main switch should toggle if the per-site conversion
             // switches should work or not.
-            setCheckboxesToReadonly(!e.target.checked);
+            setCheckboxesReadonly(!e.target.checked);
         } else {
             const switchConfigKey = SWITCHES_TO_CONFIG_KEYS[e.target.id];
             if (switchConfigKey == undefined) {
@@ -60,6 +69,15 @@ document.addEventListener("click", async (e) => {
             // Replace the old config with a new one entirely.
             configUpdateObject = config;
             configUpdateObject["siteConfigs"][switchConfigKey]["enabled"] = e.target.checked;
+            if (configUpdateObject["siteConfigs"][switchConfigKey]["enabled"]) {
+                // Turning on one site turns on the extension also.
+                configUpdateObject["enabled"] = true;
+                // Make the visual changes as the extension should now be enabled.
+                setCheckboxesReadonly(false);
+                const mainSwitch = document.getElementById("extension-enabled");
+                setCheckBoxReadonly(mainSwitch, false);
+                mainSwitch.checked = true;
+            }
         }
 
         await browser.storage.local.set(configUpdateObject);
@@ -81,7 +99,10 @@ document.addEventListener("DOMContentLoaded", async (e) => {
     log(isConversionEnabled);
     document.getElementById("extension-enabled").checked = isConversionEnabled;
 
-    // Per site settings.
+
+    // Visualize per site switches as "readonly" as per main switch state.
+    setCheckboxesReadonly(!isConversionEnabled);
+    // Set their enabled state based on the stored value.
     const siteConfigs = (await browser.storage.local.get("siteConfigs"))["siteConfigs"];
     for (const [k, v] of Object.entries(siteConfigs)) {
         document.getElementById(CONFIG_KEYS_TO_SWITCHES[k]).checked = v["enabled"];
