@@ -19,23 +19,6 @@
 const log = getLogger("content_script");
 
 
-const getGlobalConfig = async () => {
-    const config = await browser.storage.local.get();
-
-    log("Global config:", config);
-
-    return config;
-};
-
-const getSiteConfig = async (newsSite) => {
-    const siteConfigs = await browser.storage.local.get("siteConfigs");
-    const siteConfig = siteConfigs.siteConfigs[newsSite];
-
-    log("Site config:", siteConfig);
-
-    return siteConfig;
-};
-
 const ERROR_VARIANTS = {
     noElementMatchesForQuerySelector: 1,
     noTitleMatchesForHash: 2,
@@ -161,8 +144,6 @@ const restoreClickbaits = async (titleData, siteConfig) => {
 };
 
 
-
-
 // Main.
 (async () => {
     try {
@@ -188,12 +169,12 @@ const restoreClickbaits = async (titleData, siteConfig) => {
                 // Always either toggle the converted headlines on or off based
                 // on enabled-status.
 
-                const globalConfig = await getGlobalConfig();
+                const globalConfig = await browser.storage.local.get();
                 if (!globalConfig["enabled"]) {
                     log("Conversion is globally disabled");
                 }
 
-                const siteConfig = await getSiteConfig(newsSite);
+                const siteConfig = globalConfig["siteConfigs"][newsSite];
                 if (!siteConfig) {
                     log(`'${newsSite}' is not supported.`);
                 }
@@ -208,6 +189,15 @@ const restoreClickbaits = async (titleData, siteConfig) => {
                     // If the conversion has not run yet, there's nothing to restore.
                     tabRestoreTitleData = await restoreClickbaits(tabRestoreTitleData, siteConfig);
                 }
+                const statsObj = {
+                    "headlines": {
+                        "total": 666,
+                    },
+                };
+                log("Storing stats:", statsObj)
+                await browser.storage.local.set({
+                    "statistics": statsObj,
+                });
                 break;
             default:
                 log(`Unknown command '${message.command}'`);

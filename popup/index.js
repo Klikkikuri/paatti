@@ -43,9 +43,20 @@ const handleOpenSettings = () => {
     }
 };
 
+const handleOpenStatistics = async (e) => {
+    log("Loading stats...");
+    const statistics = (await browser.storage.local.get("statistics"))["statistics"];
+    log("Stats: ", statistics);
+    if (statistics) {
+        document.getElementById("statistics-sub-header").textContent = `${statistics["headlines"]["total"]} otsikkoa napattu`;
+    } else {
+        document.getElementById("statistics-sub-header").textContent = "Tilastoja ei saatavilla. Koeta päivittää ikkuna.";
+    }
+};
+
 const handleClickConversionSwitch = async (e) => {
-    const config = await getGlobalConfig();
-    log("Global config storage:", config);
+    const config = await browser.storage.local.get();
+    log("Global config in storage:", config);
 
     // Update the persistent settings.
     let configUpdateObject;
@@ -56,7 +67,7 @@ const handleClickConversionSwitch = async (e) => {
         setCheckboxesReadonly(!e.target.checked);
     } else {
         const switchConfigKey = SWITCHES_TO_CONFIG_KEYS[e.target.id];
-        if (switchConfigKey == undefined) {
+        if (switchConfigKey === undefined) {
             return;
         }
         // Replace the old config with a new one entirely.
@@ -91,6 +102,9 @@ document.addEventListener("click", async (e) => {
     switch (e.target.id) {
         case "open-settings":
             handleOpenSettings();
+            break;
+        case "statistics-main-header":
+            handleOpenStatistics(e);
             break;
     }
 
