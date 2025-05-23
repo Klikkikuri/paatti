@@ -117,6 +117,10 @@ li {
     justify-content: space-between;
 }
 
+#statistics-main-header+div li {
+    display: flex;
+}
+
 p {
     margin: 5px 0;
 }
