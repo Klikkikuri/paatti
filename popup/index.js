@@ -43,14 +43,23 @@ const handleOpenSettings = () => {
     }
 };
 
-const handleOpenStatistics = async (e) => {
-    log("Loading stats...");
-    const statistics = (await browser.storage.local.get("statistics"))["statistics"];
-    log("Stats: ", statistics);
+const refreshStatistics = async (statistics) => {
     if (statistics) {
-        document.getElementById("statistics-sub-header").textContent = `${statistics["headlines"]["total"]} otsikkoa napattu`;
+        document.getElementById("statistics-main-header").textContent =
+            `${statistics["titles"]["pageClickbaitsCount"]} klikkiotsikkoa tällä sivulla`;
+        document.getElementById("statistics-not").textContent =
+            statistics["titles"]["labelNot"];
+        document.getElementById("statistics-slightly").textContent =
+            statistics["titles"]["labelSlightly"];
+        document.getElementById("statistics-very").textContent =
+            statistics["titles"]["labelVery"];
+        document.getElementById("statistics-extremely").textContent =
+            statistics["titles"]["labelExtremely"];
+
+        document.getElementById("statistics-links").textContent =
+            statistics["misc"]["linksCount"];
     } else {
-        document.getElementById("statistics-sub-header").textContent = "Tilastoja ei saatavilla. Koeta päivittää ikkuna.";
+        document.getElementById("statistics-main-header").textContent = "Tilastoja ei saatavilla. Koeta päivittää ikkuna.";
     }
 };
 
@@ -90,9 +99,12 @@ const handleClickConversionSwitch = async (e) => {
     const activeTabId = (await browser.tabs
         .query({ active: true, currentWindow: true }))[0].id;
 
-    await browser.tabs.sendMessage(activeTabId, {
+    const pageStatistics = await browser.tabs.sendMessage(activeTabId, {
         command: "convertClickbaits",
     });
+    log("Received message to refresh stats with data: ", pageStatistics);
+    await refreshStatistics(pageStatistics);
+
 };
 
 document.addEventListener("click", async (e) => {
@@ -102,9 +114,6 @@ document.addEventListener("click", async (e) => {
     switch (e.target.id) {
         case "open-settings":
             handleOpenSettings();
-            break;
-        case "statistics-main-header":
-            handleOpenStatistics(e);
             break;
     }
 
@@ -129,4 +138,14 @@ document.addEventListener("DOMContentLoaded", async (e) => {
     for (const [k, v] of Object.entries(siteConfigs)) {
         document.getElementById(CONFIG_KEYS_TO_SWITCHES[k]).checked = v["enabled"];
     }
+
+    const statistics = (await browser.storage.local.get("statistics"))["statistics"];
+    log("Full stored statistics: ", statistics);
+
+    const thisTabInfo = (await browser.tabs
+        .query({ active: true, currentWindow: true }))[0];
+    const thisTabUrl = new URL(thisTabInfo.url);
+    const thisPageStatistics = statistics?.[thisTabUrl.hostname];
+    log("This page statistics: ", thisPageStatistics);
+    await refreshStatistics(thisPageStatistics);
 });

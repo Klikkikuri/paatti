@@ -36,13 +36,16 @@ browser.runtime.onInstalled.addListener(async () => {
             /* CONFIG: Un/comment these values to set dev mode on or off. */
             //"environment": "production",
             "environment": "development",
-        }
+        },
+        // TODO: Initialize stats object here but might not find under "configs" perse.
+        "statistics": {},
     };
 
     /* CONFIG: Configure your desired development thingies here. */
     if (config["environmentConfigs"]["environment"] === "development") {
         config["siteConfigs"]["www.iltalehti.fi"]["enabled"] = true;
     }
+
 
     await browser.storage.local.set(config);
 
