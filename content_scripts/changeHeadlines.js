@@ -127,6 +127,8 @@ const restoreClickbaits = async (links, titleData, siteConfig) => {
         titleElem.textContent = titleData[canonicalHash].restoreTitle;
         await highlightElemOriginal(titleElem);
     }
+
+    return titleData;
 };
 
 
@@ -188,9 +190,11 @@ const restoreClickbaits = async (links, titleData, siteConfig) => {
                 const statsObj = (await browser.storage.local.get("statistics"))["statistics"];
                 statsObj[newsSite] = {
                     "titles": {
-                        "pageClickbaitsCount": Object.values(tabRestoreTitleData)
-                            .filter((x) => x.title !== undefined)
-                            .length,
+                        "pageClickbaitsCount": tabRestoreTitleData
+                            ? Object.values(tabRestoreTitleData)
+                                .filter((x) => x.title !== undefined)
+                                .length
+                            : undefined,
                         "labelNot": 0,
                         "labelSlightly": 0,
                         "labelVery": 0,
