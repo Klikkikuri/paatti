@@ -135,7 +135,7 @@ const restoreClickbaits = async (links, titleData, siteConfig) => {
 // Main.
 (async () => {
     try {
-        await initSuola(browser.runtime.getURL("suola/build/suola.wasm"));
+        await initSuola(browser.runtime.getURL("suola/build/js.wasm"));
     } catch (e) {
         log("Paatti sailing in fresh water :/ ", e);
         // TODO: Try a couple times and eventually set some error state for GUI.
