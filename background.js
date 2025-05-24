@@ -5,7 +5,7 @@ const log = getLogger("background");
 browser.runtime.onInstalled.addListener(async () => {
     // Initialize settings.
     await browser.storage.local.clear();
-    const config = {
+    const localData = {
         // CONFIG: Configure extension to start enabled here.
         "enabled": true,
         // CONFIG: Configure per-site settings here.
@@ -37,19 +37,18 @@ browser.runtime.onInstalled.addListener(async () => {
             //"environment": "production",
             "environment": "development",
         },
-        // TODO: Initialize stats object here but might not find under "configs" perse.
         "statistics": {},
     };
 
     /* CONFIG: Configure your desired development thingies here. */
-    if (config["environmentConfigs"]["environment"] === "development") {
-        config["siteConfigs"]["www.iltalehti.fi"]["enabled"] = true;
+    if (localData["environmentConfigs"]["environment"] === "development") {
+        localData["siteConfigs"]["www.iltalehti.fi"]["enabled"] = true;
     }
 
 
-    await browser.storage.local.set(config);
+    await browser.storage.local.set(localData);
 
-    log("Installed Paatti with initial configuration:", config);
+    log("Installed Paatti with initial configuration:", localData);
 });
 
 // For every site load, perform the conversion as configured.
