@@ -3,10 +3,10 @@
 const log = getLogger("popup");
 
 const SWITCHES_TO_CONFIG_KEYS = {
-    "il-enabled":  "www.iltalehti.fi",
-    "hs-enabled":  "www.hs.fi",
+    "il-enabled": "www.iltalehti.fi",
+    "hs-enabled": "www.hs.fi",
     "yle-enabled": "yle.fi",
-    "al-enabled":  "www.aamulehti.fi",
+    "al-enabled": "www.aamulehti.fi",
 };
 
 const CONFIG_KEYS_TO_SWITCHES = Object.fromEntries(
@@ -31,64 +31,95 @@ const setCheckboxesReadonly = (makeReadonly) => {
     }
 };
 
+const handleOpenSettings = () => {
+    const settingsElem = document.querySelector("#settings");
+    if (settingsElem
+        .classList
+        .contains("hidden")
+    ) {
+        settingsElem.classList.remove("hidden");
+    } else {
+        settingsElem.classList.add("hidden");
+    }
+};
+
+const refreshStatistics = async (statistics) => {
+    if (statistics) {
+        document.getElementById("statistics-main-header").textContent =
+            `${statistics["titles"]["pageClickbaitsCount"]} klikkiotsikkoa tällä sivulla`;
+        document.getElementById("statistics-not").textContent =
+            statistics["titles"]["labelNot"];
+        document.getElementById("statistics-slightly").textContent =
+            statistics["titles"]["labelSlightly"];
+        document.getElementById("statistics-very").textContent =
+            statistics["titles"]["labelVery"];
+        document.getElementById("statistics-extremely").textContent =
+            statistics["titles"]["labelExtremely"];
+
+        document.getElementById("statistics-links").textContent =
+            statistics["misc"]["linksCount"];
+    } else {
+        document.getElementById("statistics-main-header").textContent = "Tilastoja ei saatavilla. Koeta päivittää ikkuna.";
+    }
+};
+
+const handleClickConversionSwitch = async (e) => {
+    const config = await browser.storage.local.get();
+    log("Global config in storage:", config);
+
+    // Update the persistent settings.
+    let configUpdateObject;
+    if (e.target.id === "extension-enabled") {
+        configUpdateObject = { "enabled": e.target.checked };
+        // The main switch should toggle if the per-site conversion
+        // switches should work or not.
+        setCheckboxesReadonly(!e.target.checked);
+    } else {
+        const switchConfigKey = SWITCHES_TO_CONFIG_KEYS[e.target.id];
+        if (switchConfigKey === undefined) {
+            return;
+        }
+        // Replace the old config with a new one entirely.
+        configUpdateObject = config;
+        configUpdateObject["siteConfigs"][switchConfigKey]["enabled"] = e.target.checked;
+        if (configUpdateObject["siteConfigs"][switchConfigKey]["enabled"]) {
+            // Turning on one site turns on the extension also.
+            configUpdateObject["enabled"] = true;
+            // Make the visual changes as the extension should now be enabled.
+            setCheckboxesReadonly(false);
+            const mainSwitch = document.getElementById("extension-enabled");
+            setCheckBoxReadonly(mainSwitch, false);
+            mainSwitch.checked = true;
+        }
+    }
+
+    await browser.storage.local.set(configUpdateObject);
+
+    // Get the active tab.
+    const activeTabId = (await browser.tabs
+        .query({ active: true, currentWindow: true }))[0].id;
+
+    const pageStatistics = await browser.tabs.sendMessage(activeTabId, {
+        command: "convertClickbaits",
+    });
+    log("Received message to refresh stats with data: ", pageStatistics);
+    await refreshStatistics(pageStatistics);
+
+};
+
 document.addEventListener("click", async (e) => {
     // TODO Explicitly ignore buttons not inside popup?
 
     // Perform actions according to clicked target.
     switch (e.target.id) {
         case "open-settings":
-            const settingsElem = document.querySelector("#settings");
-            if (settingsElem
-                .classList
-                .contains("hidden")
-            ) {
-                settingsElem.classList.remove("hidden");
-            } else {
-                settingsElem.classList.add("hidden");
-            }
+            handleOpenSettings();
             break;
     }
 
     // Run processing always when switches are interacted with.
     if (e.target.classList.contains("conversion-switch")) {
-        const config = await browser.storage.local.get();
-        log("Local storage:", config);
-
-        // Update the persistent settings.
-        let configUpdateObject;
-        if (e.target.id === "extension-enabled") {
-            configUpdateObject =  { "enabled": e.target.checked };
-            // The main switch should toggle if the per-site conversion
-            // switches should work or not.
-            setCheckboxesReadonly(!e.target.checked);
-        } else {
-            const switchConfigKey = SWITCHES_TO_CONFIG_KEYS[e.target.id];
-            if (switchConfigKey == undefined) {
-                return;
-            }
-            // Replace the old config with a new one entirely.
-            configUpdateObject = config;
-            configUpdateObject["siteConfigs"][switchConfigKey]["enabled"] = e.target.checked;
-            if (configUpdateObject["siteConfigs"][switchConfigKey]["enabled"]) {
-                // Turning on one site turns on the extension also.
-                configUpdateObject["enabled"] = true;
-                // Make the visual changes as the extension should now be enabled.
-                setCheckboxesReadonly(false);
-                const mainSwitch = document.getElementById("extension-enabled");
-                setCheckBoxReadonly(mainSwitch, false);
-                mainSwitch.checked = true;
-            }
-        }
-
-        await browser.storage.local.set(configUpdateObject);
-
-        // Get the active tab.
-        const activeTabId = (await browser.tabs
-            .query({ active: true, currentWindow: true }))[0].id;
-
-        await browser.tabs.sendMessage(activeTabId, {
-            command: "convertClickbaits",
-        });
+        await handleClickConversionSwitch(e);
     }
 });
 
@@ -107,4 +138,14 @@ document.addEventListener("DOMContentLoaded", async (e) => {
     for (const [k, v] of Object.entries(siteConfigs)) {
         document.getElementById(CONFIG_KEYS_TO_SWITCHES[k]).checked = v["enabled"];
     }
+
+    const statistics = (await browser.storage.local.get("statistics"))["statistics"];
+    log("Full stored statistics: ", statistics);
+
+    const thisTabInfo = (await browser.tabs
+        .query({ active: true, currentWindow: true }))[0];
+    const thisTabUrl = new URL(thisTabInfo.url);
+    const thisPageStatistics = statistics?.[thisTabUrl.hostname];
+    log("This page statistics: ", thisPageStatistics);
+    await refreshStatistics(thisPageStatistics);
 });

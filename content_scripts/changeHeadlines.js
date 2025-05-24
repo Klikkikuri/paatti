@@ -19,23 +19,6 @@
 const log = getLogger("content_script");
 
 
-const getGlobalConfig = async () => {
-    const config = await browser.storage.local.get();
-
-    log("Global config:", config);
-
-    return config;
-};
-
-const getSiteConfig = async (newsSite) => {
-    const siteConfigs = await browser.storage.local.get("siteConfigs");
-    const siteConfig = siteConfigs.siteConfigs[newsSite];
-
-    log("Site config:", siteConfig);
-
-    return siteConfig;
-};
-
 const ERROR_VARIANTS = {
     noElementMatchesForQuerySelector: 1,
     noTitleMatchesForHash: 2,
@@ -90,16 +73,11 @@ const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
 /**
  * Filter out the links not processed in backend.
  */
-const getReplaceableTitleElements = async (titleData, siteConfig) => {
-    const elemPromises = [];
-    for (const link of document.querySelectorAll("a")) {
-        elemPromises.push(
-            canonicallyHashizeElem(
-                titleData,
-                siteConfig.linkTitleQuerySelectors ?? [],
-                link)
-        );
-    }
+const getReplaceableTitleElements = async (links, titleData, siteConfig) => {
+    const elemPromises = links.map((x) => canonicallyHashizeElem(
+        titleData,
+        siteConfig.linkTitleQuerySelectors ?? [],
+        x));
 
     const elems = [];
     const errors = [];
@@ -131,17 +109,8 @@ const getReplaceableTitleElements = async (titleData, siteConfig) => {
     return elems;
 };
 
-const replaceClickbaits = async (apiUrl, siteConfig) => {
-    let apiResponse;
-    try {
-        apiResponse = await fetch(apiUrl);
-    } catch (e) {
-        log(`Failed to fetch data from the API: ${e}`);
-        return;
-    }
-    const titleData = await apiResponse.json();
-
-    for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(titleData, siteConfig)) {
+const replaceClickbaits = async (links, titleData, siteConfig) => {
+    for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(links, titleData, siteConfig)) {
         // Store the original title in memory for converting back.
         titleData[canonicalHash].restoreTitle = titleElem.textContent;
 
@@ -152,15 +121,15 @@ const replaceClickbaits = async (apiUrl, siteConfig) => {
     return titleData;
 };
 
-const restoreClickbaits = async (titleData, siteConfig) => {
+const restoreClickbaits = async (links, titleData, siteConfig) => {
     log("Restoring using data:", titleData);
-    for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(titleData, siteConfig)) {
+    for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(links, titleData, siteConfig)) {
         titleElem.textContent = titleData[canonicalHash].restoreTitle;
         await highlightElemOriginal(titleElem);
     }
+
+    return titleData;
 };
-
-
 
 
 // Main.
@@ -188,27 +157,60 @@ const restoreClickbaits = async (titleData, siteConfig) => {
                 // Always either toggle the converted headlines on or off based
                 // on enabled-status.
 
-                const globalConfig = await getGlobalConfig();
+                const globalConfig = await browser.storage.local.get();
                 if (!globalConfig["enabled"]) {
                     log("Conversion is globally disabled");
                 }
 
-                const siteConfig = await getSiteConfig(newsSite);
+                const siteConfig = globalConfig["siteConfigs"][newsSite];
                 if (!siteConfig) {
                     log(`'${newsSite}' is not supported.`);
                 }
 
                 const doReplaceNow = globalConfig["enabled"] && siteConfig["enabled"];
+                const links = Array.from(document.querySelectorAll("a"));
                 if (doReplaceNow) {
                     log(`Casting our nets on ${newsSite} `);
                     const apiUrl = await getApiDataUrl();
-                    tabRestoreTitleData = await replaceClickbaits(apiUrl, siteConfig);
+                    let apiResponse;
+                    try {
+                        apiResponse = await fetch(apiUrl);
+                    } catch (e) {
+                        log(`Failed to fetch data from the API: ${e}`);
+                        return;
+                    }
+                    const titleData = await apiResponse.json();
+
+                    tabRestoreTitleData = await replaceClickbaits(links, titleData, siteConfig);
                 } else if (tabRestoreTitleData != null) {
                     log(`Restoring original state of ${newsSite} `);
                     // If the conversion has not run yet, there's nothing to restore.
-                    tabRestoreTitleData = await restoreClickbaits(tabRestoreTitleData, siteConfig);
+                    tabRestoreTitleData = await restoreClickbaits(links, tabRestoreTitleData, siteConfig);
                 }
-                break;
+                const statsObj = (await browser.storage.local.get("statistics"))["statistics"];
+                statsObj[newsSite] = {
+                    "titles": {
+                        "pageClickbaitsCount": tabRestoreTitleData
+                            ? Object.values(tabRestoreTitleData)
+                                .filter((x) => x.title !== undefined)
+                                .length
+                            : undefined,
+                        "labelNot": 0,
+                        "labelSlightly": 0,
+                        "labelVery": 0,
+                        "labelExtremely": 0,
+                    },
+                    "misc": {
+                        "linksCount": links.length,
+                    },
+                };
+                log("Storing stats:", statsObj)
+                await browser.storage.local.set({
+                    "statistics": statsObj,
+                });
+
+                // Return the statistics to the popup to update itself.
+                return statsObj[newsSite];
             default:
                 log(`Unknown command '${message.command}'`);
                 break;
