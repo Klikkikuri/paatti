@@ -1,3 +1,7 @@
+.hidden {
+    display: none;
+}
+
 body {
     width: 320px;
     font-family: Arial, sans-serif;
@@ -10,26 +14,10 @@ body {
     margin: 0;
     background: #fafafa;
     padding: 10px;
-}
-
-#top-navi {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 5px;
-}
-
-button {
-    background: linear-gradient(to bottom, #fff #ddd);
-    border: none;
-    padding: 5px 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-button:hover {
-    background: linear-gradient(to bottom, #eee, #ccc);
+    flex-direction: column;
+    gap: 1em;
+    background: #f1f3f4;
 }
 
 #open-settings {

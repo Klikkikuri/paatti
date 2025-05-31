@@ -1,0 +1,10 @@
+#block-logo {
+    display: flex;
+    justify-content: center;
+    gap: 0.2em;
+}
+
+#block-logo span {
+    font-size: 150%;
+    font-weight: bold;
+}

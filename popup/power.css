@@ -1,0 +1,48 @@
+#block-power {
+    height: 22%;
+    display: flex;
+    justify-content: center;
+}
+
+.button-power {
+    display: inline-block;
+    cursor: pointer;
+    user-select: none;
+    perspective: 1000px;
+
+    font-size: 400%;
+}
+
+.button-power input {
+    display: none;
+}
+
+.button-power .button-power-face {
+    display: inline-block;
+    background: #fbfbfb;
+    border: 1px solid #555;
+    border-radius: 6px;
+    box-shadow:
+      0 4px #555,
+      0 0 0;
+    transition: all 0.2s ease-in-out;
+    font-family: monospace;
+    text-align: center;
+    min-width: 100px;
+
+    color: #aaa;
+    padding: 0;
+    padding-bottom: 5px;
+    margin: 0;
+}
+
+/* When checked - looks like pressed in */
+.button-power input:checked + .button-power-face {
+    transform: translateY(4px);
+    box-shadow: 0 0 0;
+    background: #d9d9d9;
+}
+
+.button-power input:checked + .button-power-face {
+    color: #029956;
+}
