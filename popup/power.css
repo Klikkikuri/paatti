@@ -1,4 +1,4 @@
-#block-power {
+#power {
     height: 22%;
     display: flex;
     justify-content: center;
@@ -23,7 +23,7 @@
     border: 1px solid #555;
     border-radius: 6px;
     box-shadow:
-      0 4px #555,
+      4px 4px #555,
       0 0 0;
     transition: all 0.2s ease-in-out;
     font-family: monospace;

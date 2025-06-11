@@ -15,25 +15,26 @@ hr {
   height: 5px;
 }
 
-#block-site-details {
+#site-details {
     border: 1px solid #555;
     border-radius: 6px;
     background: #ffffff;
     padding: 5%;
 }
 
-#block-site-details b {
+#site-details b {
     color: #e14942;
 }
 
-#block-site-details label {
+#site-details label {
     margin-right: 10%;
 }
 
-#block-site-details .button-power {
+#site-details .button-power {
     font-size: 100%;
 }
-#block-site-details .button-power-face {
+
+#site-details .button-power-face {
     padding: 10%;
     font-weight: bold;
 }
