@@ -14,6 +14,14 @@ const CONFIG_KEYS_TO_SWITCHES = Object.fromEntries(
         .map(([k, v]) => [v, k])
 );
 
+const getCurrentTabHostname = async () => {
+    const thisTabInfo = (await browser.tabs
+        .query({ active: true, currentWindow: true }))[0];
+    const thisTabUrl = new URL(thisTabInfo.url);
+
+    return thisTabUrl.hostname;
+};
+
 const setCheckBoxReadonly = (checkbox, makeReadonly) => {
     if (makeReadonly) {
         checkbox.classList.add("toggle-readonly");
@@ -43,21 +51,14 @@ const handleOpenSettings = () => {
     }
 };
 
-const refreshStatistics = async (statistics) => {
-    if (statistics) {
+const refreshStatistics = async ({ site, data }) => {
+    if (data) {
+        document.getElementById("site-host").textContent =
+            site;
         document.getElementById("statistics-main-header").textContent =
-            `${statistics["titles"]["pageClickbaitsCount"]} klikkiotsikkoa tällä sivulla`;
-        document.getElementById("statistics-not").textContent =
-            statistics["titles"]["labelNot"];
-        document.getElementById("statistics-slightly").textContent =
-            statistics["titles"]["labelSlightly"];
-        document.getElementById("statistics-very").textContent =
-            statistics["titles"]["labelVery"];
-        document.getElementById("statistics-extremely").textContent =
-            statistics["titles"]["labelExtremely"];
-
+            data["titles"]["pageClickbaitsCount"];
         document.getElementById("statistics-links").textContent =
-            statistics["misc"]["linksCount"];
+            data["misc"]["linksCount"];
     } else {
         document.getElementById("statistics-main-header").textContent = "Tilastoja ei saatavilla. Koeta päivittää ikkuna.";
     }
@@ -103,7 +104,8 @@ const handleClickConversionSwitch = async (e) => {
         command: "convertClickbaits",
     });
     log("Received message to refresh stats with data: ", pageStatistics);
-    await refreshStatistics(pageStatistics);
+    const thisTabHostname = await getCurrentTabHostname();
+    await refreshStatistics({ "site": thisTabHostname, "data": pageStatistics });
 
 };
 
@@ -142,10 +144,8 @@ document.addEventListener("DOMContentLoaded", async (e) => {
     const statistics = (await browser.storage.local.get("statistics"))["statistics"];
     log("Full stored statistics: ", statistics);
 
-    const thisTabInfo = (await browser.tabs
-        .query({ active: true, currentWindow: true }))[0];
-    const thisTabUrl = new URL(thisTabInfo.url);
-    const thisPageStatistics = statistics?.[thisTabUrl.hostname];
+    const thisTabHostname = await getCurrentTabHostname();
+    const thisPageStatistics = statistics?.[thisTabHostname];
     log("This page statistics: ", thisPageStatistics);
-    await refreshStatistics(thisPageStatistics);
+    await refreshStatistics({ "site": thisTabHostname, "data": thisPageStatistics });
 });
