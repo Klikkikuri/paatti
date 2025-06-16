@@ -4,7 +4,7 @@
     justify-content: center;
 }
 
-.button-power {
+.button-toggle {
     display: inline-block;
     cursor: pointer;
     user-select: none;
@@ -13,11 +13,11 @@
     font-size: 400%;
 }
 
-.button-power input {
+.button-toggle input {
     display: none;
 }
 
-.button-power .button-power-face {
+.button-toggle .button-toggle-face {
     display: inline-block;
     background: #fbfbfb;
     border: 1px solid #555;
@@ -37,12 +37,12 @@
 }
 
 /* When checked - looks like pressed in */
-.button-power input:checked + .button-power-face {
+.button-toggle input:checked + .button-toggle-face {
     transform: translateY(4px);
     box-shadow: 0 0 0;
     background: #d9d9d9;
 }
 
-.button-power input:checked + .button-power-face {
+.button-toggle input:checked + .button-toggle-face {
     color: #029956;
 }

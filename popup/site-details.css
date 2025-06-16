@@ -30,11 +30,11 @@ hr {
     margin-right: 10%;
 }
 
-#site-details .button-power {
+#site-details .button-toggle {
     font-size: 100%;
 }
 
-#site-details .button-power-face {
+#site-details .button-toggle-face {
     padding: 10%;
     font-weight: bold;
 }
