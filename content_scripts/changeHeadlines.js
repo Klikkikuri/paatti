@@ -35,17 +35,7 @@ const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
             elem: link,
         };
     } else {
-        let articleUrl;
-        if (await isDevelopmentEnv()) {
-            articleUrl = testUrls[
-                Array.from(link.href)
-                    .reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0)
-                % 6
-            ];
-        } else {
-            articleUrl = link.href;
-        }
-
+        let articleUrl = await extractArticleUrl(link);
         const linkHash = await hashUrl(articleUrl);
 
         log(linkHash);

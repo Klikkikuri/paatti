@@ -63,3 +63,15 @@ const highlightElemOriginal = async (htmlElem) => {
     htmlElem.style.borderColor = htmlElem.getAttribute("__klikkikuri_borderColor");
     htmlElem.style.borderSize = htmlElem.getAttribute("__klikkikuri_borderSize");
 }
+
+const extractArticleUrl = async (link) => {
+    if (await isDevelopmentEnv()) {
+        return testUrls[
+            Array.from(link.href)
+                .reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0)
+            % 6
+        ];
+    } else {
+        return link.href;
+    }
+};
