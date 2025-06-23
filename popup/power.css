@@ -23,8 +23,8 @@
     border: 1px solid #555;
     border-radius: 6px;
     box-shadow:
-      4px 4px #555,
-      0 0 0;
+        4px 4px #555,
+        0 0 0;
     transition: all 0.2s ease-in-out;
     font-family: monospace;
     text-align: center;
@@ -37,12 +37,12 @@
 }
 
 /* When checked - looks like pressed in */
-.button-toggle input:checked + .button-toggle-face {
+.button-toggle input:checked+.button-toggle-face {
     transform: translateY(4px);
     box-shadow: 0 0 0;
     background: #d9d9d9;
 }
 
-.button-toggle input:checked + .button-toggle-face {
+.button-toggle input:checked+.button-toggle-face {
     color: #029956;
 }

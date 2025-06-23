@@ -43,37 +43,37 @@ const setCheckboxesReadonly = (makeReadonly) => {
  * Store the different views' IDs here in order to make making changes a bit
  * flexibler.
  */
-const viewIds = {
-    "main": "main-view",
-    "rating": "ratingControls",
-    "settings": "additionalSettings"
+const viewSelectors = {
+    "main": ".main-view",
+    "rating": "#ratingControls",
+    "settings": "#additionalSettings"
 };
 
 /**
  * Show this and hide other of the views.
- * @param {*} elemId ID string of the view to show.
+ * @param {*} elemSelector Unique CSS selector string of the view to show.
  */
-const showView = (elemId) => {
-    log(`Showing view '${elemId}'`);
-    document.getElementById(elemId).classList.remove("hidden");
+const showView = (elemSelector) => {
+    log(`Showing view '${elemSelector}'`);
+    document.querySelector(elemSelector).classList.remove("hidden");
 
     // Hide all other views.
-    for (const viewId of Object.values(viewIds).filter((x) => x != elemId)) {
-        const viewElem = document.getElementById(viewId);
+    for (const viewSelector of Object.values(viewSelectors).filter((x) => x != elemSelector)) {
+        const viewElem = document.querySelector(viewSelector);
         viewElem.classList.add("hidden");
     }
 };
 
 const handleOpenMain = () => {
-    showView(viewIds.main);
+    showView(viewSelectors.main);
 };
 
 const handleOpenAdditionalSettings = () => {
-    showView(viewIds.settings);
+    showView(viewSelectors.settings);
 };
 
 const handleOpenRatingControls = () => {
-    showView(viewIds.rating);
+    showView(viewSelectors.rating);
 };
 
 const refreshStatistics = async ({ site, data }) => {
