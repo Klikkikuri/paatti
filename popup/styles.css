@@ -12,7 +12,7 @@ body>div {
     display: flex;
     flex-direction: column;
     gap: 1em;
-    background: #f1f3f4;
+    background: whitesmoke;
 }
 
 .main-view {
@@ -21,7 +21,7 @@ body>div {
     display: flex;
     flex-direction: column;
     gap: 1em;
-    background: #f1f3f4;
+    background: whitesmoke;
 }
 
 #open-settings {

@@ -15,7 +15,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 1em;
-    background-color: #ffffff;
+    background-color: whitesmoke;
     border: none;
     cursor: pointer;
     font-size: 1rem;
@@ -40,4 +40,3 @@
 .arrow {
     font-size: 1.2em;
 }
-

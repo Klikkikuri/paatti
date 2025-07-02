@@ -17,20 +17,34 @@
     display: none;
 }
 
+.button-toggle .button-toggle-face:hover {
+    color: #029956;
+    outline: 2px solid #22B976;
+}
+
+.button-toggle input:checked+.button-toggle-face:hover {
+    color: #555;
+    outline: 2px solid #444;
+}
+
 .button-toggle .button-toggle-face {
     display: inline-block;
     background: #fbfbfb;
-    border: 1px solid #555;
+    outline: 1px outset #555;
     border-radius: 6px;
     box-shadow:
-        4px 4px #555,
-        0 0 0;
-    transition: all 0.2s ease-in-out;
+        #777 4px 4px,
+        #777 0px 0px inset;
+    transition:
+        transform 0.2s ease-in-out,
+        box-shadow 0.2s ease-in-out,
+        background 0.2s ease-in-out;
+    ;
     font-family: monospace;
     text-align: center;
     min-width: 100px;
 
-    color: #aaa;
+    color: #555;
     padding: 0;
     padding-bottom: 5px;
     margin: 0;
@@ -39,10 +53,12 @@
 /* When checked - looks like pressed in */
 .button-toggle input:checked+.button-toggle-face {
     transform: translateY(4px);
-    box-shadow: 0 0 0;
-    background: #d9d9d9;
-}
+    outline: 1px inset #555;
+    box-shadow:
+        #777 0px 0px,
+        #777 1px 1px inset;
 
-.button-toggle input:checked+.button-toggle-face {
+    background: #e3e3e3;
     color: #029956;
+    outline: 1px solid #22B976;
 }
