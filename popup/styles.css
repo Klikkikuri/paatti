@@ -69,32 +69,12 @@ body>div {
     transform: translateX(20px);
 }
 
-details,
 #settings {
     background: #f0f0f0;
     border-radius: 5px;
     padding-left: 5px;
     padding-right: 5px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-details {
-    padding-top: 5px;
-    padding-bottom: 5px;
-    margin-top: 5px;
-}
-
-details summary {
-    font-weight: bold;
-    cursor: pointer;
-}
-
-details:hover {
-    background: linear-gradient(to bottom, #eee, #dddddd);
-}
-
-details[open] {
-    background: #f0f0f0;
 }
 
 ul {
@@ -131,4 +111,33 @@ p {
 
 .hidden {
     display: none;
+}
+
+.sub-view-header {
+    display: flex;
+    flex-direction: row;
+}
+
+.sub-view-transition {
+    all: unset;
+    cursor: pointer;
+    padding-right: 3%;
+}
+
+.sub-view-transition:hover span:last-child {
+    color: #CCC;
+}
+
+.transition-row {
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1em;
+    background-color: whitesmoke;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background 0.2s, transform 0.1s;
+    width: 100%;
 }

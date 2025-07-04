@@ -142,11 +142,16 @@ const handleClickConversionSwitch = async (e) => {
 const handleDomContentLoaded = async (e) => {
     log("Setting up UI");
 
+    // Set view height to the dimensions found when opened the popup so that the
+    // view does not jump around when navigating but keeps (I hope) the view
+    // responsive in different windows.
+    document.querySelector("body").style.height = `${document.querySelector("body").clientHeight + 38}px`;
+
     // Register button handlers that interact with the popup e.g. turning
     // settings on/off, sending feedback form etc.
     document.getElementById("open-rating").addEventListener("click", handleOpenRatingControls);
     document.getElementById("open-additional-settings").addEventListener("click", handleOpenAdditionalSettings);
-    for (const x of document.querySelectorAll(".sub-view-open-main")) {
+    for (const x of document.querySelectorAll(".sub-view-header > .sub-view-transition")) {
         // Sub views have a "back" button to switch back to popup main view.
         x.addEventListener("click", handleOpenMain);
     }

@@ -46,12 +46,12 @@
             </div>
 
             <div id="bottom-navi">
-                <button id="open-rating" class="transition-row">
+                <button id="open-rating" class="sub-view-transition transition-row">
                     <span class="icon">💬</span>
                     <span class="label">Palaute ja arviointi</span>
                     <span class="arrow">❯</span>
                 </button>
-                <button id="open-additional-settings" class="transition-row">
+                <button id="open-additional-settings" class="sub-view-transition transition-row">
                     <span class="icon">🎚️</span>
                     <span class="label">Lisää asetuksia</span>
                     <span class="arrow">❯</span>
@@ -60,42 +60,39 @@
         </div>
 
         <div id="ratingControls" class="hidden">
-            <button class="sub-view-open-main">
-                <span class="icon">🎚️</span>
-                <span class="label">Takaisin</span>
-                <span class="arrow">&lt;-</span>
-            </button>
-
             <div>
-                <details>
-                    <summary>Arvostele tämä klikkiotsikko</summary>
+                <span class="sub-view-header">
+                    <button class="sub-view-transition">
+                        <span class="arrow">❮</span>
+                    </button>
+                    <h2>Arvostele tämä klikkiotsikko</h2>
+                </span>
+                <div>
+                    <p><strong>Alkuperäinen:</strong></p>
+                    <p>Osa ihmisistä käyttää Klikkikuria tavalla, joka saa muiden pinnan kiristymään – Lääke
+                        tulossa
+                    </p>
+                    <p><strong>Klikkurin muunnos:</strong></p>
+                    <p>Työnsä vaikeutumisesta suuttuneet toimittajat haastavat Klikkikurin oikeuteen</p>
                     <div>
-                        <p><strong>Alkuperäinen:</strong></p>
-                        <p>Osa ihmisistä käyttää Klikkikuria tavalla, joka saa muiden pinnan kiristymään – Lääke
-                            tulossa
-                        </p>
-                        <p><strong>Klikkurin muunnos:</strong></p>
-                        <p>Työnsä vaikeutumisesta suuttuneet toimittajat haastavat Klikkikurin oikeuteen</p>
                         <div>
-                            <div>
-                                <input id="good" type="radio" name="rating" />
-                                <label for="good">Nappaa</label>
-                                <input id="bad" type="radio" name="rating" />
-                                <label for="bad">Ei nappaa</label>
-                            </div>
+                            <input id="good" type="radio" name="rating" />
+                            <label for="good">Nappaa</label>
+                            <input id="bad" type="radio" name="rating" />
+                            <label for="bad">Ei nappaa</label>
                         </div>
                     </div>
-                </details>
+                </div>
             </div>
         </div>
 
         <div id="additionalSettings" class="hidden">
-            <button class="sub-view-open-main">
-                <span class="icon">🎚️</span>
-                <span class="label">Takaisin</span>
-                <span class="arrow">&lt;-</span>
-            </button>
-
+            <span class="sub-view-header">
+                <button class="sub-view-transition">
+                    <span class="arrow">❮</span>
+                </button>
+                <h2>Seulottavat sivustot</h2>
+            </span>
             <div>
                 <ul>
                     <li>
