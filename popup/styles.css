@@ -118,14 +118,30 @@ p {
     flex-direction: row;
 }
 
+#bottom-navi {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2em;
+}
+
 .sub-view-transition {
     all: unset;
     cursor: pointer;
     padding-right: 3%;
 }
 
-.sub-view-transition:hover span:last-child {
+.sub-view-transition:hover {
+    font-weight: bold;
+}
+
+.sub-view-transition span:last-child {
     color: #CCC;
+    transition-property: color;
+    transition-duration: 0.2s;
+}
+
+.sub-view-transition:hover span:last-child {
+    color: #111;
 }
 
 .transition-row {
