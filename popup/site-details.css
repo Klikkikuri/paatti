@@ -15,26 +15,26 @@ hr {
     height: 5px;
 }
 
-.site-details {
+.content-top {
     border: 1px solid #555;
     border-radius: 6px;
     background: #ffffff;
     padding: 5%;
 }
 
-.site-details b {
+.content-top b {
     color: #e14942;
 }
 
-.site-details label {
+.content-top label {
     margin-right: 10%;
 }
 
-.site-details .button-toggle {
+.content-top .button-toggle {
     font-size: 100%;
 }
 
-.site-details .button-toggle-face {
+.content-top .button-toggle-face {
     padding: 10%;
     font-weight: bold;
 }

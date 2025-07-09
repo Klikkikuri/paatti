@@ -155,3 +155,15 @@ p {
     transition: background 0.2s, transform 0.1s;
     width: 100%;
 }
+
+.header {
+    align-items: center;
+}
+
+.content-top {
+    flex-grow: 1;
+}
+
+.content-bottom {
+    flex-grow: 1;
+}
