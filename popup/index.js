@@ -45,8 +45,8 @@ const setCheckboxesReadonly = (makeReadonly) => {
  */
 const viewSelectors = {
     "main": [".main-view-header", ".site-details", ".bottom-navi"],
-    "rating": [".sub-view-header", ".rating-controls-header", ".rating-controls"],
-    "settings": [".sub-view-header", ".additional-settings-header", ".additional-settings"],
+    "rating": [".sub-view-header", ".rating-controls-header", ".rating-controls", ".sub-view-bottom-navi"],
+    "settings": [".sub-view-header", ".additional-settings-header", ".additional-settings", ".sub-view-bottom-navi"],
 };
 
 /**
@@ -155,7 +155,7 @@ const handleDomContentLoaded = async (e) => {
     // settings on/off, sending feedback form etc.
     document.getElementById("open-rating").addEventListener("click", handleOpenRatingControls);
     document.getElementById("open-additional-settings").addEventListener("click", handleOpenAdditionalSettings);
-    for (const x of document.querySelectorAll(".sub-view-header > .sub-view-transition")) {
+    for (const x of document.querySelectorAll(".sub-view-bottom-navi > .sub-view-transition")) {
         // Sub views have a "back" button to switch back to popup main view.
         x.addEventListener("click", handleOpenMain);
     }

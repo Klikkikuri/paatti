@@ -126,23 +126,7 @@ p {
     all: unset;
     cursor: pointer;
     padding-right: 3%;
-}
 
-.sub-view-transition:hover {
-    font-weight: bold;
-}
-
-.sub-view-transition span:last-child {
-    color: #CCC;
-    transition-property: color;
-    transition-duration: 0.2s;
-}
-
-.sub-view-transition:hover span:last-child {
-    color: #222;
-}
-
-.transition-row {
     padding: 0;
     display: flex;
     align-items: center;
@@ -150,10 +134,21 @@ p {
     gap: 1em;
     background-color: whitesmoke;
     border: none;
-    cursor: pointer;
     font-size: 1rem;
     transition: background 0.2s, transform 0.1s;
     width: 100%;
+}
+
+.sub-view-transition:hover {
+    font-weight: bold;
+}
+
+.sub-view-transition .arrow {
+    color: #CCC;
+}
+
+.sub-view-transition:hover .arrow {
+    color: #222;
 }
 
 .header {

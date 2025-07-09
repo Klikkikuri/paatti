@@ -15,15 +15,11 @@
     <div class="main-view-header header">
         <label class="button-toggle">
             <input class="conversion-switch" id="extension-enabled" type="checkbox" checked />
-
             <span class="button-toggle-face">&#x23FB;</span>
         </label>
     </div>
 
     <div class="sub-view-header header hidden">
-        <button class="sub-view-transition">
-            <span class="arrow">❮</span>
-        </button>
         <h2 class="rating-controls-header">Arvostele tämä klikkiotsikko</h2>
         <h2 class="additional-settings-header">Seulottavat sivustot</h2>
     </div>
@@ -92,15 +88,22 @@
 
     <!-- CONTENT BOTTOMS -->
     <div class="bottom-navi content-bottom">
-        <button id="open-rating" class="sub-view-transition transition-row">
+        <button id="open-rating" class="sub-view-transition">
             <img src="icon_comment.jpg" height="24" alt="kommenttikupla ikoni">
             <span class="label">Palaute ja arviointi</span>
             <span class="arrow">❯</span>
         </button>
-        <button id="open-additional-settings" class="sub-view-transition transition-row">
+        <button id="open-additional-settings" class="sub-view-transition">
             <img src="icon_slider.jpg" height="24" alt="liukusäädin ikoni">
             <span class="label">Lisää asetuksia</span>
             <span class="arrow">❯</span>
+        </button>
+    </div>
+
+    <div class="sub-view-bottom-navi content-bottom hidden">
+        <button class="sub-view-transition">
+            <span class="arrow">❮</span>
+            <span class="label">Takaisin</span>
         </button>
     </div>
 
