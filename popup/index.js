@@ -44,36 +44,40 @@ const setCheckboxesReadonly = (makeReadonly) => {
  * flexibler.
  */
 const viewSelectors = {
-    "main": ".main-view",
-    "rating": "#ratingControls",
-    "settings": "#additionalSettings"
+    "main": [".main-view-header", ".site-details", ".bottom-navi"],
+    "rating": [".sub-view-header", ".rating-controls-header", ".rating-controls"],
+    "settings": [".sub-view-header", ".additional-settings-header", ".additional-settings"],
 };
 
 /**
  * Show this and hide other of the views.
- * @param {*} elemSelector Unique CSS selector string of the view to show.
+ * @param {*} viewName Identifier of the view to show.
  */
-const showView = (elemSelector) => {
-    log(`Showing view '${elemSelector}'`);
-    document.querySelector(elemSelector).classList.remove("hidden");
+const showView = (viewName) => {
+    log(`Showing view '${viewName}'`);
 
-    // Hide all other views.
-    for (const viewSelector of Object.values(viewSelectors).filter((x) => x != elemSelector)) {
-        const viewElem = document.querySelector(viewSelector);
-        viewElem.classList.add("hidden");
+    // Hide all views.
+    for (const name of Object.keys(viewSelectors)) {
+        for (const elemSelector of viewSelectors[name]) {
+            document.querySelector(elemSelector).classList.add("hidden");
+        }
+    }
+    // Show the selected view.
+    for (const elemSelector of viewSelectors[viewName]) {
+        document.querySelector(elemSelector).classList.remove("hidden");
     }
 };
 
 const handleOpenMain = () => {
-    showView(viewSelectors.main);
+    showView("main");
 };
 
 const handleOpenAdditionalSettings = () => {
-    showView(viewSelectors.settings);
+    showView("settings");
 };
 
 const handleOpenRatingControls = () => {
-    showView(viewSelectors.rating);
+    showView("rating");
 };
 
 const refreshStatistics = async ({ site, data }) => {

@@ -7,34 +7,34 @@ h3 {
 }
 
 hr {
-  border: none;
-  border-top: 1px solid #333;
-  color: #333;
-  overflow: visible;
-  text-align: center;
-  height: 5px;
+    border: none;
+    border-top: 1px solid #333;
+    color: #333;
+    overflow: visible;
+    text-align: center;
+    height: 5px;
 }
 
-#site-details {
+.site-details {
     border: 1px solid #555;
     border-radius: 6px;
     background: #ffffff;
     padding: 5%;
 }
 
-#site-details b {
+.site-details b {
     color: #e14942;
 }
 
-#site-details label {
+.site-details label {
     margin-right: 10%;
 }
 
-#site-details .button-toggle {
+.site-details .button-toggle {
     font-size: 100%;
 }
 
-#site-details .button-toggle-face {
+.site-details .button-toggle-face {
     padding: 10%;
     font-weight: bold;
 }
