@@ -44,9 +44,9 @@ const setCheckboxesReadonly = (makeReadonly) => {
  * flexibler.
  */
 const viewSelectors = {
-    "main": [".main-view-header", ".site-details", ".bottom-navi"],
-    "rating": [".sub-view-header", ".rating-controls-header", ".rating-controls", ".sub-view-bottom-navi"],
-    "settings": [".sub-view-header", ".additional-settings-header", ".additional-settings", ".sub-view-bottom-navi"],
+    "main": [".site-details", ".bottom-navi"],
+    "rating": [".rating-controls-header", ".rating-controls", ".sub-view-bottom-navi"],
+    "settings": [".additional-settings-header", ".additional-settings", ".sub-view-bottom-navi"],
 };
 
 /**

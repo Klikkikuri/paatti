@@ -105,12 +105,6 @@ p {
     background: #ccc;
 }
 
-.sub-view-header {
-    display: flex;
-    flex-direction: row;
-}
-
-
 .bottom-navi {
     display: flex;
     flex-direction: column;
