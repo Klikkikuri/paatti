@@ -14,6 +14,14 @@ const CONFIG_KEYS_TO_SWITCHES = Object.fromEntries(
         .map(([k, v]) => [v, k])
 );
 
+const getCurrentTabHostname = async () => {
+    const thisTabInfo = (await browser.tabs
+        .query({ active: true, currentWindow: true }))[0];
+    const thisTabUrl = new URL(thisTabInfo.url);
+
+    return thisTabUrl.hostname;
+};
+
 const setCheckBoxReadonly = (checkbox, makeReadonly) => {
     if (makeReadonly) {
         checkbox.classList.add("toggle-readonly");
@@ -26,38 +34,57 @@ const setCheckBoxReadonly = (checkbox, makeReadonly) => {
 const setCheckboxesReadonly = (makeReadonly) => {
     const checkboxes = document.querySelectorAll("#settings .conversion-switch");
     log(checkboxes);
-    for (const x of checkboxes) {
-        setCheckBoxReadonly(x, makeReadonly);
+    for (const cb of checkboxes) {
+        setCheckBoxReadonly(cb, makeReadonly);
     }
 };
 
-const handleOpenSettings = () => {
-    const settingsElem = document.querySelector("#settings");
-    if (settingsElem
-        .classList
-        .contains("hidden")
-    ) {
-        settingsElem.classList.remove("hidden");
-    } else {
-        settingsElem.classList.add("hidden");
+/**
+ * Store the different views' IDs here in order to make making changes a bit
+ * flexibler.
+ */
+const viewSelectors = {
+    "main": [".site-details", ".bottom-navi"],
+    "rating": [".rating-controls-header", ".rating-controls", ".sub-view-bottom-navi"],
+    "settings": [".additional-settings-header", ".additional-settings", ".sub-view-bottom-navi"],
+};
+
+/**
+ * Show this and hide other of the views.
+ * @param {*} viewName Identifier of the view to show.
+ */
+const showView = (viewName) => {
+    log(`Showing view '${viewName}'`);
+
+    // Hide all views.
+    for (const name of Object.keys(viewSelectors)) {
+        for (const elemSelector of viewSelectors[name]) {
+            document.querySelector(elemSelector).classList.add("hidden");
+        }
+    }
+    // Show the selected view.
+    for (const elemSelector of viewSelectors[viewName]) {
+        document.querySelector(elemSelector).classList.remove("hidden");
     }
 };
 
-const refreshStatistics = async (statistics) => {
-    if (statistics) {
-        document.getElementById("statistics-main-header").textContent =
-            `${statistics["titles"]["pageClickbaitsCount"]} klikkiotsikkoa tällä sivulla`;
-        document.getElementById("statistics-not").textContent =
-            statistics["titles"]["labelNot"];
-        document.getElementById("statistics-slightly").textContent =
-            statistics["titles"]["labelSlightly"];
-        document.getElementById("statistics-very").textContent =
-            statistics["titles"]["labelVery"];
-        document.getElementById("statistics-extremely").textContent =
-            statistics["titles"]["labelExtremely"];
+const handleOpenMain = () => {
+    showView("main");
+};
 
-        document.getElementById("statistics-links").textContent =
-            statistics["misc"]["linksCount"];
+const handleOpenAdditionalSettings = () => {
+    showView("settings");
+};
+
+const handleOpenRatingControls = () => {
+    showView("rating");
+};
+
+const refreshStatistics = async ({ site, data }) => {
+    if (data) {
+        document.getElementById("site-host").textContent = site;
+        document.getElementById("statistics-main-header").textContent = data["titles"]["pageClickbaitsCount"];
+        document.getElementById("statistics-links").textContent = data["misc"]["linksCount"];
     } else {
         document.getElementById("statistics-main-header").textContent = "Tilastoja ei saatavilla. Koeta päivittää ikkuna.";
     }
@@ -103,33 +130,45 @@ const handleClickConversionSwitch = async (e) => {
         command: "convertClickbaits",
     });
     log("Received message to refresh stats with data: ", pageStatistics);
-    await refreshStatistics(pageStatistics);
+    const thisTabHostname = await getCurrentTabHostname();
+    await refreshStatistics({ "site": thisTabHostname, "data": pageStatistics });
 
 };
 
-document.addEventListener("click", async (e) => {
-    // TODO Explicitly ignore buttons not inside popup?
+/////////////////////////
+// Define event handlers.
 
-    // Perform actions according to clicked target.
-    switch (e.target.id) {
-        case "open-settings":
-            handleOpenSettings();
-            break;
-    }
-
-    // Run processing always when switches are interacted with.
-    if (e.target.classList.contains("conversion-switch")) {
-        await handleClickConversionSwitch(e);
-    }
-});
-
-document.addEventListener("DOMContentLoaded", async (e) => {
+/**
+ * Perform initialization when the popup is opened. Load in settings and current
+ * page's statistics.
+ * @param {*} e 
+ */
+const handleDomContentLoaded = async (e) => {
     log("Setting up UI");
+
+    // Set view height to the dimensions found when opened the popup so that the
+    // view does not jump around when navigating but keeps (I hope) the view
+    // responsive in different windows.
+    document.querySelector("body").style.height = `${document.querySelector("body").clientHeight + 38}px`;
+
+    // Register button handlers that interact with the popup e.g. turning
+    // settings on/off, sending feedback form etc.
+    document.getElementById("open-rating").addEventListener("click", handleOpenRatingControls);
+    document.getElementById("open-additional-settings").addEventListener("click", handleOpenAdditionalSettings);
+    for (const x of document.querySelectorAll(".sub-view-bottom-navi > .sub-view-transition")) {
+        // Sub views have a "back" button to switch back to popup main view.
+        x.addEventListener("click", handleOpenMain);
+    }
+    for (const cs of document.querySelectorAll(".conversion-switch")) {
+        // Run title-conversion processing always when switches are interacted
+        // with.
+        cs.addEventListener("click", handleClickConversionSwitch);
+    }
+
     // Load up current settings to UI.
     const isConversionEnabled = (await browser.storage.local.get("enabled"))["enabled"];
     log(isConversionEnabled);
     document.getElementById("extension-enabled").checked = isConversionEnabled;
-
 
     // Visualize per site switches as "readonly" as per main switch state.
     setCheckboxesReadonly(!isConversionEnabled);
@@ -142,10 +181,12 @@ document.addEventListener("DOMContentLoaded", async (e) => {
     const statistics = (await browser.storage.local.get("statistics"))["statistics"];
     log("Full stored statistics: ", statistics);
 
-    const thisTabInfo = (await browser.tabs
-        .query({ active: true, currentWindow: true }))[0];
-    const thisTabUrl = new URL(thisTabInfo.url);
-    const thisPageStatistics = statistics?.[thisTabUrl.hostname];
+    const thisTabHostname = await getCurrentTabHostname();
+    const thisPageStatistics = statistics?.[thisTabHostname];
     log("This page statistics: ", thisPageStatistics);
-    await refreshStatistics(thisPageStatistics);
-});
+    await refreshStatistics({ "site": thisTabHostname, "data": thisPageStatistics });
+};
+
+///////////////////////////
+// Register event handlers.
+document.addEventListener("DOMContentLoaded", handleDomContentLoaded);

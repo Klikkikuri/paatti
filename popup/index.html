@@ -1,111 +1,119 @@
 <!DOCTYPE html>
-<html>
+<html lang="fi">
 
 <head>
     <meta charset="UTF-8" />
-    <title>Klikkikuri ⛵"</title>
-    <style>
-        #top-navi {
-            display: flex;
-            justify-content: space-between;
-        }
-
-        #top-navi details>summary {
-            list-style-type: '⚙';
-        }
-
-        .hidden {
-            display: none;
-        }
-    </style>
+    <title>Klikkikuri ⛵</title>
+    <link rel="stylesheet" href="power.css">
+    <link rel="stylesheet" href="settings.css">
+    <link rel="stylesheet" href="logo.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
-    <div id="root">
-        <div id="processingControls">
-            <div>
-                <div id="top-navi">
-                    <input class="toggle conversion-switch" id="extension-enabled" type="checkbox" checked />
-                    <button id="open-settings">⚙</button>
-                </div>
-                <div id="permissionControls">
-                    <div id="settings" class="hidden">
-                        <ul>
-                            <li>
-                                <input class="toggle conversion-switch" id="il-enabled" type="checkbox" checked />
-                                <label for="il-enabled">Iltalehti</label>
-                            </li>
-                            <li>
-                                <input class="toggle conversion-switch" id="hs-enabled" type="checkbox" />
-                                <label for="hs-enabled">Helsingin sanomat</label>
-                            </li>
-                            <li>
-                                <input class="toggle conversion-switch" id="yle-enabled" type="checkbox" checked />
-                                <label for="yle-enabled">YLE</label>
-                            </li>
-                            <li>
-                                <input class="toggle conversion-switch" id="al-enabled" type="checkbox" checked />
-                                <label for="al-enabled">Aamulehti</label>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-            <details>
-                <summary id="statistics-main-header">Tilastot</summary>
-                <div>
-                    <ul>
-                        <li>
-                            <p id="statistics-not"></p>
-                            <span>vapautettua</span>
-                            <input class="toggle" type="checkbox" />
-                        </li>
-                        <li>
-                            <p id="statistics-slightly"></p>
-                            <span>sinttiä</span>
-                            <input class="toggle" type="checkbox" />
-                        </li>
-                        <li>
-                            <p id="statistics-very"></p>
-                            <span>vonkaletta</span>
-                            <input class="toggle" type="checkbox" />
-                        </li>
-                        <li>
-                            <p id="statistics-extremely"></p>
-                            <span>kalavaletta</span>
-                            <input class="toggle" type="checkbox" />
-                        </li>
-                    </ul>
+    <div class="power">
+        <label class="button-toggle">
+            <input class="conversion-switch" id="extension-enabled" type="checkbox" checked />
+            <span class="button-toggle-face">&#x23FB;</span>
+        </label>
+    </div>
 
-                    <p id="statistics-misc-header" <strong></strong></p>
-                    <ul>
-                        <li>
-                            <p id="statistics-links"></p>
-                            <label for="statistics-links">linkkiä seulottu tällä sivulla</label>
-                        </li>
-                    </ul>
-                </div>
-            </details>
-        </div>
-        <div id="ratingControls">
-            <details>
-                <summary>Arvostele tämä klikkiotsikko</summary>
-                <div>
-                    <p><strong>Alkuperäinen:</strong></p>
-                    <p>Osa ihmisistä käyttää Klikkikuria tavalla, joka saa muiden pinnan kiristymään – Lääke tulossa</p>
-                    <p><strong>Klikkurin muunnos:</strong></p>
-                    <p>Työnsä vaikeutumisesta suuttuneet toimittajat haastavat Klikkikurin oikeuteen</p>
-                    <div>
-                        <div>
-                            <input id="good" type="radio" name="rating" />
-                            <label for="good">Nappaa</label>
-                            <input id="bad" type="radio" name="rating" />
-                            <label for="bad">Ei nappaa</label>
-                        </div>
-            </details>
+    <div class="sub-view-header header hidden">
+    </div>
+
+    <!-- CONTENT TOPS -->
+    <div class="site-details content-top">
+        <h2 id="site-host">Sivusto ei tuettu</h2>
+        <hr />
+        <section>
+            <h3>Käsiteltyjä elementtejä:</h3>
+            <p><b id="statistics-main-header">0</b> otsikkoa tällä sivulla</p>
+            <p><b id="statistics-links">0</b> linkkiä yhteensä</p>
+        </section>
+        <section>
+            <h3>Lopeta käyttö tällä sivulla:</h3>
+            <label class="button-toggle">
+                <input class="conversion-switch" id="extension-disabled-temporarily" type="checkbox" />
+
+                <span class="button-toggle-face">Kerran</span>
+            </label>
+            <label class="button-toggle">
+                <input class="conversion-switch" id="shortcut-extension-enabled-current-site" type="checkbox" />
+
+                <span class="button-toggle-face">Aina</span>
+            </label>
+        </section>
+    </div>
+
+    <div class="rating-controls hidden content-top">
+        <h2 class="rating-controls-header">Arvostele tämä klikkiotsikko</h2>
+        <hr />
+        <p><strong>Alkuperäinen:</strong></p>
+        <p>Osa ihmisistä käyttää Klikkikuria tavalla, joka saa muiden pinnan kiristymään – Lääke
+            tulossa
+        </p>
+        <p><strong>Klikkurin muunnos:</strong></p>
+        <p>Työnsä vaikeutumisesta suuttuneet toimittajat haastavat Klikkikurin oikeuteen</p>
+        <div>
+            <div>
+                <input id="good" type="radio" name="rating" />
+                <label for="good">Nappaa</label>
+                <input id="bad" type="radio" name="rating" />
+                <label for="bad">Ei nappaa</label>
+            </div>
         </div>
     </div>
+
+    <div class="additional-settings hidden content-top">
+        <h2 class="additional-settings-header">Seulottavat sivustot</h2>
+        <hr />
+        <ul>
+            <li>
+                <input class="toggle conversion-switch" id="il-enabled" type="checkbox" />
+                <label for="il-enabled">Iltalehti</label>
+            </li>
+            <li>
+                <input class="toggle conversion-switch" id="hs-enabled" type="checkbox" />
+                <label for="hs-enabled">Helsingin sanomat</label>
+            </li>
+            <li>
+                <input class="toggle conversion-switch" id="yle-enabled" type="checkbox" />
+                <label for="yle-enabled">YLE</label>
+            </li>
+            <li>
+                <input class="toggle conversion-switch" id="al-enabled" type="checkbox" />
+                <label for="al-enabled">Aamulehti</label>
+            </li>
+        </ul>
+    </div>
+
+    <!-- CONTENT BOTTOMS -->
+    <div class="bottom-navi content-bottom">
+        <button id="open-rating" class="sub-view-transition">
+            <img src="icon_comment.svg" height="24" alt="kommenttikupla ikoni">
+            <span class="label">Palaute ja arviointi</span>
+            <span class="arrow">❯</span>
+        </button>
+        <button id="open-additional-settings" class="sub-view-transition">
+            <img src="icon_slider.svg" height="24" alt="liukusäädin ikoni">
+            <span class="label">Lisää asetuksia</span>
+            <span class="arrow">❯</span>
+        </button>
+    </div>
+
+    <div class="sub-view-bottom-navi content-bottom hidden">
+        <button class="sub-view-transition">
+            <span class="arrow">❮</span>
+            <span class="label">Takaisin</span>
+        </button>
+    </div>
+
+    <!-- LOGO SECTION -->
+    <div id="logo">
+        <img src="klikkihAI_logo_1.png" height="32" alt="Klikkukuri logo">
+        <span>klikkihAI</span>
+    </div>
+
     <script src="../utils/tools.js"></script>
     <script src="index.js"></script>
 </body>

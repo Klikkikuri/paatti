@@ -2,34 +2,22 @@ body {
     width: 320px;
     font-family: Arial, sans-serif;
     color: #222;
-    padding: 0;
-    margin: 0;
-}
-
-#root {
-    margin: 0;
-    background: #fafafa;
     padding: 10px;
-}
+    margin: 0;
+    background: whitesmoke;
 
-#top-navi {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 5px;
+    flex-direction: column;
+    gap: 1em;
 }
 
-button {
-    background: linear-gradient(to bottom, #fff #ddd);
-    border: none;
-    padding: 5px 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-button:hover {
-    background: linear-gradient(to bottom, #eee, #ccc);
+.main-view {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    background: whitesmoke;
 }
 
 #open-settings {
@@ -77,32 +65,12 @@ button:hover {
     transform: translateX(20px);
 }
 
-details,
 #settings {
     background: #f0f0f0;
     border-radius: 5px;
     padding-left: 5px;
     padding-right: 5px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-details {
-    padding-top: 5px;
-    padding-bottom: 5px;
-    margin-top: 5px;
-}
-
-details summary {
-    font-weight: bold;
-    cursor: pointer;
-}
-
-details:hover {
-    background: linear-gradient(to bottom, #eee, #dddddd);
-}
-
-details[open] {
-    background: #f0f0f0;
 }
 
 ul {
@@ -135,4 +103,98 @@ p {
 
 .toggle-readonly::before {
     background: #ccc;
+}
+
+.bottom-navi {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2em;
+}
+
+.hidden {
+    display: none;
+}
+
+
+.sub-view-transition {
+    all: unset;
+    cursor: pointer;
+    padding-right: 3%;
+
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1em;
+    background-color: whitesmoke;
+    border: none;
+    font-size: 1rem;
+    transition: background 0.2s, transform 0.1s;
+    width: 100%;
+}
+
+.sub-view-transition:hover {
+    font-weight: bold;
+}
+
+.sub-view-transition .arrow {
+    color: #CCC;
+}
+
+.sub-view-transition:hover .arrow {
+    color: #222;
+}
+
+.header {
+    align-items: center;
+}
+
+.content-top {
+    flex-grow: 1;
+}
+
+.content-bottom {
+    flex-grow: 1;
+}
+
+
+h2 {
+    text-align: center;
+}
+
+h3 {
+    font-size: small;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #333;
+    color: #333;
+    overflow: visible;
+    text-align: center;
+    height: 5px;
+}
+
+.content-top {
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #ffffff;
+    padding: 5%;
+}
+
+.content-top b {
+    color: #e14942;
+}
+
+.content-top label {
+    margin-right: 10%;
+}
+
+.content-top .button-toggle {
+    font-size: 100%;
+}
+
+.content-top .button-toggle-face {
+    padding: 10%;
+    font-weight: bold;
 }
