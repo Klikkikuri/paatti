@@ -124,6 +124,16 @@ const restoreClickbaits = async (links, titleData, siteConfig) => {
 
 // Main.
 (async () => {
+    // Reset the site disabled kerran -flag on refresh.    
+    const currentTabHostname = window.location.hostname;
+    const config = await browser.storage.local.get();
+    if (!config["siteConfigs"][currentTabHostname]["enabled"] && config["siteConfigs"][currentTabHostname]["kerran"]) {
+        const configUpdateObject = config;
+        configUpdateObject["siteConfigs"][currentTabHostname]["enabled"] = true;
+        configUpdateObject["siteConfigs"][currentTabHostname]["kerran"] = false;
+        await browser.storage.local.set(configUpdateObject);
+    }
+
     try {
         await initSuola(browser.runtime.getURL("suola/build/js.wasm"));
     } catch (e) {

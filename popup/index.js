@@ -14,12 +14,16 @@ const CONFIG_KEYS_TO_SWITCHES = Object.fromEntries(
         .map(([k, v]) => [v, k])
 );
 
-const getCurrentTabHostname = async () => {
+let _currentTabHostname;
+const setGlobalCurrentTabHostname = async () => {
     const thisTabInfo = (await browser.tabs
         .query({ active: true, currentWindow: true }))[0];
     const thisTabUrl = new URL(thisTabInfo.url);
 
-    return thisTabUrl.hostname;
+    _currentTabHostname = thisTabUrl.hostname;
+};
+const getCurrentTabHostname = async () => {
+    return _currentTabHostname;
 };
 
 const setCheckBoxReadonly = (checkbox, makeReadonly) => {
@@ -122,6 +126,11 @@ const handleClickConversionSwitch = async (e) => {
 
     await browser.storage.local.set(configUpdateObject);
 
+    await runConversion();
+
+};
+
+const runConversion = async () => {
     // Get the active tab.
     const activeTabId = (await browser.tabs
         .query({ active: true, currentWindow: true }))[0].id;
@@ -132,11 +141,46 @@ const handleClickConversionSwitch = async (e) => {
     log("Received message to refresh stats with data: ", pageStatistics);
     const thisTabHostname = await getCurrentTabHostname();
     await refreshStatistics({ "site": thisTabHostname, "data": pageStatistics });
-
 };
 
-/////////////////////////
-// Define event handlers.
+/**
+ * Register button handlers that interact with the popup visuals e.g. open the
+ * settings page page etc.  
+ */
+const addUiEventListeners = () => {
+    document.getElementById("open-rating").addEventListener("click", handleOpenRatingControls);
+    document.getElementById("open-additional-settings").addEventListener("click", handleOpenAdditionalSettings);
+    for (const x of document.querySelectorAll(".sub-view-bottom-navi > .sub-view-transition")) {
+        // Sub views have a "back" button to switch back to popup main view.
+        x.addEventListener("click", handleOpenMain);
+    }
+};
+
+/**
+ * Register button handlers that change the current state of the extension like
+ * settings etc.
+ */
+const addOtherEventListeners = () => {
+    document.getElementById("extension-disabled-temporarily")
+        .addEventListener("click", async (e) => {
+            const config = await browser.storage.local.get();
+            const configUpdateObject = config;
+            const currentTabHostname = await getCurrentTabHostname();
+            config["siteConfigs"][currentTabHostname]["enabled"] = !e.target.checked;
+            config["siteConfigs"][currentTabHostname]["kerran"] = e.target.checked;
+            await browser.storage.local.set(configUpdateObject);
+
+            // Run the conversion subroutine to match view to the changed settings.
+            await runConversion();
+        });
+
+    // Register button handlers that change settings.
+    for (const cs of document.querySelectorAll(".conversion-switch")) {
+        // Run title-conversion processing always when switches are interacted
+        // with.
+        cs.addEventListener("click", handleClickConversionSwitch);
+    }
+};
 
 /**
  * Perform initialization when the popup is opened. Load in settings and current
@@ -146,24 +190,18 @@ const handleClickConversionSwitch = async (e) => {
 const handleDomContentLoaded = async (e) => {
     log("Setting up UI");
 
+    // Initialize the flobal hostname variable as that's how the Javascript
+    // cookie seems to crumble.
+    await setGlobalCurrentTabHostname();
+
     // Set view height to the dimensions found when opened the popup so that the
     // view does not jump around when navigating but keeps (I hope) the view
     // responsive in different windows.
     document.querySelector("body").style.height = `${document.querySelector("body").clientHeight + 38}px`;
 
-    // Register button handlers that interact with the popup e.g. turning
-    // settings on/off, sending feedback form etc.
-    document.getElementById("open-rating").addEventListener("click", handleOpenRatingControls);
-    document.getElementById("open-additional-settings").addEventListener("click", handleOpenAdditionalSettings);
-    for (const x of document.querySelectorAll(".sub-view-bottom-navi > .sub-view-transition")) {
-        // Sub views have a "back" button to switch back to popup main view.
-        x.addEventListener("click", handleOpenMain);
-    }
-    for (const cs of document.querySelectorAll(".conversion-switch")) {
-        // Run title-conversion processing always when switches are interacted
-        // with.
-        cs.addEventListener("click", handleClickConversionSwitch);
-    }
+
+    addUiEventListeners();
+    addOtherEventListeners();
 
     // Load up current settings to UI.
     const isConversionEnabled = (await browser.storage.local.get("enabled"))["enabled"];
@@ -176,6 +214,10 @@ const handleDomContentLoaded = async (e) => {
     const siteConfigs = (await browser.storage.local.get("siteConfigs"))["siteConfigs"];
     for (const [k, v] of Object.entries(siteConfigs)) {
         document.getElementById(CONFIG_KEYS_TO_SWITCHES[k]).checked = v["enabled"];
+        if (k === await getCurrentTabHostname()) {
+            document.getElementById("extension-disabled-temporarily").checked = v["kerran"];
+
+        }
     }
 
     const statistics = (await browser.storage.local.get("statistics"))["statistics"];
