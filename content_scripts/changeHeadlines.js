@@ -18,7 +18,6 @@
 
 const log = getLogger("content_script");
 
-
 const ERROR_VARIANTS = {
     noElementMatchesForQuerySelector: 1,
     noTitleMatchesForHash: 2,

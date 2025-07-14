@@ -66,6 +66,9 @@ const highlightElemOriginal = async (htmlElem) => {
 
 const extractArticleUrl = async (link) => {
     if (await isDevelopmentEnv()) {
+        if (!testUrls) {
+            throw "DEVELOPMENT MODE: The `testUrls` variable evaluated to false. Have you initialized the test data with `python3 ./test_data/generate_data.py`?"
+        }
         return testUrls[
             Array.from(link.href)
                 .reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0)
