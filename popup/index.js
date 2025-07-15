@@ -139,8 +139,7 @@ const runConversion = async () => {
         command: "convertClickbaits",
     });
     log("Received message to refresh stats with data: ", pageStatistics);
-    const thisTabHostname = await getCurrentTabHostname();
-    await refreshStatistics({ "site": thisTabHostname, "data": pageStatistics });
+    await refreshVisuals();
 };
 
 /**
@@ -174,7 +173,20 @@ const addOtherEventListeners = () => {
             await runConversion();
         });
 
-    // Register button handlers that change settings.
+    document.getElementById("shortcut-extension-enabled-current-site")
+        .addEventListener("click", async (e) => {
+            const config = await browser.storage.local.get();
+            const configUpdateObject = config;
+            const currentTabHostname = await getCurrentTabHostname();
+            config["siteConfigs"][currentTabHostname]["enabled"] = !e.target.checked;
+            await browser.storage.local.set(configUpdateObject);
+
+            // Run the conversion subroutine to match view to the changed settings.
+            await runConversion();
+        });
+
+
+    // Register button handlers that change settings on the settings view.
     for (const cs of document.querySelectorAll(".conversion-switch")) {
         // Run title-conversion processing always when switches are interacted
         // with.
@@ -182,27 +194,7 @@ const addOtherEventListeners = () => {
     }
 };
 
-/**
- * Perform initialization when the popup is opened. Load in settings and current
- * page's statistics.
- * @param {*} e 
- */
-const handleDomContentLoaded = async (e) => {
-    log("Setting up UI");
-
-    // Initialize the flobal hostname variable as that's how the Javascript
-    // cookie seems to crumble.
-    await setGlobalCurrentTabHostname();
-
-    // Set view height to the dimensions found when opened the popup so that the
-    // view does not jump around when navigating but keeps (I hope) the view
-    // responsive in different windows.
-    document.querySelector("body").style.height = `${document.querySelector("body").clientHeight + 38}px`;
-
-
-    addUiEventListeners();
-    addOtherEventListeners();
-
+const refreshVisuals = async () => {
     // Load up current settings to UI.
     const isConversionEnabled = (await browser.storage.local.get("enabled"))["enabled"];
     log(isConversionEnabled);
@@ -227,6 +219,30 @@ const handleDomContentLoaded = async (e) => {
     const thisPageStatistics = statistics?.[thisTabHostname];
     log("This page statistics: ", thisPageStatistics);
     await refreshStatistics({ "site": thisTabHostname, "data": thisPageStatistics });
+};
+
+/**
+ * Perform initialization when the popup is opened. Load in settings and current
+ * page's statistics.
+ * @param {*} e 
+ */
+const handleDomContentLoaded = async (e) => {
+    log("Setting up UI");
+
+    // Initialize the global hostname variable as that's how the Javascript
+    // cookie seems to crumble.
+    await setGlobalCurrentTabHostname();
+
+
+    addUiEventListeners();
+    addOtherEventListeners();
+
+    await refreshVisuals();
+
+    // Set view height to the dimensions found when opened the popup so that the
+    // view does not jump around when navigating but keeps (I hope) the view
+    // responsive in different windows.
+    document.querySelector("body").style.height = `${document.querySelector("body").clientHeight + 38}px`;
 };
 
 ///////////////////////////
