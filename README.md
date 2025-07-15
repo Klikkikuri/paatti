@@ -5,7 +5,7 @@
 title: Architecture v0.1
 ---
 classDiagram
-    direction BT
+    direction TB
     class LocalStore{
     }
     class GlobalData{
@@ -35,6 +35,7 @@ classDiagram
     NewsSiteData *-- Statistics
 
     ContentScripts <-- GlobalData
+    ContentScripts <-- NewsSiteData
     ContentScripts --> Statistics
     ContentScripts --() Meri : Fetch conversions
 
