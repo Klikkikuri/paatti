@@ -18,11 +18,11 @@ classDiagram
     class Statistics{
     }
     class Popup{
-        +toggleAina(site)
     }
     class SettingsView{
     }
     class NewsSiteView{
+        +toggleAina()
     }
     class FeedbackView{
     }
