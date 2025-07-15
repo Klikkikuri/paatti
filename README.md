@@ -1,3 +1,57 @@
+
+## Architecture
+```mermaid
+---
+title: Architecture v0.1
+---
+classDiagram
+    direction BT
+    class LocalStore{
+    }
+    class GlobalData{
+        bool enabled
+    }
+    class NewsSiteData{
+        bool enabled
+        bool kerran
+    }
+    class Statistics{
+    }
+    class Popup{
+        +toggleAina(site)
+    }
+    class SettingsView{
+    }
+    class NewsSiteView{
+    }
+    class FeedbackView{
+    }
+    class ContentScripts{
+    }
+
+    LocalStore *-- GlobalData
+    LocalStore *-- NewsSiteData
+
+    NewsSiteData *-- Statistics
+
+    ContentScripts <-- GlobalData
+    ContentScripts --> Statistics
+    ContentScripts --() Meri : Fetch conversions
+
+    Popup *-- NewsSiteView
+    Popup *-- SettingsView
+    Popup *-- FeedbackView
+    Popup <--> GlobalData
+
+    NewsSiteView <-- Statistics
+    NewsSiteView <--> NewsSiteData
+
+    SettingsView <--> NewsSiteData
+
+    FeedbackView <-- NewsSiteData
+    FeedbackView --() FeedbackServer : Submit feedback
+```
+
 # ⛵ Paatti
 
 Browser extension to sail the web.
@@ -19,4 +73,3 @@ Fetch and build dependencies by running:
 ```
 
 For Firefox enter `about:debugging` to the address bar and from the This Firefox -tab select any file at project root (e.g., `manifest.json`) from Load Temporary Add-on...
-
