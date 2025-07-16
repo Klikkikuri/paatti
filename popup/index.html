@@ -25,24 +25,30 @@
     <div class="pagedashboardview content-top">
         <h2 id="site-host">Sivusto ei tuettu</h2>
         <hr />
-        <section>
-            <h3>Käsiteltyjä elementtejä:</h3>
-            <p><b id="statistics-main-header">0</b> otsikkoa tällä sivulla</p>
-            <p><b id="statistics-links">0</b> linkkiä yhteensä</p>
-        </section>
-        <section>
-            <h3>Lopeta käyttö tällä sivulla:</h3>
-            <label class="button-toggle">
-                <input class="conversion-switch" id="extension-disabled-temporarily" type="checkbox" />
+        <div>
+            <section>
+                <h3>Käsiteltyjä elementtejä:</h3>
+                <p><b id="statistics-main-header">0</b> otsikkoa tällä sivulla</p>
+                <p><b id="statistics-links">0</b> linkkiä yhteensä</p>
+            </section>
+            <section>
+                <h3>Lopeta käyttö tällä sivulla:</h3>
+                <label class="button-toggle">
+                    <input class="conversion-switch" id="extension-disabled-temporarily" type="checkbox" />
 
-                <span class="button-toggle-face">Kerran</span>
-            </label>
-            <label class="button-toggle">
-                <input class="conversion-switch" id="shortcut-extension-enabled-current-site" type="checkbox" />
+                    <span class="button-toggle-face">Kerran</span>
+                </label>
+                <label class="button-toggle">
+                    <input class="conversion-switch" id="shortcut-extension-enabled-current-site" type="checkbox" />
 
-                <span class="button-toggle-face">Aina</span>
-            </label>
-        </section>
+                    <span class="button-toggle-face">Aina</span>
+                </label>
+            </section>
+        </div>
+        <div id="dashboardview-error" class="hidden error">
+            <h3>Karilla!</h3>
+            <p>Tuntematon virhe.</p>
+        </div>
     </div>
 
     <div class="feedbackview-controls hidden content-top">

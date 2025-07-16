@@ -83,13 +83,33 @@ const handleOpenFeedbackviewControls = () => {
     showView("feedback");
 };
 
+/**
+ * Update the error with the given message or reset and hide error if it evaluates to false.
+ */
+const updateError = (msg) => {
+    const errorElem = document.querySelector("#dashboardview-error");
+    const errorElemMessageField = errorElem.querySelector("p");
+
+    if (msg) {
+        errorElem.classList.remove("hidden");
+        errorElemMessageField.textContent = msg;
+    } else {
+        errorElem.classList.add("hidden");
+        errorElemMessageField.textContent = "Tuntematon virhe.";
+    }
+};
+
 const refreshStatistics = async ({ site, data }) => {
+    updateError();
+    document.getElementById("site-host").textContent = site;
+
     if (data) {
-        document.getElementById("site-host").textContent = site;
+        document.querySelector(".pagedashboardview div").classList.remove("hidden");
         document.getElementById("statistics-main-header").textContent = data["titles"]["pageClickbaitsCount"];
         document.getElementById("statistics-links").textContent = data["misc"]["linksCount"];
     } else {
-        document.getElementById("statistics-main-header").textContent = "Tilastoja ei saatavilla. Koeta päivittää ikkuna.";
+        document.querySelector(".pagedashboardview div").classList.add("hidden");
+        updateError("Tilastoja ei saatu ladattua. Koeta päivittää ikkuna.");
     }
 };
 
@@ -207,7 +227,7 @@ const refreshSettingsView = async (isConversionEnabled) => {
     }
 };
 
-const refreshNewsSiteView = async () => {
+const refreshPageDashboardView = async () => {
     const statistics = (await browser.storage.local.get("statistics"))["statistics"];
     log("Full stored statistics: ", statistics);
 
@@ -226,7 +246,7 @@ const refreshVisuals = async () => {
     document.getElementById("extension-enabled").checked = isConversionEnabled;
 
     await refreshSettingsView(isConversionEnabled);
-    await refreshNewsSiteView();
+    await refreshPageDashboardView();
 };
 
 /**

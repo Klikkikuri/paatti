@@ -198,3 +198,7 @@ hr {
     padding: 10%;
     font-weight: bold;
 }
+
+.error {
+    color: #e14942;
+}
