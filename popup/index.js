@@ -35,9 +35,8 @@ const setCheckBoxReadonly = (checkbox, makeReadonly) => {
 };
 
 /* Set the visual readonly state of checkboxes under settings */
-const setCheckboxesReadonly = (makeReadonly) => {
-    const checkboxes = document.querySelectorAll("#settings .conversion-switch");
-    log(checkboxes);
+const setSettingsviewCheckboxesReadonly = (makeReadonly) => {
+    const checkboxes = document.querySelectorAll(".settingsview .conversion-switch");
     for (const cb of checkboxes) {
         setCheckBoxReadonly(cb, makeReadonly);
     }
@@ -48,9 +47,9 @@ const setCheckboxesReadonly = (makeReadonly) => {
  * flexibler.
  */
 const viewSelectors = {
-    "main": [".site-details", ".bottom-navi"],
-    "rating": [".rating-controls-header", ".rating-controls", ".sub-view-bottom-navi"],
-    "settings": [".additional-settings-header", ".additional-settings", ".sub-view-bottom-navi"],
+    "main": [".pagedashboardview", ".bottom-navi"],
+    "feedback": [".feedbackview-controls-header", ".feedbackview-controls", ".sub-view-bottom-navi"],
+    "settings": [".settingsview-header", ".settingsview", ".sub-view-bottom-navi"],
 };
 
 /**
@@ -80,8 +79,8 @@ const handleOpenAdditionalSettings = () => {
     showView("settings");
 };
 
-const handleOpenRatingControls = () => {
-    showView("rating");
+const handleOpenFeedbackviewControls = () => {
+    showView("feedback");
 };
 
 const refreshStatistics = async ({ site, data }) => {
@@ -104,7 +103,7 @@ const handleClickConversionSwitch = async (e) => {
         configUpdateObject = { "enabled": e.target.checked };
         // The main switch should toggle if the per-site conversion
         // switches should work or not.
-        setCheckboxesReadonly(!e.target.checked);
+        setSettingsviewCheckboxesReadonly(!e.target.checked);
     } else {
         const switchConfigKey = SWITCHES_TO_CONFIG_KEYS[e.target.id];
         if (switchConfigKey === undefined) {
@@ -117,7 +116,7 @@ const handleClickConversionSwitch = async (e) => {
             // Turning on one site turns on the extension also.
             configUpdateObject["enabled"] = true;
             // Make the visual changes as the extension should now be enabled.
-            setCheckboxesReadonly(false);
+            setSettingsviewCheckboxesReadonly(false);
             const mainSwitch = document.getElementById("extension-enabled");
             setCheckBoxReadonly(mainSwitch, false);
             mainSwitch.checked = true;
@@ -147,8 +146,8 @@ const runConversion = async () => {
  * settings page page etc.  
  */
 const addUiEventListeners = () => {
-    document.getElementById("open-rating").addEventListener("click", handleOpenRatingControls);
-    document.getElementById("open-additional-settings").addEventListener("click", handleOpenAdditionalSettings);
+    document.getElementById("open-feedbackview").addEventListener("click", handleOpenFeedbackviewControls);
+    document.getElementById("open-settingsview").addEventListener("click", handleOpenAdditionalSettings);
     for (const x of document.querySelectorAll(".sub-view-bottom-navi > .sub-view-transition")) {
         // Sub views have a "back" button to switch back to popup main view.
         x.addEventListener("click", handleOpenMain);
@@ -194,14 +193,9 @@ const addOtherEventListeners = () => {
     }
 };
 
-const refreshVisuals = async () => {
-    // Load up current settings to UI.
-    const isConversionEnabled = (await browser.storage.local.get("enabled"))["enabled"];
-    log(isConversionEnabled);
-    document.getElementById("extension-enabled").checked = isConversionEnabled;
-
+const refreshSettingsView = async (isConversionEnabled) => {
     // Visualize per site switches as "readonly" as per main switch state.
-    setCheckboxesReadonly(!isConversionEnabled);
+    setSettingsviewCheckboxesReadonly(!isConversionEnabled);
     // Set their enabled state based on the stored value.
     const siteConfigs = (await browser.storage.local.get("siteConfigs"))["siteConfigs"];
     for (const [k, v] of Object.entries(siteConfigs)) {
@@ -211,7 +205,9 @@ const refreshVisuals = async () => {
 
         }
     }
+};
 
+const refreshNewsSiteView = async () => {
     const statistics = (await browser.storage.local.get("statistics"))["statistics"];
     log("Full stored statistics: ", statistics);
 
@@ -219,6 +215,18 @@ const refreshVisuals = async () => {
     const thisPageStatistics = statistics?.[thisTabHostname];
     log("This page statistics: ", thisPageStatistics);
     await refreshStatistics({ "site": thisTabHostname, "data": thisPageStatistics });
+};
+
+/**
+ * Load up current settings to UI.
+ */
+const refreshVisuals = async () => {
+    // Update the power button.
+    const isConversionEnabled = (await browser.storage.local.get("enabled"))["enabled"];
+    document.getElementById("extension-enabled").checked = isConversionEnabled;
+
+    await refreshSettingsView(isConversionEnabled);
+    await refreshNewsSiteView();
 };
 
 /**
@@ -232,7 +240,6 @@ const handleDomContentLoaded = async (e) => {
     // Initialize the global hostname variable as that's how the Javascript
     // cookie seems to crumble.
     await setGlobalCurrentTabHostname();
-
 
     addUiEventListeners();
     addOtherEventListeners();
