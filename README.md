@@ -11,7 +11,7 @@ classDiagram
     class GlobalData{
         bool enabled
     }
-    class NewsSiteData{
+    class PageDashboardData{
         bool enabled
         bool kerran
     }
@@ -21,7 +21,7 @@ classDiagram
     }
     class SettingsView{
     }
-    class NewsSiteView{
+    class PageDashboardView{
         +toggleAina()
     }
     class FeedbackView{
@@ -30,26 +30,26 @@ classDiagram
     }
 
     LocalStore *-- GlobalData
-    LocalStore *-- NewsSiteData
+    LocalStore *-- PageDashboardData
 
-    NewsSiteData *-- Statistics
+    PageDashboardData *-- Statistics
 
     ContentScripts <-- GlobalData
-    ContentScripts <-- NewsSiteData
+    ContentScripts <-- PageDashboardData
     ContentScripts --> Statistics
     ContentScripts --() Meri : Fetch conversions
 
-    Popup *-- NewsSiteView
+    Popup *-- PageDashboardView
     Popup *-- SettingsView
     Popup *-- FeedbackView
     Popup <--> GlobalData
 
-    NewsSiteView <-- Statistics
-    NewsSiteView <--> NewsSiteData
+    PageDashboardView <-- Statistics
+    PageDashboardView <--> PageDashboardData
 
-    SettingsView <--> NewsSiteData
+    SettingsView <--> PageDashboardData
 
-    FeedbackView <-- NewsSiteData
+    FeedbackView <-- PageDashboardData
     FeedbackView --() FeedbackServer : Submit feedback
 ```
 
