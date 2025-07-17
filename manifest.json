@@ -17,7 +17,7 @@
       "38": "icons/klikkikuri-38.png"
     },
     "default_title": "Paatti",
-    "default_popup": "popup/index.html"
+    "default_popup": "js/popup/html/index.html"
   },
   "content_scripts": [
     {
@@ -27,7 +27,8 @@
         "https://yle.fi/*"
       ],
       "js": [
-        "utils/tools.js",
+        "js/utils.js",
+        "js/model.js",
         // Glue code provided with Go.
         "suola/build/wasm_exec.js",
         // This script should contain an initialization function for the WebAssembly module.
@@ -35,14 +36,16 @@
         // Associated test data.
         "test_data/urls.js",
         // Main module.
-        "content_scripts/changeHeadlines.js"
+        "js/changeHeadlines.js"
       ]
     }
   ],
   "background": {
     "scripts": [
-      "utils/tools.js",
-      "background.js"
+      "js/utils.js",
+      "js/model.js",
+      "js/controller.js",
+      "js/background.js"
     ],
     "persistent": false
   },

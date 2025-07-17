@@ -10,14 +10,8 @@ const getLogger = (name) => {
     };
 };
 
-const isDevelopmentEnv = async () => {
-    const environmentConfigs = (await browser.storage.local.get("environmentConfigs"))
-        .environmentConfigs;
-    return environmentConfigs.environment === "development";
-};
-
 const getApiDataUrl = async () => {
-    return (await isDevelopmentEnv())
+    return (await model.isDevelopmentEnv())
         ? browser.runtime.getURL("test_data/data.json")
         : "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json";
 };
@@ -30,7 +24,7 @@ const storeElemHightlight = (htmlElem) => {
 };
 
 const noElementMatchesForQuerySelector = async (htmlElem) => {
-    if (await isDevelopmentEnv()) {
+    if (await model.isDevelopmentEnv()) {
         storeElemHightlight(htmlElem);
         htmlElem.style.backgroundColor = "gray";
         htmlElem.style.borderStyle = "dashed";
@@ -40,7 +34,7 @@ const noElementMatchesForQuerySelector = async (htmlElem) => {
 };
 
 const noTitleMatchesForHash = async (htmlElem) => {
-    if (await isDevelopmentEnv()) {
+    if (await model.isDevelopmentEnv()) {
         storeElemHightlight(htmlElem);
         htmlElem.style.backgroundColor = "orange";
         htmlElem.style.borderStyle = "solid";
@@ -65,7 +59,7 @@ const highlightElemOriginal = async (htmlElem) => {
 }
 
 const extractArticleUrl = async (link) => {
-    if (await isDevelopmentEnv()) {
+    if (await model.isDevelopmentEnv()) {
         if (!testUrls) {
             throw "DEVELOPMENT MODE: The `testUrls` variable evaluated to false. Have you initialized the test data with `python3 ./test_data/generate_data.py`?"
         }

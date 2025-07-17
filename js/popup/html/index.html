@@ -4,10 +4,10 @@
 <head>
     <meta charset="UTF-8" />
     <title>Klikkikuri ⛵</title>
-    <link rel="stylesheet" href="power.css">
-    <link rel="stylesheet" href="settings.css">
-    <link rel="stylesheet" href="logo.css">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../css/power.css">
+    <link rel="stylesheet" href="../css/settings.css">
+    <link rel="stylesheet" href="../css/logo.css">
+    <link rel="stylesheet" href="../css/styles.css">
 </head>
 
 <body>
@@ -28,7 +28,7 @@
         <div>
             <section>
                 <h3>Käsiteltyjä elementtejä:</h3>
-                <p><b id="statistics-main-header">0</b> otsikkoa tällä sivulla</p>
+                <p><b id="statistics-main-header">0</b> muutettua otsikkoa tällä sivulla</p>
                 <p><b id="statistics-links">0</b> linkkiä yhteensä</p>
             </section>
             <section>
@@ -96,12 +96,12 @@
     <!-- CONTENT BOTTOMS -->
     <div class="bottom-navi content-bottom">
         <button id="open-feedbackview" class="sub-view-transition">
-            <img src="icon_comment.svg" height="24" alt="kommenttikupla ikoni">
+            <img src="../images/icon_comment.svg" height="24" alt="kommenttikupla ikoni">
             <span class="label">Palaute ja arviointi</span>
             <span class="arrow">❯</span>
         </button>
         <button id="open-settingsview" class="sub-view-transition">
-            <img src="icon_slider.svg" height="24" alt="liukusäädin ikoni">
+            <img src="../images/icon_slider.svg" height="24" alt="liukusäädin ikoni">
             <span class="label">Lisää asetuksia</span>
             <span class="arrow">❯</span>
         </button>
@@ -116,12 +116,15 @@
 
     <!-- LOGO SECTION -->
     <div id="logo">
-        <img src="klikkihAI_logo_1.png" height="32" alt="Klikkukuri logo">
+        <img src="../images/klikkihAI_logo_1.png" height="32" alt="Klikkukuri logo">
         <span>klikkihAI</span>
     </div>
 
-    <script src="../utils/tools.js"></script>
-    <script src="index.js"></script>
+    <script src="../../utils.js"></script>
+    <script src="../../model.js"></script>
+    <script src="../js/view.js"></script>
+    <script src="../../controller.js"></script>
+    <script src="../js/index.js"></script>
 </body>
 
 </html>
