@@ -62,10 +62,10 @@ const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
 /**
  * Filter out the links not processed in backend.
  */
-const getReplaceableTitleElements = async (links, titleData, siteConfig) => {
+const getReplaceableTitleElements = async (links, titleData, linkTitleQuerySelectors) => {
     const elemPromises = links.map((x) => canonicallyHashizeElem(
         titleData,
-        siteConfig.linkTitleQuerySelectors ?? [],
+        linkTitleQuerySelectors ?? [],
         x));
 
     const elems = [];
@@ -98,8 +98,8 @@ const getReplaceableTitleElements = async (links, titleData, siteConfig) => {
     return elems;
 };
 
-const replaceClickbaits = async (links, titleData, siteConfig) => {
-    for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(links, titleData, siteConfig)) {
+const replaceClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
+    for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(links, titleData, linkTitleQuerySelectors)) {
         // Store the original title in memory for converting back.
         titleData[canonicalHash].restoreTitle = titleElem.textContent;
 
@@ -110,9 +110,9 @@ const replaceClickbaits = async (links, titleData, siteConfig) => {
     return titleData;
 };
 
-const restoreClickbaits = async (links, titleData, siteConfig) => {
+const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
     log("Restoring using data:", titleData);
-    for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(links, titleData, siteConfig)) {
+    for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(links, titleData, linkTitleQuerySelectors)) {
         titleElem.textContent = titleData[canonicalHash].restoreTitle;
         await highlightElemOriginal(titleElem);
     }
@@ -125,13 +125,7 @@ const restoreClickbaits = async (links, titleData, siteConfig) => {
 (async () => {
     // Reset the site disabled kerran -flag on refresh.    
     const currentTabHostname = window.location.hostname;
-    const config = await browser.storage.local.get();
-    if (!config["siteConfigs"][currentTabHostname]["enabled"] && config["siteConfigs"][currentTabHostname]["kerran"]) {
-        const configUpdateObject = config;
-        configUpdateObject["siteConfigs"][currentTabHostname]["enabled"] = true;
-        configUpdateObject["siteConfigs"][currentTabHostname]["kerran"] = false;
-        await browser.storage.local.set(configUpdateObject);
-    }
+    await controller.resetKerran(currentTabHostname);
 
     try {
         await initSuola(browser.runtime.getURL("suola/build/js.wasm"));
@@ -143,33 +137,23 @@ const restoreClickbaits = async (links, titleData, siteConfig) => {
 
     let tabRestoreTitleData = null;
 
-    /**
-     * Listen for messages from the background script.
-     */
     browser.runtime.onMessage.addListener(async (message) => {
         const newsSite = window.location.hostname;
 
-        log(`Received message while browsing '${newsSite}': `, message);
+        log(`Received message '${JSON.stringify(message)}' on '${newsSite}'`);
 
         switch (message.command) {
             case "convertClickbaits":
                 // Always either toggle the converted headlines on or off based
                 // on enabled-status.
 
-                const globalConfig = await browser.storage.local.get();
-                if (!globalConfig["enabled"]) {
-                    log("Conversion is globally disabled");
-                }
-
-                const siteConfig = globalConfig["siteConfigs"][newsSite];
-                if (!siteConfig) {
-                    log(`'${newsSite}' is not supported.`);
-                }
-
-                const doReplaceNow = globalConfig["enabled"] && siteConfig["enabled"];
                 const links = Array.from(document.querySelectorAll("a"));
-                if (doReplaceNow) {
-                    log(`Casting our nets on ${newsSite} `);
+
+                const linkTitleQuerySelectors = await model.read.getLinkTitleQuerySelectors(newsSite);
+
+                if (await model.read.isEnabled(newsSite)) {
+                    log(`Starting conversion on '${newsSite}'`);
+
                     const apiUrl = await getApiDataUrl();
                     let apiResponse;
                     try {
@@ -180,36 +164,22 @@ const restoreClickbaits = async (links, titleData, siteConfig) => {
                     }
                     const titleData = await apiResponse.json();
 
-                    tabRestoreTitleData = await replaceClickbaits(links, titleData, siteConfig);
+                    tabRestoreTitleData = await replaceClickbaits(links, titleData, linkTitleQuerySelectors);
                 } else if (tabRestoreTitleData != null) {
                     log(`Restoring original state of ${newsSite} `);
                     // If the conversion has not run yet, there's nothing to restore.
-                    tabRestoreTitleData = await restoreClickbaits(links, tabRestoreTitleData, siteConfig);
+                    tabRestoreTitleData = await restoreClickbaits(links, tabRestoreTitleData, linkTitleQuerySelectors);
                 }
-                const statsObj = (await browser.storage.local.get("statistics"))["statistics"];
-                statsObj[newsSite] = {
-                    "titles": {
-                        "pageClickbaitsCount": tabRestoreTitleData
-                            ? Object.values(tabRestoreTitleData)
-                                .filter((x) => x.title !== undefined)
-                                .length
-                            : undefined,
-                        "labelNot": 0,
-                        "labelSlightly": 0,
-                        "labelVery": 0,
-                        "labelExtremely": 0,
-                    },
-                    "misc": {
-                        "linksCount": links.length,
-                    },
-                };
-                log("Storing stats:", statsObj)
-                await browser.storage.local.set({
-                    "statistics": statsObj,
+
+                await controller.updateStatistics({
+                    hostname: newsSite,
+                    restoreTitleData: tabRestoreTitleData,
+                    links: links,
                 });
 
-                // Return the statistics to the popup to update itself.
-                return statsObj[newsSite];
+                log("Finished conversion procedure.");
+
+                break;
             default:
                 log(`Unknown command '${message.command}'`);
                 break;

@@ -1,0 +1,185 @@
+"use strict";
+
+const modelEvents = {
+    statisticsChange: "statisticsChange",
+    enabledChange: "enabledChange",
+};
+
+/**
+ * Namespace for __model__ of model-view-controller.
+ */
+const model = (() => {
+    ///////////////////////////////////////////////////////////////////////////////
+    // Common helper procedures.
+    ///////////////////////////////////////////////////////////////////////////////
+
+    const _getSiteConfigs = async () => {
+        const config = await browser.storage.local.get();
+        const siteConfigs = config["siteConfigs"];
+        log("The site configs in storage:", siteConfigs);
+
+        return siteConfigs;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////
+    // The events at home.
+    ///////////////////////////////////////////////////////////////////////////////
+    let _eventListeners = {};
+    const events = {
+        addEventListener: (event, handler) => {
+            if (!_eventListeners[event]) {
+                _eventListeners[event] = [];
+            }
+            _eventListeners[event].push(handler);
+        },
+        removeEventListener: (event, handler) => {
+            const handlers = _eventListeners[event];
+            if (!handlers) {
+                log(`No handlers to remove from the event '${event}'`);
+                return;
+            }
+            handlers.splice(_eventListeners[event].indexOf(handler), 1);
+        },
+        dispatchEvent: (event) => {
+            const handlers = _eventListeners[event];
+            if (!handlers) {
+                log(`No handlers for the dispatched event '${event}'`);
+                return;
+            }
+            log(`Dispatching ${handlers.length} ${handlers.length > 1 ? "handlers" : "handler"} for event '${event}'`);
+            for (const handler of (_eventListeners[event] ?? [])) {
+                handler();
+            }
+        },
+    };
+
+    return {
+        events,
+
+        write: {
+            initialize: async () => {
+                _eventListeners = {};
+                await browser.storage.local.clear();
+                await browser.storage.local.set({
+                    // CONFIG: Configure extension to start enabled here.
+                    "enabled": true,
+                    // CONFIG: Configure per-site settings here.
+                    "siteConfigs": {
+                        "www.iltalehti.fi": {
+                            "linkTitleQuerySelectors": [
+                                ".front-title",
+                                ".title-container,.title-container-most-read > .title",
+                                ".newsticker-title-text",
+                                ".latest-pala-video-overlay > .latest-pala-title"
+                            ],
+                            "enabled": false,
+                        },
+                        "www.hs.fi": {
+                            "linkTitleQuerySelectors": [
+                                "a:nth-child(1) > section:nth-child(1) > div:nth-child(1) > div:nth-child(1) > h2:nth-child(1) > span:nth-child(2)",
+                            ],
+                            "enabled": false,
+                        },
+                        "yle.fi": {
+                            "enabled": false,
+                        },
+                        "www.aamulehti.fi": {
+                            "enabled": false,
+                        },
+                    },
+                    "environmentConfigs": {
+                        /* CONFIG: Un/comment these values to set dev mode on or off. */
+                        //"environment": "production",
+                        "environment": "development",
+                    },
+                    "statistics": {},
+                });
+            },
+
+            setEnabled: async (value, hostname) => {
+                const config = await browser.storage.local.get();
+                if (hostname) {
+                    log(`Enabling '${hostname}' == ${value}`);
+                    config["siteConfigs"][hostname]["enabled"] = value;
+                } else {
+                    log(`Enabling conversion == ${value}`);
+
+                    config["enabled"] = value;
+                }
+                await browser.storage.local.set(config);
+
+                events.dispatchEvent(modelEvents.enabledChange);
+            },
+
+            setKerran: async (value, hostname) => {
+                log(`Kerraing '${hostname}' == ${value}`);
+
+                const config = await browser.storage.local.get();
+                config["siteConfigs"][hostname]["kerran"] = value;
+
+                await browser.storage.local.set(config);
+            },
+
+            setStatistics: async (value, { hostname }) => {
+                log(`Storing stats for ${hostname}:`, value);
+                const config = await browser.storage.local.get();
+                config["statistics"][hostname] = value;
+                await browser.storage.local.set(config);
+
+                log(`Stored stats for ${hostname}`);
+
+                events.dispatchEvent(modelEvents.statisticsChange);
+            },
+        },
+
+        read: {
+            toString: async () => {
+                return JSON.stringify(await browser.storage.local.get(), null, 4);
+            },
+
+            isDevelopmentEnv: async () => {
+                const environmentConfigs = (await browser.storage.local.get())["environmentConfigs"];
+                return environmentConfigs.environment === "development";
+            },
+
+            isEnabled: async (hostname) => {
+                const config = await browser.storage.local.get();
+                const isGloballyEnabled = config["enabled"];
+                if (hostname) {
+                    return isGloballyEnabled && config["siteConfigs"][hostname]["enabled"];
+                } else {
+                    return isGloballyEnabled;
+                }
+            },
+
+            isKerran: async (hostname) => {
+                return (await _getSiteConfigs())[hostname]?.["kerran"];
+            },
+
+            getSitesEnabled: async () => {
+                const siteConfigs = await _getSiteConfigs();
+                const sitesEnabled = Object.entries(siteConfigs)
+                    .map(([k, v]) => {
+                        return [k, v["enabled"]];
+                    });
+                return Object.fromEntries(sitesEnabled);
+            },
+
+            getStatistics: async (hostname) => {
+                const statistics = (await browser.storage.local.get())["statistics"];
+                log("The full statistics in store: ", statistics);
+
+                const hostnameStatistics = statistics[hostname];
+                log(`The statistics in store for '${hostname}':`, hostnameStatistics);
+
+                return hostnameStatistics;
+            },
+
+            getLinkTitleQuerySelectors: async (hostname) => {
+                const selectors = (await _getSiteConfigs())[hostname]["linkTitleQuerySelectors"];
+                log(`The title selectors for ${hostname}:`, selectors);
+                return selectors;
+            },
+        },
+    };
+})();
