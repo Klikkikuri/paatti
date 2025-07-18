@@ -26,9 +26,9 @@ const _setCheckBoxReadonly = (checkbox, makeReadonly) => {
 };
 
 /* Set the visual readonly state of checkboxes under settings */
-const _setSettingsviewCheckboxesReadonly = () => {
+const _setSettingsviewCheckboxesReadonly = (isConversionEnabled) => {
     const checkboxes = document.querySelectorAll(".settingsview .conversion-switch");
-    const makeReadonly = !model.isConversionEnabled();
+    const makeReadonly = !isConversionEnabled;
     for (const cb of checkboxes) {
         _setCheckBoxReadonly(cb, makeReadonly);
     }
@@ -60,13 +60,13 @@ const _refreshStatistics = ({ site, data }) => {
         document.getElementById("statistics-links").textContent = data["misc"]["linksCount"];
     } else {
         document.querySelector(".pagedashboardview div").classList.add("hidden");
-        _updateError("Tilastoja ei saatu ladattua. Koeta päivittää ikkuna.");
+        _updateError("Sivun tietoja ei saatu ladattua. Koeta päivittää ikkuna.");
     }
 };
 
-const _refreshSettingsView = (sitesEnabled) => {
+const _refreshSettingsView = (isConversionEnabled, sitesEnabled) => {
     // Visualize per site switches as "readonly" as per main switch state.
-    _setSettingsviewCheckboxesReadonly();
+    _setSettingsviewCheckboxesReadonly(isConversionEnabled);
 
     // Set the per site switches enabled as per their switch state.
     for (const [hostname, isEnabled] of Object.entries(sitesEnabled)) {
@@ -78,7 +78,9 @@ const _refreshPageDashboardView = async ({ pageHostname, pageStatistics, isEnabl
     _refreshStatistics({ site: pageHostname, data: pageStatistics });
 
     document.getElementById("extension-disabled-temporarily").checked = isKerran;
-    document.getElementById("shortcut-extension-enabled-current-site").checked = !isKerran && !isEnabled;
+    // The isEnabled performs a sort of double-duty, so need to check for kerran
+    // here also.
+    document.getElementById("shortcut-extension-enabled-current-site").checked = !(isKerran || isEnabled);
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -92,13 +94,13 @@ const handleClickMainSwitch = async (e) => {
 
 const handleClickConversionSwitch = async (e) => {
     // Update the persistent settings.
-    const switchConfigKey = SWITCHES_TO_CONFIG_KEYS[e.target.id];
-    if (switchConfigKey === undefined) {
-        log("Conversion switch handler registered to unknown element ID:", switchConfigKey);
+    const hostname = SWITCHES_TO_CONFIG_KEYS[e.target.id];
+    if (hostname === undefined) {
+        log("Conversion switch handler registered to unknown hostname:", hostname);
         return;
     }
 
-    await controller.setCurrentTabEnabled(e.target.checked);
+    await controller.setSiteEnabled(e.target.checked, hostname);
 };
 
 const handleClickKerran = async (e) => {
@@ -132,16 +134,16 @@ const showView = (viewName) => {
  * Load up current settings to UI.
  */
 const refresh = async () => {
-    const isConversionEnabled = await model.isConversionEnabled();
+    const isConversionEnabled = await model.read.isEnabled();
     const pageHostname = await getCurrentTabHostname();
-    const pageStatistics = await model.getStatistics(pageHostname);
-    const sitesEnabled = await model.getSitesEnabled();
-    const isKerran = await model.isKerran(pageHostname);
+    const pageStatistics = await model.read.getStatistics(pageHostname);
+    const sitesEnabled = await model.read.getSitesEnabled();
+    const isKerran = await model.read.isKerran(pageHostname);
 
     // Update the power button.
     document.getElementById("extension-enabled").checked = isConversionEnabled;
 
-    _refreshSettingsView(sitesEnabled);
+    _refreshSettingsView(isConversionEnabled, sitesEnabled);
     _refreshPageDashboardView({
         pageHostname,
         pageStatistics,
@@ -187,3 +189,11 @@ const view = {
     handleClickConversionSwitch: handleClickConversionSwitch,
     refresh: refresh,
 };
+
+///////////////////////////////////////////////////////////////////////////////
+// "We have events at home."
+///////////////////////////////////////////////////////////////////////////////
+
+model.events.addEventListener(modelEvents.enabledChange, view.refresh);
+model.events.addEventListener(modelEvents.kerranChange, view.refresh);
+model.events.addEventListener(modelEvents.statisticsChange, view.refresh);

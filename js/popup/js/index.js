@@ -60,10 +60,3 @@ document.getElementById("extension-enabled")
 for (const pageEnabledSwitch of document.querySelectorAll(".settingsview .conversion-switch")) {
     pageEnabledSwitch.addEventListener("click", view.handleClickConversionSwitch);
 }
-
-///////////////////////////////////////////////////////////////////////////////
-// "We have events at home."
-///////////////////////////////////////////////////////////////////////////////
-
-model.addEventListener(modelEvents.enabledChange, view.refresh);
-model.addEventListener(modelEvents.statisticsChange, view.refresh);

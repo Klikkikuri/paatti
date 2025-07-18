@@ -125,7 +125,7 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 (async () => {
     // Reset the site disabled kerran -flag on refresh.    
     const currentTabHostname = window.location.hostname;
-    await model.resetKerran(currentTabHostname);
+    await controller.resetKerran(currentTabHostname);
 
     try {
         await initSuola(browser.runtime.getURL("suola/build/js.wasm"));
@@ -140,8 +140,7 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
     browser.runtime.onMessage.addListener(async (message) => {
         const newsSite = window.location.hostname;
 
-        log(`Received message while browsing '${newsSite}': `, message);
-
+        log(`Received message '${JSON.stringify(message)}' on '${newsSite}'`);
 
         switch (message.command) {
             case "convertClickbaits":
@@ -150,10 +149,10 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 
                 const links = Array.from(document.querySelectorAll("a"));
 
-                const linkTitleQuerySelectors = await model.getLinkTitleQuerySelectors(newsSite);
+                const linkTitleQuerySelectors = await model.read.getLinkTitleQuerySelectors(newsSite);
 
-                if (await model.isConversionEnabled(newsSite)) {
-                    log(`Casting our nets on ${newsSite} `);
+                if (await model.read.isEnabled(newsSite)) {
+                    log(`Starting conversion on '${newsSite}'`);
 
                     const apiUrl = await getApiDataUrl();
                     let apiResponse;
@@ -172,11 +171,13 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
                     tabRestoreTitleData = await restoreClickbaits(links, tabRestoreTitleData, linkTitleQuerySelectors);
                 }
 
-                await model.updateStatistics({
+                await controller.updateStatistics({
                     hostname: newsSite,
                     restoreTitleData: tabRestoreTitleData,
                     links: links,
                 });
+
+                log("Finished conversion procedure.");
 
                 break;
             default:
