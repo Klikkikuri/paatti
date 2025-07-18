@@ -11,13 +11,14 @@ const _dispatchConversion = async () => {
 };
 
 const _setSiteEnabled = async (isEnabled, hostname) => {
-    debugger;
     if (isEnabled) {
         // Turning on a site also turns on the extension.
         await model.write.setEnabled(true);
+    } else {
+        // Kerran cannot stay on when actively setting site to disabled.
+        await model.write.setKerran(false, hostname);
     }
-    // Kerran cannot stay on when actively setting site to enabled and vice versa.
-    await model.write.setKerran(!isEnabled, hostname);
+
     await model.write.setEnabled(isEnabled, hostname);
 };
 

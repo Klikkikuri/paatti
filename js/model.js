@@ -3,7 +3,6 @@
 const modelEvents = {
     statisticsChange: "statisticsChange",
     enabledChange: "enabledChange",
-    kerranChange: "kerranChange",
 };
 
 /**
@@ -119,7 +118,6 @@ const model = (() => {
                 config["siteConfigs"][hostname]["kerran"] = value;
 
                 await browser.storage.local.set(config);
-                events.dispatchEvent(modelEvents.kerranChange);
             },
 
             setStatistics: async (value, { hostname }) => {

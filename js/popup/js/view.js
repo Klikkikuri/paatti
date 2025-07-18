@@ -195,5 +195,4 @@ const view = {
 ///////////////////////////////////////////////////////////////////////////////
 
 model.events.addEventListener(modelEvents.enabledChange, view.refresh);
-model.events.addEventListener(modelEvents.kerranChange, view.refresh);
 model.events.addEventListener(modelEvents.statisticsChange, view.refresh);
