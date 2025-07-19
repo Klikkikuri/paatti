@@ -1,17 +1,16 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Klikkikuri Paatti",
   "version": "0.0.1",
-  // This is needed to use settings across the different scripts.
   "browser_specific_settings": {
     "gecko": {
-      "id": "klikkikuri@example.com"
+      "id": "klikkikuri@protonmail.com"
     }
   },
   "icons": {
     "48": "icons/klikkikuri-48.png"
   },
-  "browser_action": {
+  "action": {
     "default_icon": {
       "19": "icons/klikkikuri-19.png",
       "38": "icons/klikkikuri-38.png"
@@ -19,6 +18,24 @@
     "default_title": "Paatti",
     "default_popup": "src/popup/html/index.html"
   },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/utils.js",
+        "src/conversionUtils.js",
+        "src/model.js",
+        "src/controller.js",
+        "suola/build/suola.js",
+        "suola/build/js.wasm",
+        "test_data/data.json"
+      ],
+      "matches": [
+        "https://*.iltalehti.fi/*",
+        "https://*.hs.fi/*",
+        "https://yle.fi/*"
+      ]
+    }
+  ],
   "content_scripts": [
     {
       "matches": [
@@ -27,9 +44,6 @@
         "https://yle.fi/*"
       ],
       "js": [
-        "src/utils.js",
-        "src/model.js",
-        "src/controller.js",
         // Glue code provided with Go.
         "suola/build/wasm_exec.js",
         // This script should contain an initialization function for the WebAssembly module.
@@ -42,18 +56,15 @@
     }
   ],
   "background": {
-    "scripts": [
-      "src/utils.js",
-      "src/model.js",
-      "src/controller.js",
-      "src/background.js"
-    ],
-    "persistent": false
+    "service_worker": "src/background/index.js",
+    "type": "module"
   },
-  "permissions": [
+  "host_permissions": [
     "https://raw.githubusercontent.com/*",
-    "http://localhost/*",
+    "http://localhost/*"
+  ],
+  "permissions": [
     "storage",
-    "activeTab"
+    "tabs"
   ]
 }

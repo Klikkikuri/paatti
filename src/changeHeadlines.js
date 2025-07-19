@@ -16,7 +16,7 @@
 // Use this to access this source file in the browser debugger.
 //debugger;
 
-const log = getLogger("content_script");
+let log, extractArticleUrl, getApiDataUrl, noElementMatchesForQuerySelector, noTitleMatchesForHash, highlightElemConverted;
 
 const ERROR_VARIANTS = {
     noElementMatchesForQuerySelector: 1,
@@ -74,7 +74,7 @@ const getReplaceableTitleElements = async (links, titleData, linkTitleQuerySelec
         if (x.status === "fulfilled") {
             elems.push(x.value);
         } else {
-            const err = x.reason;
+            let err = x.reason;
             switch (err.variant) {
                 case ERROR_VARIANTS.noElementMatchesForQuerySelector:
                     await noElementMatchesForQuerySelector(err.elem);
@@ -121,70 +121,94 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 };
 
 
+
+
 // Main.
 (async () => {
+    // Honestly, fuck Manifest v3.
+    const { model } = await import((chrome || browser).runtime.getURL("src/model.js"));
+    const { controller } = await import((chrome || browser).runtime.getURL("src/controller.js"));
+    const { getLogger } = await import((chrome || browser).runtime.getURL("src/utils.js"));
+
+    const cu  = await import((chrome || browser).runtime.getURL("src/conversionUtils.js"));
+    extractArticleUrl = cu.extractArticleUrl;
+    getApiDataUrl = cu.getApiDataUrl;
+    noElementMatchesForQuerySelector = cu.noElementMatchesForQuerySelector;
+    noTitleMatchesForHash = cu.noTitleMatchesForHash;
+    highlightElemConverted = cu.highlightElemConverted;
+
+    log = getLogger("content_script");
+
     // Reset the site disabled kerran -flag on refresh.    
     const currentTabHostname = window.location.hostname;
     await controller.resetKerran(currentTabHostname);
 
     try {
-        await initSuola(browser.runtime.getURL("suola/build/js.wasm"));
+        await initSuola((chrome || browser).runtime.getURL("suola/build/js.wasm"));
     } catch (e) {
         log("Paatti sailing in fresh water :/ ", e);
         // TODO: Try a couple times and eventually set some error state for GUI.
         return;
     }
+    hashUrl = hashUrl;
 
     let tabRestoreTitleData = null;
 
-    browser.runtime.onMessage.addListener(async (message) => {
-        const newsSite = window.location.hostname;
+    const newsSite = window.location.hostname;
 
+    const convertClickbaits = async () => {
+        // Always either toggle the converted headlines on or off based
+        // on enabled-status.
+
+        const links = Array.from(document.querySelectorAll("a"));
+
+        const linkTitleQuerySelectors = await model.read.getLinkTitleQuerySelectors(newsSite);
+
+        if (await model.read.isEnabled(newsSite)) {
+            log(`Starting conversion on '${newsSite}'`);
+
+            const apiUrl = await getApiDataUrl();
+            let apiResponse;
+            try {
+                apiResponse = await fetch(apiUrl);
+            } catch (e) {
+                log(`Failed to fetch data from the API: ${e}`);
+                return;
+            }
+            const titleData = await apiResponse.json();
+
+            tabRestoreTitleData = await replaceClickbaits(links, titleData, linkTitleQuerySelectors);
+        } else if (tabRestoreTitleData != null) {
+            log(`Restoring original state of ${newsSite} `);
+            // If the conversion has not run yet, there's nothing to restore.
+            tabRestoreTitleData = await restoreClickbaits(links, tabRestoreTitleData, linkTitleQuerySelectors);
+        }
+
+        await controller.updateStatistics({
+            hostname: newsSite,
+            restoreTitleData: tabRestoreTitleData,
+            links: links,
+        });
+
+        log("Finished conversion procedure.");
+
+    };
+
+    (chrome || browser).runtime.onMessage.addListener(async (message) => {
         log(`Received message '${JSON.stringify(message)}' on '${newsSite}'`);
 
         switch (message.command) {
             case "convertClickbaits":
-                // Always either toggle the converted headlines on or off based
-                // on enabled-status.
-
-                const links = Array.from(document.querySelectorAll("a"));
-
-                const linkTitleQuerySelectors = await model.read.getLinkTitleQuerySelectors(newsSite);
-
-                if (await model.read.isEnabled(newsSite)) {
-                    log(`Starting conversion on '${newsSite}'`);
-
-                    const apiUrl = await getApiDataUrl();
-                    let apiResponse;
-                    try {
-                        apiResponse = await fetch(apiUrl);
-                    } catch (e) {
-                        log(`Failed to fetch data from the API: ${e}`);
-                        return;
-                    }
-                    const titleData = await apiResponse.json();
-
-                    tabRestoreTitleData = await replaceClickbaits(links, titleData, linkTitleQuerySelectors);
-                } else if (tabRestoreTitleData != null) {
-                    log(`Restoring original state of ${newsSite} `);
-                    // If the conversion has not run yet, there's nothing to restore.
-                    tabRestoreTitleData = await restoreClickbaits(links, tabRestoreTitleData, linkTitleQuerySelectors);
-                }
-
-                await controller.updateStatistics({
-                    hostname: newsSite,
-                    restoreTitleData: tabRestoreTitleData,
-                    links: links,
-                });
-
-                log("Finished conversion procedure.");
-
+                await convertClickbaits();
                 break;
             default:
                 log(`Unknown command '${message.command}'`);
                 break;
         }
     });
+    
+    // Run the conversion on reload.
+    await convertClickbaits();
 
     log("Loaded");
 })();

@@ -1,8 +1,26 @@
 "use strict";
 
+import { getLogger, browser, getCurrentTabHostname } from "../../utils.js";
+import { model, modelEvents } from "../../model.js";
+import { controller } from "../../controller.js";
+
+const log = getLogger("view");
+
 ///////////////////////////////////////////////////////////////////////////////
 // Helper procedures and definitions.
 ///////////////////////////////////////////////////////////////////////////////
+
+const SWITCHES_TO_CONFIG_KEYS = {
+    "il-enabled": "www.iltalehti.fi",
+    "hs-enabled": "www.hs.fi",
+    "yle-enabled": "yle.fi",
+    "al-enabled": "www.aamulehti.fi",
+};
+
+const CONFIG_KEYS_TO_SWITCHES = Object.fromEntries(
+    Object.entries(SWITCHES_TO_CONFIG_KEYS)
+        .map(([k, v]) => [v, k])
+);
 
 /**
  * Store the different views' IDs here in order to make making changes a bit
@@ -160,10 +178,6 @@ const refresh = async () => {
 const handleDomContentLoaded = async (e) => {
     log("Setting up UI");
 
-    // Initialize the global hostname variable as that's how the Javascript
-    // cookie seems to crumble.
-    await setGlobalCurrentTabHostname();
-
     await refresh();
 
     // Set view height to the dimensions found when opened the popup so that the
@@ -191,8 +205,40 @@ const view = {
 };
 
 ///////////////////////////////////////////////////////////////////////////////
+// Register event handlers. NOTE that the order matters.
+///////////////////////////////////////////////////////////////////////////////
+// "Main" for when the popup is opened.
+document.addEventListener("DOMContentLoaded", view.handleDomContentLoaded);
+///////////////////////////////////////////////////////////////////////////////
+// Handlers for visual changes like moving between views.
+document.getElementById("open-feedbackview")
+    .addEventListener("click", () => view.showView("feedback"));
+document.getElementById("open-settingsview")
+    .addEventListener("click", () => view.showView("settings"));
+///////////////////////////////////////////////////////////////////////////////
+// Sub views have a "back" button to switch back to popup main view.
+for (const backButton of document.querySelectorAll(".sub-view-bottom-navi > .sub-view-transition")) {
+    backButton.addEventListener("click", () => view.showView("main"));
+}
+///////////////////////////////////////////////////////////////////////////////
+// Handlers for application state changes.
+document.getElementById("extension-disabled-temporarily")
+    .addEventListener("click", view.handleClickKerran);
+document.getElementById("shortcut-extension-enabled-current-site")
+    .addEventListener("click", view.handleClickAina);
+// Register main of/off switch.
+document.getElementById("extension-enabled")
+    .addEventListener("click", view.handleClickMainSwitch);
+// Register site switches under settings view.
+for (const pageEnabledSwitch of document.querySelectorAll(".settingsview .conversion-switch")) {
+    pageEnabledSwitch.addEventListener("click", view.handleClickConversionSwitch);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // "We have events at home."
 ///////////////////////////////////////////////////////////////////////////////
 
 model.events.addEventListener(modelEvents.enabledChange, view.refresh);
 model.events.addEventListener(modelEvents.statisticsChange, view.refresh);
+
+

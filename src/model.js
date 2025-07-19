@@ -1,5 +1,9 @@
 "use strict";
 
+import { getLogger, browser } from "./utils.js";
+
+const log = getLogger("model");
+
 const modelEvents = {
     statisticsChange: "statisticsChange",
     enabledChange: "enabledChange",
@@ -14,7 +18,7 @@ const model = (() => {
     ///////////////////////////////////////////////////////////////////////////////
 
     const _getSiteConfigs = async () => {
-        const config = await browser.storage.local.get();
+        const config = await browser().storage.local.get();
         const siteConfigs = config["siteConfigs"];
         log("The site configs in storage:", siteConfigs);
 
@@ -59,8 +63,8 @@ const model = (() => {
         write: {
             initialize: async () => {
                 _eventListeners = {};
-                await browser.storage.local.clear();
-                await browser.storage.local.set({
+                await browser().storage.local.clear();
+                await browser().storage.local.set({
                     // CONFIG: Configure extension to start enabled here.
                     "enabled": true,
                     // CONFIG: Configure per-site settings here.
@@ -97,7 +101,7 @@ const model = (() => {
             },
 
             setEnabled: async (value, hostname) => {
-                const config = await browser.storage.local.get();
+                const config = await browser().storage.local.get();
                 if (hostname) {
                     log(`Enabling '${hostname}' == ${value}`);
                     config["siteConfigs"][hostname]["enabled"] = value;
@@ -106,7 +110,7 @@ const model = (() => {
 
                     config["enabled"] = value;
                 }
-                await browser.storage.local.set(config);
+                await browser().storage.local.set(config);
 
                 events.dispatchEvent(modelEvents.enabledChange);
             },
@@ -114,17 +118,17 @@ const model = (() => {
             setKerran: async (value, hostname) => {
                 log(`Kerraing '${hostname}' == ${value}`);
 
-                const config = await browser.storage.local.get();
+                const config = await browser().storage.local.get();
                 config["siteConfigs"][hostname]["kerran"] = value;
 
-                await browser.storage.local.set(config);
+                await browser().storage.local.set(config);
             },
 
             setStatistics: async (value, { hostname }) => {
                 log(`Storing stats for ${hostname}:`, value);
-                const config = await browser.storage.local.get();
+                const config = await browser().storage.local.get();
                 config["statistics"][hostname] = value;
-                await browser.storage.local.set(config);
+                await browser().storage.local.set(config);
 
                 log(`Stored stats for ${hostname}`);
 
@@ -134,16 +138,16 @@ const model = (() => {
 
         read: {
             toString: async () => {
-                return JSON.stringify(await browser.storage.local.get(), null, 4);
+                return JSON.stringify(await browser().storage.local.get(), null, 4);
             },
 
             isDevelopmentEnv: async () => {
-                const environmentConfigs = (await browser.storage.local.get())["environmentConfigs"];
+                const environmentConfigs = (await browser().storage.local.get())["environmentConfigs"];
                 return environmentConfigs.environment === "development";
             },
 
             isEnabled: async (hostname) => {
-                const config = await browser.storage.local.get();
+                const config = await browser().storage.local.get();
                 const isGloballyEnabled = config["enabled"];
                 if (hostname) {
                     return isGloballyEnabled && config["siteConfigs"][hostname]["enabled"];
@@ -166,7 +170,7 @@ const model = (() => {
             },
 
             getStatistics: async (hostname) => {
-                const statistics = (await browser.storage.local.get())["statistics"];
+                const statistics = (await browser().storage.local.get())["statistics"];
                 log("The full statistics in store: ", statistics);
 
                 const hostnameStatistics = statistics[hostname];
@@ -183,3 +187,5 @@ const model = (() => {
         },
     };
 })();
+
+export { model, modelEvents };
