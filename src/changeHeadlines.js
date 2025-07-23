@@ -16,7 +16,7 @@
 // Use this to access this source file in the browser debugger.
 //debugger;
 
-const log = getLogger("content_script");
+let log, extractArticleUrl, getApiDataUrl, noElementMatchesForQuerySelector, noTitleMatchesForHash, highlightElemConverted, highlightElemOriginal;
 
 const ERROR_VARIANTS = {
     noElementMatchesForQuerySelector: 1,
@@ -37,7 +37,6 @@ const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
         let articleUrl = await extractArticleUrl(link);
         const linkHash = await hashUrl(articleUrl);
 
-        log(linkHash);
         // Get the non-clickbait title.
         const canonicalHash = (titleData[linkHash]?.title != undefined)
             ? linkHash
@@ -74,7 +73,7 @@ const getReplaceableTitleElements = async (links, titleData, linkTitleQuerySelec
         if (x.status === "fulfilled") {
             elems.push(x.value);
         } else {
-            const err = x.reason;
+            let err = x.reason;
             switch (err.variant) {
                 case ERROR_VARIANTS.noElementMatchesForQuerySelector:
                     await noElementMatchesForQuerySelector(err.elem);
@@ -121,8 +120,30 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 };
 
 
+
+
 // Main.
 (async () => {
+    // Import modules.
+    const browser = (chrome || browser);
+    const { model, modelEvents } = await import(browser.runtime.getURL("src/model.js"));
+    const { controller } = await import(browser.runtime.getURL("src/controller.js"));
+    const { getLogger } = await import(browser.runtime.getURL("src/utils.js"));
+
+    const cu  = await import(browser.runtime.getURL("src/conversionUtils.js"));
+    extractArticleUrl = cu.extractArticleUrl;
+    getApiDataUrl = cu.getApiDataUrl;
+    noElementMatchesForQuerySelector = cu.noElementMatchesForQuerySelector;
+    noTitleMatchesForHash = cu.noTitleMatchesForHash;
+    highlightElemConverted = cu.highlightElemConverted;
+    highlightElemOriginal = cu.highlightElemOriginal;
+
+    log = getLogger("content_script");
+
+    // Remove the event from content script, as Chrome cries when it tries to
+    // access browser.tabs sending conversion message.
+    await model.events.removeEventListener(modelEvents.enabledChange, controller.dispatchConversion);
+
     // Reset the site disabled kerran -flag on refresh.    
     const currentTabHostname = window.location.hostname;
     await controller.resetKerran(currentTabHostname);
@@ -137,54 +158,61 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 
     let tabRestoreTitleData = null;
 
-    browser.runtime.onMessage.addListener(async (message) => {
-        const newsSite = window.location.hostname;
+    const newsSite = window.location.hostname;
 
+    const convertClickbaits = async () => {
+        // Always either toggle the converted headlines on or off based
+        // on enabled-status.
+
+        const links = Array.from(document.querySelectorAll("a"));
+
+        const linkTitleQuerySelectors = await model.read.getLinkTitleQuerySelectors(newsSite);
+
+        if (await model.read.isEnabled(newsSite)) {
+            log(`Starting conversion on '${newsSite}'`);
+
+            const apiUrl = await getApiDataUrl();
+            let apiResponse;
+            try {
+                apiResponse = await fetch(apiUrl);
+            } catch (e) {
+                log(`Failed to fetch data from the API: ${e}`);
+                return;
+            }
+            const titleData = await apiResponse.json();
+
+            tabRestoreTitleData = await replaceClickbaits(links, titleData, linkTitleQuerySelectors);
+        } else if (tabRestoreTitleData != null) {
+            log(`Restoring original state of ${newsSite} `);
+            // If the conversion has not run yet, there's nothing to restore.
+            tabRestoreTitleData = await restoreClickbaits(links, tabRestoreTitleData, linkTitleQuerySelectors);
+        }
+
+        await controller.updateStatistics({
+            hostname: newsSite,
+            restoreTitleData: tabRestoreTitleData,
+            links: links,
+        });
+
+        log("Finished conversion procedure.");
+
+    };
+
+    browser.runtime.onMessage.addListener(async (message) => {
         log(`Received message '${JSON.stringify(message)}' on '${newsSite}'`);
 
         switch (message.command) {
             case "convertClickbaits":
-                // Always either toggle the converted headlines on or off based
-                // on enabled-status.
-
-                const links = Array.from(document.querySelectorAll("a"));
-
-                const linkTitleQuerySelectors = await model.read.getLinkTitleQuerySelectors(newsSite);
-
-                if (await model.read.isEnabled(newsSite)) {
-                    log(`Starting conversion on '${newsSite}'`);
-
-                    const apiUrl = await getApiDataUrl();
-                    let apiResponse;
-                    try {
-                        apiResponse = await fetch(apiUrl);
-                    } catch (e) {
-                        log(`Failed to fetch data from the API: ${e}`);
-                        return;
-                    }
-                    const titleData = await apiResponse.json();
-
-                    tabRestoreTitleData = await replaceClickbaits(links, titleData, linkTitleQuerySelectors);
-                } else if (tabRestoreTitleData != null) {
-                    log(`Restoring original state of ${newsSite} `);
-                    // If the conversion has not run yet, there's nothing to restore.
-                    tabRestoreTitleData = await restoreClickbaits(links, tabRestoreTitleData, linkTitleQuerySelectors);
-                }
-
-                await controller.updateStatistics({
-                    hostname: newsSite,
-                    restoreTitleData: tabRestoreTitleData,
-                    links: links,
-                });
-
-                log("Finished conversion procedure.");
-
+                await convertClickbaits();
                 break;
             default:
                 log(`Unknown command '${message.command}'`);
                 break;
         }
     });
+    
+    // Run the conversion on reload.
+    await convertClickbaits();
 
     log("Loaded");
 })();
