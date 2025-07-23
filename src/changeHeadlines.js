@@ -124,12 +124,13 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 
 // Main.
 (async () => {
-    // Honestly, fuck Manifest v3.
-    const { model, modelEvents } = await import((chrome || browser).runtime.getURL("src/model.js"));
-    const { controller } = await import((chrome || browser).runtime.getURL("src/controller.js"));
-    const { getLogger } = await import((chrome || browser).runtime.getURL("src/utils.js"));
+    // Import modules.
+    const browser = (chrome || browser);
+    const { model, modelEvents } = await import(browser.runtime.getURL("src/model.js"));
+    const { controller } = await import(browser.runtime.getURL("src/controller.js"));
+    const { getLogger } = await import(browser.runtime.getURL("src/utils.js"));
 
-    const cu  = await import((chrome || browser).runtime.getURL("src/conversionUtils.js"));
+    const cu  = await import(browser.runtime.getURL("src/conversionUtils.js"));
     extractArticleUrl = cu.extractArticleUrl;
     getApiDataUrl = cu.getApiDataUrl;
     noElementMatchesForQuerySelector = cu.noElementMatchesForQuerySelector;
@@ -148,13 +149,12 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
     await controller.resetKerran(currentTabHostname);
 
     try {
-        await initSuola((chrome || browser).runtime.getURL("suola/build/js.wasm"));
+        await initSuola(browser.runtime.getURL("suola/build/js.wasm"));
     } catch (e) {
         log("Paatti sailing in fresh water :/ ", e);
         // TODO: Try a couple times and eventually set some error state for GUI.
         return;
     }
-    hashUrl = hashUrl;
 
     let tabRestoreTitleData = null;
 
@@ -198,7 +198,7 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 
     };
 
-    (chrome || browser).runtime.onMessage.addListener(async (message) => {
+    browser.runtime.onMessage.addListener(async (message) => {
         log(`Received message '${JSON.stringify(message)}' on '${newsSite}'`);
 
         switch (message.command) {
