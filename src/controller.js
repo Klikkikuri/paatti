@@ -8,9 +8,9 @@ const log = getLogger("controller");
 const _dispatchConversion = async () => {
     log("Dispatching conversion...");
     // Get the active tab.
-    const activeTabId = (await browser().tabs
-        .query({ active: true, currentWindow: true }))[0].id;
-    await browser().tabs.sendMessage(activeTabId, { command: "convertClickbaits" });
+    const tabs = browser().tabs;
+    const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
+    await tabs.sendMessage(activeTabId, { command: "convertClickbaits" });
 
     log("Conversion dispatch performed.");
 };
@@ -35,6 +35,7 @@ const controller = {
         await model.write.initialize();
         /* CONFIG: Configure your desired development thingies here. */
         if (await model.read.isDevelopmentEnv()) {
+            log("Initializing in development mode");
             await model.write.setEnabled(true, "www.iltalehti.fi");
         }
     },
@@ -93,6 +94,6 @@ const controller = {
     },
 };
 
-model.events.addEventListener(modelEvents.enabledChange, _dispatchConversion);
+model.events.addEventListener(modelEvents.enabledChange, controller.dispatchConversion);
 
 export { controller };

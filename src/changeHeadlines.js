@@ -16,7 +16,7 @@
 // Use this to access this source file in the browser debugger.
 //debugger;
 
-let log, extractArticleUrl, getApiDataUrl, noElementMatchesForQuerySelector, noTitleMatchesForHash, highlightElemConverted;
+let log, extractArticleUrl, getApiDataUrl, noElementMatchesForQuerySelector, noTitleMatchesForHash, highlightElemConverted, highlightElemOriginal;
 
 const ERROR_VARIANTS = {
     noElementMatchesForQuerySelector: 1,
@@ -37,7 +37,6 @@ const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
         let articleUrl = await extractArticleUrl(link);
         const linkHash = await hashUrl(articleUrl);
 
-        log(linkHash);
         // Get the non-clickbait title.
         const canonicalHash = (titleData[linkHash]?.title != undefined)
             ? linkHash
@@ -126,7 +125,7 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 // Main.
 (async () => {
     // Honestly, fuck Manifest v3.
-    const { model } = await import((chrome || browser).runtime.getURL("src/model.js"));
+    const { model, modelEvents } = await import((chrome || browser).runtime.getURL("src/model.js"));
     const { controller } = await import((chrome || browser).runtime.getURL("src/controller.js"));
     const { getLogger } = await import((chrome || browser).runtime.getURL("src/utils.js"));
 
@@ -136,8 +135,13 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
     noElementMatchesForQuerySelector = cu.noElementMatchesForQuerySelector;
     noTitleMatchesForHash = cu.noTitleMatchesForHash;
     highlightElemConverted = cu.highlightElemConverted;
+    highlightElemOriginal = cu.highlightElemOriginal;
 
     log = getLogger("content_script");
+
+    // Remove the event from content script, as Chrome cries when it tries to
+    // access browser.tabs sending conversion message.
+    await model.events.removeEventListener(modelEvents.enabledChange, controller.dispatchConversion);
 
     // Reset the site disabled kerran -flag on refresh.    
     const currentTabHostname = window.location.hostname;

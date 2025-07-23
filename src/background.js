@@ -1,0 +1,12 @@
+"use strict";
+
+import { getLogger, browser } from "./utils.js";
+import { model } from "./model.js";
+import { controller } from "./controller.js";
+
+const log = getLogger("background");
+
+browser().runtime.onInstalled.addListener(async () => {
+    await controller.initialize()
+    log("Installed Paatti with initial configuration:", await model.read.toString());
+});

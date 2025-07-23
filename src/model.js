@@ -42,7 +42,8 @@ const model = (() => {
                 log(`No handlers to remove from the event '${event}'`);
                 return;
             }
-            handlers.splice(_eventListeners[event].indexOf(handler), 1);
+            const idx = handlers.indexOf(handler);
+            handlers.splice(idx, 1);
         },
         dispatchEvent: (event) => {
             const handlers = _eventListeners[event];
