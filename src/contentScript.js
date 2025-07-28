@@ -130,7 +130,7 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
     const { controller } = await import(browser.runtime.getURL("src/controller.js"));
     const { getLogger } = await import(browser.runtime.getURL("src/utils.js"));
 
-    const cu  = await import(browser.runtime.getURL("src/conversionUtils.js"));
+    const cu = await import(browser.runtime.getURL("src/conversionUtils.js"));
     extractArticleUrl = cu.extractArticleUrl;
     getApiDataUrl = cu.getApiDataUrl;
     noElementMatchesForQuerySelector = cu.noElementMatchesForQuerySelector;
@@ -210,7 +210,7 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
                 break;
         }
     });
-    
+
     // Run the conversion on reload.
     await convertClickbaits();
 

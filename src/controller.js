@@ -37,6 +37,7 @@ const controller = {
         if (await model.read.isDevelopmentEnv()) {
             log("Initializing in development mode");
             await model.write.setEnabled(true, "www.iltalehti.fi");
+            await model.write.setEnabled(true, "www.hs.fi");
         }
     },
 
