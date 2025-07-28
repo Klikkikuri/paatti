@@ -19,8 +19,9 @@
 let log, extractArticleUrl, getApiDataUrl, noElementMatchesForQuerySelector, noTitleMatchesForHash, highlightElemConverted, highlightElemOriginal;
 
 const ERROR_VARIANTS = {
-    noElementMatchesForQuerySelector: 1,
-    noTitleMatchesForHash: 2,
+    UnknownError: "Unknown error",
+    noElementMatchesForQuerySelector: "Empty query result for title elements under selected parent",
+    noTitleMatchesForHash: "Found no conversion for given title in database",
 };
 
 const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
@@ -83,7 +84,7 @@ const getReplaceableTitleElements = async (links, titleData, linkTitleQuerySelec
                     break;
                 default:
                     err = {
-                        variant: "UnknownError",
+                        variant: ERROR_VARIANTS.UnknownError,
                         data: err,
                     };
                     break
@@ -91,8 +92,11 @@ const getReplaceableTitleElements = async (links, titleData, linkTitleQuerySelec
             errors.push(err);
         }
     }
-    log(`There were ${errors.length} links not processed.`);
-    log(errors);
+    const errorStats = {};
+    for (const variant of Object.values(ERROR_VARIANTS)) {
+        errorStats[variant] = errors.filter((x) => x.variant === variant).length;
+    }
+    log(`There were ${errors.length} links not processed:`, errorStats);
 
     return elems;
 };
