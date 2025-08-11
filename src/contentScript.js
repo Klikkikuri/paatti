@@ -236,17 +236,29 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
             }
         }
 
-        // Only pass link type DOM elements forward.
         for (const i in addedNodes) {
             if (addedNodes[i].nodeType == Node.TEXT_NODE) {
                 addedNodes[i] = addedNodes[i].parentElement;
             }
+            // Only pass link type DOM elements forward.
             addedNodes[i] = addedNodes[i].closest("a");
-        }
 
-        log(`Observed mutations added total of ${addedNodes.length} new nodes to search for news title elements`);
+            // Only pass non-processed links forward.
+            if (!addedNodes[i].getAttribute("__klikkikuri_processed_dynamic_link")) {
+                addedNodes[i].setAttribute("__klikkikuri_processed_dynamic_link", "true");
+            } else {
+                // Remove any already mutated elements from being mutated again,
+                // which would start an infinite event loop.
+                addedNodes[i] = null;
+            }
+        }
+        addedNodes = addedNodes.filter((x) => x);
+
         if (addedNodes.length > 0) {
+            log(`Observed mutations added total of ${addedNodes.length} new nodes to search for news title elements`);
             await convertClickbaits(addedNodes);
+        } else {
+            log("No observed mutations selected for further processing.");
         }
     };
 
