@@ -51,12 +51,14 @@
         // Associated test data.
         "test_data/urls.js",
         // Main module.
-        "src/changeHeadlines.js"
+        "src/contentScript.js"
       ]
     }
   ],
   "background": {
-    "scripts": ["src/background.js"],
+    "scripts": [
+      "src/background.js"
+    ],
     "service_worker": "src/background.js",
     "type": "module"
   },

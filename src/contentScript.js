@@ -19,8 +19,9 @@
 let log, extractArticleUrl, getApiDataUrl, noElementMatchesForQuerySelector, noTitleMatchesForHash, highlightElemConverted, highlightElemOriginal;
 
 const ERROR_VARIANTS = {
-    noElementMatchesForQuerySelector: 1,
-    noTitleMatchesForHash: 2,
+    UnknownError: "Unknown error",
+    noElementMatchesForQuerySelector: "Empty query result for title elements under selected parent",
+    noTitleMatchesForHash: "Found no conversion for given title in database",
 };
 
 const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
@@ -83,7 +84,7 @@ const getReplaceableTitleElements = async (links, titleData, linkTitleQuerySelec
                     break;
                 default:
                     err = {
-                        variant: "UnknownError",
+                        variant: ERROR_VARIANTS.UnknownError,
                         data: err,
                     };
                     break
@@ -91,8 +92,11 @@ const getReplaceableTitleElements = async (links, titleData, linkTitleQuerySelec
             errors.push(err);
         }
     }
-    log(`There were ${errors.length} links not processed.`);
-    log(errors);
+    const errorStats = {};
+    for (const variant of Object.values(ERROR_VARIANTS)) {
+        errorStats[variant] = errors.filter((x) => x.variant === variant).length;
+    }
+    log(`There were ${errors.length} links not processed:`, errorStats);
 
     return elems;
 };
@@ -130,7 +134,7 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
     const { controller } = await import(browser.runtime.getURL("src/controller.js"));
     const { getLogger } = await import(browser.runtime.getURL("src/utils.js"));
 
-    const cu  = await import(browser.runtime.getURL("src/conversionUtils.js"));
+    const cu = await import(browser.runtime.getURL("src/conversionUtils.js"));
     extractArticleUrl = cu.extractArticleUrl;
     getApiDataUrl = cu.getApiDataUrl;
     noElementMatchesForQuerySelector = cu.noElementMatchesForQuerySelector;
@@ -160,14 +164,11 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 
     const newsSite = window.location.hostname;
 
-    const convertClickbaits = async () => {
-        // Always either toggle the converted headlines on or off based
-        // on enabled-status.
-
-        const links = Array.from(document.querySelectorAll("a"));
-
+    const convertClickbaits = async (links) => {
         const linkTitleQuerySelectors = await model.read.getLinkTitleQuerySelectors(newsSite);
 
+        // Always either toggle the converted headlines on or off based
+        // on enabled-status.
         if (await model.read.isEnabled(newsSite)) {
             log(`Starting conversion on '${newsSite}'`);
 
@@ -186,6 +187,8 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
             log(`Restoring original state of ${newsSite} `);
             // If the conversion has not run yet, there's nothing to restore.
             tabRestoreTitleData = await restoreClickbaits(links, tabRestoreTitleData, linkTitleQuerySelectors);
+        } else {
+            log("Nothing converted.");
         }
 
         await controller.updateStatistics({
@@ -203,16 +206,75 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 
         switch (message.command) {
             case "convertClickbaits":
-                await convertClickbaits();
+                await convertClickbaits(Array.from(document.querySelectorAll("a")));
                 break;
             default:
                 log(`Unknown command '${message.command}'`);
                 break;
         }
     });
-    
+
     // Run the conversion on reload.
-    await convertClickbaits();
+    await convertClickbaits(Array.from(document.querySelectorAll("a")));
+
+    // Configure the observer for dynamically loaded contents.
+    const mutationObserverConfig = { childList: true, subtree: true };
+
+    // Callback function to execute when mutations are observed
+    const callback = async (mutationList, observer) => {
+        let addedNodes = [];
+        for (const mutation of mutationList) {
+            // TODO: Run conversion on the appeared title.
+            if (mutation.type === "childList") {
+                if (mutation.target instanceof HTMLAnchorElement) {
+                    addedNodes.push(mutation.target);
+                } else {
+                    addedNodes = [...addedNodes, ...mutation.addedNodes];
+                }
+            } else {
+                log(`Unnecessarily(?) observed DOM mutation of type ${mutation.type}`);
+            }
+        }
+
+        for (const i in addedNodes) {
+            if (addedNodes[i].nodeType == Node.TEXT_NODE) {
+                addedNodes[i] = addedNodes[i].parentElement;
+            }
+            // Only pass link type DOM elements forward.
+            addedNodes[i] = addedNodes[i].closest("a");
+
+            // Only pass non-processed links forward.
+            if (!addedNodes[i].getAttribute("__klikkikuri_processed_dynamic_link")) {
+                addedNodes[i].setAttribute("__klikkikuri_processed_dynamic_link", "true");
+            } else {
+                // Remove any already mutated elements from being mutated again,
+                // which would start an infinite event loop.
+                addedNodes[i] = null;
+            }
+        }
+        addedNodes = addedNodes.filter((x) => x);
+
+        if (addedNodes.length > 0) {
+            log(`Observed mutations added total of ${addedNodes.length} new nodes to search for news title elements`);
+            await convertClickbaits(addedNodes);
+        } else {
+            log("No observed mutations selected for further processing.");
+        }
+    };
+
+    // Create an observer instance linked to the callback function
+    const observer = new MutationObserver(callback);
+
+    // Add observers for dynamically loaded contents.
+    const mutationProneQuerySelectors = await model.read.getMutationProneQuerySelectors(newsSite);
+    if (mutationProneQuerySelectors) {
+        for (const selector of mutationProneQuerySelectors) {
+            for (const targetNode of document.querySelectorAll(selector)) {
+                // Start observing the target node for configured mutations
+                observer.observe(targetNode, mutationObserverConfig);
+            }
+        }
+    }
 
     log("Loaded");
 })();
