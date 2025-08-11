@@ -164,14 +164,11 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 
     const newsSite = window.location.hostname;
 
-    const convertClickbaits = async () => {
-        // Always either toggle the converted headlines on or off based
-        // on enabled-status.
-
-        const links = Array.from(document.querySelectorAll("a"));
-
+    const convertClickbaits = async (links) => {
         const linkTitleQuerySelectors = await model.read.getLinkTitleQuerySelectors(newsSite);
 
+        // Always either toggle the converted headlines on or off based
+        // on enabled-status.
         if (await model.read.isEnabled(newsSite)) {
             log(`Starting conversion on '${newsSite}'`);
 
@@ -190,6 +187,8 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
             log(`Restoring original state of ${newsSite} `);
             // If the conversion has not run yet, there's nothing to restore.
             tabRestoreTitleData = await restoreClickbaits(links, tabRestoreTitleData, linkTitleQuerySelectors);
+        } else {
+            log("Nothing converted.");
         }
 
         await controller.updateStatistics({
@@ -207,7 +206,7 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 
         switch (message.command) {
             case "convertClickbaits":
-                await convertClickbaits();
+                await convertClickbaits(Array.from(document.querySelectorAll("a")));
                 break;
             default:
                 log(`Unknown command '${message.command}'`);
@@ -216,7 +215,54 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
     });
 
     // Run the conversion on reload.
-    await convertClickbaits();
+    await convertClickbaits(Array.from(document.querySelectorAll("a")));
+
+    // Configure the observer for dynamically loaded contents.
+    const mutationObserverConfig = { childList: true, subtree: true };
+
+    // Callback function to execute when mutations are observed
+    const callback = async (mutationList, observer) => {
+        let addedNodes = [];
+        for (const mutation of mutationList) {
+            // TODO: Run conversion on the appeared title.
+            if (mutation.type === "childList") {
+                if (mutation.target instanceof HTMLAnchorElement) {
+                    addedNodes.push(mutation.target);
+                } else {
+                    addedNodes = [...addedNodes, ...mutation.addedNodes];
+                }
+            } else {
+                log(`Unnecessarily(?) observed DOM mutation of type ${mutation.type}`);
+            }
+        }
+
+        // Only pass link type DOM elements forward.
+        for (const i in addedNodes) {
+            if (addedNodes[i].nodeType == Node.TEXT_NODE) {
+                addedNodes[i] = addedNodes[i].parentElement;
+            }
+            addedNodes[i] = addedNodes[i].closest("a");
+        }
+
+        log(`Observed mutations added total of ${addedNodes.length} new nodes to search for news title elements`);
+        if (addedNodes.length > 0) {
+            await convertClickbaits(addedNodes);
+        }
+    };
+
+    // Create an observer instance linked to the callback function
+    const observer = new MutationObserver(callback);
+
+    // Add observers for dynamically loaded contents.
+    const mutationProneQuerySelectors = await model.read.getMutationProneQuerySelectors(newsSite);
+    if (mutationProneQuerySelectors) {
+        for (const selector of mutationProneQuerySelectors) {
+            for (const targetNode of document.querySelectorAll(selector)) {
+                // Start observing the target node for configured mutations
+                observer.observe(targetNode, mutationObserverConfig);
+            }
+        }
+    }
 
     log("Loaded");
 })();

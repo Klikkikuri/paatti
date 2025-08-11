@@ -71,6 +71,9 @@ const model = (() => {
                     // CONFIG: Configure per-site settings here.
                     "siteConfigs": {
                         "www.iltalehti.fi": {
+                            // These CSS selectors are used to find the elements
+                            // containing text of news titles (which will be
+                            // converted).
                             "linkTitleQuerySelectors": [
                                 ".front-title",
                                 ".title-container,.title-container-most-read > .title",
@@ -82,6 +85,13 @@ const model = (() => {
                         "www.hs.fi": {
                             "linkTitleQuerySelectors": [
                                 "a:nth-child(1) > section:nth-child(1) > div:nth-child(1) > div:nth-child(1) > h2:nth-child(1) > span:nth-child(2)",
+                            ],
+                            // These CSS selectors are used to find the elements
+                            // that might dynamically get added elements containing
+                            // convertable news titles (and need to be listened
+                            // for changes while the user is browsing the site).
+                            "mutationProneQuerySelectors": [
+                                "section.flex:nth-child(5) > section:nth-child(1)",
                             ],
                             "enabled": false,
                         },
@@ -183,6 +193,12 @@ const model = (() => {
             getLinkTitleQuerySelectors: async (hostname) => {
                 const selectors = (await _getSiteConfigs())[hostname]["linkTitleQuerySelectors"];
                 log(`The title selectors for ${hostname}:`, selectors);
+                return selectors;
+            },
+
+            getMutationProneQuerySelectors: async (hostname) => {
+                const selectors = (await _getSiteConfigs())[hostname]["mutationProneQuerySelectors"];
+                log(`The mutation prone selectors for ${hostname}:`, selectors);
                 return selectors;
             },
         },
