@@ -8,3 +8,5 @@ git submodule update
 # Build suola artifacts.
 docker build --target builder -t buildsuola suola/
 docker run --mount type=bind,src=$(pwd)/suola/build/,dst=/app/build buildsuola
+
+./test_data.sh
