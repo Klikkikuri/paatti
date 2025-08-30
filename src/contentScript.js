@@ -16,7 +16,14 @@
 // Use this to access this source file in the browser debugger.
 //debugger;
 
-let log, extractArticleUrl, getApiDataUrl, noElementMatchesForQuerySelector, noTitleMatchesForHash, highlightElemConverted, highlightElemOriginal;
+// WORKAROUND: These variables will be used in "importing" from other JS files in main().
+let log,
+    extractArticleUrl,
+    getApiDataUrl,
+    noElementMatchesForQuerySelector,
+    noTitleMatchesForHash,
+    highlightElemConverted,
+    highlightElemOriginal;
 
 const ERROR_VARIANTS = {
     UnknownError: "Unknown error",
@@ -34,28 +41,27 @@ const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
             variant: ERROR_VARIANTS.noElementMatchesForQuerySelector,
             elem: link,
         };
+    }
+
+    const articleUrl = await extractArticleUrl(link);
+    const linkHash = await hashUrl(articleUrl);
+
+    const canonicalHash = (titleData[linkHash]?.title != undefined)
+        ? linkHash
+        : titleData[linkHash]?.canonical;
+
+    if (!canonicalHash) {
+        throw {
+            variant: ERROR_VARIANTS.noTitleMatchesForHash,
+            elem: link,
+            href: link.href,
+            hash: linkHash,
+        };
     } else {
-        let articleUrl = await extractArticleUrl(link);
-        const linkHash = await hashUrl(articleUrl);
-
-        // Get the non-clickbait title.
-        const canonicalHash = (titleData[linkHash]?.title != undefined)
-            ? linkHash
-            : titleData[linkHash]?.canonical;
-
-        if (!canonicalHash) {
-            throw {
-                variant: ERROR_VARIANTS.noTitleMatchesForHash,
-                elem: link,
-                href: link.href,
-                hash: linkHash,
-            };
-        } else {
-            return {
-                titleElem: titleElem,
-                canonicalHash: canonicalHash,
-            };
-        }
+        return {
+            titleElem: titleElem,
+            canonicalHash: canonicalHash,
+        };
     }
 };
 
@@ -101,12 +107,26 @@ const getReplaceableTitleElements = async (links, titleData, linkTitleQuerySelec
     return elems;
 };
 
-const replaceClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
+const harvestTitleElements = async (links, titleData, linkTitleQuerySelectors) => {
+    const xs = [];
     for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(links, titleData, linkTitleQuerySelectors)) {
-        // Store the original title in memory for converting back.
-        titleData[canonicalHash].restoreTitle = titleElem.textContent;
+        if (!titleElem.getAttribute("__klikkikuri_original_title")) {
+            // Store the original title in memory for when wanting to convert
+            // back later if not already.
+            titleElem.setAttribute("__klikkikuri_original_title", titleElem.textContent);
+        }
+        xs.push({
+            titleElem,
+            originalTitle: titleElem.getAttribute("__klikkikuri_original_title"),
+            convertedTitle: titleData[canonicalHash].title,
+        });
+    }
+    return xs;
+};
 
-        titleElem.textContent = titleData[canonicalHash].title;
+const replaceClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
+    for (const { titleElem, originalTitle, convertedTitle } of await harvestTitleElements(links, titleData, linkTitleQuerySelectors)) {
+        titleElem.textContent = convertedTitle;
         await highlightElemConverted(titleElem);
     }
 
@@ -115,15 +135,14 @@ const replaceClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 
 const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
     log("Restoring using data:", titleData);
-    for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(links, titleData, linkTitleQuerySelectors)) {
-        titleElem.textContent = titleData[canonicalHash].restoreTitle;
+    for (const { titleElem, originalTitle, convertedTitle } of await harvestTitleElements(links, titleData, linkTitleQuerySelectors)) {
+
+        titleElem.textContent = originalTitle;
         await highlightElemOriginal(titleElem);
     }
 
     return titleData;
 };
-
-
 
 
 // Main.

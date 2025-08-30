@@ -7,9 +7,6 @@
 .button-toggle {
     display: inline-block;
     cursor: pointer;
-    user-select: none;
-    perspective: 1000px;
-
     font-size: 400%;
 }
 

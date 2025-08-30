@@ -49,18 +49,18 @@ export const highlightElemOriginal = async (htmlElem) => {
     htmlElem.style.borderStyle = htmlElem.getAttribute("__klikkikuri_borderStyle");
     htmlElem.style.borderColor = htmlElem.getAttribute("__klikkikuri_borderColor");
     htmlElem.style.borderSize = htmlElem.getAttribute("__klikkikuri_borderSize");
-}
+};
 
 export const extractArticleUrl = async (link) => {
     if (await model.read.isDevelopmentEnv()) {
         if (!testUrls) {
             throw "DEVELOPMENT MODE: The `testUrls` variable evaluated to false. Have you initialized the test data with `python3 ./test_data/generate_data.py`?"
         }
-        return testUrls[
-            Array.from(link.href)
-                .reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0)
-            % 6
-        ];
+
+        const i = Array.from(link.href)
+            .reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0)
+            % 6;
+        return testUrls[i];
     } else {
         return link.href;
     }
