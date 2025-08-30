@@ -76,7 +76,7 @@ const model = (() => {
                             // converted).
                             "linkTitleQuerySelectors": [
                                 ".front-title",
-                                ".title-container,.title-container-most-read > .title",
+                                ".title-container > .title,.title-container-most-read > .title",
                                 ".newsticker-title-text",
                                 ".latest-pala-video-overlay > .latest-pala-title"
                             ],
