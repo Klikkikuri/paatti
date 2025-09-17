@@ -1,0 +1,18 @@
+.converted-title:hover {
+    animation-name: highlight-converted;
+    animation-delay: 1s;
+    animation-duration: 0.5s;
+    animation-iteration-count: infinite;
+}
+
+@keyframes highlight-converted {
+    0% {
+    }
+
+    50% {
+        color: white;
+    }
+
+    100% {
+    }
+}

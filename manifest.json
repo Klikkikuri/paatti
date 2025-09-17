@@ -43,6 +43,9 @@
         "https://*.hs.fi/*",
         "https://yle.fi/*"
       ],
+      "css": [
+        "src/contentStyle.css"
+      ],
       "js": [
         // Glue code provided with Go.
         "suola/build/wasm_exec.js",

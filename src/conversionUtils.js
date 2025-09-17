@@ -38,13 +38,19 @@ export const noTitleMatchesForHash = async (htmlElem) => {
 
 export const highlightElemConverted = async (htmlElem) => {
     storeElemHightlight(htmlElem);
-    htmlElem.style.backgroundColor = "cyan";
-    htmlElem.style.borderStyle = "groove";
-    htmlElem.style.borderColor = "#0981D1";
-    htmlElem.style.borderSize = "5px";
+    htmlElem.classList.add("converted-title");
+
+    if (await model.read.isDevelopmentEnv()) {
+        htmlElem.style.backgroundColor = "cyan";
+        htmlElem.style.borderStyle = "groove";
+        htmlElem.style.borderColor = "#0981D1";
+        htmlElem.style.borderSize = "5px";
+    }
 };
 
 export const highlightElemOriginal = async (htmlElem) => {
+    htmlElem.classList.remove("converted-title");
+
     htmlElem.style.backgroundColor = htmlElem.getAttribute("__klikkikuri_backgroundColor");
     htmlElem.style.borderStyle = htmlElem.getAttribute("__klikkikuri_borderStyle");
     htmlElem.style.borderColor = htmlElem.getAttribute("__klikkikuri_borderColor");
