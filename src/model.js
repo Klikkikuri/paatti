@@ -104,8 +104,8 @@ const model = (() => {
                     },
                     "environmentConfigs": {
                         /* CONFIG: Un/comment these values to set dev mode on or off. */
-                        //"environment": "production",
-                        "environment": "development",
+                        "environment": "production",
+                        //"environment": "development",
                     },
                     "statistics": {},
                 });

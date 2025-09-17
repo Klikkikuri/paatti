@@ -46,11 +46,15 @@ const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
     const articleUrl = await extractArticleUrl(link);
     const linkHash = await hashUrl(articleUrl);
 
-    const canonicalHash = (titleData[linkHash]?.title != undefined)
-        ? linkHash
-        : titleData[linkHash]?.canonical;
+    let match = null;
+    for (const entry of titleData.entries) {
+        if (entry.urls.filter((x) => x.sign === linkHash).length > 0) {
+            match = entry;
+            break;
+        }
+    }
 
-    if (!canonicalHash) {
+    if (!match) {
         throw {
             variant: ERROR_VARIANTS.noTitleMatchesForHash,
             elem: link,
@@ -60,7 +64,7 @@ const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
     } else {
         return {
             titleElem: titleElem,
-            canonicalHash: canonicalHash,
+            entry: match,
         };
     }
 };
@@ -109,7 +113,7 @@ const getReplaceableTitleElements = async (links, titleData, linkTitleQuerySelec
 
 const harvestTitleElements = async (links, titleData, linkTitleQuerySelectors) => {
     const xs = [];
-    for (const { titleElem, canonicalHash } of await getReplaceableTitleElements(links, titleData, linkTitleQuerySelectors)) {
+    for (const { titleElem, entry } of await getReplaceableTitleElements(links, titleData, linkTitleQuerySelectors)) {
         if (!titleElem.getAttribute("__klikkikuri_original_title")) {
             // Store the original title in memory for when wanting to convert
             // back later if not already.
@@ -118,13 +122,19 @@ const harvestTitleElements = async (links, titleData, linkTitleQuerySelectors) =
         xs.push({
             titleElem,
             originalTitle: titleElem.getAttribute("__klikkikuri_original_title"),
-            convertedTitle: titleData[canonicalHash].title,
+            convertedTitle: entry.title,
         });
     }
     return xs;
 };
 
 const replaceClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
+    const SUPPORTED_SCHEMA_VERSION = "0.1.0";
+    if (titleData.schema_version != SUPPORTED_SCHEMA_VERSION) {
+        // TODO: What now? Link user to update page?
+        throw `The title data format is not compatible: version is ${titleData.schema_version} when expected ${SUPPORTED_SCHEMA_VERSION}. Update Paatti in order to fix.`;
+    }
+
     for (const { titleElem, originalTitle, convertedTitle } of await harvestTitleElements(links, titleData, linkTitleQuerySelectors)) {
         titleElem.textContent = convertedTitle;
         await highlightElemConverted(titleElem);
