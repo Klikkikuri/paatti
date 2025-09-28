@@ -28,11 +28,11 @@ const CONFIG_KEYS_TO_SWITCHES = Object.fromEntries(
  */
 const _viewSelectors = {
     "main":
-        [".pagedashboardview", ".bottom-navi"],
+        [".main-content", ".open-feedbackview", ".open-settingsview"],
     "feedback":
-        [".feedbackview-controls-header", ".feedbackview-controls", ".sub-view-bottom-navi"],
+        [".feedbackview", ".open-home", ".open-settingsview"],
     "settings":
-        [".settingsview-header", ".settingsview", ".sub-view-bottom-navi"],
+        [".settingsview", ".open-feedbackview", ".open-home"],
 };
 
 const _setCheckBoxReadonly = (checkbox, makeReadonly) => {
@@ -73,11 +73,11 @@ const _refreshStatistics = ({ site, data }) => {
     document.getElementById("site-host").textContent = site;
 
     if (data) {
-        document.querySelector(".pagedashboardview div").classList.remove("hidden");
+        document.querySelector(".content div").classList.remove("hidden");
         document.getElementById("statistics-main-header").textContent = data["titles"]["pageClickbaitsCount"] ?? 0;
         document.getElementById("statistics-links").textContent = data["misc"]["linksCount"];
     } else {
-        document.querySelector(".pagedashboardview div").classList.add("hidden");
+        document.querySelector(".content div").classList.add("hidden");
         _updateError("Sivun tietoja ei saatu ladattua. Koeta päivittää ikkuna.");
     }
 };
@@ -92,7 +92,7 @@ const _refreshSettingsView = (isConversionEnabled, sitesEnabled) => {
     }
 };
 
-const _refreshPageDashboardView = async ({ pageHostname, pageStatistics, isEnabled, isKerran }) => {
+const _refreshContentView = async ({ pageHostname, pageStatistics, isEnabled, isKerran }) => {
     _refreshStatistics({ site: pageHostname, data: pageStatistics });
 
     document.getElementById("extension-disabled-temporarily").checked = isKerran;
@@ -162,7 +162,7 @@ const refresh = async () => {
     document.getElementById("extension-enabled").checked = isConversionEnabled;
 
     _refreshSettingsView(isConversionEnabled, sitesEnabled);
-    _refreshPageDashboardView({
+    _refreshContentView({
         pageHostname,
         pageStatistics,
         isEnabled: sitesEnabled[pageHostname],
@@ -211,15 +211,12 @@ const view = {
 document.addEventListener("DOMContentLoaded", view.handleDomContentLoaded);
 ///////////////////////////////////////////////////////////////////////////////
 // Handlers for visual changes like moving between views.
-document.getElementById("open-feedbackview")
+document.querySelector(".open-feedbackview")
     .addEventListener("click", () => view.showView("feedback"));
-document.getElementById("open-settingsview")
+document.querySelector(".open-settingsview")
     .addEventListener("click", () => view.showView("settings"));
-///////////////////////////////////////////////////////////////////////////////
-// Sub views have a "back" button to switch back to popup main view.
-for (const backButton of document.querySelectorAll(".sub-view-bottom-navi > .sub-view-transition")) {
-    backButton.addEventListener("click", () => view.showView("main"));
-}
+document.querySelector(".open-home")
+    .addEventListener("click", () => view.showView("main"));
 ///////////////////////////////////////////////////////////////////////////////
 // Handlers for application state changes.
 document.getElementById("extension-disabled-temporarily")

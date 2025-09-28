@@ -1,107 +1,6 @@
-.power {
-    height: 17%;
-    display: flex;
-    justify-content: center;
-}
-
-.button-toggle {
-    display: inline-block;
-    cursor: pointer;
-    font-size: 400%;
-}
-
-.button-toggle input {
-    display: none;
-}
-
-.button-toggle .button-toggle-face:hover {
-    color: #029956;
-    outline: 2px solid #22B976;
-}
-
-.button-toggle input:checked+.button-toggle-face:hover {
-    color: #555;
-    outline: 2px solid #444;
-}
-
-.button-toggle .button-toggle-face {
-    display: inline-block;
-    background: #fbfbfb;
-    outline: 1px outset #555;
-    border-radius: 6px;
-    box-shadow:
-        #777 4px 4px,
-        #777 0px 0px inset;
-    transition:
-        transform 0.2s ease-in-out,
-        box-shadow 0.2s ease-in-out,
-        background 0.2s ease-in-out;
-    ;
-    font-family: monospace;
-    text-align: center;
-    min-width: 100px;
-
-    color: #555;
-    padding: 0;
-    padding-bottom: 5px;
-    margin: 0;
-}
-
-/* When checked - looks like pressed in */
-.button-toggle input:checked+.button-toggle-face {
-    transform: translateY(4px);
-    outline: 1px inset #555;
-    box-shadow:
-        #777 0px 0px,
-        #777 1px 1px inset;
-
-    background: #e3e3e3;
-    color: #029956;
-    outline: 1px solid #22B976;
-}
-
-#settings {
-    border: 1px solid #555;
-    border-radius: 6px;
-    background: #ffffff;
-    padding: 5%;
-
-    display: flex;
-    flex-direction: column;
-    gap: 1em;
-}
-
-.icon {
-    font-size: 1.2em;
-    display: inline-block;
-    width: 24px;
-    text-align: center;
-}
-
-.label {
-    white-space: nowrap;
-    font-size: 1rem;
-    text-align: left;
-    flex-grow: 1;
-}
-
-.arrow {
-    font-size: 1.2em;
-}
-
-#logo {
-    display: flex;
-    justify-content: center;
-    gap: 0.2em;
-}
-
-#logo span {
-    font-size: 150%;
-    font-weight: bold;
-}
-
 body {
     width: 320px;
+    height: 400px;
     font-family: Arial, sans-serif;
     color: #222;
     padding: 10px;
@@ -113,25 +12,194 @@ body {
     gap: 1em;
 }
 
-.main-view {
-    margin: 0;
+/* Sections */
+
+#power {
+    height: 70px;
+
+    display: flex;
+    justify-content: center;
+}
+
+.content {
+    height: 60%;
+
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #ffffff;
+    padding: 5%;
+
+    /* Content should have scrollbar as it often dynamically grows. */
+    overflow-y: scroll;
+}
+
+#navi {
+    height: 10%;
+
+    display: flex;
+    flex-direction: column;
+    gap: 0.2em;
+}
+
+#logo {
+    height: 7%;
+
+    display: flex;
+    justify-content: center;
+    gap: 0.2em;
+}
+
+/* Power details */
+
+#power .push-button {
+    font-size: 400%;
     padding: 0;
+}
+
+/* Content details */
+
+.content b {
+    color: #e14942;
+}
+
+.content hr {
+    border-top: 1px solid #333;
+    color: #333;
+    overflow: visible;
+    text-align: center;
+    width: 16em;
+}
+
+.content #shortcut-controls {
+    display: flex;
+    flex-direction: row;
+    gap: 1em;
+}
+
+.content .settingsview {
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #ffffff;
+    padding: 5%;
+
     display: flex;
     flex-direction: column;
     gap: 1em;
-    background: whitesmoke;
 }
 
-#open-settings {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
+
+/* Navi details */
+
+#navi .icon {
+    font-size: 1.2em;
+    display: inline-block;
+    width: 24px;
+    text-align: center;
+}
+
+#navi .label {
+    white-space: nowrap;
+    font-size: 1rem;
+    text-align: left;
+    flex-grow: 1;
+}
+
+#navi .arrow {
+    font-size: 1.2em;
+}
+
+/* Note: Not using the #navi parent selector in order to apply .hidden from JS. */
+.sub-view-transition {
+    all: unset;
+    cursor: pointer;
+    padding-right: 3%;
+
+    padding: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    padding: 0;
+    justify-content: space-between;
+    gap: 1em;
+    background-color: whitesmoke;
+    border: none;
+    font-size: 1rem;
+    transition: background 0.2s, transform 0.1s;
+    width: 100%;
 }
+
+#navi .sub-view-transition:hover {
+    font-weight: bold;
+}
+
+#navi .sub-view-transition .arrow {
+    color: #CCC;
+}
+
+#navi .sub-view-transition:hover .arrow {
+    color: #222;
+}
+
+/* Logo details */
+
+#logo span {
+    font-size: 150%;
+    font-weight: bold;
+}
+
+/* Push button */
+
+.push-button {
+    display: inline-block;
+    cursor: pointer;
+    background: #e3e3e3;
+    outline: 1px outset #555;
+    border-radius: 6px;
+    box-shadow:
+        #777 4px 4px,
+        #777 0px 0px inset;
+    transition:
+        transform 0.2s ease-in-out,
+        box-shadow 0.2s ease-in-out,
+        background 0.2s ease-in-out;
+
+    font-family: monospace;
+    text-align: center;
+    min-width: 100px;
+
+    color: #555;
+    padding-bottom: 5px;
+    margin: 0;
+    padding: 2%;
+    font-weight: bold;
+}
+
+.push-button:hover {
+    color: #029956;
+    outline: 2px solid #22B976;
+}
+
+/* When checked - looks like pressed in */
+input:checked+.push-button {
+    transform: translateY(4px);
+    outline: 1px inset #555;
+    box-shadow:
+        #777 0px 0px,
+        #777 1px 1px inset;
+
+    background: #fbfbfb;
+    color: #029956;
+    outline: 1px solid #22B976;
+}
+
+input:checked+.push-button:hover {
+    color: #555;
+    outline: 2px solid #444;
+}
+
+/* Toggle button */
 
 .toggle {
     appearance: none;
@@ -167,33 +235,7 @@ body {
     transform: translateX(20px);
 }
 
-#settings {
-    background: #f0f0f0;
-    border-radius: 5px;
-    padding-left: 5px;
-    padding-right: 5px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-ul {
-    list-style: none;
-    padding: 0;
-}
-
-li {
-    padding: 5px 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-#statistics-main-header+div li {
-    display: flex;
-}
-
-p {
-    margin: 5px 0;
-}
+/* Misc */
 
 .toggle-readonly {
     background: #999;
@@ -207,102 +249,35 @@ p {
     background: #ccc;
 }
 
-.bottom-navi {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2em;
-}
-
 .hidden {
     display: none;
-}
-
-
-.sub-view-transition {
-    all: unset;
-    cursor: pointer;
-    padding-right: 3%;
-
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1em;
-    background-color: whitesmoke;
-    border: none;
-    font-size: 1rem;
-    transition: background 0.2s, transform 0.1s;
-    width: 100%;
-}
-
-.sub-view-transition:hover {
-    font-weight: bold;
-}
-
-.sub-view-transition .arrow {
-    color: #CCC;
-}
-
-.sub-view-transition:hover .arrow {
-    color: #222;
-}
-
-.header {
-    align-items: center;
-}
-
-.content-top {
-    flex-grow: 1;
-}
-
-.content-bottom {
-    flex-grow: 1;
-}
-
-
-h2 {
-    text-align: center;
-}
-
-h3 {
-    font-size: small;
-}
-
-hr {
-    border: none;
-    border-top: 1px solid #333;
-    color: #333;
-    overflow: visible;
-    text-align: center;
-    height: 5px;
-}
-
-.content-top {
-    border: 1px solid #555;
-    border-radius: 6px;
-    background: #ffffff;
-    padding: 5%;
-}
-
-.content-top b {
-    color: #e14942;
-}
-
-.content-top label {
-    margin-right: 10%;
-}
-
-.content-top .button-toggle {
-    font-size: 100%;
-}
-
-.content-top .button-toggle-face {
-    padding: 10%;
-    font-weight: bold;
 }
 
 .error {
     color: #e14942;
 }
 
+h2 {
+    text-align: center;
+    margin: 0;
+}
 
+h3 {
+    font-size: small;
+}
+
+p {
+    margin: 5px 0;
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+}
+
+li {
+    padding: 5px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}

@@ -8,18 +8,15 @@
 </head>
 
 <body>
-    <div class="power">
-        <label class="button-toggle">
-            <input class="conversion-switch" id="extension-enabled" type="checkbox" checked />
-            <span class="button-toggle-face">&#x23FB;</span>
-        </label>
+    <!-- POWER -->
+    <div id="power">
+        <input class="conversion-switch hidden" id="extension-enabled" type="checkbox" checked />
+        <label class="push-button" for="extension-enabled">&#x23FB;</label>
     </div>
 
-    <div class="sub-view-header header hidden">
-    </div>
-
-    <!-- CONTENT TOPS -->
-    <div class="pagedashboardview content-top">
+    <!-- CONTENT -->
+    <!-- NOTE that id isn't used for the element(s) in order to apply .hidden from JS -->
+    <div class="content main-content">
         <h2 id="site-host">Sivusto ei tuettu</h2>
         <hr />
         <div>
@@ -30,16 +27,13 @@
             </section>
             <section>
                 <h3>Lopeta käyttö tällä sivulla:</h3>
-                <label class="button-toggle">
-                    <input class="conversion-switch" id="extension-disabled-temporarily" type="checkbox" />
+                <div id="shortcut-controls">
+                    <input class="conversion-switch hidden" id="extension-disabled-temporarily" type="checkbox" />
+                    <label class="push-button" for="extension-disabled-temporarily">Kerran</label>
 
-                    <span class="button-toggle-face">Kerran</span>
-                </label>
-                <label class="button-toggle">
-                    <input class="conversion-switch" id="shortcut-extension-enabled-current-site" type="checkbox" />
-
-                    <span class="button-toggle-face">Aina</span>
-                </label>
+                    <input class="conversion-switch hidden" id="shortcut-extension-enabled-current-site" type="checkbox" />
+                    <label class="push-button" for="shortcut-extension-enabled-current-site">Aina</label>
+                </div>
             </section>
         </div>
         <div id="dashboardview-error" class="hidden error">
@@ -48,8 +42,8 @@
         </div>
     </div>
 
-    <div class="feedbackview-controls hidden content-top">
-        <h2 class="feedbackview-controls-header">Arvostele tämä klikkiotsikko</h2>
+    <div class="content feedbackview hidden">
+        <h2 class="feedbackview-header">Arvostele tämä klikkiotsikko</h2>
         <hr />
         <p><strong>Alkuperäinen:</strong></p>
         <p>Osa ihmisistä käyttää Klikkikuria tavalla, joka saa muiden pinnan kiristymään – Lääke
@@ -67,7 +61,7 @@
         </div>
     </div>
 
-    <div class="settingsview hidden content-top">
+    <div class="content settingsview hidden">
         <h2 class="settingsview-header">Seulottavat sivustot</h2>
         <hr />
         <ul>
@@ -90,31 +84,30 @@
         </ul>
     </div>
 
-    <!-- CONTENT BOTTOMS -->
-    <div class="bottom-navi content-bottom">
-        <button id="open-feedbackview" class="sub-view-transition">
-            <img src="images/icon_comment.svg" height="24" alt="kommenttikupla ikoni">
+    <!-- NAVI[GATION] -->
+    <div id="navi">
+        <!-- NOTE that id isn't used for the element(s) in order to apply .hidden from JS -->
+        <button class="sub-view-transition open-home hidden">
+            <img class="icon" src="images/icon_home.svg" height="24" alt="koti ikoni">
+            <span class="label">Koti</span>
+            <span class="arrow">❯</span>
+        </button>
+        <button class="sub-view-transition open-feedbackview">
+            <img class="icon" src="images/icon_comment.svg" height="24" alt="kommenttikupla ikoni">
             <span class="label">Palaute ja arviointi</span>
             <span class="arrow">❯</span>
         </button>
-        <button id="open-settingsview" class="sub-view-transition">
-            <img src="images/icon_slider.svg" height="24" alt="liukusäädin ikoni">
+        <button class="sub-view-transition open-settingsview">
+            <img class="icon" src="images/icon_slider.svg" height="24" alt="liukusäädin ikoni">
             <span class="label">Lisää asetuksia</span>
             <span class="arrow">❯</span>
         </button>
     </div>
 
-    <div class="sub-view-bottom-navi content-bottom hidden">
-        <button class="sub-view-transition">
-            <span class="arrow">❮</span>
-            <span class="label">Takaisin</span>
-        </button>
-    </div>
-
-    <!-- LOGO SECTION -->
+    <!-- LOGO -->
     <div id="logo">
         <img src="images/klikkihAI_logo_1.png" height="32" alt="Klikkukuri logo">
-        <span>klikkihAI</span>
+        <span>kLiKkIhAi</span>
     </div>
 
     <script type="module" src="../utils.js"></script>
