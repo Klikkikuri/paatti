@@ -1,8 +1,8 @@
 "use strict";
 
-import { getLogger, browser, getCurrentTabHostname } from "../../utils.js";
-import { model, modelEvents } from "../../model.js";
-import { controller } from "../../controller.js";
+import { getLogger, browser, getCurrentTabHostname } from "../utils.js";
+import { model, modelEvents } from "../model.js";
+import { controller } from "../controller.js";
 
 const log = getLogger("view");
 
@@ -52,33 +52,29 @@ const _setSettingsviewCheckboxesReadonly = (isConversionEnabled) => {
     }
 };
 
-/**
- * Update the error with the given message or reset and hide error if it evaluates to false.
- */
-const _updateError = (msg) => {
-    const errorElem = document.querySelector("#dashboardview-error");
-    const errorElemMessageField = errorElem.querySelector("p");
-
-    if (msg) {
-        errorElem.classList.remove("hidden");
-        errorElemMessageField.textContent = msg;
-    } else {
-        errorElem.classList.add("hidden");
-        errorElemMessageField.textContent = "Tuntematon virhe.";
-    }
-};
-
 const _refreshStatistics = ({ site, data }) => {
-    _updateError();
-    document.getElementById("site-host").textContent = site;
+    const contentElem = document.getElementById("statsview")
+    const errorElem = document.getElementById("statserror");
 
+    // Hide all elements.
+    contentElem.classList.add("hidden");
+    errorElem.classList.add("hidden");
+
+    // Show appropriate elements.
     if (data) {
-        document.querySelector(".content div").classList.remove("hidden");
-        document.getElementById("statistics-main-header").textContent = data["titles"]["pageClickbaitsCount"] ?? 0;
-        document.getElementById("statistics-links").textContent = data["misc"]["linksCount"];
+        contentElem.classList.remove("hidden");
+
+        document.getElementById("site-host").textContent = site;
+        document.getElementById("statistics-main-header").textContent
+            = data["titles"]["pageClickbaitsCount"] ?? 0;
+        document.getElementById("statistics-links").textContent
+            = data["misc"]["linksCount"];
     } else {
-        document.querySelector(".content div").classList.add("hidden");
-        _updateError("Sivun tietoja ei saatu ladattua. Koeta päivittää ikkuna.");
+        errorElem.classList.remove("hidden");
+
+        document.getElementById("site-host").textContent = "Karilla!"
+        errorElem.querySelector("p").textContent
+            = "Sivun tietoja ei saatu ladattua. Koeta päivittää ikkuna.";
     }
 };
 
@@ -92,7 +88,7 @@ const _refreshSettingsView = (isConversionEnabled, sitesEnabled) => {
     }
 };
 
-const _refreshContentView = async ({ pageHostname, pageStatistics, isEnabled, isKerran }) => {
+const _refreshContentView = ({ pageHostname, pageStatistics, isEnabled, isKerran }) => {
     _refreshStatistics({ site: pageHostname, data: pageStatistics });
 
     document.getElementById("extension-disabled-temporarily").checked = isKerran;

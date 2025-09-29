@@ -19,7 +19,7 @@
     <div class="content main-content">
         <h2 id="site-host">Sivusto ei tuettu</h2>
         <hr />
-        <div>
+        <div id="statsview">
             <section>
                 <h3>Käsiteltyjä elementtejä:</h3>
                 <p><b id="statistics-main-header">0</b> muutettua otsikkoa tällä sivulla</p>
@@ -27,7 +27,7 @@
             </section>
             <section>
                 <h3>Lopeta käyttö tällä sivulla:</h3>
-                <div id="shortcut-controls">
+                <div class="shortcut-controls">
                     <input class="conversion-switch hidden" id="extension-disabled-temporarily" type="checkbox" />
                     <label class="push-button" for="extension-disabled-temporarily">Kerran</label>
 
@@ -36,8 +36,7 @@
                 </div>
             </section>
         </div>
-        <div id="dashboardview-error" class="hidden error">
-            <h3>Karilla!</h3>
+        <div id="statserror" class="hidden error">
             <p>Tuntematon virhe.</p>
         </div>
     </div>
@@ -112,7 +111,7 @@
 
     <script type="module" src="../utils.js"></script>
     <script type="module" src="../model.js"></script>
-    <script type="module" src="js/view.js"></script>
+    <script type="module" src="view.js"></script>
     <script type="module" src="../controller.js"></script>
 </body>
 

@@ -74,7 +74,8 @@ body {
     width: 16em;
 }
 
-.content #shortcut-controls {
+/* Note: Not using the .content parent selector in order to apply .hidden from JS. */
+.shortcut-controls {
     display: flex;
     flex-direction: row;
     gap: 1em;
@@ -183,15 +184,39 @@ body {
 
 /* When checked - looks like pressed in */
 input:checked+.push-button {
-    transform: translateY(4px);
-    outline: 1px inset #555;
     box-shadow:
         #777 0px 0px,
         #777 1px 1px inset;
 
     background: #fbfbfb;
-    color: #029956;
     outline: 1px solid #22B976;
+
+    animation-name: pulsate-glow;
+    animation-delay: 0s;
+    animation-duration: 3.0s;
+    animation-iteration-count: infinite;
+    animation-timing-function: linear;
+}
+
+@keyframes pulsate-glow {
+    0% {
+        color: #029956;
+        transform: rotate(0deg) translateY(4px);
+    }
+    20% {
+        transform: rotate(-2deg) translateY(2px);
+    }
+    40% {
+        color: #12C966;
+        transform: rotate(0deg) translateY(0px);
+    }
+    65% {
+        transform: rotate(2deg) translateY(2px);
+    }
+    100% {
+        color: #029956;
+        transform: rotate(0deg) translateY(4px);
+    }
 }
 
 input:checked+.push-button:hover {
