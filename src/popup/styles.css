@@ -178,8 +178,9 @@ body {
 }
 
 .push-button:hover {
-    color: #029956;
-    outline: 2px solid #22B976;
+    color: #3399df;
+    background: ;
+    outline: 2px solid #53b9ff;
 }
 
 /* When checked - looks like pressed in */
@@ -189,7 +190,7 @@ input:checked+.push-button {
         #777 1px 1px inset;
 
     background: #fbfbfb;
-    outline: 1px solid #22B976;
+    outline: 1px solid #53b9ff;
 
     animation-name: pulsate-glow;
     animation-delay: 0s;
@@ -200,21 +201,21 @@ input:checked+.push-button {
 
 @keyframes pulsate-glow {
     0% {
-        color: #029956;
+        color: #3399df;
         transform: rotate(0deg) translateY(4px);
     }
     20% {
         transform: rotate(-2deg) translateY(2px);
     }
     40% {
-        color: #12C966;
+        color: #53b9ff;
         transform: rotate(0deg) translateY(0px);
     }
     65% {
         transform: rotate(2deg) translateY(2px);
     }
     100% {
-        color: #029956;
+        color: #3399df;
         transform: rotate(0deg) translateY(4px);
     }
 }
@@ -240,7 +241,7 @@ input:checked+.push-button:hover {
 }
 
 .toggle:checked {
-    background: #3399ff;
+    background: #53b9ff;
 }
 
 .toggle::before {

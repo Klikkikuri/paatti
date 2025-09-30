@@ -118,7 +118,7 @@ const handleClickConversionSwitch = async (e) => {
 };
 
 const handleClickKerran = async (e) => {
-    await controller.setCurrentTabKerran(e.target.checked)
+    await controller.setCurrentTabKerran(e.target.checked);
 };
 
 const handleClickAina = async (e) => {
@@ -133,8 +133,8 @@ const showView = (viewName) => {
     log(`Showing view '${viewName}'`);
 
     // Hide all views.
-    for (const name of Object.keys(_viewSelectors)) {
-        for (const elemSelector of _viewSelectors[name]) {
+    for (const elemSelectors of Object.values(_viewSelectors)) {
+        for (const elemSelector of elemSelectors) {
             document.querySelector(elemSelector).classList.add("hidden");
         }
     }
