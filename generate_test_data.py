@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import datetime
 import os
 import json
@@ -5,19 +7,19 @@ import sys
 
 if __name__ == "__main__":
     clickbaitscale = [
-        "Not Clickbait at all"
-        "Slightly Clickbaity"
-        "Moderately Clickbaity"
-        "Very Clickbaity"
-        "Extremely Clickbaity"
+        "Not Clickbait at all",
+        "Slightly Clickbaity",
+        "Moderately Clickbaity",
+        "Very Clickbaity",
+        "Extremely Clickbaity",
     ]
 
     test_titles = [
-        "Sanna Marin",
+        "Tämä on aikas pitkä otsikko: Sellaisiakin saattaa ajoittain tulla ja toivottavasti tila riittää",
         "Tämä on ytimekäs otsikko",
         "Tämä on asiallisempi otsikko",
-        "Tämä on asianosaisia kohtaan kaikinpuolin reilumpi otsikko",
-        "Tämä on aikas pitkä otsikko: Sellaisiakin saattaa ajoittain tulla ja toivottavasti tila riittää",
+        "Tämä on jutun viiteryhmät huomioiden tarkempi otsikko",
+        "Sanna Marin #*$@*!!",
     ]
 
     # Read the dump of signatures for URLs found on the page you want to use
