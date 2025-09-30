@@ -51,8 +51,6 @@
         "suola/build/wasm_exec.js",
         // This script should contain an initialization function for the WebAssembly module.
         "suola/build/suola.js",
-        // Associated test data.
-        "test_data/urls.js",
         // Main module.
         "src/contentScript.js"
       ]

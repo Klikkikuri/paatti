@@ -237,6 +237,9 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
             case "convertClickbaits":
                 await convertClickbaits(Array.from(document.querySelectorAll("a")));
                 break;
+            case "devmodeSuolaaSivu":
+                return Array.from(document.querySelectorAll("a"))
+                    .map((x) => hashUrl(x.href));
             default:
                 log(`Unknown command '${message.command}'`);
                 break;

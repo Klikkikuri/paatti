@@ -4,9 +4,16 @@ import  { model } from "./model.js";
 import { browser } from "./utils.js";
 
 export const getApiDataUrl = async () => {
-    return (await model.read.isDevelopmentEnv())
-        ? browser().runtime.getURL("test_data/data.json")
-        : "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json";
+    if (await model.read.isDevelopmentEnv()) {
+        let testUrl = browser().runtime.getURL("test_data/data.json");
+        if (!testUrl) {
+            throw "DEVELOPMENT MODE: The `test_data/data.json` file evaluated to false. Have you initialized the test data with `python3 ./test_data/generate_data.py`?"
+        }
+
+        return testUrl;
+    } else {
+        return "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json";
+    }
 };
 
 export const storeElemHightlight = (htmlElem) => {
@@ -58,17 +65,6 @@ export const highlightElemOriginal = async (htmlElem) => {
 };
 
 export const extractArticleUrl = async (link) => {
-    if (await model.read.isDevelopmentEnv()) {
-        if (!testUrls) {
-            throw "DEVELOPMENT MODE: The `testUrls` variable evaluated to false. Have you initialized the test data with `python3 ./test_data/generate_data.py`?"
-        }
-
-        const i = Array.from(link.href)
-            .reduce((sum, charStr) => sum + charStr.charCodeAt(0), 0)
-            % 6;
-        return testUrls[i];
-    } else {
-        return link.href;
-    }
+    return link.href;
 };
 

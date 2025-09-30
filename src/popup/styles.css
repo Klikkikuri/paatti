@@ -55,7 +55,7 @@ body {
 
 /* Power details */
 
-#power .push-button {
+#power > .push-button {
     font-size: 400%;
     padding: 0;
 }

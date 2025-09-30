@@ -93,6 +93,19 @@ const controller = {
 
         model.write.setStatistics(siteStats, { hostname });
     },
+
+    devmode: {
+        suolaaSivu: async () => {
+            log("Suolataan sivua...");
+            // Get the active tab.
+            const tabs = browser().tabs;
+            const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
+            const result = await tabs.sendMessage(activeTabId, { command: "devmodeSuolaaSivu" });
+
+            log("Sivu suolattu.");
+            return result;
+       },
+    },
 };
 
 model.events.addEventListener(modelEvents.enabledChange, controller.dispatchConversion);

@@ -184,7 +184,21 @@ const handleDomContentLoaded = async (e) => {
     // normal state gets a vertical scrollbar. Maybe take max of current and run
     // this again on refreshes?
     document.querySelector("body").style.height = `${document.querySelector("body").clientHeight + 38}px`;
+
+    // Show hidden devmode elements TODO if necessary.
+    document.querySelector(".devmode").classList.remove("hidden");
 }
+
+const __devmodeSuolaaSivu = async () => {
+    const pageSignatures = await controller.devmode.suolaaSivu();
+    log(pageSignatures);
+    const pageSignaturesDump = pageSignatures
+        .filter((x) => x !== null)
+        .map((x) => x.toString())
+        .join("\n");
+    await window.navigator.clipboard.write([new ClipboardItem({"text/plain": pageSignaturesDump})]);
+    alert("Sivun suolaus kopioitu leikepöydälle!");
+};
 
 
 /**
@@ -226,6 +240,11 @@ document.getElementById("extension-enabled")
 for (const pageEnabledSwitch of document.querySelectorAll(".settingsview .conversion-switch")) {
     pageEnabledSwitch.addEventListener("click", view.handleClickConversionSwitch);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Handlers for devmode utils.
+document.getElementById("devmode-suolaa-sivu")
+    .addEventListener("click", __devmodeSuolaaSivu);
 
 ///////////////////////////////////////////////////////////////////////////////
 // "We have events at home."

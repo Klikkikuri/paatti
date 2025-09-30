@@ -1,6 +1,0 @@
-https://www.iltalehti.fi/ulkomaat/a/f67c84b0-50e6-48db-adc7-06d35f7aa0d5
-https://www.iltalehti.fi/perheartikkelit/a/df20c645-9978-4a7b-bed3-0b5bd1f69e67
-https://www.iltalehti.fi/kotimaa/a/7f67efb6-3170-4773-bf97-906ad1e1f830
-https://www.iltalehti.fi/kotimaa/a/7f67efb6-3170-4773-bf97-906ad1e1f830?foo=bar
-https://www.iltalehti.fi/ulkomaat/a/0f1ff485-a25f-4ce5-9613-d5aec6c06cbb
-https://www.iltalehti.fi/politiikka/a/0f1ff485-a25f-4ce5-9613-d5aec6c06cbb?baz=1
