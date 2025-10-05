@@ -9,4 +9,4 @@ git submodule update
 docker build --target builder -t buildsuola suola/
 docker run --mount type=bind,src=$(pwd)/suola/build/,dst=/app/build buildsuola
 
-./test_data.sh
+./generate_test_data.py
