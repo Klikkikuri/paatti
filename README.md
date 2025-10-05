@@ -5,6 +5,7 @@ Browser extension to sail the web.
 
 ## Installing (development)
 ### Requirements
+- Python 3
 - Docker (tested on version 28.1.1)
 - Access to Klikkikuri GitHub repositories:
     - `suola`
@@ -32,7 +33,7 @@ classDiagram
     class GlobalData{
         bool enabled
     }
-    class PageDashboardData{
+    class MainContentData{
         bool enabled
         bool kerran
     }
@@ -42,7 +43,7 @@ classDiagram
     }
     class SettingsView{
     }
-    class PageDashboardView{
+    class MainContentView{
         +toggleAina()
     }
     class FeedbackView{
@@ -51,25 +52,25 @@ classDiagram
     }
 
     LocalStore *-- GlobalData
-    LocalStore *-- PageDashboardData
+    LocalStore *-- MainContentData
 
-    PageDashboardData *-- Statistics
+    MainContentData *-- Statistics
 
     ContentScripts <-- GlobalData
-    ContentScripts <-- PageDashboardData
+    ContentScripts <-- MainContentData
     ContentScripts --> Statistics
     ContentScripts --() Meri : Fetch conversions
 
-    Popup *-- PageDashboardView
+    Popup *-- MainContentView
     Popup *-- SettingsView
     Popup *-- FeedbackView
     Popup <--> GlobalData
 
-    PageDashboardView <-- Statistics
-    PageDashboardView <--> PageDashboardData
+    MainContentView <-- Statistics
+    MainContentView <--> MainContentData
 
-    SettingsView <--> PageDashboardData
+    SettingsView <--> MainContentData
 
-    FeedbackView <-- PageDashboardData
+    FeedbackView <-- MainContentData
     FeedbackView --() FeedbackServer : Submit feedback
 ```
