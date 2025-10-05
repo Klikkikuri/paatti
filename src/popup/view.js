@@ -189,7 +189,7 @@ const handleDomContentLoaded = async (e) => {
     document.querySelector(".devmode").classList.remove("hidden");
 }
 
-const __devmodeSuolaaSivu = async () => {
+const __devmodeSuolaaSivu = async (e) => {
     const pageSignatures = await controller.devmode.suolaaSivu();
     log(pageSignatures);
     const pageSignaturesDump = pageSignatures
@@ -197,7 +197,19 @@ const __devmodeSuolaaSivu = async () => {
         .map((x) => x.toString())
         .join("\n");
     await window.navigator.clipboard.write([new ClipboardItem({"text/plain": pageSignaturesDump})]);
-    alert("Sivun suolaus kopioitu leikepöydälle!");
+
+    e.target.disabled = true;
+    const eventTargetLabel = document.querySelector(`label[for=${e.target.id}]`);
+    const textContentTemp = eventTargetLabel.textContent;
+    eventTargetLabel.textContent = "Sivun suolaus kopioitu leikepöydälle!";
+    setTimeout(() => {
+        eventTargetLabel.textContent = textContentTemp;
+        e.target.disabled = false;
+    }, 3000);
+};
+
+const __devmodeVaihdaEpäötököintigrafiikat = async (e) => {
+    await controller.devmode.vaihdaEpäötököintigrafiikat(e.target.checked);
 };
 
 
@@ -245,6 +257,8 @@ for (const pageEnabledSwitch of document.querySelectorAll(".settingsview .conver
 // Handlers for devmode utils.
 document.getElementById("devmode-suolaa-sivu")
     .addEventListener("click", __devmodeSuolaaSivu);
+document.getElementById("devmode-vaihda-epäötököintigrafiikat")
+    .addEventListener("click", __devmodeVaihdaEpäötököintigrafiikat);
 
 ///////////////////////////////////////////////////////////////////////////////
 // "We have events at home."

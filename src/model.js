@@ -106,9 +106,16 @@ const model = (() => {
                         /* CONFIG: Un/comment these values to set dev mode on or off. */
                         //"environment": "production",
                         "environment": "development",
+                        "debugVisualsEnabled": false,
                     },
                     "statistics": {},
                 });
+            },
+
+            setDebugVisualsEnabled: async (value) => {
+                const config = await browser().storage.local.get();
+                config["environmentConfigs"]["debugVisualsEnabled"] = value;
+                await browser().storage.local.set(config);
             },
 
             setEnabled: async (value, hostname) => {
@@ -169,6 +176,11 @@ const model = (() => {
 
             isKerran: async (hostname) => {
                 return (await _getSiteConfigs())[hostname]?.["kerran"];
+            },
+
+            getDebugVisualsEnabled: async () => {
+                const environmentConfigs = (await browser().storage.local.get())["environmentConfigs"];
+                return environmentConfigs.debugVisualsEnabled;
             },
 
             getSitesEnabled: async () => {
