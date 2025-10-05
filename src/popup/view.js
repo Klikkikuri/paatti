@@ -66,9 +66,10 @@ const _refreshStatistics = ({ site, data }) => {
 
         document.getElementById("site-host").textContent = site;
         document.getElementById("statistics-main-header").textContent
-            = data["titles"]["pageClickbaitsCount"] ?? 0;
-        document.getElementById("statistics-links").textContent
-            = data["misc"]["linksCount"];
+            = data["titles"]["convertedTitlesCount"];
+        // TODO: This seems like it's not that interesting for the user...
+        //document.getElementById("statistics-links").textContent
+        //    = data["misc"]["linksCount"];
     } else {
         errorElem.classList.remove("hidden");
 
@@ -265,6 +266,3 @@ document.getElementById("devmode-vaihda-epäötököintigrafiikat")
 ///////////////////////////////////////////////////////////////////////////////
 
 model.events.addEventListener(modelEvents.enabledChange, view.refresh);
-model.events.addEventListener(modelEvents.statisticsChange, view.refresh);
-
-

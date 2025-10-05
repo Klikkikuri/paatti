@@ -77,11 +77,7 @@ const controller = {
     updateStatistics: async ({ hostname, restoreTitleData, links }) => {
         const siteStats = {
             "titles": {
-                "pageClickbaitsCount": restoreTitleData
-                    ? Object.values(restoreTitleData)
-                        .filter((x) => x.title !== undefined)
-                        .length
-                    : undefined,
+                "convertedTitlesCount": restoreTitleData.convertedTitlesCount,
                 "labelNot": 0,
                 "labelSlightly": 0,
                 "labelVery": 0,
