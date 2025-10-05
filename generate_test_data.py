@@ -15,7 +15,7 @@ if __name__ == "__main__":
     ]
 
     test_titles = [
-        "Tämä on aikas pitkä otsikko: Sellaisiakin saattaa ajoittain tulla ja toivottavasti tila riittää",
+        "Tämä on aikas pitkä otsikko: Sellaisen luominen ei ole ihanteellista, mutta ajoittain voi olla vaikeuksia tiivistää juttua sopivasti ja pitää vain toivoa, ettei tule romaanin mittaista selitystä",
         "Tämä on ytimekäs otsikko",
         "Tämä on asiallisempi otsikko",
         "Tämä on jutun viiteryhmät huomioiden tarkempi otsikko",
