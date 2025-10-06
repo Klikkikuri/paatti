@@ -2,7 +2,7 @@
 <html lang="fi">
 
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
     <title>Klikkikuri ⛵</title>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -11,7 +11,7 @@
     <!-- POWER -->
     <div id="power">
         <div>
-            <input class="conversion-switch hidden" id="extension-enabled" type="checkbox" checked />
+            <input class="conversion-switch hidden" id="extension-enabled" type="checkbox" checked>
             <label class="push-button" for="extension-enabled">&#x23FB;</label>
 
         </div>
@@ -21,7 +21,7 @@
     <!-- NOTE that id isn't used for the element(s) in order to apply .hidden from JS -->
     <div class="content main-content">
         <h2 id="site-host">Sivusto ei tuettu</h2>
-        <hr />
+        <hr>
         <div id="statsview">
             <section>
                 <h3>Käsiteltyjä elementtejä:</h3>
@@ -31,10 +31,10 @@
             <section>
                 <h3>Lopeta käyttö tällä sivulla:</h3>
                 <div class="shortcut-controls">
-                    <input class="conversion-switch hidden" id="extension-disabled-temporarily" type="checkbox" />
+                    <input class="conversion-switch hidden" id="extension-disabled-temporarily" type="checkbox">
                     <label class="push-button" for="extension-disabled-temporarily">Kerran</label>
 
-                    <input class="conversion-switch hidden" id="shortcut-extension-enabled-current-site" type="checkbox" />
+                    <input class="conversion-switch hidden" id="shortcut-extension-enabled-current-site" type="checkbox">
                     <label class="push-button" for="shortcut-extension-enabled-current-site">Aina</label>
                 </div>
             </section>
@@ -46,7 +46,7 @@
 
     <div class="content feedbackview hidden">
         <h2 class="feedbackview-header">Arvostele tämä klikkiotsikko</h2>
-        <hr />
+        <hr>
         <p><strong>Alkuperäinen:</strong></p>
         <p>Osa ihmisistä käyttää Klikkikuria tavalla, joka saa muiden pinnan kiristymään – Lääke
             tulossa
@@ -55,9 +55,9 @@
         <p>Työnsä vaikeutumisesta suuttuneet toimittajat haastavat Klikkikurin oikeuteen</p>
         <div>
             <div>
-                <input id="good" type="radio" name="rating" />
+                <input id="good" type="radio" name="rating">
                 <label for="good">Nappaa</label>
-                <input id="bad" type="radio" name="rating" />
+                <input id="bad" type="radio" name="rating">
                 <label for="bad">Ei nappaa</label>
             </div>
         </div>
@@ -65,22 +65,22 @@
 
     <div class="content settingsview hidden">
         <h2 class="settingsview-header">🦈llintapaneeli</h2>
-        <hr />
+        <hr>
         <ul>
             <li>
-                <input class="toggle conversion-switch" id="il-enabled" type="checkbox" />
+                <input class="toggle conversion-switch" id="il-enabled" type="checkbox">
                 <label for="il-enabled">Iltalehti</label>
             </li>
             <li>
-                <input class="toggle conversion-switch" id="hs-enabled" type="checkbox" />
+                <input class="toggle conversion-switch" id="hs-enabled" type="checkbox">
                 <label for="hs-enabled">Helsingin sanomat</label>
             </li>
             <li>
-                <input class="toggle conversion-switch" id="yle-enabled" type="checkbox" />
+                <input class="toggle conversion-switch" id="yle-enabled" type="checkbox">
                 <label for="yle-enabled">YLE</label>
             </li>
             <li>
-                <input class="toggle conversion-switch" id="al-enabled" type="checkbox" />
+                <input class="toggle conversion-switch" id="al-enabled" type="checkbox">
                 <label for="al-enabled">Aamulehti</label>
             </li>
         </ul>
@@ -90,10 +90,10 @@
         <div class="devmode hidden">
             <p id="devmode-status"></p>
 
-            <input class="hidden" id="devmode-suolaa-sivu" type="button" />
+            <input class="hidden" id="devmode-suolaa-sivu" type="button" value="no-op">
             <label class="push-button" for="devmode-suolaa-sivu">SuOlAa SiVu</label>
 
-            <input class="hidden" id="devmode-vaihda-epäötököintigrafiikat" type="checkbox" />
+            <input class="hidden" id="devmode-vaihda-epäötököintigrafiikat" type="checkbox">
             <label class="push-button" for="devmode-vaihda-epäötököintigrafiikat">EpÄöTöKöInTiGrAfiIkAt</label>
         </div>
     </div>
@@ -120,7 +120,7 @@
 
     <!-- LOGO -->
     <div id="logo">
-        <input class="hidden" id="show-devmode-controls" type="checkbox" />
+        <input class="hidden" id="show-devmode-controls" type="checkbox">
         <label for="show-devmode-controls">
             <img src="images/klikkihAI_logo_1.png" height="32" alt="Klikkukuri logo">
             <span class="devmode hidden" title="Asetuksia nörteille">🤓</span>
