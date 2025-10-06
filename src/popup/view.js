@@ -266,3 +266,6 @@ document.getElementById("devmode-vaihda-epäötököintigrafiikat")
 ///////////////////////////////////////////////////////////////////////////////
 
 model.events.addEventListener(modelEvents.enabledChange, view.refresh);
+// TODO: Maybe refactor this to abstract local storage away (or don't, wtfgas).
+browser().storage.local.onChanged.addListener(view.refresh);
+
