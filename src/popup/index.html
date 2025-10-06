@@ -15,16 +15,6 @@
             <label class="push-button" for="extension-enabled">&#x23FB;</label>
 
         </div>
-        <div class="devmode hidden">
-            <p id="devmode-status"></p>
-
-            <input class="hidden" id="devmode-suolaa-sivu" type="button" />
-            <label class="push-button" for="devmode-suolaa-sivu">SuOlAa SiVu</label>
-
-            <input class="hidden" id="devmode-vaihda-epäötököintigrafiikat" type="checkbox" checked />
-            <label class="push-button" for="devmode-vaihda-epäötököintigrafiikat">EpÄöTöKöInTiGrAfiIkAt</label>
-        </div>
- 
     </div>
 
     <!-- CONTENT -->
@@ -74,7 +64,7 @@
     </div>
 
     <div class="content settingsview hidden">
-        <h2 class="settingsview-header">Seulottavat sivustot</h2>
+        <h2 class="settingsview-header">🦈llintapaneeli</h2>
         <hr />
         <ul>
             <li>
@@ -94,6 +84,18 @@
                 <label for="al-enabled">Aamulehti</label>
             </li>
         </ul>
+
+        <div>
+        </div>
+        <div class="devmode hidden">
+            <p id="devmode-status"></p>
+
+            <input class="hidden" id="devmode-suolaa-sivu" type="button" />
+            <label class="push-button" for="devmode-suolaa-sivu">SuOlAa SiVu</label>
+
+            <input class="hidden" id="devmode-vaihda-epäötököintigrafiikat" type="checkbox" />
+            <label class="push-button" for="devmode-vaihda-epäötököintigrafiikat">EpÄöTöKöInTiGrAfiIkAt</label>
+        </div>
     </div>
 
     <!-- NAVI[GATION] -->
@@ -118,7 +120,11 @@
 
     <!-- LOGO -->
     <div id="logo">
-        <img src="images/klikkihAI_logo_1.png" height="32" alt="Klikkukuri logo">
+        <input class="hidden" id="show-devmode-controls" type="checkbox" />
+        <label for="show-devmode-controls">
+            <img src="images/klikkihAI_logo_1.png" height="32" alt="Klikkukuri logo">
+            <span class="devmode hidden" title="Asetuksia nörteille">🤓</span>
+        </label>
         <span>kLiKkIhAi</span>
     </div>
 

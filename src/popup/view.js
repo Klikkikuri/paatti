@@ -79,7 +79,7 @@ const _refreshStatistics = ({ site, data }) => {
     }
 };
 
-const _refreshSettingsView = (isConversionEnabled, sitesEnabled) => {
+const _refreshSettingsView = ({isConversionEnabled, sitesEnabled, isDebugVisualsEnabled}) => {
     // Visualize per site switches as "readonly" as per main switch state.
     _setSettingsviewCheckboxesReadonly(isConversionEnabled);
 
@@ -87,6 +87,9 @@ const _refreshSettingsView = (isConversionEnabled, sitesEnabled) => {
     for (const [hostname, isEnabled] of Object.entries(sitesEnabled)) {
         document.getElementById(CONFIG_KEYS_TO_SWITCHES[hostname]).checked = isEnabled;
     }
+
+    document.getElementById("devmode-vaihda-epäötököintigrafiikat")
+        .checked = isDebugVisualsEnabled;
 };
 
 const _refreshContentView = ({ pageHostname, pageStatistics, isEnabled, isKerran }) => {
@@ -154,11 +157,16 @@ const refresh = async () => {
     const pageStatistics = await model.read.getStatistics(pageHostname);
     const sitesEnabled = await model.read.getSitesEnabled();
     const isKerran = await model.read.isKerran(pageHostname);
+    const isDebugVisualsEnabled = await model.read.getDebugVisualsEnabled();
 
     // Update the power button.
     document.getElementById("extension-enabled").checked = isConversionEnabled;
 
-    _refreshSettingsView(isConversionEnabled, sitesEnabled);
+    _refreshSettingsView({
+        isConversionEnabled,
+        sitesEnabled,
+        isDebugVisualsEnabled,
+    });
     _refreshContentView({
         pageHostname,
         pageStatistics,
@@ -185,10 +193,17 @@ const handleDomContentLoaded = async (e) => {
     // normal state gets a vertical scrollbar. Maybe take max of current and run
     // this again on refreshes?
     document.querySelector("body").style.height = `${document.querySelector("body").clientHeight + 38}px`;
+};
 
-    // Show hidden devmode elements TODO if necessary.
-    document.querySelector(".devmode").classList.remove("hidden");
-}
+const __devmodeShowControls = async (e) => {
+    if (e.target.checked) {
+        document.querySelectorAll(".devmode").forEach((x) => x.classList.remove("hidden"));
+        document.querySelector("#logo img").classList.add("hidden");
+    } else {
+        document.querySelectorAll(".devmode").forEach((x) => x.classList.add("hidden"));
+        document.querySelector("#logo img").classList.remove("hidden");
+    }
+};
 
 const __devmodeSuolaaSivu = async (e) => {
     const pageSignatures = await controller.devmode.suolaaSivu();
@@ -256,6 +271,8 @@ for (const pageEnabledSwitch of document.querySelectorAll(".settingsview .conver
 
 ///////////////////////////////////////////////////////////////////////////////
 // Handlers for devmode utils.
+document.getElementById("show-devmode-controls")
+    .addEventListener("click", __devmodeShowControls);
 document.getElementById("devmode-suolaa-sivu")
     .addEventListener("click", __devmodeSuolaaSivu);
 document.getElementById("devmode-vaihda-epäötököintigrafiikat")
