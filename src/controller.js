@@ -38,6 +38,7 @@ const controller = {
             log("Initializing in development mode");
             await model.write.setEnabled(true, "www.iltalehti.fi");
             await model.write.setEnabled(true, "www.hs.fi");
+            await model.write.setDebugVisualsEnabled(true);
         }
     },
 
@@ -76,11 +77,7 @@ const controller = {
     updateStatistics: async ({ hostname, restoreTitleData, links }) => {
         const siteStats = {
             "titles": {
-                "pageClickbaitsCount": restoreTitleData
-                    ? Object.values(restoreTitleData)
-                        .filter((x) => x.title !== undefined)
-                        .length
-                    : undefined,
+                "convertedTitlesCount": restoreTitleData.convertedTitlesCount,
                 "labelNot": 0,
                 "labelSlightly": 0,
                 "labelVery": 0,
@@ -92,6 +89,31 @@ const controller = {
         };
 
         model.write.setStatistics(siteStats, { hostname });
+    },
+
+    devmode: {
+        suolaaSivu: async () => {
+            log("Suolataan sivua...");
+            // Get the active tab.
+            const tabs = browser().tabs;
+            const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
+            const result = await tabs.sendMessage(activeTabId, { command: "devmodeSuolaaSivu" });
+
+            log("Sivu suolattu.");
+            return result;
+        },
+
+        vaihdaEpäötököintigrafiikat: async (doEnable) => {
+            log("Vaihdetaan epäötököintigrafiikkoja...");
+            await model.write.setDebugVisualsEnabled(doEnable);
+
+            // We want to reload in order to immediately change the visuals on page.
+            const tabs = browser().tabs;
+            const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
+            await tabs.sendMessage(activeTabId, { command: "convertClickbaits" });
+
+            log("Epäötököintigrafiikat vaihdettu.");
+        },
     },
 };
 

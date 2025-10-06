@@ -128,30 +128,40 @@ const harvestTitleElements = async (links, titleData, linkTitleQuerySelectors) =
     return xs;
 };
 
-const replaceClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
+const processClickbaits = async (links, titleData, linkTitleQuerySelectors, f) => {
     const SUPPORTED_SCHEMA_VERSION = "0.1.0";
     if (titleData.schema_version != SUPPORTED_SCHEMA_VERSION) {
         // TODO: What now? Link user to update page?
         throw `The title data format is not compatible: version is ${titleData.schema_version} when expected ${SUPPORTED_SCHEMA_VERSION}. Update Paatti in order to fix.`;
     }
 
-    for (const { titleElem, originalTitle, convertedTitle } of await harvestTitleElements(links, titleData, linkTitleQuerySelectors)) {
-        titleElem.textContent = convertedTitle;
-        await highlightElemConverted(titleElem);
+    const thisPageTitleData = await harvestTitleElements(links, titleData, linkTitleQuerySelectors);
+    for (const { titleElem, originalTitle, convertedTitle } of thisPageTitleData) {
+        await f(titleElem, { originalTitle, convertedTitle });
     }
 
-    return titleData;
+    return thisPageTitleData;
+};
+
+const replaceClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
+    let count = 0;
+    await processClickbaits(links, titleData, linkTitleQuerySelectors,
+        async (titleElem, { convertedTitle }) => {
+            titleElem.textContent = convertedTitle;
+            await highlightElemConverted(titleElem);
+            count += 1;
+        }
+    );
+    return count;
 };
 
 const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
-    log("Restoring using data:", titleData);
-    for (const { titleElem, originalTitle, convertedTitle } of await harvestTitleElements(links, titleData, linkTitleQuerySelectors)) {
-
-        titleElem.textContent = originalTitle;
-        await highlightElemOriginal(titleElem);
-    }
-
-    return titleData;
+    await processClickbaits(links, titleData, linkTitleQuerySelectors,
+        async (titleElem, { originalTitle }) => {
+            titleElem.textContent = originalTitle;
+            await highlightElemOriginal(titleElem);
+        }
+    );
 };
 
 
@@ -189,8 +199,6 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
         return;
     }
 
-    let tabRestoreTitleData = null;
-
     const newsSite = window.location.hostname;
 
     const convertClickbaits = async (links) => {
@@ -198,31 +206,30 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 
         // Always either toggle the converted headlines on or off based
         // on enabled-status.
+
+        const apiUrl = await getApiDataUrl();
+        let apiResponse;
+        try {
+            apiResponse = await fetch(apiUrl);
+        } catch (e) {
+            log(`Failed to fetch data from the API: ${e}`);
+            return;
+        }
+        const titleData = await apiResponse.json();
+
+        let convertedTitlesCount;
         if (await model.read.isEnabled(newsSite)) {
             log(`Starting conversion on '${newsSite}'`);
-
-            const apiUrl = await getApiDataUrl();
-            let apiResponse;
-            try {
-                apiResponse = await fetch(apiUrl);
-            } catch (e) {
-                log(`Failed to fetch data from the API: ${e}`);
-                return;
-            }
-            const titleData = await apiResponse.json();
-
-            tabRestoreTitleData = await replaceClickbaits(links, titleData, linkTitleQuerySelectors);
-        } else if (tabRestoreTitleData != null) {
-            log(`Restoring original state of ${newsSite} `);
-            // If the conversion has not run yet, there's nothing to restore.
-            tabRestoreTitleData = await restoreClickbaits(links, tabRestoreTitleData, linkTitleQuerySelectors);
+            convertedTitlesCount = await replaceClickbaits(links, titleData, linkTitleQuerySelectors);
         } else {
-            log("Nothing converted.");
-        }
+            log(`Restoring original state of ${newsSite} `);
+            await restoreClickbaits(links, titleData, linkTitleQuerySelectors);
+            convertedTitlesCount = 0;
+        } 
 
         await controller.updateStatistics({
             hostname: newsSite,
-            restoreTitleData: tabRestoreTitleData,
+            restoreTitleData: { "convertedTitlesCount": convertedTitlesCount },
             links: links,
         });
 
@@ -237,6 +244,9 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
             case "convertClickbaits":
                 await convertClickbaits(Array.from(document.querySelectorAll("a")));
                 break;
+            case "devmodeSuolaaSivu":
+                return Array.from(document.querySelectorAll("a"))
+                    .map((x) => hashUrl(x.href));
             default:
                 log(`Unknown command '${message.command}'`);
                 break;

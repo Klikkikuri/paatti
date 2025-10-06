@@ -1,8 +1,8 @@
 "use strict";
 
-import { getLogger, browser, getCurrentTabHostname } from "../../utils.js";
-import { model, modelEvents } from "../../model.js";
-import { controller } from "../../controller.js";
+import { getLogger, browser, getCurrentTabHostname } from "../utils.js";
+import { model, modelEvents } from "../model.js";
+import { controller } from "../controller.js";
 
 const log = getLogger("view");
 
@@ -28,11 +28,11 @@ const CONFIG_KEYS_TO_SWITCHES = Object.fromEntries(
  */
 const _viewSelectors = {
     "main":
-        [".pagedashboardview", ".bottom-navi"],
+        [".main-content", ".open-feedbackview", ".open-settingsview"],
     "feedback":
-        [".feedbackview-controls-header", ".feedbackview-controls", ".sub-view-bottom-navi"],
+        [".feedbackview", ".open-home", ".open-settingsview"],
     "settings":
-        [".settingsview-header", ".settingsview", ".sub-view-bottom-navi"],
+        [".settingsview", ".open-feedbackview", ".open-home"],
 };
 
 const _setCheckBoxReadonly = (checkbox, makeReadonly) => {
@@ -52,37 +52,34 @@ const _setSettingsviewCheckboxesReadonly = (isConversionEnabled) => {
     }
 };
 
-/**
- * Update the error with the given message or reset and hide error if it evaluates to false.
- */
-const _updateError = (msg) => {
-    const errorElem = document.querySelector("#dashboardview-error");
-    const errorElemMessageField = errorElem.querySelector("p");
-
-    if (msg) {
-        errorElem.classList.remove("hidden");
-        errorElemMessageField.textContent = msg;
-    } else {
-        errorElem.classList.add("hidden");
-        errorElemMessageField.textContent = "Tuntematon virhe.";
-    }
-};
-
 const _refreshStatistics = ({ site, data }) => {
-    _updateError();
-    document.getElementById("site-host").textContent = site;
+    const contentElem = document.getElementById("statsview")
+    const errorElem = document.getElementById("statserror");
 
+    // Hide all elements.
+    contentElem.classList.add("hidden");
+    errorElem.classList.add("hidden");
+
+    // Show appropriate elements.
     if (data) {
-        document.querySelector(".pagedashboardview div").classList.remove("hidden");
-        document.getElementById("statistics-main-header").textContent = data["titles"]["pageClickbaitsCount"] ?? 0;
-        document.getElementById("statistics-links").textContent = data["misc"]["linksCount"];
+        contentElem.classList.remove("hidden");
+
+        document.getElementById("site-host").textContent = site;
+        document.getElementById("statistics-main-header").textContent
+            = data["titles"]["convertedTitlesCount"];
+        // TODO: This seems like it's not that interesting for the user...
+        //document.getElementById("statistics-links").textContent
+        //    = data["misc"]["linksCount"];
     } else {
-        document.querySelector(".pagedashboardview div").classList.add("hidden");
-        _updateError("Sivun tietoja ei saatu ladattua. Koeta päivittää ikkuna.");
+        errorElem.classList.remove("hidden");
+
+        document.getElementById("site-host").textContent = "Karilla!"
+        errorElem.querySelector("p").textContent
+            = "Sivun tietoja ei saatu ladattua. Koeta päivittää ikkuna.";
     }
 };
 
-const _refreshSettingsView = (isConversionEnabled, sitesEnabled) => {
+const _refreshSettingsView = ({isConversionEnabled, sitesEnabled, isDebugVisualsEnabled}) => {
     // Visualize per site switches as "readonly" as per main switch state.
     _setSettingsviewCheckboxesReadonly(isConversionEnabled);
 
@@ -90,9 +87,12 @@ const _refreshSettingsView = (isConversionEnabled, sitesEnabled) => {
     for (const [hostname, isEnabled] of Object.entries(sitesEnabled)) {
         document.getElementById(CONFIG_KEYS_TO_SWITCHES[hostname]).checked = isEnabled;
     }
+
+    document.getElementById("devmode-vaihda-epäötököintigrafiikat")
+        .checked = isDebugVisualsEnabled;
 };
 
-const _refreshPageDashboardView = async ({ pageHostname, pageStatistics, isEnabled, isKerran }) => {
+const _refreshContentView = ({ pageHostname, pageStatistics, isEnabled, isKerran }) => {
     _refreshStatistics({ site: pageHostname, data: pageStatistics });
 
     document.getElementById("extension-disabled-temporarily").checked = isKerran;
@@ -122,7 +122,7 @@ const handleClickConversionSwitch = async (e) => {
 };
 
 const handleClickKerran = async (e) => {
-    await controller.setCurrentTabKerran(e.target.checked)
+    await controller.setCurrentTabKerran(e.target.checked);
 };
 
 const handleClickAina = async (e) => {
@@ -137,8 +137,8 @@ const showView = (viewName) => {
     log(`Showing view '${viewName}'`);
 
     // Hide all views.
-    for (const name of Object.keys(_viewSelectors)) {
-        for (const elemSelector of _viewSelectors[name]) {
+    for (const elemSelectors of Object.values(_viewSelectors)) {
+        for (const elemSelector of elemSelectors) {
             document.querySelector(elemSelector).classList.add("hidden");
         }
     }
@@ -157,12 +157,17 @@ const refresh = async () => {
     const pageStatistics = await model.read.getStatistics(pageHostname);
     const sitesEnabled = await model.read.getSitesEnabled();
     const isKerran = await model.read.isKerran(pageHostname);
+    const isDebugVisualsEnabled = await model.read.getDebugVisualsEnabled();
 
     // Update the power button.
     document.getElementById("extension-enabled").checked = isConversionEnabled;
 
-    _refreshSettingsView(isConversionEnabled, sitesEnabled);
-    _refreshPageDashboardView({
+    _refreshSettingsView({
+        isConversionEnabled,
+        sitesEnabled,
+        isDebugVisualsEnabled,
+    });
+    _refreshContentView({
         pageHostname,
         pageStatistics,
         isEnabled: sitesEnabled[pageHostname],
@@ -188,7 +193,40 @@ const handleDomContentLoaded = async (e) => {
     // normal state gets a vertical scrollbar. Maybe take max of current and run
     // this again on refreshes?
     document.querySelector("body").style.height = `${document.querySelector("body").clientHeight + 38}px`;
-}
+};
+
+const __devmodeShowControls = async (e) => {
+    if (e.target.checked) {
+        document.querySelectorAll(".devmode").forEach((x) => x.classList.remove("hidden"));
+        document.querySelector("#logo img").classList.add("hidden");
+    } else {
+        document.querySelectorAll(".devmode").forEach((x) => x.classList.add("hidden"));
+        document.querySelector("#logo img").classList.remove("hidden");
+    }
+};
+
+const __devmodeSuolaaSivu = async (e) => {
+    const pageSignatures = await controller.devmode.suolaaSivu();
+    log(pageSignatures);
+    const pageSignaturesDump = pageSignatures
+        .filter((x) => x !== null)
+        .map((x) => x.toString())
+        .join("\n");
+    await window.navigator.clipboard.write([new ClipboardItem({"text/plain": pageSignaturesDump})]);
+
+    e.target.disabled = true;
+    const eventTargetLabel = document.querySelector(`label[for=${e.target.id}]`);
+    const textContentTemp = eventTargetLabel.textContent;
+    eventTargetLabel.textContent = "Sivun suolaus kopioitu leikepöydälle!";
+    setTimeout(() => {
+        eventTargetLabel.textContent = textContentTemp;
+        e.target.disabled = false;
+    }, 3000);
+};
+
+const __devmodeVaihdaEpäötököintigrafiikat = async (e) => {
+    await controller.devmode.vaihdaEpäötököintigrafiikat(e.target.checked);
+};
 
 
 /**
@@ -211,15 +249,12 @@ const view = {
 document.addEventListener("DOMContentLoaded", view.handleDomContentLoaded);
 ///////////////////////////////////////////////////////////////////////////////
 // Handlers for visual changes like moving between views.
-document.getElementById("open-feedbackview")
+document.querySelector(".open-feedbackview")
     .addEventListener("click", () => view.showView("feedback"));
-document.getElementById("open-settingsview")
+document.querySelector(".open-settingsview")
     .addEventListener("click", () => view.showView("settings"));
-///////////////////////////////////////////////////////////////////////////////
-// Sub views have a "back" button to switch back to popup main view.
-for (const backButton of document.querySelectorAll(".sub-view-bottom-navi > .sub-view-transition")) {
-    backButton.addEventListener("click", () => view.showView("main"));
-}
+document.querySelector(".open-home")
+    .addEventListener("click", () => view.showView("main"));
 ///////////////////////////////////////////////////////////////////////////////
 // Handlers for application state changes.
 document.getElementById("extension-disabled-temporarily")
@@ -235,10 +270,19 @@ for (const pageEnabledSwitch of document.querySelectorAll(".settingsview .conver
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// Handlers for devmode utils.
+document.getElementById("show-devmode-controls")
+    .addEventListener("click", __devmodeShowControls);
+document.getElementById("devmode-suolaa-sivu")
+    .addEventListener("click", __devmodeSuolaaSivu);
+document.getElementById("devmode-vaihda-epäötököintigrafiikat")
+    .addEventListener("click", __devmodeVaihdaEpäötököintigrafiikat);
+
+///////////////////////////////////////////////////////////////////////////////
 // "We have events at home."
 ///////////////////////////////////////////////////////////////////////////////
 
 model.events.addEventListener(modelEvents.enabledChange, view.refresh);
-model.events.addEventListener(modelEvents.statisticsChange, view.refresh);
-
+// TODO: Maybe refactor this to abstract local storage away (or don't, wtfgas).
+browser().storage.local.onChanged.addListener(view.refresh);
 
