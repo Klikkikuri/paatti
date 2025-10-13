@@ -107,6 +107,8 @@ const model = (() => {
                         //"environment": "production",
                         "environment": "development",
                         "debugVisualsEnabled": false,
+                        // CONFIG: Configure default title data source URL here.
+                        "titleDataUrl": "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json", 
                     },
                     "statistics": {},
                 });
@@ -133,6 +135,15 @@ const model = (() => {
                 events.dispatchEvent(modelEvents.enabledChange);
             },
 
+            setEnvironment: async (value) => {
+                const config = await browser().storage.local.get();
+                log(`Setting environment from '${config["environmentConfigs"]["environment"]}' to ${value}`);
+
+                config["environmentConfigs"]["environment"] = value;
+
+                await browser().storage.local.set(config);
+            },
+
             setKerran: async (value, hostname) => {
                 log(`Kerraing '${hostname}' == ${value}`);
 
@@ -151,6 +162,19 @@ const model = (() => {
                 log(`Stored stats for ${hostname}`);
 
                 events.dispatchEvent(modelEvents.statisticsChange);
+            },
+
+            setTitleDataUrl: async (value) => {
+                const config = await browser().storage.local.get();
+                config["environmentConfigs"]["titleDataUrl"] = value;
+                await browser().storage.local.set(config);
+                // TODO: Need event here or just manually do it at controller?
+            },
+
+            setTestTitleDataUrl: async (value) => {
+                const config = await browser().storage.local.get();
+                config["environmentConfigs"]["testTitleDataUrl"] = value;
+                await browser().storage.local.set(config);
             },
         },
 
@@ -190,6 +214,16 @@ const model = (() => {
                         return [k, v["enabled"]];
                     });
                 return Object.fromEntries(sitesEnabled);
+            },
+
+            getTitleDataUrl: async () => {
+                const environmentConfigs = (await browser().storage.local.get())["environmentConfigs"];
+                return environmentConfigs.titleDataUrl;
+            },
+
+            getTestTitleDataUrl: async () => {
+                const environmentConfigs = (await browser().storage.local.get())["environmentConfigs"];
+                return environmentConfigs.testTitleDataUrl;
             },
 
             getStatistics: async (hostname) => {

@@ -27,6 +27,11 @@ const _setSiteEnabled = async (isEnabled, hostname) => {
     await model.write.setEnabled(isEnabled, hostname);
 };
 
+const _setCurrentTabEnabled = async (isEnabled) => {
+    const currentTabHostname = await getCurrentTabHostname();
+    await _setSiteEnabled(isEnabled, currentTabHostname)
+};
+
 /**
  * Namespace for __controller__ of model-view-controller.
  */
@@ -39,6 +44,16 @@ const controller = {
             await model.write.setEnabled(true, "www.iltalehti.fi");
             await model.write.setEnabled(true, "www.hs.fi");
             await model.write.setDebugVisualsEnabled(true);
+
+            await (async () => {
+                // Assume the URL is the test file path.
+                let testUrl = browser().runtime.getURL("test_data/data.json");
+                if (!testUrl) {
+                    throw "DEVELOPMENT MODE: The `test_data/data.json` file evaluated to false. Have you initialized the test data with `python3 ./generate_data.py`?"
+                }
+                await model.write.setTestTitleDataUrl(testUrl);
+                await model.write.setTitleDataUrl(testUrl);
+            })();
         }
     },
 
@@ -47,12 +62,13 @@ const controller = {
         await model.write.setEnabled(isEnabled);
     },
 
+    setEnvironment: async (value) => {
+        await model.write.setEnvironment(value);
+    },
+
     setSiteEnabled: _setSiteEnabled,
 
-    setCurrentTabEnabled: async (isEnabled) => {
-        const currentTabHostname = await getCurrentTabHostname();
-        await _setSiteEnabled(isEnabled, currentTabHostname)
-    },
+    setCurrentTabEnabled: _setCurrentTabEnabled,
 
     setCurrentTabKerran: async (isKerran) => {
         const currentTabHostname = await getCurrentTabHostname();
@@ -113,6 +129,25 @@ const controller = {
             await tabs.sendMessage(activeTabId, { command: "convertClickbaits" });
 
             log("Epäötököintigrafiikat vaihdettu.");
+        },
+
+        vaihdaOtsikkodatalähde: async (url) => {
+            log("Vaihdetaan otsikkodatalähdettä...");
+
+            const tabs = browser().tabs;
+            const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
+
+            // First restore the original state seen on page so that will not
+            // mix the title data sources causing havoc visually.
+            const originalEnabledState = await model.read.isEnabled(await getCurrentTabHostname());
+            await _setCurrentTabEnabled(false);
+            await tabs.sendMessage(activeTabId, { command: "convertClickbaits" });
+
+            await model.write.setTitleDataUrl(url);
+            await tabs.sendMessage(activeTabId, { command: "convertClickbaits" });
+            await _setCurrentTabEnabled(originalEnabledState);
+
+            log("Otsikkodatalähde vaihdettu.");
         },
     },
 };

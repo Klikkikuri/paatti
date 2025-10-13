@@ -19,7 +19,6 @@
 // WORKAROUND: These variables will be used in "importing" from other JS files in main().
 let log,
     extractArticleUrl,
-    getApiDataUrl,
     noElementMatchesForQuerySelector,
     noTitleMatchesForHash,
     highlightElemConverted,
@@ -175,7 +174,6 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 
     const cu = await import(browser.runtime.getURL("src/conversionUtils.js"));
     extractArticleUrl = cu.extractArticleUrl;
-    getApiDataUrl = cu.getApiDataUrl;
     noElementMatchesForQuerySelector = cu.noElementMatchesForQuerySelector;
     noTitleMatchesForHash = cu.noTitleMatchesForHash;
     highlightElemConverted = cu.highlightElemConverted;
@@ -207,7 +205,8 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
         // Always either toggle the converted headlines on or off based
         // on enabled-status.
 
-        const apiUrl = await getApiDataUrl();
+        const apiUrl = await model.read.getTitleDataUrl();
+        log("Basing conversion on source:", apiUrl);
         let apiResponse;
         try {
             apiResponse = await fetch(apiUrl);

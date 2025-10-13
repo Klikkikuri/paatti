@@ -79,7 +79,7 @@ const _refreshStatistics = ({ site, data }) => {
     }
 };
 
-const _refreshSettingsView = ({isConversionEnabled, sitesEnabled, isDebugVisualsEnabled}) => {
+const _refreshSettingsView = ({isConversionEnabled, sitesEnabled, isDebugVisualsEnabled, titleDataUrlSelected, isDevelopmentEnv, testTitleDataUrl}) => {
     // Visualize per site switches as "readonly" as per main switch state.
     _setSettingsviewCheckboxesReadonly(isConversionEnabled);
 
@@ -88,8 +88,31 @@ const _refreshSettingsView = ({isConversionEnabled, sitesEnabled, isDebugVisuals
         document.getElementById(CONFIG_KEYS_TO_SWITCHES[hostname]).checked = isEnabled;
     }
 
+    if (isDevelopmentEnv) {
+        document.querySelectorAll(".devmode").forEach((x) => x.classList.remove("hidden"));
+        document.querySelector("#logo img").classList.add("hidden");
+
+        const titleDataUrlSelect = document.getElementById("devmode-vaihda-otsikkodatalähde");
+        if (!titleDataUrlSelect.querySelectorAll("option").values().find((x) => x.value === testTitleDataUrl)) {
+            const option = document.createElement("option");
+            option.textContent = "TeStIoTsIkKoLäHdE";
+            option.value = testTitleDataUrl;
+            titleDataUrlSelect.appendChild(option);
+        }
+    } else {
+        document.querySelectorAll(".devmode").forEach((x) => x.classList.add("hidden"));
+        document.querySelector("#logo img").classList.remove("hidden");
+    }
+
     document.getElementById("devmode-vaihda-epäötököintigrafiikat")
         .checked = isDebugVisualsEnabled;
+
+    for (const option of document.getElementById("devmode-vaihda-otsikkodatalähde").querySelectorAll("option")) {
+        option.selected = false;
+        if (option.value === titleDataUrlSelected) {
+            option.selected = true;
+        }
+    }
 };
 
 const _refreshContentView = ({ pageHostname, pageStatistics, isEnabled, isKerran }) => {
@@ -158,6 +181,9 @@ const refresh = async () => {
     const sitesEnabled = await model.read.getSitesEnabled();
     const isKerran = await model.read.isKerran(pageHostname);
     const isDebugVisualsEnabled = await model.read.getDebugVisualsEnabled();
+    const titleDataUrlSelected = await model.read.getTitleDataUrl();
+    const isDevelopmentEnv = await model.read.isDevelopmentEnv();
+    const testTitleDataUrl = await model.read.getTestTitleDataUrl();
 
     // Update the power button.
     document.getElementById("extension-enabled").checked = isConversionEnabled;
@@ -166,6 +192,9 @@ const refresh = async () => {
         isConversionEnabled,
         sitesEnabled,
         isDebugVisualsEnabled,
+        titleDataUrlSelected,
+        isDevelopmentEnv,
+        testTitleDataUrl,
     });
     _refreshContentView({
         pageHostname,
@@ -195,14 +224,10 @@ const handleDomContentLoaded = async (e) => {
     document.querySelector("body").style.height = `${document.querySelector("body").clientHeight + 38}px`;
 };
 
-const __devmodeShowControls = async (e) => {
-    if (e.target.checked) {
-        document.querySelectorAll(".devmode").forEach((x) => x.classList.remove("hidden"));
-        document.querySelector("#logo img").classList.add("hidden");
-    } else {
-        document.querySelectorAll(".devmode").forEach((x) => x.classList.add("hidden"));
-        document.querySelector("#logo img").classList.remove("hidden");
-    }
+const __devmodeShowControls = async () => {
+    await controller.setEnvironment(
+        await model.read.isDevelopmentEnv() ? "production" : "development"
+    );
 };
 
 const __devmodeSuolaaSivu = async (e) => {
@@ -228,6 +253,9 @@ const __devmodeVaihdaEpäötököintigrafiikat = async (e) => {
     await controller.devmode.vaihdaEpäötököintigrafiikat(e.target.checked);
 };
 
+const __devmodeVaihdaOtsikkodatalähde = async (e) => {
+    await controller.devmode.vaihdaOtsikkodatalähde(e.target.value);
+};
 
 /**
  * Namespace for _controller_ of model-view-controller.
@@ -277,6 +305,8 @@ document.getElementById("devmode-suolaa-sivu")
     .addEventListener("click", __devmodeSuolaaSivu);
 document.getElementById("devmode-vaihda-epäötököintigrafiikat")
     .addEventListener("click", __devmodeVaihdaEpäötököintigrafiikat);
+document.getElementById("devmode-vaihda-otsikkodatalähde")
+    .addEventListener("change", __devmodeVaihdaOtsikkodatalähde);
 
 ///////////////////////////////////////////////////////////////////////////////
 // "We have events at home."

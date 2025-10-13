@@ -3,19 +3,6 @@
 import  { model } from "./model.js";
 import { browser } from "./utils.js";
 
-export const getApiDataUrl = async () => {
-    if (await model.read.isDevelopmentEnv()) {
-        let testUrl = browser().runtime.getURL("test_data/data.json");
-        if (!testUrl) {
-            throw "DEVELOPMENT MODE: The `test_data/data.json` file evaluated to false. Have you initialized the test data with `python3 ./test_data/generate_data.py`?"
-        }
-
-        return testUrl;
-    } else {
-        return "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json";
-    }
-};
-
 const storeElemOriginalStyle = (htmlElem) => {
     htmlElem.setAttribute("__klikkikuri_backgroundColor", htmlElem.style.backgroundColor);
     htmlElem.setAttribute("__klikkikuri_borderStyle", htmlElem.style.borderStyle);
