@@ -25,6 +25,7 @@
         "src/conversionUtils.js",
         "src/model.js",
         "src/controller.js",
+        "src/config.js",
         "suola/build/suola.js",
         "suola/build/js.wasm",
         "test_data/data.json"
