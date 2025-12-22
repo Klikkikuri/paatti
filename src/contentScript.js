@@ -32,7 +32,15 @@ const ERROR_VARIANTS = {
 
 const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
     const titleElem = querySelectors
-        .map((x) => link.querySelector(x))
+        .map((x) => {
+            if (x === "") {
+                // Empty selector means the a-tag is expected to contain the
+                // title text itself.
+                return link;
+            } else {
+                return link.querySelector(x);
+            }
+        })
         .find((x) => x != null);
 
     if (!titleElem) {
@@ -103,7 +111,7 @@ const getReplaceableTitleElements = async (links, titleData, linkTitleQuerySelec
     }
     const errorStats = {};
     for (const variant of Object.values(ERROR_VARIANTS)) {
-        errorStats[variant] = errors.filter((x) => x.variant === variant).length;
+        errorStats[variant] = errors.filter((x) => x.variant === variant);
     }
     log(`There were ${errors.length} links not processed:`, errorStats);
 
@@ -245,7 +253,7 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
                 break;
             case "devmodeSuolaaSivu":
                 return Array.from(document.querySelectorAll("a"))
-                    .map((x) => hashUrl(x.href));
+                    .map((x) => { log(x.href, "=>", hashUrl(x.href)); return hashUrl(x.href); });
             default:
                 log(`Unknown command '${message.command}'`);
                 break;

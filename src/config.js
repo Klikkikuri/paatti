@@ -31,6 +31,11 @@ export default {
             "enabled": false,
         },
         "yle.fi": {
+            "linkTitleQuerySelectors": [
+                // This empty selector means that the a-tag selector (which is
+                // used by default) will contain the needed title text.
+                "",
+            ],
             "enabled": false,
         },
         "www.aamulehti.fi": {
@@ -43,7 +48,7 @@ export default {
         "environment": "development",
         "debugVisualsEnabled": false,
         // CONFIG: Configure default title data source URL here.
-        "titleDataUrl": "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json", 
+        "titleDataUrl": "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json",
     },
     "statistics": {},
 };
