@@ -28,11 +28,11 @@ const CONFIG_KEYS_TO_SWITCHES = Object.fromEntries(
  */
 const _viewSelectors = {
     "main":
-        [".main-content", ".open-feedbackview", ".open-settingsview"],
+        { "content": ".main-content", "naviItem": ".open-home" },
     "feedback":
-        [".feedbackview", ".open-home", ".open-settingsview"],
+        { "content": ".feedbackview", "naviItem": ".open-feedbackview" },
     "settings":
-        [".settingsview", ".open-feedbackview", ".open-home"],
+        { "content": ".settingsview", "naviItem": ".open-settingsview" },
 };
 
 const _setCheckBoxReadonly = (checkbox, makeReadonly) => {
@@ -163,16 +163,14 @@ const handleClickAina = async (e) => {
 const showView = (viewName) => {
     log(`Showing view '${viewName}'`);
 
-    // Hide all views.
-    for (const elemSelectors of Object.values(_viewSelectors)) {
-        for (const elemSelector of elemSelectors) {
-            document.querySelector(elemSelector).classList.add("hidden");
-        }
+    // Hide all views and reset states.
+    for (const viewObj of Object.values(_viewSelectors)) {
+        document.querySelector(viewObj["content"]).classList.add("hidden");
+        document.querySelector(viewObj["naviItem"]).classList.remove("navi-selected");
     }
     // Show the selected view.
-    for (const elemSelector of _viewSelectors[viewName]) {
-        document.querySelector(elemSelector).classList.remove("hidden");
-    }
+    document.querySelector(_viewSelectors[viewName]["content"]).classList.remove("hidden");
+    document.querySelector(_viewSelectors[viewName]["naviItem"]).classList.add("navi-selected");
 };
 
 /**

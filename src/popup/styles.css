@@ -147,6 +147,15 @@ body {
     color: #222;
 }
 
+#navi .sub-view-transition.navi-selected {
+    font-weight: bold;
+    color: #53b9ff;
+}
+
+#navi .sub-view-transition.navi-selected .arrow {
+    color: #53b9ff;
+}
+
 /* Logo details */
 
 #logo span {
