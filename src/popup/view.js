@@ -96,10 +96,10 @@ const _refreshSettingsView = ({isConversionEnabled, sitesEnabled, isDebugVisuals
         document.querySelectorAll(".devmode").forEach((x) => x.classList.remove("hidden"));
         document.querySelector("#logo img").classList.add("hidden");
 
-        const titleDataUrlSelect = document.getElementById("devmode-vaihda-otsikkodatalähde");
+        const titleDataUrlSelect = document.getElementById("devmode-setTitleDataUrl");
         if (!titleDataUrlSelect.querySelectorAll("option").values().find((x) => x.value === testTitleDataUrl)) {
             const option = document.createElement("option");
-            option.textContent = "TeStIoTsIkKoLäHdE";
+            option.textContent = "Paatti test data";
             option.value = testTitleDataUrl;
             titleDataUrlSelect.appendChild(option);
         }
@@ -111,7 +111,7 @@ const _refreshSettingsView = ({isConversionEnabled, sitesEnabled, isDebugVisuals
     document.getElementById("devmode-setDebugVisuals")
         .checked = isDebugVisualsEnabled;
 
-    for (const option of document.getElementById("devmode-vaihda-otsikkodatalähde").querySelectorAll("option")) {
+    for (const option of document.getElementById("devmode-setTitleDataUrl").querySelectorAll("option")) {
         option.selected = false;
         if (option.value === titleDataUrlSelected) {
             option.selected = true;
@@ -255,8 +255,8 @@ const __devmode_setDebugVisuals = async (e) => {
     await controller.devmode.setDebugVisuals(e.target.checked);
 };
 
-const __devmodeVaihdaOtsikkodatalähde = async (e) => {
-    await controller.devmode.vaihdaOtsikkodatalähde(e.target.value);
+const __devmode_setTitleDataUrl = async (e) => {
+    await controller.devmode.setTitleDataUrl(e.target.value);
 };
 
 /**
@@ -307,8 +307,8 @@ document.getElementById("devmode-dumpLinkHash")
     .addEventListener("click", __devmode_dumpLinkHash);
 document.getElementById("devmode-setDebugVisuals")
     .addEventListener("click", __devmode_setDebugVisuals);
-document.getElementById("devmode-vaihda-otsikkodatalähde")
-    .addEventListener("change", __devmodeVaihdaOtsikkodatalähde);
+document.getElementById("devmode-setTitleDataUrl")
+    .addEventListener("change", __devmode_setTitleDataUrl);
 
 ///////////////////////////////////////////////////////////////////////////////
 // "We have events at home."

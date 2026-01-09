@@ -131,8 +131,8 @@ const controller = {
             log(`Set debug visuals to ${doEnable}.`);
         },
 
-        vaihdaOtsikkodatalähde: async (url) => {
-            log("Vaihdetaan otsikkodatalähdettä...");
+        setTitleDataUrl: async (url) => {
+            log("Setting title data URL...");
 
             const tabs = browser().tabs;
             const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
@@ -147,7 +147,7 @@ const controller = {
             await tabs.sendMessage(activeTabId, { command: "convertClickbaits" });
             await _setCurrentTabEnabled(originalEnabledState);
 
-            log("Otsikkodatalähde vaihdettu.");
+            log(`Title data URL set to ${url}`);
         },
     },
 };
