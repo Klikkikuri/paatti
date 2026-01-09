@@ -85,17 +85,13 @@ body {
     gap: 1em;
 }
 
-.content .settingsview {
-    border: 1px solid #555;
-    border-radius: 6px;
-    background: #ffffff;
-    padding: 5%;
+/* Settings view details */
 
+.devmode {
     display: flex;
     flex-direction: column;
     gap: 1em;
 }
-
 
 /* Navi details */
 
