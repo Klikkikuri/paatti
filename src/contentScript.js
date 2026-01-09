@@ -251,7 +251,7 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
             case "convertClickbaits":
                 await convertClickbaits(Array.from(document.querySelectorAll("a")));
                 break;
-            case "devmodeSuolaaSivu":
+            case "devmode_dumpLinkHash":
                 return Array.from(document.querySelectorAll("a"))
                     .map((x) => { log(x.href, "=>", hashUrl(x.href)); return hashUrl(x.href); });
             default:

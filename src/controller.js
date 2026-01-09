@@ -108,14 +108,14 @@ const controller = {
     },
 
     devmode: {
-        suolaaSivu: async () => {
-            log("Suolataan sivua...");
+        dumpLinkHash: async () => {
+            log("Generating hashes...");
             // Get the active tab.
             const tabs = browser().tabs;
             const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
-            const result = await tabs.sendMessage(activeTabId, { command: "devmodeSuolaaSivu" });
+            const result = await tabs.sendMessage(activeTabId, { command: "devmode_dumpLinkHash" });
 
-            log("Sivu suolattu.");
+            log("Dumped.");
             return result;
         },
 

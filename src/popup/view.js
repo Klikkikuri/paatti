@@ -232,8 +232,8 @@ const __devmodeShowControls = async () => {
     );
 };
 
-const __devmodeSuolaaSivu = async (e) => {
-    const pageSignatures = await controller.devmode.suolaaSivu();
+const __devmode_dumpLinkHash = async (e) => {
+    const pageSignatures = await controller.devmode.dumpLinkHash();
     log(pageSignatures);
     const pageSignaturesDump = pageSignatures
         .filter((x) => x !== null)
@@ -244,7 +244,7 @@ const __devmodeSuolaaSivu = async (e) => {
     e.target.disabled = true;
     const eventTargetLabel = document.querySelector(`label[for=${e.target.id}]`);
     const textContentTemp = eventTargetLabel.textContent;
-    eventTargetLabel.textContent = "Sivun suolaus kopioitu leikepöydälle!";
+    eventTargetLabel.textContent = "Linkkitiivisteet kopioitu leikepöydälle!";
     setTimeout(() => {
         eventTargetLabel.textContent = textContentTemp;
         e.target.disabled = false;
@@ -303,8 +303,8 @@ for (const pageEnabledSwitch of document.querySelectorAll(".settingsview .conver
 // Handlers for devmode utils.
 document.getElementById("show-devmode-controls")
     .addEventListener("click", __devmodeShowControls);
-document.getElementById("devmode-suolaa-sivu")
-    .addEventListener("click", __devmodeSuolaaSivu);
+document.getElementById("devmode-dumpLinkHash")
+    .addEventListener("click", __devmode_dumpLinkHash);
 document.getElementById("devmode-vaihda-epäötököintigrafiikat")
     .addEventListener("click", __devmodeVaihdaEpäötököintigrafiikat);
 document.getElementById("devmode-vaihda-otsikkodatalähde")
