@@ -69,7 +69,7 @@ const model = (() => {
                 await browser().storage.local.set(INITIAL_CONFIG);
             },
 
-            setDebugVisualsEnabled: async (value) => {
+            setDebugVisuals: async (value) => {
                 const config = await browser().storage.local.get();
                 config["environmentConfigs"]["debugVisualsEnabled"] = value;
                 await browser().storage.local.set(config);

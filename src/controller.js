@@ -43,7 +43,7 @@ const controller = {
             log("Initializing in development mode");
             await model.write.setEnabled(true, "www.iltalehti.fi");
             await model.write.setEnabled(true, "www.hs.fi");
-            await model.write.setDebugVisualsEnabled(true);
+            await model.write.setDebugVisuals(true);
 
             await (async () => {
                 // Assume the URL is the test file path.
@@ -119,16 +119,16 @@ const controller = {
             return result;
         },
 
-        vaihdaEpäötököintigrafiikat: async (doEnable) => {
-            log("Vaihdetaan epäötököintigrafiikkoja...");
-            await model.write.setDebugVisualsEnabled(doEnable);
+        setDebugVisuals: async (doEnable) => {
+            log("Setting debug visuals...");
+            await model.write.setDebugVisuals(doEnable);
 
             // We want to reload in order to immediately change the visuals on page.
             const tabs = browser().tabs;
             const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
             await tabs.sendMessage(activeTabId, { command: "convertClickbaits" });
 
-            log("Epäötököintigrafiikat vaihdettu.");
+            log(`Set debug visuals to ${doEnable}.`);
         },
 
         vaihdaOtsikkodatalähde: async (url) => {

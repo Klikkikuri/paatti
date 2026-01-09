@@ -108,7 +108,7 @@ const _refreshSettingsView = ({isConversionEnabled, sitesEnabled, isDebugVisuals
         document.querySelector("#logo img").classList.remove("hidden");
     }
 
-    document.getElementById("devmode-vaihda-epäötököintigrafiikat")
+    document.getElementById("devmode-setDebugVisuals")
         .checked = isDebugVisualsEnabled;
 
     for (const option of document.getElementById("devmode-vaihda-otsikkodatalähde").querySelectorAll("option")) {
@@ -251,8 +251,8 @@ const __devmode_dumpLinkHash = async (e) => {
     }, 3000);
 };
 
-const __devmodeVaihdaEpäötököintigrafiikat = async (e) => {
-    await controller.devmode.vaihdaEpäötököintigrafiikat(e.target.checked);
+const __devmode_setDebugVisuals = async (e) => {
+    await controller.devmode.setDebugVisuals(e.target.checked);
 };
 
 const __devmodeVaihdaOtsikkodatalähde = async (e) => {
@@ -305,8 +305,8 @@ document.getElementById("show-devmode-controls")
     .addEventListener("click", __devmodeShowControls);
 document.getElementById("devmode-dumpLinkHash")
     .addEventListener("click", __devmode_dumpLinkHash);
-document.getElementById("devmode-vaihda-epäötököintigrafiikat")
-    .addEventListener("click", __devmodeVaihdaEpäötököintigrafiikat);
+document.getElementById("devmode-setDebugVisuals")
+    .addEventListener("click", __devmode_setDebugVisuals);
 document.getElementById("devmode-vaihda-otsikkodatalähde")
     .addEventListener("change", __devmodeVaihdaOtsikkodatalähde);
 
