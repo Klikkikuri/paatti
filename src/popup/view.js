@@ -70,10 +70,14 @@ const _refreshStatistics = ({ site, data }) => {
         // TODO: This seems like it's not that interesting for the user...
         //document.getElementById("statistics-links").textContent
         //    = data["misc"]["linksCount"];
+    } else if (site) {
+        contentElem.classList.remove("hidden");
+
+        document.getElementById("site-host").textContent = "Sivusto ei tuettu";
     } else {
         errorElem.classList.remove("hidden");
 
-        document.getElementById("site-host").textContent = "Karilla!"
+        document.getElementById("site-host").textContent = "Karilla!";
         errorElem.querySelector("p").textContent
             = "Sivun tietoja ei saatu ladattua. Koeta päivittää ikkuna.";
     }
