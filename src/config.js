@@ -17,6 +17,7 @@ const DEFAULT_CONFIG = {
     // CONFIG: Configure per-site settings here.
     "siteConfigs": {
         "www.iltalehti.fi": {
+            "name": "Iltalehti",
             // These CSS selectors are used to find the elements
             // containing text of news titles (which will be
             // converted).
@@ -29,6 +30,7 @@ const DEFAULT_CONFIG = {
             "enabled": false,
         },
         "www.hs.fi": {
+            "name": "Helsingin Sanomat",
             "linkTitleQuerySelectors": [
                 "a:nth-child(1) > section:nth-child(1) > div:nth-child(1) > div:nth-child(1) > h2:nth-child(1) > span:nth-child(2)",
             ],
@@ -42,11 +44,12 @@ const DEFAULT_CONFIG = {
             "enabled": false,
         },
         "yle.fi": {
+            "name": "Yle",
+            "enabled": true,
             "rules": [
-                
                 { // "Tuoreimmat" section on front page
                     "container": "aside li",
-                    "title": "h3 a, h3",
+                    "title": "h3 a",
                     "link": "a[href*='/a/']",
                 },
                 
@@ -55,7 +58,6 @@ const DEFAULT_CONFIG = {
                     "container": "article.yle__article",
                     
                     // We look for the ID in the 'Avaa koko juttu' link at the bottom
-                    // or the metadata script tag
                     "link": "a[href*='/a/']",
                     
                     // The target to replace is the main H1 heading
@@ -70,19 +72,35 @@ const DEFAULT_CONFIG = {
                     link: "a[data-card-heading-content-id], a[href*='/a/']",
                     
                     // The title is always the <h3> or the <a> inside the <h3>
-                    title: "h3"
+                    title: "h3 a"
                 }
             ],
-
-            "linkTitleQuerySelectors": [
-                // This empty selector means that the a-tag selector (which is
-                // used by default) will contain the needed title text.
-                "",
-            ],
-            "enabled": true,
         },
-        "www.aamulehti.fi": {
-            "enabled": false,
+        "aksa.fi": {
+            "name": "Äänekosken Kaupunkisanomat",
+            "enabled": true,
+            "rules": [
+                {
+                    "container": "div.border-b.border-gray",
+                    "link": "a[href]",
+                    "title": "h3.robotoc a"
+                },
+                {
+                    "container": "div.sivupalkkilistauksetsisalto ul > li",
+                    "link": "a[href]",
+                    "title": "a"
+                },
+                {
+                    // Käytetään h2:sta ankkurina, koska se on vakain osa uutisrakennetta
+                    container: "h2.entry-title", 
+                    
+                    // Etsitään linkki h2:n sisältä
+                    link: "a", 
+                    
+                    // Otsikko on h2:n sisällä oleva linkki (tai h2 itse)
+                    title: "a, self" 
+                }
+            ]
         },
     },
 
@@ -142,15 +160,3 @@ async function getConfig() {
 }
 
 export { getConfig };
-
-
-/**
-async function toggleSite(domain, isEnabled) {
-    const data = await browser().storage.sync.get("userSiteOverrides");
-    const overrides = data.userSiteOverrides || {};
-
-    overrides[domain] = isEnabled;
-
-    await browser().storage.sync.set({ "userSiteOverrides": overrides });
-}
- */
