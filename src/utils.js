@@ -3,13 +3,7 @@
 const browser = () => (chrome || browser);
 
 const getLogger = (name) => {
-    // CONFIG: Configure logging changing the values here.
-    const doStackTrace = true;
-
-    return (...args) => {
-        const stacktracePart = doStackTrace ? `\nStack:\n${Error().stack}` : "";
-        console.log(`[Loki ⛵ ${name}]:`, ...args, stacktracePart);
-    };
+    return console.log.bind(console, `[Loki ⛵ ${name}]:`);
 };
 
 const getCurrentTabHostname = async () => {
