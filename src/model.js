@@ -147,10 +147,6 @@ const model = (() => {
                 }
             },
 
-            isKerran: async (hostname) => {
-                return (await getConfig())[hostname]?.["kerran"];
-            },
-
             getDebugVisualsEnabled: async () => {
                 const config = await getConfig();
                 return config.debugVisualsEnabled;
