@@ -1,8 +1,19 @@
 "use strict";
 
-export default {
+import { browser, getLogger } from "./utils.js";
+
+const log = getLogger("config");
+
+const DEFAULT_ENV = {
+    "debugVisualsEnabled": false,
+    "refreshIntervalMinutes": 20,
+    "titleDataUrls": ["https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"],
+}
+
+const DEFAULT_CONFIG = {
     // CONFIG: Configure extension to start enabled here.
     "enabled": true,
+
     // CONFIG: Configure per-site settings here.
     "siteConfigs": {
         "www.iltalehti.fi": {
@@ -36,19 +47,80 @@ export default {
                 // used by default) will contain the needed title text.
                 "",
             ],
-            "enabled": false,
+            "enabled": true,
         },
         "www.aamulehti.fi": {
             "enabled": false,
         },
     },
+
     "environmentConfigs": {
-        /* CONFIG: Un/comment these values to set dev mode on or off. */
-        //"environment": "production",
-        "environment": "development",
-        "debugVisualsEnabled": false,
-        // CONFIG: Configure default title data source URL here.
-        "titleDataUrl": "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json",
+        "free": {...DEFAULT_ENV,
+            "debugVisualsEnabled": false,
+            "titleDataUrls": ["https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"],
+        },
+        "development": {...DEFAULT_ENV,
+            "debugVisualsEnabled": true,
+            "refreshIntervalMinutes": 1,
+            "titleDataUrls": [
+                "http://localhost:3000/data.json",
+                "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"
+            ],
+        },
     },
     "statistics": {},
 };
+
+/**
+ * Gets the merged configuration for the current environment.
+ */
+async function getConfig() {
+    const [localData, syncData] = await Promise.all([
+        browser().storage.local.get("userPreferences"),
+        browser().storage.sync.get("userSiteOverrides")
+    ]);
+
+    const userPreferences = localData.userPreferences || {};
+    const syncOverrides = syncData.userSiteOverrides || {}; // Structure: { "yle.fi": false }
+
+    log("User preferences loaded:", userPreferences);
+
+    const activeEnv = userPreferences.environment || DEFAULT_CONFIG.environment;
+
+    const envData = DEFAULT_CONFIG.environmentConfigs[activeEnv];
+
+    // Merge siteConfigs with sync overrides
+    const mergedSiteConfigs = { ...DEFAULT_CONFIG.siteConfigs };
+    for (const [domain, enabledStatus] of Object.entries(syncOverrides)) {
+        if (mergedSiteConfigs[domain]) {
+            log("Applying sync override for", domain, "to", enabledStatus);
+            mergedSiteConfigs[domain].enabled = enabledStatus;
+        } else {
+            // If user added a site not in defaults, initialize it
+            mergedSiteConfigs[domain] = { enabled: enabledStatus };
+        }
+    }
+
+    // Return the merged final config
+    return {
+        ...DEFAULT_CONFIG,
+        ...userPreferences, // Overwrite defaults with user choices (e.g., "enabled": false)
+        siteConfigs: mergedSiteConfigs, // Use properly merged site configs
+        activeEnv: activeEnv,
+        ...envData    // Flatten environment data (e.g., titleDataUrl) into the top level
+    };
+}
+
+export { getConfig };
+
+
+/**
+async function toggleSite(domain, isEnabled) {
+    const data = await browser().storage.sync.get("userSiteOverrides");
+    const overrides = data.userSiteOverrides || {};
+
+    overrides[domain] = isEnabled;
+
+    await browser().storage.sync.set({ "userSiteOverrides": overrides });
+}
+ */
