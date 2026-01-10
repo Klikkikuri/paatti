@@ -204,10 +204,6 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
     // access browser.tabs sending conversion message.
     await model.events.removeEventListener(modelEvents.enabledChange, controller.dispatchConversion);
 
-    // Reset the site disabled kerran -flag on refresh.    
-    const currentTabHostname = window.location.hostname;
-    await controller.resetKerran(currentTabHostname);
-
     try {
         await initSuola(browser.runtime.getURL("suola/build/js.wasm"));
     } catch (e) {
