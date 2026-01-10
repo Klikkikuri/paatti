@@ -42,6 +42,38 @@ const DEFAULT_CONFIG = {
             "enabled": false,
         },
         "yle.fi": {
+            "rules": [
+                
+                { // "Tuoreimmat" section on front page
+                    "container": "aside li",
+                    "title": "h3 a, h3",
+                    "link": "a[href*='/a/']",
+                },
+                
+                { // Lyhyesti
+                    // The main article wrapper
+                    "container": "article.yle__article",
+                    
+                    // We look for the ID in the 'Avaa koko juttu' link at the bottom
+                    // or the metadata script tag
+                    "link": "a[href*='/a/']",
+                    
+                    // The target to replace is the main H1 heading
+                    "title": "h1"
+                },
+                { // Pääuutiset cards
+                    // The outermost wrapper that contains one full uutiskortti
+                    container: "[class*='GenericStory__GenericStoryBackground'], [class*='Card__StyledImpressionTrigger']",
+                    
+                    // We target the link that contains the stable content-id attribute
+                    // We also look for the ID in the URL as a fallback
+                    link: "a[data-card-heading-content-id], a[href*='/a/']",
+                    
+                    // The title is always the <h3> or the <a> inside the <h3>
+                    title: "h3"
+                }
+            ],
+
             "linkTitleQuerySelectors": [
                 // This empty selector means that the a-tag selector (which is
                 // used by default) will contain the needed title text.

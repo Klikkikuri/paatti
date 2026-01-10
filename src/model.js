@@ -161,6 +161,10 @@ const model = (() => {
                 return Object.fromEntries(sitesEnabled);
             },
 
+            getSiteRules: async (hostname) => {
+                return await getConfig().then((cfg) => cfg.siteConfigs[hostname].rules);
+            },
+
             getTitleDataUrl: async () => {
                 const config = await getConfig();
                 return config.titleDataUrls?.[0];

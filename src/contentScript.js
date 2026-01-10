@@ -30,6 +30,13 @@ const ERROR_VARIANTS = {
     noTitleMatchesForHash: "Found no conversion for given title in database",
 };
 
+const hrefSign = async (url) => {
+    const urlObj = new URL(url, window.location.href);
+    log("Computing hash for URL:", urlObj.href);
+
+    return await hashUrl(urlObj.href);
+}
+
 const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
     const titleElem = querySelectors
         .map((x) => {
@@ -52,6 +59,7 @@ const canonicallyHashizeElem = async (titleData, querySelectors, link) => {
 
     const articleUrl = await extractArticleUrl(link);
     const linkHash = await hashUrl(articleUrl);
+
 
     let match = null;
     for (const entry of titleData.entries) {
@@ -180,6 +188,9 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
     const { controller } = await import(browser.runtime.getURL("src/controller.js"));
     const { getLogger } = await import(browser.runtime.getURL("src/utils.js"));
 
+    const { rahtiStorage } =  await import(browser.runtime.getURL("src/rahti.js"));
+
+
     const cu = await import(browser.runtime.getURL("src/conversionUtils.js"));
     extractArticleUrl = cu.extractArticleUrl;
     noElementMatchesForQuerySelector = cu.noElementMatchesForQuerySelector;
@@ -253,74 +264,92 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
                 break;
             case "devmode_dumpLinkHash":
                 return Array.from(document.querySelectorAll("a"))
-                    .map((x) => { log(x.href, "=>", hashUrl(x.href)); return hashUrl(x.href); });
+                    .map((x) => { log(x.href, "=>", hrefSign(x.href)); return hrefSign(x.href); });
             default:
                 log(`Unknown command '${message.command}'`);
                 break;
         }
     });
 
-    // Run the conversion on reload.
-    await convertClickbaits(Array.from(document.querySelectorAll("a")));
+    const rahti = await rahtiStorage;
 
-    // Configure the observer for dynamically loaded contents.
-    const mutationObserverConfig = { childList: true, subtree: true };
+    if (!rahti) {
+        log("No Rahti data found, aborting conversion.", rahti);
+        return;
+    }
 
-    // Callback function to execute when mutations are observed
-    const callback = async (mutationList, observer) => {
-        let addedNodes = [];
-        for (const mutation of mutationList) {
-            // TODO: Run conversion on the appeared title.
-            if (mutation.type === "childList") {
-                if (mutation.target instanceof HTMLAnchorElement) {
-                    addedNodes.push(mutation.target);
-                } else {
-                    addedNodes = [...addedNodes, ...mutation.addedNodes];
-                }
-            } else {
-                log(`Unnecessarily(?) observed DOM mutation of type ${mutation.type}`);
-            }
+    const convertTitles = async () => {
+
+        // Run the conversion on reload.
+        const siteRules = await model.read.getSiteRules(newsSite);
+        if (!siteRules) {
+            log(`No site rules found for '${newsSite}', aborting conversion.`);
         }
 
-        for (const i in addedNodes) {
-            if (addedNodes[i].nodeType == Node.TEXT_NODE) {
-                addedNodes[i] = addedNodes[i].parentElement;
-            }
-            // Only pass link type DOM elements forward.
-            addedNodes[i] = addedNodes[i].closest("a");
+        for (const rule of siteRules) {
+            const containers = document.querySelectorAll(rule.container);
 
-            // Only pass non-processed links forward.
-            if (!addedNodes[i].getAttribute("__klikkikuri_processed_dynamic_link")) {
-                addedNodes[i].setAttribute("__klikkikuri_processed_dynamic_link", "true");
-            } else {
-                // Remove any already mutated elements from being mutated again,
-                // which would start an infinite event loop.
-                addedNodes[i] = null;
-            }
-        }
-        addedNodes = addedNodes.filter((x) => x);
+            containers.forEach( (container) => {
+                const links = container.querySelectorAll(rule.link);
+                
+                links.forEach(async link => {
+                    // TODO: Might not work on javascript generated links (onclick etc.)
+                    const href = link.getAttribute('href');
+                    if (!href) {
+                        log("Skipping link without href:", link);
+                    }
+                    const urlHash = await hrefSign(href);
 
-        if (addedNodes.length > 0) {
-            log(`Observed mutations added total of ${addedNodes.length} new nodes to search for news title elements`);
-            await convertClickbaits(addedNodes);
-        } else {
-            log("No observed mutations selected for further processing.");
-        }
-    };
+                    const rahtiEntry = await rahti.get(urlHash)
+                    if (rahtiEntry) {
+                        const titleElem = rule.title ? container.querySelector(rule.title) : link;
+                        if (titleElem) {
+                            const originalTitle = titleElem.textContent;
+                            const convertedTitle = rahtiEntry.title;
 
-    // Create an observer instance linked to the callback function
-    const observer = new MutationObserver(callback);
+                            if (titleElem.getAttribute("__klikkikuri_original_title")) {
+                                // No action needed, already converted before.
+                            }
+                            titleElem.setAttribute("__klikkikuri_original_title", originalTitle);
 
-    // Add observers for dynamically loaded contents.
-    const mutationProneQuerySelectors = await model.read.getMutationProneQuerySelectors(newsSite);
-    if (mutationProneQuerySelectors) {
-        for (const selector of mutationProneQuerySelectors) {
-            for (const targetNode of document.querySelectorAll(selector)) {
-                // Start observing the target node for configured mutations
-                observer.observe(targetNode, mutationObserverConfig);
-            }
+                            // Replace the title text.
+                            titleElem.textContent = `${convertedTitle}`;
+                            highlightElemConverted(titleElem);
+
+                            log(`Converted title from '${originalTitle}' to '${convertedTitle}' for link:`, link);
+                        } else {
+                            log(`No title element found for rule title selector '${rule.title}' in link:`, link);
+                        }
+                    } else {
+                        log(`No Rahti entry found for hash '${urlHash}' of link:`, link);
+                    }
+
+                });
+            });
         }
     }
+
+    const observer = new MutationObserver((mutations) => {
+        const isInternalChange = mutations.every(mutation => 
+            mutation.target.hasAttribute?.('__klikkikuri_original_title') || 
+            mutation.target.parentElement?.hasAttribute?.('__klikkikuri_original_title')
+        );
+        if (isInternalChange) {
+            return;
+        }
+
+        log(`Observed ${mutations.length} DOM mutations, triggering conversion process.`);
+        convertTitles().catch((e) => {
+            log("Error during conversion after DOM mutation:", e);
+        });
+    });
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: false // Ignore attribute changes to prevent loop from setAttribute
+    });
+
+    await convertTitles();
 
     log("Loaded");
 })();
