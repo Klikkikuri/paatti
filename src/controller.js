@@ -37,23 +37,11 @@ const _setCurrentTabEnabled = async (isEnabled) => {
  */
 const controller = {
     initialize: async () => {
+        console.log("Controller initializing...");
         await model.write.initialize();
         /* CONFIG: Configure your desired development thingies here. */
         if (await model.read.isDevelopmentEnv()) {
             log("Initializing in development mode");
-            await model.write.setEnabled(true, "www.iltalehti.fi");
-            await model.write.setEnabled(true, "www.hs.fi");
-            await model.write.setDebugVisuals(true);
-
-            await (async () => {
-                // Assume the URL is the test file path.
-                let testUrl = browser().runtime.getURL("test_data/data.json");
-                if (!testUrl) {
-                    throw "DEVELOPMENT MODE: The `test_data/data.json` file evaluated to false. Have you initialized the test data with `python3 ./generate_data.py`?"
-                }
-                await model.write.setTestTitleDataUrl(testUrl);
-                await model.write.setTitleDataUrl(testUrl);
-            })();
         }
     },
 
@@ -153,5 +141,6 @@ const controller = {
 };
 
 model.events.addEventListener(modelEvents.enabledChange, controller.dispatchConversion);
+model.events.addEventListener(modelEvents.environmentChange, controller.dispatchConversion);
 
 export { controller };

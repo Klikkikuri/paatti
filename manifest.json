@@ -16,7 +16,8 @@
       "38": "icons/klikkikuri-38.png"
     },
     "default_title": "Paatti",
-    "default_popup": "src/popup/index.html"
+    "default_popup": "src/popup/index.html",
+    "default_area": "navbar"
   },
   "web_accessible_resources": [
     {
@@ -26,6 +27,8 @@
         "src/model.js",
         "src/controller.js",
         "src/config.js",
+        "src/storage.js",
+        "src/rahti.js",
         "suola/build/suola.js",
         "suola/build/js.wasm",
         "test_data/data.json"
@@ -37,6 +40,7 @@
       ]
     }
   ],
+  
   "content_scripts": [
     {
       "matches": [
