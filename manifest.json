@@ -26,6 +26,8 @@
         "src/model.js",
         "src/controller.js",
         "src/config.js",
+        "src/storage.js",
+        "src/rahti.js",
         "suola/build/suola.js",
         "suola/build/js.wasm",
         "test_data/data.json"
@@ -37,6 +39,7 @@
       ]
     }
   ],
+  
   "content_scripts": [
     {
       "matches": [

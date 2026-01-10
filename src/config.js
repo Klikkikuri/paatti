@@ -83,8 +83,6 @@ async function getConfig() {
     const userPreferences = localData.userPreferences || {};
     const syncOverrides = syncData.userSiteOverrides || {}; // Structure: { "yle.fi": false }
 
-    log("User preferences loaded:", userPreferences);
-
     const activeEnv = userPreferences.environment || DEFAULT_CONFIG.environment;
 
     const envData = DEFAULT_CONFIG.environmentConfigs[activeEnv];
