@@ -36,7 +36,8 @@
       "matches": [
         "https://*.iltalehti.fi/*",
         "https://*.hs.fi/*",
-        "https://yle.fi/*"
+        "https://yle.fi/*",
+        "https://aksa.fi/*"
       ]
     }
   ],
@@ -46,7 +47,8 @@
       "matches": [
         "https://*.iltalehti.fi/*",
         "https://*.hs.fi/*",
-        "https://yle.fi/*"
+        "https://yle.fi/*",
+        "https://aksa.fi/*"
       ],
       "css": [
         "src/contentStyle.css"
@@ -75,5 +77,9 @@
   "permissions": [
     "storage",
     "tabs"
-  ]
+  ],
+  "options_ui": {
+    "page": "src/options/index.html",
+    "open_in_tab": true
+  }
 }
