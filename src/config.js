@@ -76,6 +76,42 @@ const DEFAULT_CONFIG = {
                 }
             ],
         },
+        "www.mtvuutiset.fi": {
+            "name": "MTV Uutiset",
+            "enabled": true,
+            // MTV uutiset uses react
+            "rules": [
+                {
+                    // Each individual news card is marked with this test id
+                    "container": "[data-testid='article-teaser-component']",
+                    
+                    // The specific link that contains the article ID
+                    "link": "a[data-testid^='teaser-link-']",
+                    
+                    // The headline is an h2 inside the content area
+                    "title": "h2"
+                },
+                { // Ticker list at the top of frontpage
+                    "container": "ul[data-testid='news-ticker-component'] li",
+                    
+                    // The link containing the unique numeric ID (9280388)
+                    "link": "a[data-testid='internal-link']",
+                    
+                    // The headline element to be replaced
+                    "title": "span.typography-title-4"
+                },
+                {
+                    // Targets the specific list item component
+                    "container": "ul li[data-testid='article-media-list-item-component']",
+                    
+                    // Finds the link containing the unique article ID
+                    "link": "a[data-testid='internal-link']",
+                    
+                    // In this list format, the title is an H3
+                    "title": "h3"
+                }
+            ]
+        },
         "aksa.fi": {
             "name": "Äänekosken Kaupunkisanomat",
             "enabled": true,
