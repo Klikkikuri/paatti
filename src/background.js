@@ -7,7 +7,24 @@ import { fetchRahtiData } from "./rahti.js";
 const log = getLogger("background");
 
 const DEFAULT_ENVIRONMENT = "free";
+const PULL_ALARM_NAME = "periodic-data-pull";
 
+async function scheduleAlarm(minutes) {
+    await browser.alarms.clear(PULL_ALARM_NAME);
+    browser.alarms.create(PULL_ALARM_NAME, {
+        periodInMinutes: minutes
+    });
+    log(`Alarm rescheduled for every ${minutes} minutes.`);
+}
+
+/**
+ * Handle alarm settings changes.
+ */
+// browser.storage.onChanged.addListener((changes, area) => {
+//   if (area === 'local' && changes.refreshIntervalMinutes) {
+//     scheduleAlarm(changes.refreshIntervalMinutes.newValue);
+//   }
+// });
 
 browser().runtime.onInstalled.addListener(async () => {
 
@@ -37,7 +54,16 @@ browser().runtime.onInstalled.addListener(async () => {
     const config = await getConfig();
     const intervalMinutes = config.refreshIntervalMinutes || 30;
 
-    log(`Setting up periodic Rahti data fetch every ${intervalMinutes} minutes.`);
+    scheduleAlarm(intervalMinutes);
 
     setInterval(fetchRahtiData, intervalMinutes * 60 * 1000);
 });
+
+// Handle periodic alarm to fetch Rahti data
+browser().alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === PULL_ALARM_NAME) {
+        log("Alarm triggered: fetching Rahti data.");
+        fetchRahtiData();
+    }
+});
+
