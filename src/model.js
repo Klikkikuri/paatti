@@ -170,6 +170,25 @@ const model = (() => {
                 userPreferences.testTitleDataUrl = value;
                 await browser().storage.local.set({ userPreferences });
             },
+
+            setEmail: async (value, env) => {
+                // Email is property of environment
+                if (!env) {
+                    env = await getConfig().then(cfg => cfg.activeEnv);
+                }
+                log(`Setting email for environment '${env}' to '${value}'`);
+                const data = await browser().storage.local.get("userPreferences");
+                const userPreferences = data.userPreferences || {};
+                if (!userPreferences.environmentConfigs) {
+                    userPreferences.environmentConfigs = {};
+                }
+                if (!userPreferences.environmentConfigs[env]) {
+                    userPreferences.environmentConfigs[env] = {};
+                }
+                userPreferences.environmentConfigs[env].email = value;
+                await browser().storage.local.set({ userPreferences });
+            },
+
         },
 
         read: {
@@ -256,6 +275,14 @@ const model = (() => {
                 log(`The mutation prone selectors for ${hostname}:`, selectors);
                 return selectors;
             },
+
+            getEmail: async () => {
+                const config = await getConfig();
+                const env = config.activeEnv;
+                const email = config.environmentConfigs[env]?.email || "";
+                log(`Retrieved email for environment '${env}': '${email}'`);
+                return email;
+            }
         },
     };
 })();
