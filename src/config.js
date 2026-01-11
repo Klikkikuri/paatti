@@ -7,6 +7,7 @@ const log = getLogger("config");
 const DEFAULT_ENV = {
     "debugVisualsEnabled": false,
     "refreshIntervalMinutes": 20,
+    "email": "",
     "titleDataUrls": ["https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"],
 }
 
@@ -133,8 +134,12 @@ const DEFAULT_CONFIG = {
             "debugVisualsEnabled": false,
             "titleDataUrls": ["https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"],
         },
-        "development": {
-            ...DEFAULT_ENV,
+        "paid": {...DEFAULT_ENV,
+            "debugVisualsEnabled": false,
+            "refreshIntervalMinutes": 10,
+            "email": "",
+        },
+        "development": {...DEFAULT_ENV,
             "debugVisualsEnabled": true,
             "refreshIntervalMinutes": 1,
             "titleDataUrls": [
