@@ -11,6 +11,50 @@ const modelEvents = {
 };
 
 /**
+ * Matches a hostname against an origin pattern, following browser permission matching logic.
+ * Supports wildcards in hostnames (e.g., *.example.com).
+ * 
+ * @param {string} hostname - The hostname to test (e.g., "www.hs.fi")
+ * @param {string} originPattern - The origin pattern (e.g., "https://*.hs.fi/*")
+ * @returns {boolean} True if the hostname matches the pattern
+ */
+function matchesOrigin(hostname, originPattern) {
+    try {
+        const url = new URL(originPattern);
+        const patternHost = url.hostname;
+
+        // Handle wildcard subdomain pattern (*.example.com)
+        if (patternHost.startsWith("*.")) {
+            const baseDomain = patternHost.slice(2); // Remove "*."
+            // Match exact domain or any subdomain
+            return hostname === baseDomain || hostname.endsWith("." + baseDomain);
+        }
+
+        // Handle full wildcard (*)
+        if (patternHost === "*") {
+            return true;
+        }
+
+        // Exact match
+        return hostname === patternHost;
+    } catch (e) {
+        log(`Invalid origin pattern: ${originPattern}`, e);
+        return false;
+    }
+}
+
+/**
+ * Checks if a hostname matches any of the given origin patterns.
+ * 
+ * @param {string} hostname - The hostname to test
+ * @param {string[]} origins - Array of origin patterns
+ * @returns {boolean} True if hostname matches at least one origin pattern
+ */
+function matchesAnyOrigin(hostname, origins) {
+    return origins.some(origin => matchesOrigin(hostname, origin));
+}
+
+/**
  * Namespace for __model__ of model-view-controller.
  */
 const model = (() => {
@@ -69,9 +113,11 @@ const model = (() => {
                     log(`Enabling '${hostname}' == ${value}`);
                     const data = await browser().storage.sync.get("userSiteOverrides");
                     const overrides = data.userSiteOverrides || {};
-                    overrides[hostname] = value;
+                    overrides[hostname] = overrides[hostname] || {};
+                    overrides[hostname].enabled = value;
                     await browser().storage.sync.set({ userSiteOverrides: overrides });
                 } else {
+                    // Global enabled
                     log(`Enabling conversion == ${value}`);
                     const data = await browser().storage.local.get("userPreferences");
                     const userPreferences = data.userPreferences || {};
@@ -140,11 +186,19 @@ const model = (() => {
             isEnabled: async (hostname) => {
                 const config = await getConfig();
                 const isGloballyEnabled = config.enabled;
-                if (hostname) {
-                    return isGloballyEnabled && config.siteConfigs[hostname]?.enabled;
-                } else {
+
+                if (!hostname) {
                     return isGloballyEnabled;
                 }
+
+                // Find matching site config by checking if hostname matches any origin pattern
+                for (const [domain, siteConfig] of Object.entries(config.siteConfigs)) {
+                    if (siteConfig.origins && matchesAnyOrigin(hostname, siteConfig.origins)) {
+                        return isGloballyEnabled && siteConfig.enabled;
+                    }
+                }
+
+                return false;
             },
 
             getDebugVisualsEnabled: async () => {
