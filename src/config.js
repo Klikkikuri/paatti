@@ -18,15 +18,17 @@ const DEFAULT_CONFIG = {
     "siteConfigs": {
         "www.iltalehti.fi": {
             "name": "Iltalehti",
+            "origins": ["https://*.iltalehti.fi/*"],
             "enabled": false,
             "rules": [
             ],
         },
         "www.hs.fi": {
             "name": "Helsingin Sanomat",
+            "enabled": false,
+            "origins": ["https://*.hs.fi/*"],
             "rules": [
             ],
-            "enabled": false,
         },
         "yle.fi": {
             "name": "Yle",
@@ -158,15 +160,21 @@ async function getConfig() {
 
     const envData = DEFAULT_CONFIG.environmentConfigs[activeEnv];
 
-    // Merge siteConfigs with sync overrides
     const mergedSiteConfigs = { ...DEFAULT_CONFIG.siteConfigs };
-    for (const [domain, enabledStatus] of Object.entries(syncOverrides)) {
-        if (mergedSiteConfigs[domain]) {
-            log("Applying sync override for", domain, "to", enabledStatus);
-            mergedSiteConfigs[domain].enabled = enabledStatus;
-        } else {
-            // If user added a site not in defaults, initialize it
-            mergedSiteConfigs[domain] = { enabled: enabledStatus };
+    for (const [domain, siteConfig] of Object.entries(mergedSiteConfigs)) {
+        // Merge siteConfigs with sync overrides
+        if (syncOverrides.hasOwnProperty(domain)) {
+            log("Applying sync override for", domain, "to", syncOverrides[domain]);
+            const overrides = syncOverrides[domain]
+            mergedSiteConfigs[domain] = {
+                ...siteConfig,
+                ...overrides
+            };
+        }
+
+        // If origins are not set, add a default pattern
+        if (!siteConfig.origins) {
+            siteConfig.origins = [`https://${domain}/*`];
         }
     }
 
