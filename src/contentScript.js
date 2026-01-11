@@ -32,8 +32,6 @@ const ERROR_VARIANTS = {
 
 const hrefSign = async (url) => {
     const urlObj = new URL(url, window.location.href);
-    log("Computing hash for URL:", urlObj.href);
-
     return await hashUrl(urlObj.href);
 }
 
@@ -295,6 +293,8 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
                         log("Skipping link without href:", link);
                     }
                     const urlHash = await hrefSign(href);
+                    // Store for debugging
+                    link.dataset.klikkikuriUrlHash = urlHash;
 
                     const rahtiEntry = await rahti.get(urlHash)
                     if (rahtiEntry) {
@@ -303,10 +303,15 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
                             const originalTitle = titleElem.textContent;
                             const convertedTitle = rahtiEntry.title;
 
-                            if (titleElem.getAttribute("__klikkikuri_original_title")) {
+                            if (titleElem.dataset.klikkikuriConvertedTitle === convertedTitle) {
                                 // No action needed, already converted before.
+                                return;
                             }
-                            titleElem.setAttribute("__klikkikuri_original_title", originalTitle);
+
+                            titleElem.dataset.klikkikuriOriginalTitle = originalTitle;
+                            titleElem.dataset.klikkikuriConvertedTitle = convertedTitle;
+                            titleElem.dataset.klikkikuriClickbaitLevel = rahtiEntry.clickbaitiness;
+
 
                             // Replace the title text.
                             titleElem.textContent = `${convertedTitle}`;
@@ -327,8 +332,8 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 
     const observer = new MutationObserver((mutations) => {
         const isInternalChange = mutations.every(mutation => 
-            mutation.target.hasAttribute?.('__klikkikuri_original_title') || 
-            mutation.target.parentElement?.hasAttribute?.('__klikkikuri_original_title')
+            mutation.target.dataset.klikkikuriConvertedTitle || 
+            mutation.target.parentElement?.dataset.klikkikuriConvertedTitle
         );
         if (isInternalChange) {
             return;
