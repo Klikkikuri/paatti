@@ -119,13 +119,10 @@ const _refreshSettingsView = ({isConversionEnabled, sitesEnabled, isDebugVisuals
     }
 };
 
-const _refreshContentView = ({ pageHostname, pageStatistics, isEnabled, isKerran }) => {
+const _refreshContentView = ({ pageHostname, pageStatistics, isEnabled }) => {
     _refreshStatistics({ site: pageHostname, data: pageStatistics });
 
-    document.getElementById("extension-disabled-temporarily").checked = isKerran;
-    // The isEnabled performs a sort of double-duty, so need to check for kerran
-    // here also.
-    document.getElementById("shortcut-extension-enabled-current-site").checked = !(isKerran || isEnabled);
+    document.getElementById("shortcut-extension-enabled-current-site").checked = !(isEnabled);
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -148,9 +145,6 @@ const handleClickConversionSwitch = async (e) => {
     await controller.setSiteEnabled(e.target.checked, hostname);
 };
 
-const handleClickKerran = async (e) => {
-    await controller.setCurrentTabKerran(e.target.checked);
-};
 
 const handleClickAina = async (e) => {
     await controller.setCurrentTabEnabled(!e.target.checked);
@@ -181,7 +175,6 @@ const refresh = async () => {
     const pageHostname = await getCurrentTabHostname();
     const pageStatistics = await model.read.getStatistics(pageHostname);
     const sitesEnabled = await model.read.getSitesEnabled();
-    const isKerran = await model.read.isKerran(pageHostname);
     const isDebugVisualsEnabled = await model.read.getDebugVisualsEnabled();
     const titleDataUrlSelected = await model.read.getTitleDataUrl();
     const isDevelopmentEnv = await model.read.isDevelopmentEnv();
@@ -202,7 +195,6 @@ const refresh = async () => {
         pageHostname,
         pageStatistics,
         isEnabled: sitesEnabled[pageHostname],
-        isKerran,
     });
 };
 
@@ -266,7 +258,7 @@ const view = {
     handleDomContentLoaded: handleDomContentLoaded,
     showView: showView,
     handleClickMainSwitch: handleClickMainSwitch,
-    handleClickKerran: handleClickKerran,
+
     handleClickAina: handleClickAina,
     handleClickConversionSwitch: handleClickConversionSwitch,
     refresh: refresh,
@@ -287,8 +279,7 @@ document.querySelector(".open-home")
     .addEventListener("click", () => view.showView("main"));
 ///////////////////////////////////////////////////////////////////////////////
 // Handlers for application state changes.
-document.getElementById("extension-disabled-temporarily")
-    .addEventListener("click", view.handleClickKerran);
+
 document.getElementById("shortcut-extension-enabled-current-site")
     .addEventListener("click", view.handleClickAina);
 // Register main of/off switch.

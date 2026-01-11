@@ -36,7 +36,9 @@
       "matches": [
         "https://*.iltalehti.fi/*",
         "https://*.hs.fi/*",
-        "https://yle.fi/*"
+        "https://yle.fi/*",
+        "https://www.mtvuutiset.fi/*",
+        "https://aksa.fi/*"
       ]
     }
   ],
@@ -46,7 +48,9 @@
       "matches": [
         "https://*.iltalehti.fi/*",
         "https://*.hs.fi/*",
-        "https://yle.fi/*"
+        "https://yle.fi/*",
+        "https://www.mtvuutiset.fi/*",
+        "https://aksa.fi/*"
       ],
       "css": [
         "src/contentStyle.css"

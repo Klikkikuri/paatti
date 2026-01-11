@@ -19,9 +19,6 @@ const _setSiteEnabled = async (isEnabled, hostname) => {
     if (isEnabled) {
         // Turning on a site also turns on the extension.
         await model.write.setEnabled(true);
-    } else {
-        // Kerran cannot stay on when actively setting site to disabled.
-        await model.write.setKerran(false, hostname);
     }
 
     await model.write.setEnabled(isEnabled, hostname);
@@ -58,25 +55,7 @@ const controller = {
 
     setCurrentTabEnabled: _setCurrentTabEnabled,
 
-    setCurrentTabKerran: async (isKerran) => {
-        const currentTabHostname = await getCurrentTabHostname();
-        await model.write.setKerran(isKerran, currentTabHostname);
-        // Set the enabled-flag also in order to actually trigger conversion
-        // restore.
-        await model.write.setEnabled(!isKerran, currentTabHostname);
-    },
-
     dispatchConversion: _dispatchConversion,
-
-    resetKerran: async (hostname) => {
-        if (!(await model.read.isEnabled(hostname)) && (await model.read.isKerran(hostname))) {
-            await model.write.setEnabled(true, hostname);
-            await model.write.setKerran(false, hostname);
-            log(`Resetted kerran for ${hostname}`);
-        } else {
-            log(`No need to reset kerran for ${hostname}`);
-        }
-    },
 
     updateStatistics: async ({ hostname, restoreTitleData, links }) => {
         const siteStats = {

@@ -1,0 +1,30 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch WebExtension",
+            "type": "firefox",
+            "request": "launch",
+            "reAttach": true,
+            "firefoxExecutable": "/usr/bin/firefox-devedition",
+            "preferences": {
+                "devtools.debugger.remote-enabled": true,
+                "devtools.chrome.enabled": true,
+                // "ui.popup.disable_autohide": true,
+                // Allows the use of dump() in JavaScript to print directly to the system console/terminal.
+                "browser.dom.window.dump.enabled": true,
+                // Ensures JavaScript errors are sent to the Error Console.
+                "javascript.options.showInConsole": true,
+                // Provides more verbose logging for the extension subsystem itself.
+                "extensions.logging.enabled": true
+            },
+            "url": "https://www.yle.fi/uutiset/",
+            "addonPath": "${workspaceFolder}",
+            // "preLaunchTask": "Start HTTP data server",
+            // "postDebugTask": "Stop HTTP data server",
+        }
+    ]
+}
