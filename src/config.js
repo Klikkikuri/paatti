@@ -18,28 +18,13 @@ const DEFAULT_CONFIG = {
     "siteConfigs": {
         "www.iltalehti.fi": {
             "name": "Iltalehti",
-            // These CSS selectors are used to find the elements
-            // containing text of news titles (which will be
-            // converted).
-            "linkTitleQuerySelectors": [
-                ".front-title",
-                ".title-container > .title,.title-container-most-read > .title",
-                ".newsticker-title-text",
-                ".latest-pala-video-overlay > .latest-pala-title"
-            ],
             "enabled": false,
+            "rules": [
+            ],
         },
         "www.hs.fi": {
             "name": "Helsingin Sanomat",
-            "linkTitleQuerySelectors": [
-                "a:nth-child(1) > section:nth-child(1) > div:nth-child(1) > div:nth-child(1) > h2:nth-child(1) > span:nth-child(2)",
-            ],
-            // These CSS selectors are used to find the elements
-            // that might dynamically get added elements containing
-            // convertable news titles (and need to be listened
-            // for changes while the user is browsing the site).
-            "mutationProneQuerySelectors": [
-                "section.flex:nth-child(5) > section:nth-child(1)",
+            "rules": [
             ],
             "enabled": false,
         },
