@@ -142,7 +142,7 @@ const _refreshSettingsView = ({isConversionEnabled, sitesEnabled, isDebugVisuals
 const _refreshContentView = ({ pageHostname, pageStatistics, isEnabled }) => {
     _refreshStatistics({ site: pageHostname, data: pageStatistics });
 
-    document.getElementById("shortcut-extension-enabled-current-site").checked = !(isEnabled);
+    document.getElementById("shortcut-extension-enabled-current-site").checked = isEnabled;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
