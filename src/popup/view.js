@@ -142,7 +142,7 @@ const _refreshSettingsView = ({isConversionEnabled, sitesEnabled, isDebugVisuals
 const _refreshContentView = ({ pageHostname, pageStatistics, isEnabled }) => {
     _refreshStatistics({ site: pageHostname, data: pageStatistics });
 
-    document.getElementById("shortcut-extension-enabled-current-site").checked = isEnabled;
+    document.getElementById("shortcut-extension-disabled-current-site").checked = !isEnabled;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -302,7 +302,7 @@ document.querySelector(".open-home")
 ///////////////////////////////////////////////////////////////////////////////
 // Handlers for application state changes.
 
-document.getElementById("shortcut-extension-enabled-current-site")
+document.getElementById("shortcut-extension-disabled-current-site")
     .addEventListener("click", view.handleClickAina);
 // Register main of/off switch.
 document.getElementById("extension-enabled")
