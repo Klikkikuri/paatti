@@ -3,6 +3,7 @@
 import { getLogger, browser, getCurrentTabHostname } from "../utils.js";
 import { model, modelEvents } from "../model.js";
 import { controller } from "../controller.js";
+import { getConfig } from "../config.js";
 
 const log = getLogger("view");
 
@@ -10,17 +11,7 @@ const log = getLogger("view");
 // Helper procedures and definitions.
 ///////////////////////////////////////////////////////////////////////////////
 
-const SWITCHES_TO_CONFIG_KEYS = {
-    "il-enabled": "www.iltalehti.fi",
-    "hs-enabled": "www.hs.fi",
-    "yle-enabled": "yle.fi",
-    "al-enabled": "www.aamulehti.fi",
-};
-
-const CONFIG_KEYS_TO_SWITCHES = Object.fromEntries(
-    Object.entries(SWITCHES_TO_CONFIG_KEYS)
-        .map(([k, v]) => [v, k])
-);
+const getSitesEnabledItemId = (host) => `${host}-enabled`;
 
 /**
  * Store the different views' IDs here in order to make making changes a bit
@@ -83,13 +74,42 @@ const _refreshStatistics = ({ site, data }) => {
     }
 };
 
-const _refreshSettingsView = ({isConversionEnabled, sitesEnabled, isDebugVisualsEnabled, titleDataUrlSelected, isDevelopmentEnv, testTitleDataUrl}) => {
+const _refreshSettingsView = ({isConversionEnabled, sitesEnabled, isDebugVisualsEnabled, titleDataUrlSelected, isDevelopmentEnv, testTitleDataUrl, config}) => {
+
+    // First reset the view, as rahti-fetch alarm will keep re-adding enabled
+    // sites to their list in UI.
+    const sitesEnabledList = document.getElementById("sites-enabled-ul");
+    while (sitesEnabledList.firstChild)  {
+        sitesEnabledList.removeChild(sitesEnabledList.firstChild);
+    }
+
+    // Add the supported sites' listing to UI.
+    for (const [host, site] of Object.entries(config.siteConfigs)) {
+        const input = document.createElement("input");
+        input.classList.add("toggle");
+        input.classList.add("conversion-switch");
+        input.id = getSitesEnabledItemId(host);
+        input.type = "checkbox";
+        const label = document.createElement("label");
+        label.for = input.id;
+        label.textContent = site.name;
+        const item = document.createElement("li");
+        item.appendChild(label);
+        item.appendChild(input);
+        sitesEnabledList.appendChild(item);
+    }
+
+
     // Visualize per site switches as "readonly" as per main switch state.
     _setSettingsviewCheckboxesReadonly(isConversionEnabled);
 
     // Set the per site switches enabled as per their switch state.
     for (const [hostname, isEnabled] of Object.entries(sitesEnabled)) {
-        document.getElementById(CONFIG_KEYS_TO_SWITCHES[hostname]).checked = isEnabled;
+        const siteSwitch = document.getElementById(getSitesEnabledItemId(hostname));
+        if (siteSwitch === null) {
+            throw `Conversion switch element not found for hostname '${hostname}'`;
+        }
+        siteSwitch.checked = isEnabled;
     }
 
     if (isDevelopmentEnv) {
@@ -179,6 +199,7 @@ const refresh = async () => {
     const titleDataUrlSelected = await model.read.getTitleDataUrl();
     const isDevelopmentEnv = await model.read.isDevelopmentEnv();
     const testTitleDataUrl = await model.read.getTestTitleDataUrl();
+    const config = await getConfig();
 
     // Update the power button.
     document.getElementById("extension-enabled").checked = isConversionEnabled;
@@ -190,6 +211,7 @@ const refresh = async () => {
         titleDataUrlSelected,
         isDevelopmentEnv,
         testTitleDataUrl,
+        config,
     });
     _refreshContentView({
         pageHostname,
