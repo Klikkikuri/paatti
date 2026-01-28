@@ -10,8 +10,8 @@ const DEFAULT_ENVIRONMENT = "free";
 const PULL_ALARM_NAME = "periodic-data-pull";
 
 async function scheduleAlarm(minutes) {
-    await browser.alarms.clear(PULL_ALARM_NAME);
-    browser.alarms.create(PULL_ALARM_NAME, {
+    await browser().alarms.clear(PULL_ALARM_NAME);
+    browser().alarms.create(PULL_ALARM_NAME, {
         periodInMinutes: minutes
     });
     log(`Alarm rescheduled for every ${minutes} minutes.`);
