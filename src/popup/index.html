@@ -31,8 +31,8 @@
             <section>
                 <h3>Lopeta käyttö tällä sivulla:</h3>
                 <div class="shortcut-controls">
-                    <input class="conversion-switch hidden" id="shortcut-extension-enabled-current-site" type="checkbox">
-                    <label class="push-button" for="shortcut-extension-enabled-current-site">Aina</label>
+                    <input class="conversion-switch hidden" id="shortcut-extension-disabled-current-site" type="checkbox">
+                    <label class="push-button" for="shortcut-extension-disabled-current-site">Aina</label>
                 </div>
             </section>
         </div>
@@ -63,23 +63,7 @@
     <div class="content settingsview hidden">
         <h2 class="settingsview-header">Käsiteltävät uutissivustot</h2>
         <hr>
-        <ul>
-            <li>
-                <label for="il-enabled">Iltalehti</label>
-                <input class="toggle conversion-switch" id="il-enabled" type="checkbox">
-            </li>
-            <li>
-                <label for="hs-enabled">Helsingin sanomat</label>
-                <input class="toggle conversion-switch" id="hs-enabled" type="checkbox">
-            </li>
-            <li>
-                <label for="yle-enabled">YLE</label>
-                <input class="toggle conversion-switch" id="yle-enabled" type="checkbox">
-            </li>
-            <li>
-                <label for="al-enabled">Aamulehti</label>
-                <input class="toggle conversion-switch" id="al-enabled" type="checkbox">
-            </li>
+        <ul id="sites-enabled-ul">
         </ul>
 
         <div class="devmode hidden">

@@ -20,8 +20,7 @@ const modelEvents = {
  */
 function matchesOrigin(hostname, originPattern) {
     try {
-        const url = new URL(originPattern);
-        const patternHost = url.hostname;
+        const patternHost = originPattern.split("://")[1]?.split("/")[0];
 
         // Handle wildcard subdomain pattern (*.example.com)
         if (patternHost.startsWith("*.")) {
@@ -219,9 +218,9 @@ const model = (() => {
                 return await getConfig().then((cfg) => cfg.siteConfigs[hostname].rules);
             },
 
-            getTitleDataUrl: async () => {
+            getTitleDataUrls: async () => {
                 const config = await getConfig();
-                return config.titleDataUrls?.[0];
+                return config.titleDataUrls;
             },
 
             getTestTitleDataUrl: async () => {
