@@ -1,6 +1,6 @@
 "use strict";
 
-import  { model } from "./model.js";
+import { model } from "./model.js";
 import { browser } from "./utils.js";
 
 const storeElemOriginalStyle = (htmlElem) => {

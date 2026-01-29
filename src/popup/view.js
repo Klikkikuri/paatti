@@ -74,12 +74,12 @@ const _refreshStatistics = ({ site, data }) => {
     }
 };
 
-const _refreshSettingsView = ({isConversionEnabled, sitesEnabled, isDebugVisualsEnabled, titleDataUrlSelected, isDevelopmentEnv, testTitleDataUrl, config}) => {
+const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, isDebugVisualsEnabled, titleDataUrlSelected, isDevelopmentEnv, testTitleDataUrl, config }) => {
 
     // First reset the view, as rahti-fetch alarm will keep re-adding enabled
     // sites to their list in UI.
     const sitesEnabledList = document.getElementById("sites-enabled-ul");
-    while (sitesEnabledList.firstChild)  {
+    while (sitesEnabledList.firstChild) {
         sitesEnabledList.removeChild(sitesEnabledList.firstChild);
     }
 
@@ -257,7 +257,7 @@ const __devmode_dumpLinkHash = async (e) => {
         .filter((x) => x !== null)
         .map((x) => x.toString())
         .join("\n");
-    await window.navigator.clipboard.write([new ClipboardItem({"text/plain": pageSignaturesDump})]);
+    await window.navigator.clipboard.write([new ClipboardItem({ "text/plain": pageSignaturesDump })]);
 
     e.target.disabled = true;
     const eventTargetLabel = document.querySelector(`label[for=${e.target.id}]`);

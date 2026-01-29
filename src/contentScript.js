@@ -31,7 +31,7 @@ let convertTitles;
     const { controller } = await import(browser.runtime.getURL("src/controller.js"));
     const { getLogger } = await import(browser.runtime.getURL("src/utils.js"));
 
-    const { rahtiStorage } =  await import(browser.runtime.getURL("src/rahti.js"));
+    const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
 
     const { highlightElemConverted, highlightElemOriginal } = await import(browser.runtime.getURL("src/conversionUtils.js"));
 
@@ -67,9 +67,9 @@ let convertTitles;
         for (const rule of siteRules) {
             const containers = document.querySelectorAll(rule.container);
 
-            containers.forEach( (container) => {
+            containers.forEach((container) => {
                 const links = container.querySelectorAll(rule.link);
-                
+
                 links.forEach(async link => {
                     // TODO: Might not work on javascript generated links (onclick etc.)
                     const href = link.getAttribute('href');
@@ -90,7 +90,7 @@ let convertTitles;
 
                                 titleElem.textContent = originalTitle
                                 await highlightElemOriginal(titleElem);
-                                
+
                                 // This needs to be removed so that the next
                                 // conversion will not be skipped.
                                 delete titleElem.dataset.klikkikuriConvertedTitle;
@@ -130,8 +130,8 @@ let convertTitles;
     const observer = new MutationObserver((mutations) => {
         // Use original title as the flag, as for example converted title would
         // be removed when restoring page to show original titles.
-        const isInternalChange = mutations.every(mutation => 
-            mutation.target.dataset.klikkikuriOriginalTitle || 
+        const isInternalChange = mutations.every(mutation =>
+            mutation.target.dataset.klikkikuriOriginalTitle ||
             mutation.target.parentElement?.dataset.klikkikuriOriginalTitle
         );
         if (isInternalChange) {
@@ -173,7 +173,7 @@ let convertTitles;
             log(`Restoring original state of ${newsSite} `);
             await convertTitles(true);
             convertedTitlesCount = 0;
-        } 
+        }
 
         await controller.updateStatistics({
             hostname: newsSite,
