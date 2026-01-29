@@ -131,11 +131,15 @@ const _refreshSettingsView = ({isConversionEnabled, sitesEnabled, isDebugVisuals
     document.getElementById("devmode-setDebugVisuals")
         .checked = isDebugVisualsEnabled;
 
+    // TODO: Change this to a list of switches with the data urls selected.
     for (const option of document.getElementById("devmode-setTitleDataUrl").querySelectorAll("option")) {
+        option.textContent = "UNIMPLEMENTED";
+        /*
         option.selected = false;
         if (option.value === titleDataUrlSelected) {
             option.selected = true;
         }
+        */
     }
 };
 
@@ -196,7 +200,7 @@ const refresh = async () => {
     const pageStatistics = await model.read.getStatistics(pageHostname);
     const sitesEnabled = await model.read.getSitesEnabled();
     const isDebugVisualsEnabled = await model.read.getDebugVisualsEnabled();
-    const titleDataUrlSelected = await model.read.getTitleDataUrl();
+    const titleDataUrlSelected = await model.read.getTitleDataUrls();
     const isDevelopmentEnv = await model.read.isDevelopmentEnv();
     const testTitleDataUrl = await model.read.getTestTitleDataUrl();
     const config = await getConfig();

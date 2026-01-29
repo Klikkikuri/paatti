@@ -218,9 +218,9 @@ const model = (() => {
                 return await getConfig().then((cfg) => cfg.siteConfigs[hostname].rules);
             },
 
-            getTitleDataUrl: async () => {
+            getTitleDataUrls: async () => {
                 const config = await getConfig();
-                return config.titleDataUrls?.[0];
+                return config.titleDataUrls;
             },
 
             getTestTitleDataUrl: async () => {

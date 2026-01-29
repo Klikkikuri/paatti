@@ -212,13 +212,12 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 
     const newsSite = window.location.hostname;
 
-    const convertClickbaits = async (links) => {
+    const convertClickbaits = async (apiUrl, links) => {
         const linkTitleQuerySelectors = await model.read.getLinkTitleQuerySelectors(newsSite);
 
         // Always either toggle the converted headlines on or off based
         // on enabled-status.
 
-        const apiUrl = await model.read.getTitleDataUrl();
         log("Basing conversion on source:", apiUrl);
         let apiResponse;
         try {
@@ -254,7 +253,9 @@ const restoreClickbaits = async (links, titleData, linkTitleQuerySelectors) => {
 
         switch (message.command) {
             case "convertClickbaits":
-                await convertClickbaits(Array.from(document.querySelectorAll("a")));
+                for (const titleDataUrl of await model.read.getTitleDataUrls()) {
+                    await convertClickbaits(titleDataUrl, Array.from(document.querySelectorAll("a")));
+                }
                 break;
             case "devmode_dumpLinkHash":
                 return Array.from(document.querySelectorAll("a"))
