@@ -3,7 +3,7 @@
 const browser = () => (chrome || browser);
 
 const getLogger = (name) => {
-    return console.log.bind(console, `[Loki ⛵ ${name}]:`);
+    return console.log.bind(console, `[Loki ⛵ ${name} 🕰️ ${Date.now()}]:`);
 };
 
 const getCurrentTabHostname = async () => {
