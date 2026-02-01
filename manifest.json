@@ -1,6 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Klikkikuri Paatti",
+  "description": "__MSG_extensionDescription__",
   "version": "0.0.1",
   "browser_specific_settings": {
     "gecko": {
@@ -10,6 +11,7 @@
   "icons": {
     "48": "icons/klikkikuri-48.png"
   },
+  "default_locale": "fi",
   "action": {
     "default_icon": {
       "19": "icons/klikkikuri-19.png",
