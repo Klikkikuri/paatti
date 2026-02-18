@@ -237,6 +237,13 @@ const refresh = async () => {
     });
 
     // Rest of localizations.
+    document.getElementById("feedbackview-general-feedback").querySelector("iframe").textContent =
+        browser().i18n.getMessage("feedbackviewGeneralFeedbackLoading");
+    document.getElementById("feedbackview-general-feedback-header").textContent =
+        browser().i18n.getMessage("feedbackviewGeneralFeedbackHeader");
+
+    /*
+     * TODO: Implement converted vs. original title rating.
     document.getElementById("feedbackview-rate-title-header").textContent =
         browser().i18n.getMessage("feedbackviewRateTitleHeader");
     document.getElementById("feedbackview-rate-title").querySelector("p strong:first-child").textContent =
@@ -249,6 +256,7 @@ const refresh = async () => {
         browser().i18n.getMessage("feedbackviewRateTitleConversionIsGood");
     document.querySelector("label[for=bad]").textContent =
         browser().i18n.getMessage("feedbackviewRateTitleConversionIsBad");
+    */
 
     document.getElementById("navi-main").querySelector(".label").textContent =
         browser().i18n.getMessage("navigationMainLabel");

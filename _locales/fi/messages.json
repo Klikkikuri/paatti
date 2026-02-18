@@ -39,6 +39,16 @@
     "description": "Text on the button in the main view that acts as a shortcut to disable/enable current site"
   },
 
+  "feedbackviewGeneralFeedbackHeader": {
+    "message": "Anna vapaata palautetta",
+    "description": "Title of the feedback view general feedback section"
+  },
+
+  "feedbackviewGeneralFeedbackLoading": {
+    "message": "Ladataan...",
+    "description": "Text marking that the embedded generic feedback form is still loading in to the document"
+  },
+
   "feedbackviewRateTitleHeader": {
     "message": "Arvostele tämä klikkiotsikko",
     "description": "Title of the feedback view converted title rating section"
