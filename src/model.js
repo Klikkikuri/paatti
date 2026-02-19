@@ -138,13 +138,13 @@ const model = (() => {
             },
 
             setStatistics: async (value, { hostname }) => {
-                log(`Storing stats for ${hostname}:`, value);
+                log(`Storing stats for ${hostname}`);
                 const data = await browser().storage.local.get("statistics");
                 const statistics = data.statistics || {};
                 statistics[hostname] = value;
                 await browser().storage.local.set({ statistics });
 
-                log(`Stored stats for ${hostname}`);
+                log(`Stored stats for ${hostname}:`, statistics[hostname]);
 
                 events.dispatchEvent(modelEvents.statisticsChange);
             },

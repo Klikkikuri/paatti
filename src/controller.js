@@ -66,9 +66,6 @@ const controller = {
                 "labelVery": 0,
                 "labelExtremely": 0,
             },
-            "misc": {
-                "linksCount": links.length,
-            },
         };
 
         model.write.setStatistics(siteStats, { hostname });
