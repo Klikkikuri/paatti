@@ -98,43 +98,51 @@ const hrefSign = async (url) => {
             log(`No site rules found for '${newsSite}', aborting conversion.`);
         }
 
-        let convertedTitlesCount = 0;
-
+        const processingPromises = [];
         for (const rule of siteRules) {
             const containers = document.querySelectorAll(rule.container);
             for (const container of containers) {
                 const links = container.querySelectorAll(rule.link);
                 for (const link of links) {
-                    // TODO: Might not work on javascript generated links (onclick etc.)
-                    const href = link.getAttribute('href');
-                    if (!href) {
-                        log("Skipping link without href:", link);
-                    }
-                    const urlHash = await hrefSign(href);
-                    // Store for debugging
-                    link.dataset.klikkikuriUrlHash = urlHash;
+                    processingPromises.push((async () => {
+                        // TODO: Might not work on javascript generated links (onclick etc.)
+                        const href = link.getAttribute('href');
+                        if (!href) {
+                            log("Skipping link without href:", link);
+                        }
+                        const urlHash = await hrefSign(href);
+                        // Store for debugging
+                        link.dataset.klikkikuriUrlHash = urlHash;
 
-                    const rahtiEntry = await rahti.get(urlHash)
-                    if (rahtiEntry) {
-                        const titleElem = rule.title ? container.querySelector(rule.title) : link;
-                        if (titleElem) {
-                            if (await model.read.isEnabled(newsSite)) {
-                                await convertClickbait(titleElem, link, { rahtiEntry });
-                                convertedTitlesCount += 1;
+                        const rahtiEntry = await rahti.get(urlHash)
+                        if (rahtiEntry) {
+                            const titleElem = rule.title ? container.querySelector(rule.title) : link;
+                            if (titleElem) {
+                                if (await model.read.isEnabled(newsSite)) {
+                                    await convertClickbait(titleElem, link, { rahtiEntry });
+                                    // Return the amount of converted titles
+                                    // for gathering stats.
+                                    return 1;
+                                } else {
+                                    log(`Conversion not enabled for site '${newsSite}'`)
+                                    await restoreClickbait(titleElem, link);
+                                }
                             } else {
-                                log(`Conversion not enabled for site '${newsSite}'`)
-                                await restoreClickbait(titleElem, link);
+                                log(`No title element found for rule title selector '${rule.title}' in link:`, link);
                             }
                         } else {
-                            log(`No title element found for rule title selector '${rule.title}' in link:`, link);
+                            log(`No Rahti entry found for hash '${urlHash}' of link:`, link);
                         }
-                    } else {
-                        log(`No Rahti entry found for hash '${urlHash}' of link:`, link);
-                    }
-
+                        // Return the amount of converted titles
+                        // for gathering stats.
+                        return 0;
+                    })());
                 }
             }
         }
+
+        // TODO: Handle any errors found in promises.
+        const convertedTitlesCount = (await Promise.allSettled(processingPromises)).reduce((acc, x) => acc + x.value, 0);
 
         await controller.updateStatistics({
             hostname: newsSite,
