@@ -21,8 +21,6 @@ const hrefSign = async (url) => {
     return await hashUrl(urlObj.href);
 }
 
-let convertTitles;
-
 // Main.
 (async () => {
     // Import modules.
@@ -58,78 +56,106 @@ let convertTitles;
 
     const newsSite = window.location.hostname;
 
-    convertTitles = async (doRestore) => {
+    const processSite = async () => {
+        // Define the two branches that the conversion procedure can take: 1) Convert clickbaits OR 2) Restore clickbaits (i.e., restore the originals).
+
+        const convertClickbait = async (titleElem, link, { rahtiEntry }) => {
+            const originalTitle = titleElem.textContent;
+            const convertedTitle = rahtiEntry.title;
+
+            if (titleElem.dataset.klikkikuriConvertedTitle === convertedTitle) {
+                // No action needed, already converted before.
+                return;
+            }
+
+            titleElem.dataset.klikkikuriOriginalTitle = originalTitle;
+            titleElem.dataset.klikkikuriConvertedTitle = convertedTitle;
+            titleElem.dataset.klikkikuriClickbaitLevel = rahtiEntry.clickbaitiness;
+
+            // Replace the title text.
+            titleElem.textContent = `${convertedTitle}`;
+            await highlightElemConverted(titleElem);
+
+            log(`Converted title from '${originalTitle}' to '${convertedTitle}' for link:`, link);
+        };
+
+        const restoreClickbait = async (titleElem, link) => {
+            const convertedTitle = titleElem.dataset.klikkikuriConvertedTitle;
+            const originalTitle = titleElem.dataset.klikkikuriOriginalTitle;
+
+            titleElem.textContent = originalTitle
+            await highlightElemOriginal(titleElem);
+
+            // This needs to be removed so that the next
+            // conversion will not be skipped.
+            delete titleElem.dataset.klikkikuriConvertedTitle;
+
+            log(`Restored title from '${convertedTitle}' to '${originalTitle}' for link:`, link);
+        };
+
         const siteRules = await model.read.getSiteRules(newsSite);
         if (!siteRules) {
             log(`No site rules found for '${newsSite}', aborting conversion.`);
         }
 
+        const processingPromises = [];
         for (const rule of siteRules) {
             const containers = document.querySelectorAll(rule.container);
-
-            containers.forEach((container) => {
+            for (const container of containers) {
                 const links = container.querySelectorAll(rule.link);
+                for (const link of links) {
+                    processingPromises.push((async () => {
+                        // TODO: Might not work on javascript generated links (onclick etc.)
+                        const href = link.getAttribute('href');
+                        if (!href) {
+                            log("Skipping link without href:", link);
+                        }
+                        const urlHash = await hrefSign(href);
+                        // Store for debugging
+                        link.dataset.klikkikuriUrlHash = urlHash;
 
-                links.forEach(async link => {
-                    // TODO: Might not work on javascript generated links (onclick etc.)
-                    const href = link.getAttribute('href');
-                    if (!href) {
-                        log("Skipping link without href:", link);
-                    }
-                    const urlHash = await hrefSign(href);
-                    // Store for debugging
-                    link.dataset.klikkikuriUrlHash = urlHash;
-
-                    const rahtiEntry = await rahti.get(urlHash)
-                    if (rahtiEntry) {
-                        const titleElem = rule.title ? container.querySelector(rule.title) : link;
-                        if (titleElem) {
-                            if (doRestore) {
-                                const convertedTitle = titleElem.dataset.klikkikuriConvertedTitle;
-                                const originalTitle = titleElem.dataset.klikkikuriOriginalTitle;
-
-                                titleElem.textContent = originalTitle
-                                await highlightElemOriginal(titleElem);
-
-                                // This needs to be removed so that the next
-                                // conversion will not be skipped.
-                                delete titleElem.dataset.klikkikuriConvertedTitle;
-
-                                log(`Restored title from '${convertedTitle}' to '${originalTitle}' for link:`, link);
-                            } else {
-                                const originalTitle = titleElem.textContent;
-                                const convertedTitle = rahtiEntry.title;
-
-                                if (titleElem.dataset.klikkikuriConvertedTitle === convertedTitle) {
-                                    // No action needed, already converted before.
-                                    return;
+                        const rahtiEntry = await rahti.get(urlHash)
+                        if (rahtiEntry) {
+                            const titleElem = rule.title ? container.querySelector(rule.title) : link;
+                            if (titleElem) {
+                                if (await model.read.isEnabled(newsSite)) {
+                                    await convertClickbait(titleElem, link, { rahtiEntry });
+                                    // Return the amount of converted titles
+                                    // for gathering stats.
+                                    return 1;
+                                } else {
+                                    log(`Conversion not enabled for site '${newsSite}'`)
+                                    await restoreClickbait(titleElem, link);
                                 }
-
-                                titleElem.dataset.klikkikuriOriginalTitle = originalTitle;
-                                titleElem.dataset.klikkikuriConvertedTitle = convertedTitle;
-                                titleElem.dataset.klikkikuriClickbaitLevel = rahtiEntry.clickbaitiness;
-
-                                // Replace the title text.
-                                titleElem.textContent = `${convertedTitle}`;
-                                highlightElemConverted(titleElem);
-
-                                log(`Converted title from '${originalTitle}' to '${convertedTitle}' for link:`, link);
+                            } else {
+                                log(`No title element found for rule title selector '${rule.title}' in link:`, link);
                             }
                         } else {
-                            log(`No title element found for rule title selector '${rule.title}' in link:`, link);
+                            log(`No Rahti entry found for hash '${urlHash}' of link:`, link);
                         }
-                    } else {
-                        log(`No Rahti entry found for hash '${urlHash}' of link:`, link);
-                    }
-
-                });
-            });
+                        // Return the amount of converted titles
+                        // for gathering stats.
+                        return 0;
+                    })());
+                }
+            }
         }
+
+        // TODO: Handle any errors found in promises.
+        const convertedTitlesCount = (await Promise.allSettled(processingPromises)).reduce((acc, x) => acc + x.value, 0);
+
+        await controller.updateStatistics({
+            hostname: newsSite,
+            restoreTitleData: { "convertedTitlesCount": convertedTitlesCount },
+        });
+
+        log("Finished conversion procedure.");
+
     };
 
-    const observer = new MutationObserver((mutations) => {
-        // Use original title as the flag, as for example converted title would
-        // be removed when restoring page to show original titles.
+    const observer = new MutationObserver(async (mutations) => {
+        // Use original title as the flag, as a converted title would be
+        // removed when restoring page to show original titles.
         const isInternalChange = mutations.every(mutation =>
             mutation.target.dataset.klikkikuriOriginalTitle ||
             mutation.target.parentElement?.dataset.klikkikuriOriginalTitle
@@ -139,9 +165,11 @@ let convertTitles;
         }
 
         log(`Observed ${mutations.length} DOM mutations, triggering conversion process.`);
-        convertTitles(false).catch((e) => {
+        try {
+            await processSite();
+        } catch (e) {
             log("Error during conversion after DOM mutation:", e);
-        });
+        }
     });
     observer.observe(document.body, {
         childList: true,
@@ -150,39 +178,6 @@ let convertTitles;
     });
 
     const convertClickbaits = async (apiUrl, links) => {
-        const linkTitleQuerySelectors = await model.read.getLinkTitleQuerySelectors(newsSite);
-
-        // Always either toggle the converted headlines on or off based
-        // on enabled-status.
-
-        log("Basing conversion on source:", apiUrl);
-        let apiResponse;
-        try {
-            apiResponse = await fetch(apiUrl);
-        } catch (e) {
-            log(`Failed to fetch data from the API: ${e}`);
-            return;
-        }
-        const titleData = await apiResponse.json();
-
-        let convertedTitlesCount;
-        if (await model.read.isEnabled(newsSite)) {
-            log(`Starting conversion on '${newsSite}'`);
-            convertedTitlesCount = await convertTitles(false);
-        } else {
-            log(`Restoring original state of ${newsSite} `);
-            await convertTitles(true);
-            convertedTitlesCount = 0;
-        }
-
-        await controller.updateStatistics({
-            hostname: newsSite,
-            restoreTitleData: { "convertedTitlesCount": convertedTitlesCount },
-            links: links,
-        });
-
-        log("Finished conversion procedure.");
-
     };
 
     browser.runtime.onMessage.addListener(async (message) => {
@@ -190,9 +185,7 @@ let convertTitles;
 
         switch (message.command) {
             case "convertClickbaits":
-                for (const titleDataUrl of await model.read.getTitleDataUrls()) {
-                    await convertClickbaits(titleDataUrl, Array.from(document.querySelectorAll("a")));
-                }
+                await processSite();
                 break;
             case "devmode_dumpLinkHash":
                 return Array.from(document.querySelectorAll("a"))
@@ -206,7 +199,11 @@ let convertTitles;
 
 
     // Run the conversion on reload.
-    await convertTitles(false);
+    try {
+        await processSite();
+    } catch (e) {
+        log("Failed on page load -conversion:", e);
+    }
 
     log("Loaded");
 })();

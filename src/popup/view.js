@@ -58,9 +58,6 @@ const _refreshStatistics = ({ site, data }) => {
         document.getElementById("site-host").textContent = site;
         document.getElementById("statistics-main-header").textContent
             = data["titles"]["convertedTitlesCount"];
-        // TODO: This seems like it's not that interesting for the user...
-        //document.getElementById("statistics-links").textContent
-        //    = data["misc"]["linksCount"];
     } else if (site) {
         contentElem.classList.remove("hidden");
 
