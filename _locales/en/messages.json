@@ -19,6 +19,11 @@
     "description": "Instruction text to show in the bottom of 'main' view to help user with an unexpected error"
   },
 
+  "statsviewHeader": {
+    "message": "Statistics",
+    "description": "Title of the statistics view section"
+  },
+
   "statsviewHandledElementsTitle": {
     "message": "Processed elements:",
     "description": "Title of the stats section showing number of handled elements of site processing"
@@ -27,16 +32,6 @@
   "statsviewChangedTitlesFillerText": {
     "message": "converted titles on this site",
     "description": "Additional 'flair' text of the stats section showing number of changed titles on the site"
-  },
-
-  "statsviewShortcutControlsTitle": {
-    "message": "Stop using on this site:",
-    "description": "Title of the main view shortcut controls section"
-  },
-
-  "statsviewSiteEnabledShortcutButtonText": {
-    "message": "Always",
-    "description": "Text on the button in the main view that acts as a shortcut to disable/enable current site"
   },
 
   "feedbackviewGeneralFeedbackHeader": {
@@ -89,29 +84,14 @@
     "description": "Label of the navigation menu main view button"
   },
 
-  "navigationMainIconAlt": {
-    "message": "home icon",
-    "description": "Alt text of the navigation menu main view button icon"
-  },
-
   "navigationFeedbackLabel": {
     "message": "Feedback and rating",
     "description": "Label of the navigation menu feedback view button"
   },
 
-  "navigationFeedbackIconAlt": {
-    "message": "comment bubble icon",
-    "description": "Alt text of the navigation menu feedback view button icon"
-  },
-
   "navigationSettingsLabel": {
     "message": "More settings",
     "description": "Label of the navigation menu settings view button"
-  },
-
-  "navigationSettingsIconAlt": {
-    "message": "slider icon",
-    "description": "Alt text of the navigation menu settings view button icon"
   },
 
   "devmodeHiddenButtonTitle": {

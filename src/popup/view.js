@@ -19,11 +19,11 @@ const getSitesEnabledItemId = (host) => `${host}-enabled`;
  */
 const _viewSelectors = {
     "main":
-        { "content": ".main-content", "naviItem": ".open-home" },
+        { "content": ".main-content", "naviItem": "#navi-main" },
     "feedback":
-        { "content": ".feedbackview", "naviItem": ".open-feedbackview" },
+        { "content": ".feedbackview", "naviItem": "#navi-feedback" },
     "settings":
-        { "content": ".settingsview", "naviItem": ".open-settingsview" },
+        { "content": ".settingsview", "naviItem": "#navi-feedback" },
 };
 
 const _setCheckBoxReadonly = (checkbox, makeReadonly) => {
@@ -69,14 +69,12 @@ const _refreshStatistics = ({ site, data }) => {
         errorElem.querySelector("p").textContent = browser().i18n.getMessage("statsErrorUserFixInstructions");
     }
 
+    document.getElementById("statsview-header").textContent =
+        browser().i18n.getMessage("statsviewHeader");
     document.getElementById("statsview-handled-elements-title").textContent =
         browser().i18n.getMessage("statsviewHandledElementsTitle");
     document.getElementById("statistics-main-header-filler").textContent =
         browser().i18n.getMessage("statsviewChangedTitlesFillerText");
-    document.getElementById("statsview-shortcut-controls-title").textContent =
-        browser().i18n.getMessage("statsviewShortcutControlsTitle");
-    document.querySelector("label[for=shortcut-extension-disabled-current-site]").textContent =
-        browser().i18n.getMessage("statsviewSiteEnabledShortcutButtonText");
 };
 
 const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, isDebugVisualsEnabled, titleDataUrlSelected, isDevelopmentEnv, testTitleDataUrl, config }) => {
@@ -155,8 +153,6 @@ const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, isDebugVisual
 
 const _refreshContentView = ({ pageHostname, pageStatistics, isEnabled }) => {
     _refreshStatistics({ site: pageHostname, data: pageStatistics });
-
-    document.getElementById("shortcut-extension-disabled-current-site").checked = !isEnabled;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -194,11 +190,9 @@ const showView = (viewName) => {
     // Hide all views and reset states.
     for (const viewObj of Object.values(_viewSelectors)) {
         document.querySelector(viewObj["content"]).classList.add("hidden");
-        document.querySelector(viewObj["naviItem"]).classList.remove("navi-selected");
     }
     // Show the selected view.
     document.querySelector(_viewSelectors[viewName]["content"]).classList.remove("hidden");
-    document.querySelector(_viewSelectors[viewName]["naviItem"]).classList.add("navi-selected");
 };
 
 /**
@@ -255,18 +249,12 @@ const refresh = async () => {
         browser().i18n.getMessage("feedbackviewRateTitleConversionIsBad");
     */
 
-    document.getElementById("navi-main").querySelector(".label").textContent =
+    document.getElementById("navi-main").parentElement.title =
         browser().i18n.getMessage("navigationMainLabel");
-    document.getElementById("navi-main").querySelector(".icon").alt =
-        browser().i18n.getMessage("navigationMainIconAlt");
-    document.getElementById("navi-feedback").querySelector(".label").textContent =
+    document.getElementById("navi-feedback").parentElement.title =
         browser().i18n.getMessage("navigationFeedbackLabel");
-    document.getElementById("navi-feedback").querySelector(".icon").alt =
-        browser().i18n.getMessage("navigationFeedbackIconAlt");
-    document.getElementById("navi-settings").querySelector(".label").textContent =
+    document.getElementById("navi-settings").parentElement.title =
         browser().i18n.getMessage("navigationSettingsLabel");
-    document.getElementById("navi-settings").querySelector(".icon").alt =
-        browser().i18n.getMessage("navigationSettingsIconAlt") || "MISSING";
 
     document.querySelector("label[for=show-devmode-controls] span").title =
         browser().i18n.getMessage("devmodeHiddenButtonTitle");
@@ -354,8 +342,6 @@ document.querySelector(".open-home")
 ///////////////////////////////////////////////////////////////////////////////
 // Handlers for application state changes.
 
-document.getElementById("shortcut-extension-disabled-current-site")
-    .addEventListener("click", view.handleClickAina);
 // Register main of/off switch.
 document.getElementById("extension-enabled")
     .addEventListener("click", view.handleClickMainSwitch);

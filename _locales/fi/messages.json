@@ -19,6 +19,11 @@
     "description": "Instruction text to show in the bottom of 'main' view to help user with an unexpected error"
   },
 
+  "statsviewHeader": {
+    "message": "Tilastoja",
+    "description": "Title of the statistics view section"
+  },
+
   "statsviewHandledElementsTitle": {
     "message": "Käsiteltyjä elementtejä:",
     "description": "Title of the stats section showing number of handled elements of site processing"
@@ -27,16 +32,6 @@
   "statsviewChangedTitlesFillerText": {
     "message": "muutettua otsikkoa tällä sivulla",
     "description": "Additional 'flair' text of the stats section showing number of changed titles on the site"
-  },
-
-  "statsviewShortcutControlsTitle": {
-    "message": "Lopeta käyttö tällä sivulla:",
-    "description": "Title of the main view shortcut controls section"
-  },
-
-  "statsviewSiteEnabledShortcutButtonText": {
-    "message": "Aina",
-    "description": "Text on the button in the main view that acts as a shortcut to disable/enable current site"
   },
 
   "feedbackviewGeneralFeedbackHeader": {
@@ -89,29 +84,14 @@
     "description": "Label of the navigation menu main view button"
   },
 
-  "navigationMainIconAlt": {
-    "message": "koti ikoni",
-    "description": "Alt text of the navigation menu main view button icon"
-  },
-
   "navigationFeedbackLabel": {
     "message": "Palaute ja arviointi",
     "description": "Label of the navigation menu feedback view button"
   },
 
-  "navigationFeedbackIconAlt": {
-    "message": "kommenttikupla ikoni",
-    "description": "Alt text of the navigation menu feedback view button icon"
-  },
-
   "navigationSettingsLabel": {
     "message": "Lisää asetuksia",
     "description": "Label of the navigation menu settings view button"
-  },
-
-  "navigationSettingsIconAlt": {
-    "message": "liukusäädin ikoni",
-    "description": "Alt text of the navigation menu settings view button icon"
   },
 
   "devmodeHiddenButtonTitle": {

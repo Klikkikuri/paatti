@@ -9,16 +9,17 @@ body {
 
     display: flex;
     flex-direction: column;
-    gap: 2em;
+    gap: 1em;
 }
 
 /* Sections */
 
 #power {
-    height: 13%;
+    height: 26%;
 
     display: flex;
-    justify-content: space-around;
+    align-items: center;
+    flex-direction: column;
     gap: 1em;
 }
 
@@ -28,7 +29,7 @@ body {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    justify-content: space-around;
+    justify-content: start;
 
     border: 1px solid #555;
     border-radius: 6px;
@@ -40,28 +41,38 @@ body {
 }
 
 #navi {
-    height: 10%;
+    height: 9%;
 
     display: flex;
-    flex-direction: column;
-    gap: 0.2em;
+    flex-direction: row;
+    justify-content: center;
+    gap: 2.0em;
 }
 
 #logo {
-    height: 7%;
-
+    user-select: none;
+    height: 5%;
+    font-size: 100%;
     display: flex;
     justify-content: center;
-    gap: 0.2em;
+    gap: 0.5em;
+    opacity: 0.5;
 }
 
 /* Power details */
 
-#power div:first-child .push-button {
+#power div:nth-child(2) .push-button {
     user-select: none;
     font-size: 400%;
-    line-height: 1.5em;
+    line-height: 1.37em;
     padding: 0;
+
+    /* Make the power button a circle */
+    border-radius: 100%;
+    display: block;
+    width: 70px;
+    height: 70px;
+    min-width: 0;
 }
 
 /* Content details */
@@ -78,13 +89,6 @@ body {
     width: 16em;
 }
 
-/* Note: Not using the .content parent selector in order to apply .hidden from JS. */
-.shortcut-controls {
-    display: flex;
-    flex-direction: row;
-    gap: 1em;
-}
-
 /* Settings view details */
 
 .devmode {
@@ -95,68 +99,17 @@ body {
 
 /* Navi details */
 
-#navi .icon {
-    font-size: 1.2em;
-    display: inline-block;
-    width: 24px;
-    text-align: center;
-}
-
-#navi .label {
-    white-space: nowrap;
-    font-size: 1rem;
-    text-align: left;
-    flex-grow: 1;
-}
-
-#navi .arrow {
-    font-size: 1.2em;
-}
-
-/* Note: Not using the #navi parent selector in order to apply .hidden from JS. */
-.sub-view-transition {
-    all: unset;
-    cursor: pointer;
-    padding-right: 3%;
-
+#navi .push-button {
+    user-select: none;
+    line-height: 2.9em;
     padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1em;
-    background-color: whitesmoke;
-    border: none;
-    font-size: 1rem;
-    transition: background 0.2s, transform 0.1s;
-    width: 100%;
-}
 
-#navi .sub-view-transition:hover {
-    font-weight: bold;
-}
-
-#navi .sub-view-transition .arrow {
-    color: #CCC;
-}
-
-#navi .sub-view-transition:hover .arrow {
-    color: #222;
-}
-
-#navi .sub-view-transition.navi-selected {
-    font-weight: bold;
-    color: #53b9ff;
-}
-
-#navi .sub-view-transition.navi-selected .arrow {
-    color: #53b9ff;
-}
-
-/* Logo details */
-
-#logo span {
-    font-size: 150%;
-    font-weight: bold;
+    /* Make the power button a circle */
+    border-radius: 100%;
+    display: block;
+    width: 30px;
+    height: 30px;
+    min-width: 0;
 }
 
 /* Push button */
@@ -202,29 +155,20 @@ input:checked+.push-button {
 
     animation-name: pulsate-glow;
     animation-delay: 0s;
-    animation-duration: 3.0s;
+    animation-duration: 2.0s;
     animation-iteration-count: infinite;
-    animation-timing-function: linear;
+    animation-timing-function: ease-in;
 }
 
 @keyframes pulsate-glow {
     0% {
         color: #3399df;
-        transform: rotate(0deg) translateY(4px);
     }
-    20% {
-        transform: rotate(-2deg) translateY(2px);
-    }
-    40% {
-        color: #53b9ff;
-        transform: rotate(0deg) translateY(0px);
-    }
-    65% {
-        transform: rotate(2deg) translateY(2px);
+    80% {
+        color: #73D9ff;
     }
     100% {
         color: #3399df;
-        transform: rotate(0deg) translateY(4px);
     }
 }
 

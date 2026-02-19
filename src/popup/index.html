@@ -8,42 +8,39 @@
 </head>
 
 <body>
+
     <!-- POWER -->
     <div id="power">
+        <h2 id="site-host"></h2>
         <div>
             <input class="conversion-switch hidden" id="extension-enabled" type="checkbox" checked>
             <label class="push-button" for="extension-enabled">&#x23FB;</label>
-
         </div>
     </div>
 
     <!-- CONTENT -->
     <!-- NOTE that id isn't used for the element(s) in order to apply .hidden from JS -->
     <div class="content main-content">
-        <h2 id="site-host"></h2>
-        <hr>
-        <div id="statsview">
-            <section>
-                <h3 id="statsview-handled-elements-title"></h3>
-                <p><b id="statistics-main-header">0</b> <span id="statistics-main-header-filler"></span></p>
-                <!--p><b id="statistics-links">0</b> linkkiä yhteensä</p-->
-            </section>
-            <section>
-                <h3 id="statsview-shortcut-controls-title"></h3>
-                <div class="shortcut-controls">
-                    <input class="conversion-switch hidden" id="shortcut-extension-disabled-current-site" type="checkbox">
-                    <label class="push-button" for="shortcut-extension-disabled-current-site"></label>
-                </div>
-            </section>
-        </div>
-        <div id="statserror" class="hidden error">
-            <p></p>
+        <div>
+            <h2 id="statsview-header"></h2>
+            <hr>
+            <div id="statsview">
+                <section>
+                    <h3 id="statsview-handled-elements-title"></h3>
+                    <p><b id="statistics-main-header">0</b> <span id="statistics-main-header-filler"></span></p>
+                    <!--p><b id="statistics-links">0</b> linkkiä yhteensä</p-->
+                </section>
+            </div>
+            <div id="statserror" class="hidden error">
+                <p></p>
+            </div>
         </div>
     </div>
 
     <div class="content feedbackview hidden">
         <div id="feedbackview-general-feedback">
             <h2 id="feedbackview-general-feedback-header" class="feedbackview-header"></h2>
+            <hr>
             <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSfmiipCpNLI6HLg1n0cUJhRiicIz3BHcbCH9cll4fX0HRj6-g/viewform?embedded=true" width="640" height="491" frameborder="0" marginheight="0" marginwidth="0"></iframe>
         </div>
 
@@ -90,31 +87,38 @@
     <!-- NAVI[GATION] -->
     <div id="navi">
         <!-- NOTE that id isn't used for the element(s) in order to apply .hidden from JS -->
-        <button id="navi-main" class="sub-view-transition open-home navi-selected">
-            <img class="icon" src="images/icon_home.svg" height="24">
-            <span class="label"></span>
-            <span class="arrow">❯</span>
+        <div>
+            <input id="navi-main" class="open-home hidden" type="radio" name="navi" checked>
+            <label for="navi-main" class="push-button">
+                <img class="icon" src="images/icon_home.svg" height="15">
+            </label>
+        </div>
+
+        <div>
+            <input id="navi-feedback" class="open-feedbackview hidden" type="radio" name="navi">
+            <label for="navi-feedback" class="push-button">
+                <img class="icon" src="images/icon_comment.svg" height="15">
+            </label>
+        </div>
+
+        <div>
         </button>
-        <button id="navi-feedback" class="sub-view-transition open-feedbackview">
-            <img class="icon" src="images/icon_comment.svg" height="24">
-            <span class="label"></span>
-            <span class="arrow">❯</span>
-        </button>
-        <button id="navi-settings" class="sub-view-transition open-settingsview">
-            <img class="icon" src="images/icon_slider.svg" height="24">
-            <span class="label"></span>
-            <span class="arrow">❯</span>
-        </button>
+            <input id="navi-settings" class="open-settingsview hidden" type="radio" name="navi">
+            <label for="navi-settings" class="push-button">
+                <img class="icon" src="images/icon_slider.svg" height="15">
+            </label>
+        </div>
     </div>
 
     <!-- LOGO -->
     <div id="logo">
+        <span>Made with</span>
         <input class="hidden" id="show-devmode-controls" type="checkbox">
         <label for="show-devmode-controls">
-            <img src="images/klikkihAI_logo_1.png" height="32" alt="Klikkukuri logo">
+            <img src="images/klikkihAI_logo_1.png" height="15" alt="Klikkukuri logo">
             <span class="devmode hidden">🤓</span>
         </label>
-        <span>Klikkikuri</span>
+        <span>by Klikkikuri</span>
     </div>
 
     <script type="module" src="../utils.js"></script>
