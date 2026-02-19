@@ -1,32 +1,34 @@
 # ⛵ Paatti
 
-Browser extension to sail the web.
+Sail smoothly through the clickbait-infested web using this browser extension.
 
+## Installing
 
-## Installing (development)
-### Requirements
+### Building
+Requirements
+- `bash`
 - Python 3
 - Docker (tested on version 28.1.1)
 - Access to Klikkikuri GitHub repositories:
     - `suola`
 
+Fetch and build dependencies by running the `./build.sh` script.
+
 ### Configuration
 Search for string `CONFIG` from the JavaScript files for various points where configuration values can be edited.
 
-### How to
-Fetch and build dependencies by running:
-```sh
-./build.sh
-```
+## How do I get it on my browser
 
-Start the local HTTP server to serve test data:
-```sh
-python3 httpserver.py
-```
+### For Firefox
 
-#### Load extension in browser
+Enter `about:debugging` to the address bar and from the This Firefox -tab select any file at project root (e.g., `manifest.json`) from Load Temporary Add-on...
 
-For Firefox enter `about:debugging` to the address bar and from the This Firefox -tab select any file at project root (e.g., `manifest.json`) from Load Temporary Add-on...
+#### Packaging
+Requirements
+- `bash`
+- `zip`
+
+Use the `./package.sh` script to create a `.zip` archive that can be shared more easily. When adding to browser now just choose the `.zip` file instead.
 
 #### web-ext run
 
@@ -35,7 +37,15 @@ Alternatively, you can use [`web-ext`](https://extensionworkshop.com/documentati
 web-ext run --devtools [--firefox firefox-devedition] [--url http://www.yle.fi/uutiset]
 ```
 
-#### Visual Studio Code debugging
+## Development
+
+### Test data
+Start the local HTTP server to serve test data:
+```sh
+python3 httpserver.py
+```
+
+### Visual Studio Code debugging
 You can also use Visual Studio Code to debug the extension. See the `.vscode/launch.json` for configuration.
 
 ## Architecture

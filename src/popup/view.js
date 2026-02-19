@@ -64,14 +64,22 @@ const _refreshStatistics = ({ site, data }) => {
     } else if (site) {
         contentElem.classList.remove("hidden");
 
-        document.getElementById("site-host").textContent = "Sivusto ei tuettu";
+        document.getElementById("site-host").textContent = browser().i18n.getMessage("siteTitleNotSupported");
     } else {
         errorElem.classList.remove("hidden");
 
-        document.getElementById("site-host").textContent = "Karilla!";
-        errorElem.querySelector("p").textContent
-            = "Sivun tietoja ei saatu ladattua. Koeta päivittää ikkuna.";
+        document.getElementById("site-host").textContent = browser().i18n.getMessage("siteTitleNotSupported");
+        errorElem.querySelector("p").textContent = browser().i18n.getMessage("statsErrorUserFixInstructions");
     }
+
+    document.getElementById("statsview-handled-elements-title").textContent =
+        browser().i18n.getMessage("statsviewHandledElementsTitle");
+    document.getElementById("statistics-main-header-filler").textContent =
+        browser().i18n.getMessage("statsviewChangedTitlesFillerText");
+    document.getElementById("statsview-shortcut-controls-title").textContent =
+        browser().i18n.getMessage("statsviewShortcutControlsTitle");
+    document.querySelector("label[for=shortcut-extension-disabled-current-site]").textContent =
+        browser().i18n.getMessage("statsviewSiteEnabledShortcutButtonText");
 };
 
 const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, isDebugVisualsEnabled, titleDataUrlSelected, isDevelopmentEnv, testTitleDataUrl, config }) => {
@@ -141,6 +149,11 @@ const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, isDebugVisual
         }
         */
     }
+
+    document.getElementById("settingsview-sites-enabled-title").textContent =
+        browser().i18n.getMessage("settingsviewSitesEnabledTitle");
+    document.getElementById("settingsview-devmode-title").textContent =
+        browser().i18n.getMessage("settingsviewDevmodeTitle");
 };
 
 const _refreshContentView = ({ pageHostname, pageStatistics, isEnabled }) => {
@@ -222,6 +235,44 @@ const refresh = async () => {
         pageStatistics,
         isEnabled: sitesEnabled[pageHostname],
     });
+
+    // Rest of localizations.
+    document.getElementById("feedbackview-general-feedback").querySelector("iframe").textContent =
+        browser().i18n.getMessage("feedbackviewGeneralFeedbackLoading");
+    document.getElementById("feedbackview-general-feedback-header").textContent =
+        browser().i18n.getMessage("feedbackviewGeneralFeedbackHeader");
+
+    /*
+     * TODO: Implement converted vs. original title rating.
+    document.getElementById("feedbackview-rate-title-header").textContent =
+        browser().i18n.getMessage("feedbackviewRateTitleHeader");
+    document.getElementById("feedbackview-rate-title").querySelector("p strong:first-child").textContent =
+        browser().i18n.getMessage("feedbackviewRateTitleOriginalTitleLabel");
+    document.getElementById("feedbackview-rate-title").querySelector("p strong:nth-child(1)").textContent =
+        browser().i18n.getMessage("feedbackviewRateTitleConvertedTitleLabel");
+    document.getElementById("feedbackview-rate-title").querySelector("p strong:nth-child(1)").textContent =
+        browser().i18n.getMessage("feedbackviewRateTitleConvertedTitleLabel");
+    document.querySelector("label[for=good]").textContent =
+        browser().i18n.getMessage("feedbackviewRateTitleConversionIsGood");
+    document.querySelector("label[for=bad]").textContent =
+        browser().i18n.getMessage("feedbackviewRateTitleConversionIsBad");
+    */
+
+    document.getElementById("navi-main").querySelector(".label").textContent =
+        browser().i18n.getMessage("navigationMainLabel");
+    document.getElementById("navi-main").querySelector(".icon").alt =
+        browser().i18n.getMessage("navigationMainIconAlt");
+    document.getElementById("navi-feedback").querySelector(".label").textContent =
+        browser().i18n.getMessage("navigationFeedbackLabel");
+    document.getElementById("navi-feedback").querySelector(".icon").alt =
+        browser().i18n.getMessage("navigationFeedbackIconAlt");
+    document.getElementById("navi-settings").querySelector(".label").textContent =
+        browser().i18n.getMessage("navigationSettingsLabel");
+    document.getElementById("navi-settings").querySelector(".icon").alt =
+        browser().i18n.getMessage("navigationSettingsIconAlt") || "MISSING";
+
+    document.querySelector("label[for=show-devmode-controls] span").title =
+        browser().i18n.getMessage("devmodeHiddenButtonTitle");
 };
 
 /**

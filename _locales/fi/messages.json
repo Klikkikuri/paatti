@@ -1,0 +1,121 @@
+{
+  "extensionDescription": {
+    "message": "Korvaa uutissivujen klikkiotsikot vastaamaan paremmin juttujen sisältöä",
+    "description": "Description of the extension."
+  },
+
+  "siteTitleNotSupported": {
+    "message": "Sivusto ei tuettu",
+    "description": "Message to show in 'main' title element when the visited site is not supported"
+  },
+
+  "siteTitleError": {
+    "message": "Karilla!",
+    "description": "Message to show in 'main' title element when there was an unexpected error processing the site"
+  },
+
+  "statsErrorUserFixInstructions": {
+    "message": "Sivun tietoja ei saatu ladattua. Koeta päivittää ikkuna.",
+    "description": "Instruction text to show in the bottom of 'main' view to help user with an unexpected error"
+  },
+
+  "statsviewHandledElementsTitle": {
+    "message": "Käsiteltyjä elementtejä:",
+    "description": "Title of the stats section showing number of handled elements of site processing"
+  },
+
+  "statsviewChangedTitlesFillerText": {
+    "message": "muutettua otsikkoa tällä sivulla",
+    "description": "Additional 'flair' text of the stats section showing number of changed titles on the site"
+  },
+
+  "statsviewShortcutControlsTitle": {
+    "message": "Lopeta käyttö tällä sivulla:",
+    "description": "Title of the main view shortcut controls section"
+  },
+
+  "statsviewSiteEnabledShortcutButtonText": {
+    "message": "Aina",
+    "description": "Text on the button in the main view that acts as a shortcut to disable/enable current site"
+  },
+
+  "feedbackviewGeneralFeedbackHeader": {
+    "message": "Anna vapaata palautetta",
+    "description": "Title of the feedback view general feedback section"
+  },
+
+  "feedbackviewGeneralFeedbackLoading": {
+    "message": "Ladataan...",
+    "description": "Text marking that the embedded generic feedback form is still loading in to the document"
+  },
+
+  "feedbackviewRateTitleHeader": {
+    "message": "Arvostele tämä klikkiotsikko",
+    "description": "Title of the feedback view converted title rating section"
+  },
+
+  "feedbackviewRateTitleOriginalTitleLabel": {
+    "message": "Alkuperäinen:",
+    "description": "Text marking the original title on the feedback view converted title rating section"
+  },
+
+  "feedbackviewRateTitleConvertedTitleLabel": {
+    "message": "Klikkikurin muunnos:",
+    "description": "Text marking the converted title on the feedback view converted title rating section"
+  },
+
+  "feedbackviewRateTitleConversionIsGood": {
+    "message": "Nappaa",
+    "description": "Text on the button in the feedback view converted title rating that the user can rate the conversion as 'good'"
+  },
+
+  "feedbackviewRateTitleConversionIsBad": {
+    "message": "Ei nappaa",
+    "description": "Text on the button in the feedback view converted title rating that the user can rate the conversion as 'bad'"
+  },
+
+  "settingsviewSitesEnabledTitle": {
+    "message": "Käsiteltävät uutissivustot",
+    "description": "Title of the settings view enabled sites section"
+  },
+
+  "settingsviewDevmodeTitle": {
+    "message": "Kehittäjätyökalut",
+    "description": "Title of the settings view devmode section"
+  },
+
+  "navigationMainLabel": {
+    "message": "Koti",
+    "description": "Label of the navigation menu main view button"
+  },
+
+  "navigationMainIconAlt": {
+    "message": "koti ikoni",
+    "description": "Alt text of the navigation menu main view button icon"
+  },
+
+  "navigationFeedbackLabel": {
+    "message": "Palaute ja arviointi",
+    "description": "Label of the navigation menu feedback view button"
+  },
+
+  "navigationFeedbackIconAlt": {
+    "message": "kommenttikupla ikoni",
+    "description": "Alt text of the navigation menu feedback view button icon"
+  },
+
+  "navigationSettingsLabel": {
+    "message": "Lisää asetuksia",
+    "description": "Label of the navigation menu settings view button"
+  },
+
+  "navigationSettingsIconAlt": {
+    "message": "liukusäädin ikoni",
+    "description": "Alt text of the navigation menu settings view button icon"
+  },
+
+  "devmodeHiddenButtonTitle": {
+    "message": "Asetuksia nörteille",
+    "description": "Title-attribute of the hidden devmode activation button"
+  }
+}

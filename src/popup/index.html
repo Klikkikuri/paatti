@@ -20,54 +20,60 @@
     <!-- CONTENT -->
     <!-- NOTE that id isn't used for the element(s) in order to apply .hidden from JS -->
     <div class="content main-content">
-        <h2 id="site-host">Ladataan...</h2>
+        <h2 id="site-host"></h2>
         <hr>
         <div id="statsview">
             <section>
-                <h3>Käsiteltyjä elementtejä:</h3>
-                <p><b id="statistics-main-header">0</b> muutettua otsikkoa tällä sivulla</p>
+                <h3 id="statsview-handled-elements-title"></h3>
+                <p><b id="statistics-main-header">0</b> <span id="statistics-main-header-filler"></span></p>
                 <!--p><b id="statistics-links">0</b> linkkiä yhteensä</p-->
             </section>
             <section>
-                <h3>Lopeta käyttö tällä sivulla:</h3>
+                <h3 id="statsview-shortcut-controls-title"></h3>
                 <div class="shortcut-controls">
                     <input class="conversion-switch hidden" id="shortcut-extension-disabled-current-site" type="checkbox">
-                    <label class="push-button" for="shortcut-extension-disabled-current-site">Aina</label>
+                    <label class="push-button" for="shortcut-extension-disabled-current-site"></label>
                 </div>
             </section>
         </div>
         <div id="statserror" class="hidden error">
-            <p>Tuntematon virhe.</p>
+            <p></p>
         </div>
     </div>
 
     <div class="content feedbackview hidden">
-        <h2 class="feedbackview-header">Arvostele tämä klikkiotsikko</h2>
-        <hr>
-        <p><strong>Alkuperäinen:</strong></p>
-        <p>Osa ihmisistä käyttää Klikkikuria tavalla, joka saa muiden pinnan kiristymään – Lääke
-            tulossa
-        </p>
-        <p><strong>Klikkurin muunnos:</strong></p>
-        <p>Työnsä vaikeutumisesta suuttuneet toimittajat haastavat Klikkikurin oikeuteen</p>
-        <div>
-            <div>
-                <input id="good" type="radio" name="rating">
-                <label for="good">Nappaa</label>
-                <input id="bad" type="radio" name="rating">
-                <label for="bad">Ei nappaa</label>
-            </div>
+        <div id="feedbackview-general-feedback">
+            <h2 id="feedbackview-general-feedback-header" class="feedbackview-header"></h2>
+            <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSfmiipCpNLI6HLg1n0cUJhRiicIz3BHcbCH9cll4fX0HRj6-g/viewform?embedded=true" width="640" height="491" frameborder="0" marginheight="0" marginwidth="0"></iframe>
         </div>
+
+        <!--div id="feedbackview-rate-title">
+            <h2 id="feedbackview-rate-title-header" class="feedbackview-header"></h2>
+            <h3>THIS FORM IS NOT FUNCTIONAL YET</h3>
+            <hr>
+            <p><strong></strong></p>
+            <p></p>
+            <p><strong></strong></p>
+            <p></p>
+            <div>
+                <div>
+                    <input id="good" type="radio" name="rating">
+                    <label for="good"></label>
+                    <input id="bad" type="radio" name="rating">
+                    <label for="bad"></label>
+                </div>
+            </div>
+        </div-->
     </div>
 
     <div class="content settingsview hidden">
-        <h2 class="settingsview-header">Käsiteltävät uutissivustot</h2>
+        <h2 id="settingsview-sites-enabled-title" class="settingsview-header"></h2>
         <hr>
         <ul id="sites-enabled-ul">
         </ul>
 
         <div class="devmode hidden">
-            <h2 class="settingsview-header">Kehittäjätyökalut</h2>
+            <h2 id="settingsview-devmode-title" class="settingsview-header"></h2>
             <hr>
             <input class="hidden" id="devmode-dumpLinkHash" type="button" value="no-op">
             <label class="push-button" for="devmode-dumpLinkHash">dumpLinkHash</label>
@@ -84,19 +90,19 @@
     <!-- NAVI[GATION] -->
     <div id="navi">
         <!-- NOTE that id isn't used for the element(s) in order to apply .hidden from JS -->
-        <button class="sub-view-transition open-home navi-selected">
-            <img class="icon" src="images/icon_home.svg" height="24" alt="koti ikoni">
-            <span class="label">Koti</span>
+        <button id="navi-main" class="sub-view-transition open-home navi-selected">
+            <img class="icon" src="images/icon_home.svg" height="24">
+            <span class="label"></span>
             <span class="arrow">❯</span>
         </button>
-        <button class="sub-view-transition open-feedbackview">
-            <img class="icon" src="images/icon_comment.svg" height="24" alt="kommenttikupla ikoni">
-            <span class="label">Palaute ja arviointi</span>
+        <button id="navi-feedback" class="sub-view-transition open-feedbackview">
+            <img class="icon" src="images/icon_comment.svg" height="24">
+            <span class="label"></span>
             <span class="arrow">❯</span>
         </button>
-        <button class="sub-view-transition open-settingsview">
-            <img class="icon" src="images/icon_slider.svg" height="24" alt="liukusäädin ikoni">
-            <span class="label">Lisää asetuksia</span>
+        <button id="navi-settings" class="sub-view-transition open-settingsview">
+            <img class="icon" src="images/icon_slider.svg" height="24">
+            <span class="label"></span>
             <span class="arrow">❯</span>
         </button>
     </div>
@@ -106,7 +112,7 @@
         <input class="hidden" id="show-devmode-controls" type="checkbox">
         <label for="show-devmode-controls">
             <img src="images/klikkihAI_logo_1.png" height="32" alt="Klikkukuri logo">
-            <span class="devmode hidden" title="Asetuksia nörteille">🤓</span>
+            <span class="devmode hidden">🤓</span>
         </label>
         <span>Klikkikuri</span>
     </div>

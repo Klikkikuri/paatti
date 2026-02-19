@@ -4,3 +4,6 @@
 # Generated test data fiels.
 test_data/signatures.txt
 test_data/data.json
+
+# Packaged extension for Firefox.
+*.zip
