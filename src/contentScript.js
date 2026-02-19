@@ -83,6 +83,11 @@ const hrefSign = async (url) => {
             const convertedTitle = titleElem.dataset.klikkikuriConvertedTitle;
             const originalTitle = titleElem.dataset.klikkikuriOriginalTitle;
 
+            if (!originalTitle) {
+                // No action needed, never converted before.
+                return;
+            }
+
             titleElem.textContent = originalTitle
             await highlightElemOriginal(titleElem);
 
