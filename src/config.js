@@ -134,6 +134,7 @@ const DEFAULT_CONFIG = {
         "development": {
             ...DEFAULT_ENV,
             "refreshIntervalMinutes": 1,
+            "persistentConvertedHighlight": true,
             "titleDataUrls": [
                 "http://localhost:3000/data.json",
                 "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"

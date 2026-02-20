@@ -75,7 +75,9 @@ const hrefSign = async (url) => {
             // Replace the title text.
             titleElem.textContent = `${convertedTitle}`;
 
-            await highlightElemConverted(titleElem);
+            if (await model.read.isPersistentConvertedHighlight()) {
+                await highlightElemConverted(titleElem);
+            }
 
             log(`Converted title from '${originalTitle}' to '${convertedTitle}' for link:`, link);
         };

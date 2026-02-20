@@ -130,6 +130,17 @@ const model = (() => {
                 await browser().storage.local.set({ userPreferences });
             },
 
+            setPersistentConvertedHighlight: async (value) => {
+                const data = await browser().storage.local.get("userPreferences");
+                const userPreferences = data.userPreferences || {};
+                const oldEnv = userPreferences.environment || "Unknown";
+
+                log(`Setting persistentConvertedHighlight from ${userPreferences.environment.persistentConvertedHighlight} to ${value}`);
+
+                userPreferences.environment.persistentConvertedHighlight = value;
+                await browser().storage.local.set({ userPreferences });
+            },
+
             setStatistics: async (value, { hostname }) => {
                 log(`Storing stats for ${hostname}`);
                 const data = await browser().storage.local.get("statistics");
@@ -191,6 +202,11 @@ const model = (() => {
                 }
 
                 return false;
+            },
+
+            isPersistentConvertedHighlight: async () => {
+                const config = await getConfig();
+                return config["persistentConvertedHighlight"];
             },
 
             getSitesEnabled: async () => {
