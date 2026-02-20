@@ -30,6 +30,9 @@ export const noTitleMatchesForHash = async (htmlElem) => {
 export const highlightElemConverted = async (htmlElem) => {
     htmlElem.classList.add("converted-title");
 
+    if (htmlElem.querySelector(".__klikkikuri-title-highlight")) {
+        return;
+    }
     const img = document.createElement("img");
     img.src = browser().runtime.getURL("icons/klikkikuri-48.png");
     img.height = "48";

@@ -303,6 +303,18 @@ document.getElementById("enable-devmode")
     .addEventListener("click", __devmodeEnable);
 
 ///////////////////////////////////////////////////////////////////////////////
+// Handlers related to other non-popup-parts of the extension.
+browser().runtime.onMessage.addListener((request, sender, sendResponse) => {
+    switch (request.message) {
+        case "isPopupOpen":
+            sendResponse({ "isOpen": true });
+            break;
+        default:
+            log("Unknown message: ", message);
+    }
+});
+
+///////////////////////////////////////////////////////////////////////////////
 // "We have events at home."
 ///////////////////////////////////////////////////////////////////////////////
 
