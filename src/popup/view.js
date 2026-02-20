@@ -77,7 +77,7 @@ const _refreshStatistics = ({ site, data }) => {
         browser().i18n.getMessage("statsviewChangedTitlesFillerText");
 };
 
-const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, isDebugVisualsEnabled, titleDataUrlSelected, isDevelopmentEnv, testTitleDataUrl, config }) => {
+const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlSelected, isDevelopmentEnv, testTitleDataUrl, config }) => {
 
     // First reset the view, as rahti-fetch alarm will keep re-adding enabled
     // sites to their list in UI.
@@ -118,37 +118,13 @@ const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, isDebugVisual
     if (isDevelopmentEnv) {
         document.querySelectorAll(".devmode").forEach((x) => x.classList.remove("hidden"));
         document.querySelector("#logo img").classList.add("hidden");
-
-        const titleDataUrlSelect = document.getElementById("devmode-setTitleDataUrl");
-        if (!titleDataUrlSelect.querySelectorAll("option").values().find((x) => x.value === testTitleDataUrl)) {
-            const option = document.createElement("option");
-            option.textContent = "Paatti test data";
-            option.value = testTitleDataUrl;
-            titleDataUrlSelect.appendChild(option);
-        }
     } else {
         document.querySelectorAll(".devmode").forEach((x) => x.classList.add("hidden"));
         document.querySelector("#logo img").classList.remove("hidden");
     }
 
-    document.getElementById("devmode-setDebugVisuals")
-        .checked = isDebugVisualsEnabled;
-
-    // TODO: Change this to a list of switches with the data urls selected.
-    for (const option of document.getElementById("devmode-setTitleDataUrl").querySelectorAll("option")) {
-        option.textContent = "UNIMPLEMENTED";
-        /*
-        option.selected = false;
-        if (option.value === titleDataUrlSelected) {
-            option.selected = true;
-        }
-        */
-    }
-
     document.getElementById("settingsview-sites-enabled-title").textContent =
         browser().i18n.getMessage("settingsviewSitesEnabledTitle");
-    document.getElementById("settingsview-devmode-title").textContent =
-        browser().i18n.getMessage("settingsviewDevmodeTitle");
 };
 
 const _refreshContentView = ({ pageHostname, pageStatistics, isEnabled }) => {
@@ -203,7 +179,6 @@ const refresh = async () => {
     const pageHostname = await getCurrentTabHostname();
     const pageStatistics = await model.read.getStatistics(pageHostname);
     const sitesEnabled = await model.read.getSitesEnabled();
-    const isDebugVisualsEnabled = await model.read.getDebugVisualsEnabled();
     const titleDataUrlSelected = await model.read.getTitleDataUrls();
     const isDevelopmentEnv = await model.read.isDevelopmentEnv();
     const testTitleDataUrl = await model.read.getTestTitleDataUrl();
@@ -215,7 +190,6 @@ const refresh = async () => {
     _refreshSettingsView({
         isConversionEnabled,
         sitesEnabled,
-        isDebugVisualsEnabled,
         titleDataUrlSelected,
         isDevelopmentEnv,
         testTitleDataUrl,
@@ -256,7 +230,7 @@ const refresh = async () => {
     document.getElementById("navi-settings").parentElement.title =
         browser().i18n.getMessage("navigationSettingsLabel");
 
-    document.querySelector("label[for=show-devmode-controls] span").title =
+    document.querySelector("label[for=enable-devmode] span").title =
         browser().i18n.getMessage("devmodeHiddenButtonTitle");
 };
 
@@ -280,37 +254,10 @@ const handleDomContentLoaded = async (e) => {
     document.querySelector("body").style.height = `${document.querySelector("body").clientHeight + 38}px`;
 };
 
-const __devmodeShowControls = async () => {
+const __devmodeEnable = async () => {
     await controller.setEnvironment(
         await model.read.isDevelopmentEnv() ? "production" : "development"
     );
-};
-
-const __devmode_dumpLinkHash = async (e) => {
-    const pageSignatures = await controller.devmode.dumpLinkHash();
-    log(pageSignatures);
-    const pageSignaturesDump = pageSignatures
-        .filter((x) => x !== null)
-        .map((x) => x.toString())
-        .join("\n");
-    await window.navigator.clipboard.write([new ClipboardItem({ "text/plain": pageSignaturesDump })]);
-
-    e.target.disabled = true;
-    const eventTargetLabel = document.querySelector(`label[for=${e.target.id}]`);
-    const textContentTemp = eventTargetLabel.textContent;
-    eventTargetLabel.textContent = "Linkkitiivisteet kopioitu leikepöydälle!";
-    setTimeout(() => {
-        eventTargetLabel.textContent = textContentTemp;
-        e.target.disabled = false;
-    }, 3000);
-};
-
-const __devmode_setDebugVisuals = async (e) => {
-    await controller.devmode.setDebugVisuals(e.target.checked);
-};
-
-const __devmode_setTitleDataUrl = async (e) => {
-    await controller.devmode.setTitleDataUrl(e.target.value);
 };
 
 /**
@@ -352,14 +299,8 @@ for (const pageEnabledSwitch of document.querySelectorAll(".settingsview .conver
 
 ///////////////////////////////////////////////////////////////////////////////
 // Handlers for devmode utils.
-document.getElementById("show-devmode-controls")
-    .addEventListener("click", __devmodeShowControls);
-document.getElementById("devmode-dumpLinkHash")
-    .addEventListener("click", __devmode_dumpLinkHash);
-document.getElementById("devmode-setDebugVisuals")
-    .addEventListener("click", __devmode_setDebugVisuals);
-document.getElementById("devmode-setTitleDataUrl")
-    .addEventListener("change", __devmode_setTitleDataUrl);
+document.getElementById("enable-devmode")
+    .addEventListener("click", __devmodeEnable);
 
 ///////////////////////////////////////////////////////////////////////////////
 // "We have events at home."

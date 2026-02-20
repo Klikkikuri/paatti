@@ -100,13 +100,6 @@ const model = (() => {
                 _eventListeners = {};
             },
 
-            setDebugVisuals: async (value) => {
-                const data = await browser().storage.local.get("userPreferences");
-                const userPreferences = data.userPreferences || {};
-                userPreferences.debugVisualsEnabled = value;
-                await browser().storage.local.set({ userPreferences });
-            },
-
             setEnabled: async (value, hostname) => {
                 if (hostname) {
                     log(`Enabling '${hostname}' == ${value}`);
@@ -198,11 +191,6 @@ const model = (() => {
                 }
 
                 return false;
-            },
-
-            getDebugVisualsEnabled: async () => {
-                const config = await getConfig();
-                return config.debugVisualsEnabled;
             },
 
             getSitesEnabled: async () => {

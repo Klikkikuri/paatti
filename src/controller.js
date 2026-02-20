@@ -83,18 +83,6 @@ const controller = {
             return result;
         },
 
-        setDebugVisuals: async (doEnable) => {
-            log("Setting debug visuals...");
-            await model.write.setDebugVisuals(doEnable);
-
-            // We want to reload in order to immediately change the visuals on page.
-            const tabs = browser().tabs;
-            const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
-            await tabs.sendMessage(activeTabId, { command: "convertClickbaits" });
-
-            log(`Set debug visuals to ${doEnable}.`);
-        },
-
         setTitleDataUrl: async (url) => {
             log("Setting title data URL...");
 

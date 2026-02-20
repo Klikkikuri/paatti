@@ -5,7 +5,6 @@ import { browser, getLogger } from "./utils.js";
 const log = getLogger("config");
 
 const DEFAULT_ENV = {
-    "debugVisualsEnabled": false,
     "refreshIntervalMinutes": 20,
     "titleDataUrls": ["https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"],
 }
@@ -130,12 +129,10 @@ const DEFAULT_CONFIG = {
     "environmentConfigs": {
         "free": {
             ...DEFAULT_ENV,
-            "debugVisualsEnabled": false,
             "titleDataUrls": ["https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"],
         },
         "development": {
             ...DEFAULT_ENV,
-            "debugVisualsEnabled": true,
             "refreshIntervalMinutes": 1,
             "titleDataUrls": [
                 "http://localhost:3000/data.json",

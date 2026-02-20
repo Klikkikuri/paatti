@@ -18,27 +18,13 @@ const restoreElemOriginalStyle = (htmlElem) => {
 };
 
 export const noElementMatchesForQuerySelector = async (htmlElem) => {
-    if (await model.read.getDebugVisualsEnabled()) {
-        storeElemOriginalStyle(htmlElem);
-        htmlElem.style.backgroundColor = "gray";
-        htmlElem.style.borderStyle = "dashed";
-        htmlElem.style.borderColor = "black";
-        htmlElem.style.borderSize = "5px";
-    } else {
-        restoreElemOriginalStyle(htmlElem);
-    }
+    // TODO: Use this to highlight the thing if needed.
+    restoreElemOriginalStyle(htmlElem);
 };
 
 export const noTitleMatchesForHash = async (htmlElem) => {
-    if (await model.read.getDebugVisualsEnabled()) {
-        storeElemOriginalStyle(htmlElem);
-        htmlElem.style.backgroundColor = "orange";
-        htmlElem.style.borderStyle = "solid";
-        htmlElem.style.borderColor = "red";
-        htmlElem.style.borderSize = "2px";
-    } else {
-        restoreElemOriginalStyle(htmlElem);
-    }
+    // TODO: Use this to highlight the thing if needed.
+   restoreElemOriginalStyle(htmlElem);
 };
 
 export const highlightElemConverted = async (htmlElem) => {
