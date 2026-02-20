@@ -1,18 +1,28 @@
-.converted-title:hover {
-    animation-name: highlight-converted;
-    animation-delay: 1s;
-    animation-duration: 0.5s;
-    animation-iteration-count: infinite;
+.converted-title {
+    position: relative;
+    display: inline-block;
 }
 
-@keyframes highlight-converted {
-    0% {
-    }
+/* Prevent highlighting image from obstructing the title text */
+.converted-title:hover > .__klikkikuri-title-highlight {
+    opacity: 30%;
+}
 
+.__klikkikuri-title-highlight {
+    position: absolute;
+    top: -30px;
+    left: -20px;
+
+    transform-origin: bottom center;
+    animation: bob 3s ease-in-out infinite;
+    z-index: 9001;
+}
+
+@keyframes bob {
+    0%, 100% {
+        transform: translateY(0px) rotate(-3deg);
+    }
     50% {
-        color: white;
-    }
-
-    100% {
+        transform: translateY(-8px) rotate(3deg);
     }
 }

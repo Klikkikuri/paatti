@@ -24,6 +24,7 @@
   "web_accessible_resources": [
     {
       "resources": [
+        "icons/klikkikuri-48.png",
         "src/utils.js",
         "src/conversionUtils.js",
         "src/model.js",
