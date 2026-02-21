@@ -71,7 +71,6 @@ classDiagram
     class SettingsView{
     }
     class MainContentView{
-        +toggleAina()
     }
     class FeedbackView{
     }

@@ -151,11 +151,6 @@ const handleClickConversionSwitch = async (e) => {
     await controller.setSiteEnabled(e.target.checked, hostname);
 };
 
-
-const handleClickAina = async (e) => {
-    await controller.setCurrentTabEnabled(!e.target.checked);
-};
-
 /**
  * Show this and hide other of the views.
  * @param {*} viewName Identifier of the view to show.
@@ -232,6 +227,9 @@ const refresh = async () => {
 
     document.querySelector("label[for=enable-devmode] span").title =
         browser().i18n.getMessage("devmodeHiddenButtonTitle");
+
+    // Inform content script that the popup is opened.
+    await controller.notifyPopupOpened();
 };
 
 /**
@@ -268,7 +266,6 @@ const view = {
     showView: showView,
     handleClickMainSwitch: handleClickMainSwitch,
 
-    handleClickAina: handleClickAina,
     handleClickConversionSwitch: handleClickConversionSwitch,
     refresh: refresh,
 };

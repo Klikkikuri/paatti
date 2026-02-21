@@ -82,6 +82,8 @@ const hrefSign = async (url) => {
         return processingPromises;
     };
 
+    let isPopupOpen;
+
     const processSite = async () => {
         // Define the two branches that the conversion procedure can take: 1)
         // Convert clickbaits OR 2) Restore clickbaits (i.e., restore the
@@ -140,6 +142,7 @@ const hrefSign = async (url) => {
             link.dataset.klikkikuriUrlHash = urlHash;
 
             const rahtiEntry = await rahti.get(urlHash)
+            let reason;
             if (rahtiEntry) {
                 const titleElem = rule.title ? container.querySelector(rule.title) : link;
                 if (titleElem) {
@@ -147,32 +150,46 @@ const hrefSign = async (url) => {
                         await convertClickbait(titleElem, link, { rahtiEntry });
                         // Return the amount of converted titles
                         // for gathering stats.
-                        return 1;
+                        return { "converted": 1 };
                     } else {
-                        log(`Conversion not enabled for site '${newsSite}'`)
+                        reason = `Conversion not enabled for site '${newsSite}'`;
                         await restoreClickbait(titleElem, link);
                     }
                 } else {
-                    log(`No title element found for rule title selector '${rule.title}' in link:`, link);
+                    reason = `No title element found for rule title selector '${rule.title}' in link '${link}'`;
                 }
             } else {
-                log(`No Rahti entry found for hash '${urlHash}' of link:`, link);
+                reason = `No Rahti entry found for hash '${urlHash}' of link '${link}'`;
             }
             // Return the amount of converted titles
             // for gathering stats.
-            return 0;
+            return { reason };
         });
         
         // TODO: Handle any errors found in promises.
-        const convertedTitlesCount = (await Promise.allSettled(processingPromises))
-            .reduce((acc, x) => acc + x.value, 0);
+        const [reasons, convertedTitlesCount] = (await Promise.allSettled(processingPromises))
+            .reduce(
+                (acc, x) => {
+                    if (x.value?.reason) {
+                        acc[0].push(x.value.reason);
+                    } else if (x.value?.converted) {
+
+                        acc[1] += x.value.converted;
+                    } else {
+                        throw x;
+                    }
+
+                    return acc;
+                },
+                [[], 0],
+            );
 
         await controller.updateStatistics({
             hostname: newsSite,
             restoreTitleData: { "convertedTitlesCount": convertedTitlesCount },
         });
 
-        log("Finished conversion procedure.");
+        log(`Finished conversion procedure with ${reasons.length} skipped items: `, reasons);
 
     };
 
@@ -210,13 +227,28 @@ const hrefSign = async (url) => {
             case "convertClickbaits":
                 await processSite();
                 break;
+            case "popupOpened":
+                const extensionPort = browser.runtime.connect();
+                const refreshHighlights = async () => await Promise.allSettled(
+                    await processTitleElems(async (rule, container, link) => {
+                        const titleElem = rule.title ? container.querySelector(rule.title) : link;
+                        if (titleElem && titleElem.dataset.klikkikuriConvertedTitle === titleElem.textContent) {
+                            if (isPopupOpen || await model.read.isPersistentConvertedHighlight()) {
+                                await highlightElemConverted(titleElem);
+                            } else {
+                                await highlightElemOriginal(titleElem);
+                            }
+                        }
+                    }));
+
+                isPopupOpen = true;
+                refreshHighlights();
+                break;
             default:
                 log(`Unknown command '${message.command}'`);
                 break;
         }
     });
-
-
 
     // Run the conversion on reload.
     try {
@@ -227,7 +259,7 @@ const hrefSign = async (url) => {
 
     // Keep polling the popup in order to highlight converted titles
     // during and only during the time when the popup window is open.
-    let isPopupOpen = false;
+    isPopupOpen = false;
     const popupPoller = async () => {
         try {
             const response = await browser.runtime.sendMessage({ message: "isPopupOpen" });
