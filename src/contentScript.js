@@ -23,6 +23,7 @@ const hrefSign = async (url) => {
 
 // Main.
 (async () => {
+    ////////////////////////////////////////////////////////////////////////////
     // Import modules.
     const browser = (chrome || browser);
     const { model: model, modelEvents: modelEvents } = await import(browser.runtime.getURL("src/model.js"));
@@ -39,6 +40,16 @@ const hrefSign = async (url) => {
     // access browser.tabs sending conversion message.
     await model.events.removeEventListener(modelEvents.enabledChange, controller.dispatchConversion);
 
+    ////////////////////////////////////////////////////////////////////////////
+    // Global state.
+
+    const rahti = await rahtiStorage;
+    const newsSite = window.location.hostname;
+    let isPopupOpen;
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Initialization.
+
     try {
         await initSuola(browser.runtime.getURL("suola/build/js.wasm"));
     } catch (e) {
@@ -47,14 +58,13 @@ const hrefSign = async (url) => {
         return;
     }
 
-    const rahti = await rahtiStorage;
-
     if (!rahti) {
         log("No Rahti data found, aborting conversion.", rahti);
         return;
     }
 
-    const newsSite = window.location.hostname;
+    ////////////////////////////////////////////////////////////////////////////
+    // Processing subroutines.
 
     /*
      * Parallelly iterate through all the title elements according to site's rules. 
@@ -82,8 +92,6 @@ const hrefSign = async (url) => {
         return processingPromises;
     };
 
-    let isPopupOpen;
-
     const processSite = async () => {
         // Define the two branches that the conversion procedure can take: 1)
         // Convert clickbaits OR 2) Restore clickbaits (i.e., restore the
@@ -94,8 +102,7 @@ const hrefSign = async (url) => {
             const convertedTitle = rahtiEntry.title;
 
             if (titleElem.dataset.klikkikuriConvertedTitle === convertedTitle) {
-                // No action needed, already converted before.
-                return;
+                return `No action needed, already converted ${link} before`;
             }
 
             titleElem.dataset.klikkikuriOriginalTitle = originalTitle;
@@ -117,8 +124,7 @@ const hrefSign = async (url) => {
             const originalTitle = titleElem.dataset.klikkikuriOriginalTitle;
 
             if (!originalTitle) {
-                // No action needed, never converted before.
-                return `Title element for link '${link}' has not been processed yet, no need to restore`;
+                return `No action needed, ${link} has not been processed yet`;
             }
 
             titleElem.textContent = originalTitle
@@ -142,26 +148,30 @@ const hrefSign = async (url) => {
             link.dataset.klikkikuriUrlHash = urlHash;
 
             const rahtiEntry = await rahti.get(urlHash)
-            // These are string values explaining how the title item was processed.
-            let whySkipped, howConverted;
+            // These are string values explaining what was done and if, how
+            // and why the title item was processed.
+            let what = "skipped";
+            let why, how;
             if (rahtiEntry) {
                 const titleElem = rule.title ? container.querySelector(rule.title) : link;
                 if (titleElem) {
                     if (await model.read.isEnabled(newsSite)) {
-                        howConverted = await convertClickbait(titleElem, link, { rahtiEntry });
+                        what = "converted";
+                        how = await convertClickbait(titleElem, link, { rahtiEntry });
                     } else {
-                        whySkipped = `Conversion not enabled for site '${newsSite}'`;
-                        await restoreClickbait(titleElem, link);
+                        what = "restored";
+                        why = `Conversion not enabled for site '${newsSite}'`;
+                        how = await restoreClickbait(titleElem, link);
                     }
                 } else {
-                    whySkipped = `No title element found for rule title selector '${rule.title}' in link '${link}'`;
+                    why = `No title element found for rule title selector '${rule.title}' in link '${link}'`;
                 }
             } else {
-                whySkipped = `No Rahti entry found for hash '${urlHash}' of link '${link}'`;
+                why = `No Rahti entry found for hash '${urlHash}' of link '${link}'`;
             }
             // Return the amount of converted titles
             // for gathering stats.
-            return { whySkipped, howConverted };
+            return { what, why, how };
         });
         
         // TODO: Handle any errors found in promises.
@@ -171,13 +181,10 @@ const hrefSign = async (url) => {
                     if (!x.value) {
                         throw x;
                     }
-
-                    if (x.value.whySkipped) {
-                        acc[0].push(x.value.whySkipped);
-                    } else {
-                        acc[0].push(x.value.howConverted);
+                    if (x.value.what === "converted") {
                         acc[1] += 1;
                     }
+                    acc[0].push(x.value);
 
                     return acc;
                 },
@@ -189,9 +196,21 @@ const hrefSign = async (url) => {
             restoreTitleData: { "convertedTitlesCount": convertedTitlesCount },
         });
 
-        log(`Finished conversion procedure with ${reasons.length}/${reasons.length + convertedTitlesCount} skipped items: `, reasons);
-
+        log(`Finished conversion procedure with ${reasons.length - convertedTitlesCount}/${reasons.length} non-converted items: `, reasons);
     };
+
+    const refreshHighlights = async () => await Promise.allSettled(
+        await processTitleElems(async (rule, container, link) => {
+            const titleElem = rule.title ? container.querySelector(rule.title) : link;
+            if (titleElem && titleElem.dataset.klikkikuriConvertedTitle === titleElem.textContent) {
+                if (isPopupOpen || await model.read.isPersistentConvertedHighlight()) {
+                    await highlightElemConverted(titleElem);
+                } else {
+                    await highlightElemOriginal(titleElem);
+                }
+            }
+        })
+    );
 
     const observer = new MutationObserver(async (mutations) => {
         // Use original title as the flag, as a converted title would be
@@ -217,9 +236,26 @@ const hrefSign = async (url) => {
         attributes: false // Ignore attribute changes to prevent loop from setAttribute
     });
 
-    const convertClickbaits = async (apiUrl, links) => {
-    };
+    // Keep polling the popup in order to highlight converted titles
+    // during and only during the time when the popup window is open.
+    isPopupOpen = false;
+    const popupPoller = async () => {
+        try {
+            const response = await browser.runtime.sendMessage({ message: "isPopupOpen" });
+            isPopupOpen = response.isOpen;
+        } catch (e) {
+            // (Assume) popup failed to response because it is closed
+            isPopupOpen = false;
+        }
 
+        await refreshHighlights();
+
+        setTimeout(popupPoller, 500);
+    };
+    // Start the polling
+    setTimeout(popupPoller, 500);
+
+    // Set up communication between content script and rest of extension (e.g., the popup).
     browser.runtime.onMessage.addListener(async (message) => {
         log(`Received message '${JSON.stringify(message)}' on '${newsSite}'`);
 
@@ -229,18 +265,6 @@ const hrefSign = async (url) => {
                 break;
             case "popupOpened":
                 const extensionPort = browser.runtime.connect();
-                const refreshHighlights = async () => await Promise.allSettled(
-                    await processTitleElems(async (rule, container, link) => {
-                        const titleElem = rule.title ? container.querySelector(rule.title) : link;
-                        if (titleElem && titleElem.dataset.klikkikuriConvertedTitle === titleElem.textContent) {
-                            if (isPopupOpen || await model.read.isPersistentConvertedHighlight()) {
-                                await highlightElemConverted(titleElem);
-                            } else {
-                                await highlightElemOriginal(titleElem);
-                            }
-                        }
-                    }));
-
                 isPopupOpen = true;
                 refreshHighlights();
                 break;
@@ -256,34 +280,6 @@ const hrefSign = async (url) => {
     } catch (e) {
         log("Failed on page load -conversion:", e);
     }
-
-    // Keep polling the popup in order to highlight converted titles
-    // during and only during the time when the popup window is open.
-    isPopupOpen = false;
-    const popupPoller = async () => {
-        try {
-            const response = await browser.runtime.sendMessage({ message: "isPopupOpen" });
-            isPopupOpen = response.isOpen;
-        } catch (e) {
-            // (Assume) popup failed to response because it is closed
-            isPopupOpen = false;
-        }
-
-        await Promise.allSettled(await processTitleElems(async (rule, container, link) => {
-            const titleElem = rule.title ? container.querySelector(rule.title) : link;
-            if (titleElem && titleElem.dataset.klikkikuriConvertedTitle === titleElem.textContent) {
-                if (isPopupOpen || await model.read.isPersistentConvertedHighlight()) {
-                    await highlightElemConverted(titleElem);
-                } else {
-                    await highlightElemOriginal(titleElem);
-                }
-            }
-        }));
-
-        setTimeout(popupPoller, 500);
-    };
-    // Start the polling
-    setTimeout(popupPoller, 500);
 
     log("Loaded");
 })();

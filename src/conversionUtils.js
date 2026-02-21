@@ -42,7 +42,10 @@ export const highlightElemConverted = async (htmlElem) => {
 
 export const highlightElemOriginal = async (htmlElem) => {
     htmlElem.classList.remove("converted-title");
-    htmlElem.removeChild(htmlElem.querySelector(".__klikkikuri-title-highlight"));
+    const highlightElem = htmlElem.querySelector(".__klikkikuri-title-highlight");
+    if (highlightElem) {
+        htmlElem.removeChild(highlightElem);
+    }
 
     restoreElemOriginalStyle(htmlElem);
 };
