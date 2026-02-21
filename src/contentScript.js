@@ -169,11 +169,10 @@ const hrefSign = async (url) => {
             } else {
                 why = `No Rahti entry found for hash '${urlHash}' of link '${link}'`;
             }
-            // Return the amount of converted titles
-            // for gathering stats.
+            // Return classifications for gathering stats.
             return { what, why, how };
         });
-        
+
         // TODO: Handle any errors found in promises.
         const [reasons, convertedTitlesCount] = (await Promise.allSettled(processingPromises))
             .reduce(

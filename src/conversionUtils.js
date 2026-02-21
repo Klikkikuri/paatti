@@ -24,7 +24,7 @@ export const noElementMatchesForQuerySelector = async (htmlElem) => {
 
 export const noTitleMatchesForHash = async (htmlElem) => {
     // TODO: Use this to highlight the thing if needed.
-   restoreElemOriginalStyle(htmlElem);
+    restoreElemOriginalStyle(htmlElem);
 };
 
 export const highlightElemConverted = async (htmlElem) => {
