@@ -56,8 +56,25 @@ const _refreshStatistics = ({ site, data }) => {
         contentElem.classList.remove("hidden");
 
         document.getElementById("site-host").textContent = site;
-        document.getElementById("statistics-main-header").textContent
-            = data["titles"]["convertedTitlesCount"];
+
+        document.querySelector("#statistics-grouped-by-clickbaitiness tfoot td").textContent
+            = Object.values(data.groupedByClickbaitiness).reduce((acc, x) => acc + x, 0);
+        
+        const clickbaitinessTableBody = document.querySelector("#statistics-grouped-by-clickbaitiness tbody");
+        while (clickbaitinessTableBody.firstChild) {
+            clickbaitinessTableBody.removeChild(clickbaitinessTableBody.firstChild);
+        }
+        for (const [clickbaitiness, amount] of Object.entries(data.groupedByClickbaitiness)) {
+            const tr = document.createElement("tr");
+            const th = document.createElement("th");
+            th.scope = "row";
+            th.textContent = browser().i18n.getMessage(`clickbaitinessLabel ${clickbaitiness}`);
+            const td = document.createElement("td");
+            td.textContent = amount;
+            tr.appendChild(th);
+            tr.appendChild(td);
+            clickbaitinessTableBody.appendChild(tr);
+        }
     } else if (site) {
         contentElem.classList.remove("hidden");
 
@@ -71,10 +88,14 @@ const _refreshStatistics = ({ site, data }) => {
 
     document.getElementById("statsview-header").textContent =
         browser().i18n.getMessage("statsviewHeader");
-    document.getElementById("statsview-handled-elements-title").textContent =
-        browser().i18n.getMessage("statsviewHandledElementsTitle");
-    document.getElementById("statistics-main-header-filler").textContent =
-        browser().i18n.getMessage("statsviewChangedTitlesFillerText");
+    const statisticsGroupedByClickbaitinessTableHeaders =
+        document.querySelectorAll("#statistics-grouped-by-clickbaitiness thead th");
+    statisticsGroupedByClickbaitinessTableHeaders[0].textContent =
+        browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelClickbaitiness");
+    statisticsGroupedByClickbaitinessTableHeaders[1].textContent =
+        browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelAmount");
+    document.querySelector("#statistics-grouped-by-clickbaitiness tfoot th").textContent =
+        browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelTotal");
 };
 
 const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlSelected, isDevelopmentEnv, testTitleDataUrl, config }) => {

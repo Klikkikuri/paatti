@@ -4,6 +4,26 @@
     "description": "Description of the extension."
   },
 
+  "clickbaitinessLabel Moderately Clickbaity": {
+      "message": "Melko klikkiotsikko",
+      "description": "Label for the moderately clickbaity title 'type' or 'severity'"
+  },
+
+  "clickbaitinessLabel Not Clickbait at all": {
+      "message": "Ei lainkaan klikkiotsikko",
+      "description": "Label for the not clickbait at all title 'type' or 'severity'"
+  },
+
+  "clickbaitinessLabel Slightly Clickbaity": {
+      "message": "Hieman klikkiotsikko",
+      "description": "Label for the slightly clickbaity title 'type' or 'severity'"
+  },
+
+  "clickbaitinessLabel Very Clickbaity": {
+      "message": "Hyvin klikkiotsikko",
+      "description": "Label for the very clickbaity title 'type' or 'severity'"
+  },
+
   "siteTitleNotSupported": {
     "message": "Sivusto ei tuettu",
     "description": "Message to show in 'main' title element when the visited site is not supported"
@@ -24,14 +44,19 @@
     "description": "Title of the statistics view section"
   },
 
-  "statsviewHandledElementsTitle": {
-    "message": "Käsiteltyjä elementtejä:",
-    "description": "Title of the stats section showing number of handled elements of site processing"
+  "statsviewGroupedByClickbaitinessLabelClickbaitiness": {
+    "message": "Klikkiotsikkoisuus",
+    "description": "Title of the stats section clickbaitiness grouping table for the 'type' or 'severity' of clickbait"
   },
 
-  "statsviewChangedTitlesFillerText": {
-    "message": "muutettua otsikkoa tällä sivulla",
-    "description": "Additional 'flair' text of the stats section showing number of changed titles on the site"
+  "statsviewGroupedByClickbaitinessLabelAmount": {
+    "message": "Määrä",
+    "description": "Title of the stats section clickbaitiness grouping table for the amount of this type of clickbait"
+  },
+
+  "statsviewGroupedByClickbaitinessLabelTotal": {
+    "message": "Yhteensä",
+    "description": "Title of the stats section clickbaitiness grouping table for the total amount of converted titles"
   },
 
   "feedbackviewGeneralFeedbackHeader": {

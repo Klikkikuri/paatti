@@ -40,6 +40,12 @@ body {
     overflow-y: scroll;
 }
 
+#statsview {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
 #navi {
     height: 9%;
 
@@ -264,4 +270,35 @@ li {
 iframe {
     width: 100%;
     height: 100%;
+}
+
+table { 
+    text-align: left;
+}
+
+thead th {
+    background: #73d9ff;
+}
+
+tfoot th {
+    background: #73d9ff;
+}
+
+tfoot td {
+    background: #73d9ff;
+}
+
+th, td {
+    border: 1px solid whitesmoke;
+    border-radius: 6px;
+    padding: 1%;
+}
+
+tbody > tr:nth-of-type(even) > th {
+    background: whitesmoke;
+}
+
+tbody > tr:nth-of-type(even) > td {
+    background: whitesmoke;
+    text-align: left;
 }

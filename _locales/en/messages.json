@@ -4,6 +4,26 @@
     "description": "Description of the extension."
   },
 
+  "clickbaitinessLabel Moderately Clickbaity": {
+      "message": "Moderately Clickbaity",
+      "description": "Label for the moderately clickbaity title 'type' or 'severity'"
+  },
+
+  "clickbaitinessLabel Not Clickbait at all": {
+      "message": "Not Clickbait at all",
+      "description": "Label for the not clickbait at all title 'type' or 'severity'"
+  },
+
+  "clickbaitinessLabel Slightly Clickbaity": {
+      "message": "Slightly Clickbaity",
+      "description": "Label for the slightly clickbaity title 'type' or 'severity'"
+  },
+
+  "clickbaitinessLabel Very Clickbaity": {
+      "message": "Very Clickbaity",
+      "description": "Label for the very clickbaity title 'type' or 'severity'"
+  },
+
   "siteTitleNotSupported": {
     "message": "Site not supported",
     "description": "Message to show in 'main' title element when the visited site is not supported"
@@ -24,19 +44,19 @@
     "description": "Title of the statistics view section"
   },
 
-  "statsviewHandledElementsTitle": {
-    "message": "Processed elements:",
-    "description": "Title of the stats section showing number of handled elements of site processing"
+  "statsviewGroupedByClickbaitinessLabelClickbaitiness": {
+    "message": "Clickbaitiness",
+    "description": "Title of the stats section clickbaitiness grouping table for the 'type' or 'severity' of clickbait"
   },
 
-  "statsviewChangedTitlesFillerText": {
-    "message": "converted titles on this site",
-    "description": "Additional 'flair' text of the stats section showing number of changed titles on the site"
+  "statsviewGroupedByClickbaitinessLabelAmount": {
+    "message": "Amount",
+    "description": "Title of the stats section clickbaitiness grouping table for the amount of this type of clickbait"
   },
 
-  "feedbackviewGeneralFeedbackHeader": {
-    "message": "Give open feedback",
-    "description": "Title of the feedback view general feedback section"
+  "statsviewGroupedByClickbaitinessLabelTotal": {
+    "message": "Total",
+    "description": "Title of the stats section clickbaitiness grouping table for the total amount of converted titles"
   },
 
   "feedbackviewGeneralFeedbackLoading": {

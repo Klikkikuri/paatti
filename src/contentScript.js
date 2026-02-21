@@ -157,6 +157,7 @@ const hrefSign = async (url) => {
                 if (titleElem) {
                     if (await model.read.isEnabled(newsSite)) {
                         what = "converted";
+                        why = rahtiEntry.clickbaitiness;
                         how = await convertClickbait(titleElem, link, { rahtiEntry });
                     } else {
                         what = "restored";
@@ -174,28 +175,37 @@ const hrefSign = async (url) => {
         });
 
         // TODO: Handle any errors found in promises.
-        const [reasons, convertedTitlesCount] = (await Promise.allSettled(processingPromises))
+        const reasons = (await Promise.allSettled(processingPromises))
             .reduce(
                 (acc, x) => {
                     if (!x.value) {
                         throw x;
                     }
-                    if (x.value.what === "converted") {
-                        acc[1] += 1;
-                    }
-                    acc[0].push(x.value);
+
+                    acc.push(x.value);
 
                     return acc;
                 },
-                [[], 0],
+                [],
             );
 
         await controller.updateStatistics({
             hostname: newsSite,
-            restoreTitleData: { "convertedTitlesCount": convertedTitlesCount },
+            siteStats: {
+                groupedByClickbaitiness: reasons
+                    .map((x) => x.what === "converted" ? x.why : null)
+                    .filter((x) => x !== null)
+                    .reduce((acc, x) => {
+                        if (acc[x] === undefined) {
+                            acc[x] = 0;
+                        }
+                        acc[x] += 1;
+                        return acc;
+                    }, {}),
+            },
         });
 
-        log(`Finished conversion procedure with ${reasons.length - convertedTitlesCount}/${reasons.length} non-converted items: `, reasons);
+        log(`Finished conversion procedure with ${reasons.length} processed items: `, reasons);
     };
 
     const refreshHighlights = async () => await Promise.allSettled(

@@ -67,17 +67,7 @@ const controller = {
         log("Popup opened notify performed.");
     },
 
-    updateStatistics: async ({ hostname, restoreTitleData, links }) => {
-        const siteStats = {
-            "titles": {
-                "convertedTitlesCount": restoreTitleData.convertedTitlesCount,
-                "labelNot": 0,
-                "labelSlightly": 0,
-                "labelVery": 0,
-                "labelExtremely": 0,
-            },
-        };
-
+    updateStatistics: async ({ hostname, siteStats, links }) => {
         model.write.setStatistics(siteStats, { hostname });
     },
 
