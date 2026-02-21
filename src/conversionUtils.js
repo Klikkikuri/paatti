@@ -24,12 +24,15 @@ export const noElementMatchesForQuerySelector = async (htmlElem) => {
 
 export const noTitleMatchesForHash = async (htmlElem) => {
     // TODO: Use this to highlight the thing if needed.
-   restoreElemOriginalStyle(htmlElem);
+    restoreElemOriginalStyle(htmlElem);
 };
 
 export const highlightElemConverted = async (htmlElem) => {
     htmlElem.classList.add("converted-title");
 
+    if (htmlElem.querySelector(".__klikkikuri-title-highlight")) {
+        return;
+    }
     const img = document.createElement("img");
     img.src = browser().runtime.getURL("icons/klikkikuri-48.png");
     img.height = "48";
@@ -39,7 +42,10 @@ export const highlightElemConverted = async (htmlElem) => {
 
 export const highlightElemOriginal = async (htmlElem) => {
     htmlElem.classList.remove("converted-title");
-    htmlElem.removeChild(htmlElem.querySelector(".__klikkikuri-title-highlight"));
+    const highlightElem = htmlElem.querySelector(".__klikkikuri-title-highlight");
+    if (highlightElem) {
+        htmlElem.removeChild(highlightElem);
+    }
 
     restoreElemOriginalStyle(htmlElem);
 };
