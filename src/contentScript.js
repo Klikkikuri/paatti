@@ -109,7 +109,7 @@ const hrefSign = async (url) => {
                 await highlightElemConverted(titleElem);
             }
 
-            log(`Converted title from '${originalTitle}' to '${convertedTitle}' for link:`, link);
+            return `Converted title from '${originalTitle}' to '${convertedTitle}' for link: ${link}`;
         };
 
         const restoreClickbait = async (titleElem, link) => {
@@ -118,7 +118,7 @@ const hrefSign = async (url) => {
 
             if (!originalTitle) {
                 // No action needed, never converted before.
-                return;
+                return `Title element for link '${link}' has not been processed yet, no need to restore`;
             }
 
             titleElem.textContent = originalTitle
@@ -128,7 +128,7 @@ const hrefSign = async (url) => {
             // conversion will not be skipped.
             delete titleElem.dataset.klikkikuriConvertedTitle;
 
-            log(`Restored title from '${convertedTitle}' to '${originalTitle}' for link:`, link);
+            return `Restored title from '${convertedTitle}' to '${originalTitle}' for link ${link}`;
         };
 
         const processingPromises = await processTitleElems(async (rule, container, link) => {
@@ -142,41 +142,41 @@ const hrefSign = async (url) => {
             link.dataset.klikkikuriUrlHash = urlHash;
 
             const rahtiEntry = await rahti.get(urlHash)
-            let reason;
+            // These are string values explaining how the title item was processed.
+            let whySkipped, howConverted;
             if (rahtiEntry) {
                 const titleElem = rule.title ? container.querySelector(rule.title) : link;
                 if (titleElem) {
                     if (await model.read.isEnabled(newsSite)) {
-                        await convertClickbait(titleElem, link, { rahtiEntry });
-                        // Return the amount of converted titles
-                        // for gathering stats.
-                        return { "converted": 1 };
+                        howConverted = await convertClickbait(titleElem, link, { rahtiEntry });
                     } else {
-                        reason = `Conversion not enabled for site '${newsSite}'`;
+                        whySkipped = `Conversion not enabled for site '${newsSite}'`;
                         await restoreClickbait(titleElem, link);
                     }
                 } else {
-                    reason = `No title element found for rule title selector '${rule.title}' in link '${link}'`;
+                    whySkipped = `No title element found for rule title selector '${rule.title}' in link '${link}'`;
                 }
             } else {
-                reason = `No Rahti entry found for hash '${urlHash}' of link '${link}'`;
+                whySkipped = `No Rahti entry found for hash '${urlHash}' of link '${link}'`;
             }
             // Return the amount of converted titles
             // for gathering stats.
-            return { reason };
+            return { whySkipped, howConverted };
         });
         
         // TODO: Handle any errors found in promises.
         const [reasons, convertedTitlesCount] = (await Promise.allSettled(processingPromises))
             .reduce(
                 (acc, x) => {
-                    if (x.value?.reason) {
-                        acc[0].push(x.value.reason);
-                    } else if (x.value?.converted) {
-
-                        acc[1] += x.value.converted;
-                    } else {
+                    if (!x.value) {
                         throw x;
+                    }
+
+                    if (x.value.whySkipped) {
+                        acc[0].push(x.value.whySkipped);
+                    } else {
+                        acc[0].push(x.value.howConverted);
+                        acc[1] += 1;
                     }
 
                     return acc;
@@ -189,7 +189,7 @@ const hrefSign = async (url) => {
             restoreTitleData: { "convertedTitlesCount": convertedTitlesCount },
         });
 
-        log(`Finished conversion procedure with ${reasons.length} skipped items: `, reasons);
+        log(`Finished conversion procedure with ${reasons.length}/${reasons.length + convertedTitlesCount} skipped items: `, reasons);
 
     };
 
