@@ -31,10 +31,7 @@
         "src/controller.js",
         "src/config.js",
         "src/storage.js",
-        "src/rahti.js",
-        "suola/build/suola.js",
-        "suola/build/js.wasm",
-        "test_data/data.json"
+        "src/rahti.js"
       ],
       "matches": [
         "https://*.iltalehti.fi/*",
@@ -59,21 +56,25 @@
         "src/contentStyle.css"
       ],
       "js": [
-        // Glue code provided with Go.
-        "suola/build/wasm_exec.js",
-        // This script should contain an initialization function for the WebAssembly module.
-        "suola/build/suola.js",
-        // Main module.
         "src/contentScript.js"
       ]
     }
   ],
   "background": {
     "scripts": [
+      // Glue code provided with Go.
+      "suola/build/wasm_exec.js",
+      // This script should contain an initialization function for the WebAssembly module.
+      "suola/build/suola.js",
+      // Main module.
       "src/background.js"
     ],
     "service_worker": "src/background.js",
     "type": "module"
+  },
+  // This is needed to load Suola in background script.
+  "content_security_policy": {
+      "extension_pages": "script-src 'self' 'wasm-unsafe-eval'"
   },
   "host_permissions": [
     "https://raw.githubusercontent.com/*",

@@ -1,26 +1,5 @@
 "use strict";
 
-/*
- * README:
- *
- * This file/module depends on the following functions in its global scope:
- * - `hashUrl(url: string) -> string | falsy`
- *   - Function should normalize and return a sha256 hash of the input URL or a
- *   falsy value in case of an error.
- * - `initSuola(url: string) -> void`
- *   - Function should make the hashUrl-function available based on the
- *   provided URL/path of the WebAssembly module (browser extension accesses
- *   the .wasm file differently compared to normal browser scripts/files).
- */
-
-// Use this to access this source file in the browser debugger.
-//debugger;
-
-const hrefSign = async (url) => {
-    const urlObj = new URL(url, window.location.href);
-    return await hashUrl(urlObj.href);
-}
-
 // Main.
 (async () => {
     ////////////////////////////////////////////////////////////////////////////
@@ -36,6 +15,8 @@ const hrefSign = async (url) => {
 
     const log = getLogger("content_script");
 
+    log("Imported");
+
     // Remove the event from content script, as Chrome cries when it tries to
     // access browser.tabs sending conversion message.
     await model.events.removeEventListener(modelEvents.enabledChange, controller.dispatchConversion);
@@ -50,21 +31,22 @@ const hrefSign = async (url) => {
     ////////////////////////////////////////////////////////////////////////////
     // Initialization.
 
-    try {
-        await initSuola(browser.runtime.getURL("suola/build/js.wasm"));
-    } catch (e) {
-        log("Paatti sailing in fresh water :/ ", e);
-        // TODO: Try a couple times and eventually set some error state for GUI.
-        return;
-    }
-
     if (!rahti) {
         log("No Rahti data found, aborting conversion.", rahti);
         return;
     }
 
+    log("Initialized");
+
     ////////////////////////////////////////////////////////////////////////////
     // Processing subroutines.
+
+    const hashUrl = async (url) => browser.runtime.sendMessage({ message: { command: "hashUrl", url } });
+
+    const hrefSign = async (url) => {
+        const urlObj = new URL(url, window.location.href);
+        return await hashUrl(urlObj.href);
+    }
 
     /*
      * Parallelly iterate through all the title elements according to site's rules. 

@@ -322,11 +322,10 @@ document.getElementById("enable-devmode")
 
 ///////////////////////////////////////////////////////////////////////////////
 // Handlers related to other non-popup-parts of the extension.
-browser().runtime.onMessage.addListener((request, sender, sendResponse) => {
+browser().runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     switch (request.message) {
         case "isPopupOpen":
-            sendResponse({ "isOpen": true });
-            break;
+            return { "isOpen": true };
         default:
             log("Unknown message: ", message);
     }

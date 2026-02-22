@@ -3,8 +3,49 @@
 import { browser, getLogger } from "./utils.js";
 import { getConfig } from "./config.js";
 import { fetchRahtiData } from "./rahti.js";
+import { initSuola } from "../suola/build/suola.js";
 
 const log = getLogger("background");
+
+/*
+ * README:
+ *
+ * This file/module depends on the following functions in its global scope:
+ * - `hashUrl(url: string) -> string | falsy`
+ *   - Function should normalize and return a sha256 hash of the input URL or a
+ *   falsy value in case of an error.
+ * - `initSuola(url: string) -> void`
+ *   - Function should make the hashUrl-function available based on the
+ *   provided URL/path of the WebAssembly module (browser extension accesses
+ *   the .wasm file differently compared to normal browser scripts/files).
+ *
+ * The WebAssembly module is loaded and initialized in the background because
+ * loading it in content script would add about 500ms delay to starting the
+ * processing.
+ */
+
+try {
+    await initSuola(browser().runtime.getURL("suola/build/js.wasm"));
+
+    // Start listening for content script requests that request suola.
+    browser().runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+        switch (request.message.command) {
+            case "hashUrl":
+                // Send the compiled Module (can be transferred to content scripts)
+                const hash = await hashUrl(request.message.url);
+                log(hash);
+                return hash;
+            default:
+                log("Unknown message:", message);
+                break;
+        }
+    });
+} catch (e) {
+    // TODO: Try a couple times and eventually set some error state for GUI.
+    log("Paatti sailing in fresh water :/ ", e);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 const DEFAULT_ENVIRONMENT = "free";
 const PULL_ALARM_NAME = "periodic-data-pull";
@@ -27,7 +68,6 @@ async function scheduleAlarm(minutes) {
 // });
 
 browser().runtime.onInstalled.addListener(async () => {
-
     // Detect environment
     const environment = await new Promise((resolve) => {
         browser().management.getSelf((info) => {
