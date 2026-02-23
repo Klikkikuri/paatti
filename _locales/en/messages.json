@@ -59,6 +59,11 @@
     "description": "Title of the stats section clickbaitiness grouping table for the total amount of converted titles"
   },
 
+  "feedbackviewGeneralFeedbackHeader": {
+    "message": "Open feedback to developers",
+    "description": "Title of the feedback view general feedback section"
+  },
+
   "feedbackviewGeneralFeedbackLoading": {
     "message": "Loading...",
     "description": "Text marking that the embedded generic feedback form is still loading in to the document"
@@ -114,4 +119,3 @@
     "description": "Title-attribute of the hidden devmode activation button"
   }
 }
-
