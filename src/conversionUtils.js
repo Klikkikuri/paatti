@@ -29,23 +29,10 @@ export const noTitleMatchesForHash = async (htmlElem) => {
 
 export const highlightElemConverted = async (htmlElem) => {
     htmlElem.classList.add("converted-title");
-
-    if (htmlElem.querySelector(".__klikkikuri-title-highlight")) {
-        return;
-    }
-    const img = document.createElement("img");
-    img.src = browser().runtime.getURL("icons/klikkikuri-48.png");
-    img.height = "48";
-    img.classList.add("__klikkikuri-title-highlight")
-    htmlElem.appendChild(img);
 };
 
 export const highlightElemOriginal = async (htmlElem) => {
     htmlElem.classList.remove("converted-title");
-    const highlightElem = htmlElem.querySelector(".__klikkikuri-title-highlight");
-    if (highlightElem) {
-        htmlElem.removeChild(highlightElem);
-    }
 
     restoreElemOriginalStyle(htmlElem);
 };

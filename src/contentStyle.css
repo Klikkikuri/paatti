@@ -1,21 +1,9 @@
-.converted-title {
-    position: relative;
+.converted-title::before {
+    content: url(../icons/klikkikuri-48.png);
+
     display: inline-block;
-}
-
-/* Prevent highlighting image from obstructing the title text */
-.converted-title:hover > .__klikkikuri-title-highlight {
-    opacity: 30%;
-}
-
-.__klikkikuri-title-highlight {
-    position: absolute;
-    top: -30px;
-    left: -20px;
-
     transform-origin: bottom center;
     animation: bob 3s ease-in-out infinite;
-    z-index: 9001;
 }
 
 @keyframes bob {
