@@ -8,7 +8,7 @@ Sail smoothly through the clickbait-infested web using this browser extension.
 Requirements
 - `bash`
 - Python 3
-- Docker (tested on version 28.1.1)
+- Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2)
 - Access to Klikkikuri GitHub repositories:
     - `suola`
 

@@ -2,6 +2,14 @@
 
 set -e
 
+# Prefer podman instead of docker if installed.
+docker () {
+    if type podman
+    then podman "$@"
+    else command docker "$@"
+    fi
+}
+
 git submodule init
 git submodule update
 
