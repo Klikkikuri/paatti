@@ -51,7 +51,7 @@ You can also use Visual Studio Code to debug the extension. See the `.vscode/lau
 ## Architecture
 ```mermaid
 ---
-title: Architecture v0.1
+title: Architecture v0.2
 ---
 classDiagram
     direction TB
