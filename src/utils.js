@@ -8,14 +8,29 @@ const getComplicatedLogger = (name) => {
     let lastLogTime = logInitTime;
 
     return (...xs) => {
+        let doLogTime;
         let doTimeDifference;
+        let doCumulativeTime;
+
+        const thisLogTime = Date.now();
+
         // CONFIG: Comment or uncomment these in order to set different types of
         // logging TODO: Use some environment flags instead.
-        const thisLogTime = Date.now();
-        doTimeDifference = `⏱️ Δ ${((thisLogTime - lastLogTime) / 1000).toFixed(3)}s ∑ ${((thisLogTime - logInitTime) / 1000).toFixed(3)}s`;
+        //doLogTime = `🕰️ ${new Date(Date.now()).toISOString()}`
+        //doTimeDifference = `Δ ${((thisLogTime - lastLogTime) / 1000).toFixed(3)}s`;
+        doCumulativeTime = `∑ ${((thisLogTime - logInitTime) / 1000).toFixed(3)}s`;
+
         lastLogTime = thisLogTime;
-        const message = `[ Loki ⛵ ${name} 🕰️ ${new Date(Date.now()).toISOString()}`;
-        const args = [message, doTimeDifference, "]:"].filter((x) => x !== undefined);
+
+        const logPrompt = `Loki ⛵ ${name.padEnd(10)}`;
+        const args = [
+            logPrompt,
+            doLogTime,
+            ((doTimeDifference || doCumulativeTime) ? "⏱️" : undefined),
+            doTimeDifference,
+            doCumulativeTime,
+            ">",
+        ].filter((x) => x !== undefined);
         console.log.bind(console)(...args, ...xs);
     };
 };
