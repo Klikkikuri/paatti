@@ -24,11 +24,6 @@ const _setSiteEnabled = async (isEnabled, hostname) => {
     await model.write.setEnabled(isEnabled, hostname);
 };
 
-const _setCurrentTabEnabled = async (isEnabled) => {
-    const currentTabHostname = await getCurrentTabHostname();
-    await _setSiteEnabled(isEnabled, currentTabHostname)
-};
-
 /**
  * Namespace for __controller__ of model-view-controller.
  */
@@ -52,8 +47,6 @@ const controller = {
     },
 
     setSiteEnabled: _setSiteEnabled,
-
-    setCurrentTabEnabled: _setCurrentTabEnabled,
 
     dispatchConversion: _dispatchConversion,
 
@@ -89,15 +82,17 @@ const controller = {
             const tabs = browser().tabs;
             const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
 
+            const currentTabHostname = await getCurrentTabHostname();
+
             // First restore the original state seen on page so that will not
             // mix the title data sources causing havoc visually.
-            const originalEnabledState = await model.read.isEnabled(await getCurrentTabHostname());
-            await _setCurrentTabEnabled(false);
+            const originalEnabledState = await model.read.isEnabled(currentTabHostname);
+            await _setSiteEnabled(false, currentTabHostname)
             await tabs.sendMessage(activeTabId, { command: "convertClickbaits" });
 
             await model.write.setTitleDataUrl(url);
             await tabs.sendMessage(activeTabId, { command: "convertClickbaits" });
-            await _setCurrentTabEnabled(originalEnabledState);
+            await _setSiteEnabled(originalEnabledState, currentTabHostname)
 
             log(`Title data URL set to ${url}`);
         },
