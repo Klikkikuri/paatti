@@ -43,7 +43,7 @@ const _setSettingsviewCheckboxesReadonly = (isConversionEnabled) => {
     }
 };
 
-const _refreshStatistics = ({ site, data }) => {
+const _refreshContentView = ({ site, data, isEnabled }) => {
     const contentElem = document.getElementById("statsview")
     const errorElem = document.getElementById("statserror");
 
@@ -75,15 +75,16 @@ const _refreshStatistics = ({ site, data }) => {
             tr.appendChild(td);
             clickbaitinessTableBody.appendChild(tr);
         }
-    } else if (site) {
-        contentElem.classList.remove("hidden");
-
-        document.getElementById("site-host").textContent = browser().i18n.getMessage("siteTitleNotSupported");
     } else {
         errorElem.classList.remove("hidden");
 
+        // Generic error.
         document.getElementById("site-host").textContent = browser().i18n.getMessage("siteTitleNotSupported");
-        errorElem.querySelector("p").textContent = browser().i18n.getMessage("statsErrorUserFixInstructions");
+
+        if (site) {
+            // Show instructions if there was some problem loading the data on a supported site.
+            errorElem.querySelector("p").textContent = browser().i18n.getMessage("statsErrorUserFixInstructions");
+        }
     }
 
     document.getElementById("statsview-header").textContent =
@@ -148,9 +149,6 @@ const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlS
         browser().i18n.getMessage("settingsviewSitesEnabledTitle");
 };
 
-const _refreshContentView = ({ pageHostname, pageStatistics, isEnabled }) => {
-    _refreshStatistics({ site: pageHostname, data: pageStatistics });
-};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Adapters that use the controller but also trigger other business logic
@@ -212,8 +210,8 @@ const refresh = async () => {
         config,
     });
     _refreshContentView({
-        pageHostname,
-        pageStatistics,
+        site: pageHostname,
+        data: pageStatistics,
         isEnabled: sitesEnabled[pageHostname],
     });
 
