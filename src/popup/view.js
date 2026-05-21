@@ -114,6 +114,7 @@ const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlS
         input.classList.add("toggle");
         input.classList.add("conversion-switch");
         input.id = getSitesEnabledItemId(host);
+        input.dataset.hostname = host;
         input.type = "checkbox";
         const label = document.createElement("label");
         label.for = input.id;
@@ -160,14 +161,7 @@ const handleClickMainSwitch = async (e) => {
 };
 
 const handleClickConversionSwitch = async (e) => {
-    // Update the persistent settings.
-    const hostname = SWITCHES_TO_CONFIG_KEYS[e.target.id];
-    if (hostname === undefined) {
-        log("Conversion switch handler registered to unknown hostname:", hostname);
-        return;
-    }
-
-    await controller.setSiteEnabled(e.target.checked, hostname);
+    await controller.setSiteEnabled(e.target.checked, e.target.dataset.hostname);
 };
 
 /**
@@ -197,6 +191,7 @@ const refresh = async () => {
     const isDevelopmentEnv = await model.read.isDevelopmentEnv();
     const testTitleDataUrl = await model.read.getTestTitleDataUrl();
     const config = await getConfig();
+
 
     // Update the power button.
     document.getElementById("extension-enabled").checked = isConversionEnabled;
@@ -247,6 +242,29 @@ const refresh = async () => {
     document.querySelector("label[for=enable-devmode] span").title =
         browser().i18n.getMessage("devmodeHiddenButtonTitle");
 
+    ///////////////////////////////////////////////////////////////////////////////
+    // Register handlers for visual changes like moving between views.
+    document.querySelector(".open-feedbackview")
+        .addEventListener("click", () => view.showView("feedback"));
+    document.querySelector(".open-settingsview")
+        .addEventListener("click", () => view.showView("settings"));
+    document.querySelector(".open-home")
+        .addEventListener("click", () => view.showView("main"));
+
+    ///////////////////////////////////////////////////////////////////////////////
+    // Register main of/off switch.
+    document.getElementById("extension-enabled")
+        .addEventListener("click", view.handleClickMainSwitch);
+    // Register site switches under settings view.
+    for (const pageEnabledSwitch of document.querySelectorAll(".settingsview .conversion-switch")) {
+        pageEnabledSwitch.addEventListener("click", view.handleClickConversionSwitch);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    // Register devmode switch.
+    document.getElementById("enable-devmode")
+        .addEventListener("click", __devmodeEnable);
+
     // Inform content script that the popup is opened.
     await controller.notifyPopupOpened();
 };
@@ -290,33 +308,8 @@ const view = {
 };
 
 ///////////////////////////////////////////////////////////////////////////////
-// Register event handlers. NOTE that the order matters.
-///////////////////////////////////////////////////////////////////////////////
-// "Main" for when the popup is opened.
+// "Main" handler for when the popup is opened.
 document.addEventListener("DOMContentLoaded", view.handleDomContentLoaded);
-///////////////////////////////////////////////////////////////////////////////
-// Handlers for visual changes like moving between views.
-document.querySelector(".open-feedbackview")
-    .addEventListener("click", () => view.showView("feedback"));
-document.querySelector(".open-settingsview")
-    .addEventListener("click", () => view.showView("settings"));
-document.querySelector(".open-home")
-    .addEventListener("click", () => view.showView("main"));
-///////////////////////////////////////////////////////////////////////////////
-// Handlers for application state changes.
-
-// Register main of/off switch.
-document.getElementById("extension-enabled")
-    .addEventListener("click", view.handleClickMainSwitch);
-// Register site switches under settings view.
-for (const pageEnabledSwitch of document.querySelectorAll(".settingsview .conversion-switch")) {
-    pageEnabledSwitch.addEventListener("click", view.handleClickConversionSwitch);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Handlers for devmode utils.
-document.getElementById("enable-devmode")
-    .addEventListener("click", __devmodeEnable);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Handlers related to other non-popup-parts of the extension.
