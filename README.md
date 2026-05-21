@@ -57,12 +57,8 @@ classDiagram
     direction TB
     class LocalStore{
     }
-    class GlobalData{
+    class Config{
         bool enabled
-    }
-    class MainContentData{
-        bool enabled
-        bool kerran
     }
     class Statistics{
     }
@@ -77,26 +73,22 @@ classDiagram
     class ContentScripts{
     }
 
-    LocalStore *-- GlobalData
-    LocalStore *-- MainContentData
+    LocalStore *-- Config
 
-    MainContentData *-- Statistics
+    Config *-- Statistics
 
-    ContentScripts <-- GlobalData
-    ContentScripts <-- MainContentData
+    ContentScripts <-- Config
     ContentScripts --> Statistics
     ContentScripts --() Meri : Fetch conversions
 
     Popup *-- MainContentView
     Popup *-- SettingsView
     Popup *-- FeedbackView
-    Popup <--> GlobalData
 
     MainContentView <-- Statistics
-    MainContentView <--> MainContentData
+    MainContentView <--> Config
 
-    SettingsView <--> MainContentData
+    SettingsView <--> Config
 
-    FeedbackView <-- MainContentData
     FeedbackView --() FeedbackServer : Submit feedback
 ```
