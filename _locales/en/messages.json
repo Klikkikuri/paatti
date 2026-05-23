@@ -4,11 +4,6 @@
     "description": "Description of the extension."
   },
 
-  "clickbaitinessLabel Moderately Clickbaity": {
-      "message": "Moderately Clickbaity",
-      "description": "Label for the moderately clickbaity title 'type' or 'severity'"
-  },
-
   "clickbaitinessLabel Not Clickbait at all": {
       "message": "Not Clickbait at all",
       "description": "Label for the not clickbait at all title 'type' or 'severity'"
@@ -19,9 +14,19 @@
       "description": "Label for the slightly clickbaity title 'type' or 'severity'"
   },
 
+  "clickbaitinessLabel Moderately Clickbaity": {
+      "message": "Moderately Clickbaity",
+      "description": "Label for the moderately clickbaity title 'type' or 'severity'"
+  },
+
   "clickbaitinessLabel Very Clickbaity": {
       "message": "Very Clickbaity",
       "description": "Label for the very clickbaity title 'type' or 'severity'"
+  },
+
+  "clickbaitinessLabel Extremely Clickbaity": {
+      "message": "Extremely Clickbaity",
+      "description": "Label for the extremely clickbaity title 'type' or 'severity'"
   },
 
   "siteTitleNotSupported": {

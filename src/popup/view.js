@@ -64,7 +64,18 @@ const _refreshContentView = ({ site, data, isEnabled }) => {
         while (clickbaitinessTableBody.firstChild) {
             clickbaitinessTableBody.removeChild(clickbaitinessTableBody.firstChild);
         }
-        for (const [clickbaitiness, amount] of Object.entries(data.groupedByClickbaitiness)) {
+
+        const clickbaitinesses = [
+            "Extremely Clickbaity",
+            "Very Clickbaity",
+            "Moderately Clickbaity",
+            "Slightly Clickbaity",
+            "Not Clickbait at all",
+        ];
+        const descendingClickbaitiness = Object.entries(data.groupedByClickbaitiness)
+                .sort(([a], [b]) => clickbaitinesses.indexOf(a) - clickbaitinesses.indexOf(b));
+
+        for (const [clickbaitiness, amount] of descendingClickbaitiness) {
             const tr = document.createElement("tr");
             const th = document.createElement("th");
             th.scope = "row";
