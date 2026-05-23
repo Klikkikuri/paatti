@@ -117,5 +117,10 @@
   "devmodeHiddenButtonTitle": {
     "message": "Asetuksia nörteille",
     "description": "Title-attribute of the hidden devmode activation button"
+  },
+
+  "devmodeCopyLinkSignaturesTitle": {
+    "message": "Kopioi tämän sivun linkkien suolaukset leikepöydällesi",
+    "description": "Title-attribute of the hidden devmode link signature copying button"
   }
 }

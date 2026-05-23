@@ -81,6 +81,7 @@ body {
     min-width: 0;
 }
 
+
 /* Content details */
 
 .content b {
@@ -95,14 +96,6 @@ body {
     width: 16em;
 }
 
-/* Settings view details */
-
-.devmode {
-    display: flex;
-    flex-direction: column;
-    gap: 1em;
-}
-
 /* Navi details */
 
 #navi .push-button {
@@ -110,12 +103,36 @@ body {
     line-height: 2.9em;
     padding: 0;
 
-    /* Make the power button a circle */
+    /* Make the buttons circles */
     border-radius: 100%;
     display: block;
     width: 30px;
     height: 30px;
     min-width: 0;
+}
+
+/* Logo details */
+
+#logo-graphics {
+    display: flex;
+    justify-content: space-evenly;
+    gap: 0.5em;
+    height: 20px;
+}
+
+.devmode {
+    width: 20px;
+}
+
+.devmode:hover {
+    background: #3399df;
+    outline: 2px solid #53b9ff;
+    border-radius: 6px;
+}
+
+/* Show that navi buttons cannot be untoggled */
+#navi input:checked+.push-button:hover {
+    cursor: not-allowed;
 }
 
 /* Push button */
@@ -166,6 +183,12 @@ input:checked+.push-button {
     animation-timing-function: ease-in;
 }
 
+/* Show that push buttons can be untoggled */
+input:checked+.push-button:hover {
+    color: #555;
+    outline: 2px solid #444;
+}
+
 @keyframes pulsate-glow {
     0% {
         color: #3399df;
@@ -176,11 +199,6 @@ input:checked+.push-button {
     100% {
         color: #3399df;
     }
-}
-
-input:checked+.push-button:hover {
-    color: #555;
-    outline: 2px solid #444;
 }
 
 /* Toggle button */

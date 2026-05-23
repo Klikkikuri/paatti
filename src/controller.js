@@ -65,12 +65,12 @@ const controller = {
     },
 
     devmode: {
-        dumpLinkHash: async () => {
-            log("Generating hashes...");
+        dumpLinkSignatures: async () => {
+            log("Generating dump of link signatures for the current page...");
             // Get the active tab.
             const tabs = browser().tabs;
             const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
-            const result = await tabs.sendMessage(activeTabId, { command: "devmode_dumpLinkHash" });
+            const result = await tabs.sendMessage(activeTabId, { command: "devmode_generateLinkSignatures" });
 
             log("Dumped.");
             return result;

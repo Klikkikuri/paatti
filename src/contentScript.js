@@ -277,6 +277,10 @@ const hrefSign = async (url) => {
                 isPopupOpen = true;
                 refreshHighlights();
                 break;
+            case "devmode_generateLinkSignatures":
+                const links = Array.from(document.querySelectorAll("a"));
+                const signaturePromises = links.map((x) => hrefSign(x.href));
+                return Promise.all(signaturePromises);
             default:
                 log(`Unknown command '${message.command}'`);
                 break;

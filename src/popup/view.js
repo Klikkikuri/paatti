@@ -241,6 +241,9 @@ const refresh = async () => {
 
     document.querySelector("label[for=enable-devmode] span").title =
         browser().i18n.getMessage("devmodeHiddenButtonTitle");
+    document.querySelector("label[for=copy-link-signatures]").title =
+        browser().i18n.getMessage("devmodeCopyLinkSignaturesTitle");
+
 
     ///////////////////////////////////////////////////////////////////////////////
     // Register handlers for visual changes like moving between views.
@@ -261,9 +264,12 @@ const refresh = async () => {
     }
 
     ///////////////////////////////////////////////////////////////////////////////
-    // Register devmode switch.
+    // Register devmode controls.
     document.getElementById("enable-devmode")
         .addEventListener("click", __devmodeEnable);
+    document.getElementById("copy-link-signatures")
+        .addEventListener("click", __devmodeCopyLinkSignatures);
+
 
     // Inform content script that the popup is opened.
     await controller.notifyPopupOpened();
@@ -293,6 +299,47 @@ const __devmodeEnable = async () => {
     await controller.setEnvironment(
         await model.read.isDevelopmentEnv() ? "production" : "development"
     );
+};
+
+const __devmodeCopyLinkSignatures = async (e) => {
+    e.target.disabled = true;
+
+    const eventTargetLabel = document.querySelector(`label[for=${e.target.id}]`);
+    const textContentTemp = eventTargetLabel.textContent;
+
+    // Show that processing has started.
+    eventTargetLabel.textContent = "•◦◦";
+    const processingAnimationId = setInterval(() => {
+        const progress = eventTargetLabel.textContent.split("◦")[0];
+        eventTargetLabel.textContent =
+            (progress.length >= 3)
+            ? "•"
+            : "•".repeat(progress.length + 1);
+
+        eventTargetLabel.textContent = eventTargetLabel.textContent.padEnd(3, "◦");
+    }, 200);
+ 
+    const pageSignatures = await controller.devmode.dumpLinkSignatures();
+    log("Received generated signatures:", pageSignatures);
+
+    const pageSignaturesDump = pageSignatures
+        .filter((x) => x !== null)
+        .map((x) => x.toString())
+        .join("\n");
+
+    await window.navigator.clipboard.write([new ClipboardItem({ "text/plain": pageSignaturesDump })]);
+
+    // Give the illusion that the processing took some time by showing a bit of
+    // the processing animation (gives expected feedback to user).
+    setTimeout(() => {
+        clearInterval(processingAnimationId);
+        // Show that processing has finished.
+        eventTargetLabel.textContent = "✅";
+        setTimeout(() => {
+            eventTargetLabel.textContent = textContentTemp;
+            e.target.disabled = false;
+        }, 1000);
+    }, 600);
 };
 
 /**

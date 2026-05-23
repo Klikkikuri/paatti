@@ -117,5 +117,10 @@
   "devmodeHiddenButtonTitle": {
     "message": "Settings for nerds",
     "description": "Title-attribute of the hidden devmode activation button"
+  },
+
+  "devmodeCopyLinkSignaturesTitle": {
+    "message": "Copy link signatures on this site to your clipboard",
+    "description": "Title-attribute of the hidden devmode link signature copying button"
   }
 }
