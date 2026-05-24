@@ -15,25 +15,28 @@ body {
 /* Sections */
 
 #power {
-    flex-grow: 1;
+    height: 20%;
 
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    flex-direction: column;
-    gap: 1em;
+    margin-left: 5%;
+    margin-right: 5%;
 }
 
 .content {
-    flex-grow: 5;
+    height: 68%;
 
     display: flex;
     flex-direction: column;
     justify-content: start;
+    padding: 5%;
+    padding-top: 4%;
+    padding-bottom: 4%;
 
     border: 1px solid #555;
     border-radius: 6px;
     background: #ffffff;
-    padding: 5%;
 
     /* Content should have scrollbar as it often dynamically grows. */
     overflow-y: scroll;
@@ -46,16 +49,17 @@ body {
 }
 
 #navi {
-    flex-grow: 1;
+    height: 7%;
 
     display: flex;
     flex-direction: row;
     justify-content: center;
+    align-items: center;
     gap: 2.0em;
 }
 
 #logo {
-    flex-grow: 1;
+    height: 5%;
 
     user-select: none;
     font-size: 100%;
@@ -69,18 +73,17 @@ body {
 
 #power div:nth-child(2) .push-button {
     user-select: none;
-    font-size: 400%;
-    line-height: 1.37em;
+    font-size: 350%;
+    line-height: 1.1em;
     padding: 0;
 
     /* Make the power button a circle */
     border-radius: 100%;
     display: block;
-    width: 70px;
-    height: 70px;
+    width: 50px;
+    height: 50px;
     min-width: 0;
 }
-
 
 /* Content details */
 
