@@ -21,30 +21,45 @@
     <!-- CONTENT -->
     <!-- NOTE that id isn't used for the element(s) in order to apply .hidden from JS -->
     <div class="content main-content">
-        <div>
-            <h2 id="statsview-header"></h2>
-            <hr>
-            <div id="statsview">
-                <table id="statistics-grouped-by-clickbaitiness">
-                    <thead>
-                        <tr>
-                            <th scope="col"></th>
-                            <th scope="col"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                    <tfoot>
-                        <tr>
-                            <th scope="row"></th>
-                            <td scope="row"></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-            <div id="statserror" class="hidden error">
-                <p></p>
-            </div>
+        <h2 id="statsview-header"></h2>
+        <hr>
+        <div id="statsview">
+            <table id="statistics-grouped-by-clickbaitiness">
+                <thead>
+                    <tr>
+                        <th scope="col"></th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr id="clickbaitinessLabel Extremely Clickbaity">
+                        <th scope="row"></th>
+                        <td></td>
+                    </tr>
+                    <tr id="clickbaitinessLabel Very Clickbaity">
+                        <th scope="row"></th>
+                        <td></td>
+                    </tr>
+                    <tr id="clickbaitinessLabel Moderately Clickbaity">
+                        <th scope="row"></th>
+                        <td></td>
+                    </tr>
+                    <tr id="clickbaitinessLabel Slightly Clickbaity">
+                        <th scope="row"></th>
+                        <td></td>
+                    </tr>
+                    <tr id="clickbaitinessLabel Not Clickbait at all">
+                        <th scope="row"></th>
+                        <td></td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th scope="row"></th>
+                        <td scope="row"></td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
     </div>
 
@@ -54,24 +69,6 @@
             <hr>
             <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSfmiipCpNLI6HLg1n0cUJhRiicIz3BHcbCH9cll4fX0HRj6-g/viewform?embedded=true" width="640" height="491" frameborder="0" marginheight="0" marginwidth="0"></iframe>
         </div>
-
-        <!--div id="feedbackview-rate-title">
-            <h2 id="feedbackview-rate-title-header" class="feedbackview-header"></h2>
-            <h3>THIS FORM IS NOT FUNCTIONAL YET</h3>
-            <hr>
-            <p><strong></strong></p>
-            <p></p>
-            <p><strong></strong></p>
-            <p></p>
-            <div>
-                <div>
-                    <input id="good" type="radio" name="rating">
-                    <label for="good"></label>
-                    <input id="bad" type="radio" name="rating">
-                    <label for="bad"></label>
-                </div>
-            </div>
-        </div-->
     </div>
 
     <div class="content settingsview hidden">

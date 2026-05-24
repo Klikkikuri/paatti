@@ -29,9 +29,14 @@
       "description": "Label for the extremely clickbaity title 'type' or 'severity'"
   },
 
-  "siteTitleNotSupported": {
-    "message": "Sivusto ei tuettu",
-    "description": "Message to show in 'main' title element when the visited site is not supported"
+  "siteTitleProcessingNotSupported": {
+    "message": "Sivuston käsittelyä ei tueta",
+    "description": "Message to show in 'main' title element when the visited site is not supported for processing"
+  },
+
+  "siteTitleProcessingDisabled": {
+    "message": "Sivuston käsittely on pois päältä",
+    "description": "Message to show in 'main' title element when the visited site is disabled in settings"
   },
 
   "siteTitleError": {

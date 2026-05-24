@@ -43,57 +43,40 @@ const _setSettingsviewCheckboxesReadonly = (isConversionEnabled) => {
     }
 };
 
-const _refreshContentView = ({ site, data, isEnabled }) => {
-    const contentElem = document.getElementById("statsview")
-    const errorElem = document.getElementById("statserror");
+const _refreshContentView = ({ site, data, isSiteEnabled }) => {
+    const siteHeaderElem = document.getElementById("site-host");
+    // Reset possible error state.
+    siteHeaderElem.classList.remove("error");
 
-    // Hide all elements.
-    contentElem.classList.add("hidden");
-    errorElem.classList.add("hidden");
+    // Show appropriate elements and handle errors.
+    if (isSiteEnabled === undefined) {
+        siteHeaderElem.classList.add("error");
 
-    // Show appropriate elements.
-    if (data) {
-        contentElem.classList.remove("hidden");
+        siteHeaderElem.textContent = browser().i18n.getMessage("siteTitleProcessingNotSupported");
+    } else if (!isSiteEnabled) {
+        siteHeaderElem.classList.add("error");
 
-        document.getElementById("site-host").textContent = site;
+        siteHeaderElem.textContent = browser().i18n.getMessage("siteTitleProcessingDisabled");
+    } else if (Object.keys(data || {}).length === 0) {
+        siteHeaderElem.classList.add("error");
 
-        document.querySelector("#statistics-grouped-by-clickbaitiness tfoot td").textContent
-            = Object.values(data.groupedByClickbaitiness).reduce((acc, x) => acc + x, 0);
-        
-        const clickbaitinessTableBody = document.querySelector("#statistics-grouped-by-clickbaitiness tbody");
-        while (clickbaitinessTableBody.firstChild) {
-            clickbaitinessTableBody.removeChild(clickbaitinessTableBody.firstChild);
-        }
-
-        const clickbaitinesses = [
-            "Extremely Clickbaity",
-            "Very Clickbaity",
-            "Moderately Clickbaity",
-            "Slightly Clickbaity",
-            "Not Clickbait at all",
-        ];
-
-        for (const clickbaitiness of clickbaitinesses) {
-            const tr = document.createElement("tr");
-            const th = document.createElement("th");
-            th.scope = "row";
-            th.textContent = browser().i18n.getMessage(`clickbaitinessLabel ${clickbaitiness}`);
-            const td = document.createElement("td");
-            td.textContent = data.groupedByClickbaitiness[clickbaitiness] || 0;
-            tr.appendChild(th);
-            tr.appendChild(td);
-            clickbaitinessTableBody.appendChild(tr);
-        }
+        siteHeaderElem.textContent = browser().i18n.getMessage("statsErrorUserFixInstructions");
     } else {
-        errorElem.classList.remove("hidden");
+        // Display that this site is supported and processed.
+        document.getElementById("site-host").textContent = site;
+    }
 
-        // Generic error.
-        document.getElementById("site-host").textContent = browser().i18n.getMessage("siteTitleNotSupported");
+    const statsTableData =  (data || {}).groupedByClickbaitiness || {};
+    // Display total amount of found titles on this page.
+    const table = document.getElementById("statistics-grouped-by-clickbaitiness");
+    table.querySelector("tfoot td").textContent = Object.values(statsTableData).reduce((acc, x) => acc + x, 0);
 
-        if (site) {
-            // Show instructions if there was some problem loading the data on a supported site.
-            errorElem.querySelector("p").textContent = browser().i18n.getMessage("statsErrorUserFixInstructions");
-        }
+    // The static HTML table has the row elements sorted by clickbaitiness level.
+    const clickbaitinessTableRows = table.querySelector("tbody").children;
+
+    for (const row of clickbaitinessTableRows) {
+        row.querySelector("th").textContent = browser().i18n.getMessage(row.id);
+        row.querySelector("td").textContent = statsTableData[row.id.split("clickbaitinessLabel ")[1]] || 0;
     }
 
     document.getElementById("statsview-header").textContent =
@@ -216,7 +199,7 @@ const refresh = async () => {
     _refreshContentView({
         site: pageHostname,
         data: pageStatistics,
-        isEnabled: sitesEnabled[pageHostname],
+        isSiteEnabled: sitesEnabled[pageHostname],
     });
 
     // Rest of localizations.

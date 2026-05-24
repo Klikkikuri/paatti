@@ -29,9 +29,14 @@
       "description": "Label for the extremely clickbaity title 'type' or 'severity'"
   },
 
-  "siteTitleNotSupported": {
+  "siteTitleProcessingNotSupported": {
     "message": "Site not supported",
-    "description": "Message to show in 'main' title element when the visited site is not supported"
+    "description": "Message to show in 'main' title element when the visited site is not supported for processing"
+  },
+
+  "siteTitleProcessingDisabled": {
+    "message": "Site processing is disabled",
+    "description": "Message to show in 'main' title element when the visited site is disabled in settings"
   },
 
   "siteTitleError": {
