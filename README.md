@@ -6,29 +6,23 @@ Sail smoothly through the clickbait-infested web using this browser extension.
 
 ### Building
 Requirements
+- `make`
 - `bash`
 - Python 3
 - Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2)
 - Access to Klikkikuri GitHub repositories:
     - `suola`
 
-Fetch and build dependencies by running the `./build.sh` script.
+Fetch and build dependencies and package for distribution with `make`.
 
 ### Configuration
-Search for string `CONFIG` from the JavaScript files for various points where configuration values can be edited.
+Search for string `CONFIG` from the JavaScript files for various points where configuration values can be edited (yes really, edit the source code and then re-package).
 
 ## How do I get it on my browser
 
 ### For Firefox
 
 Enter `about:debugging` to the address bar and from the This Firefox -tab select any file at project root (e.g., `manifest.json`) from Load Temporary Add-on...
-
-#### Packaging
-Requirements
-- `bash`
-- `zip`
-
-Use the `./package.sh` script to create a `.zip` archive that can be shared more easily. When adding to browser now just choose the `.zip` file instead.
 
 #### web-ext run
 
