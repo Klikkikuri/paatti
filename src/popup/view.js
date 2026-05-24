@@ -72,16 +72,14 @@ const _refreshContentView = ({ site, data, isEnabled }) => {
             "Slightly Clickbaity",
             "Not Clickbait at all",
         ];
-        const descendingClickbaitiness = Object.entries(data.groupedByClickbaitiness)
-                .sort(([a], [b]) => clickbaitinesses.indexOf(a) - clickbaitinesses.indexOf(b));
 
-        for (const [clickbaitiness, amount] of descendingClickbaitiness) {
+        for (const clickbaitiness of clickbaitinesses) {
             const tr = document.createElement("tr");
             const th = document.createElement("th");
             th.scope = "row";
             th.textContent = browser().i18n.getMessage(`clickbaitinessLabel ${clickbaitiness}`);
             const td = document.createElement("td");
-            td.textContent = amount;
+            td.textContent = data.groupedByClickbaitiness[clickbaitiness] || 0;
             tr.appendChild(th);
             tr.appendChild(td);
             clickbaitinessTableBody.appendChild(tr);
