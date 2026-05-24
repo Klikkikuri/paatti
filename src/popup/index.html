@@ -19,7 +19,6 @@
     </div>
 
     <!-- CONTENT -->
-    <!-- NOTE that id isn't used for the element(s) in order to apply .hidden from JS -->
     <div class="content main-content">
         <h2 id="statsview-header"></h2>
         <hr>
@@ -32,23 +31,23 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr id="clickbaitinessLabel Extremely Clickbaity">
+                    <tr id="clickbaitinessLabel-Extremely-Clickbaity">
                         <th scope="row"></th>
                         <td></td>
                     </tr>
-                    <tr id="clickbaitinessLabel Very Clickbaity">
+                    <tr id="clickbaitinessLabel-Very-Clickbaity">
                         <th scope="row"></th>
                         <td></td>
                     </tr>
-                    <tr id="clickbaitinessLabel Moderately Clickbaity">
+                    <tr id="clickbaitinessLabel-Moderately-Clickbaity">
                         <th scope="row"></th>
                         <td></td>
                     </tr>
-                    <tr id="clickbaitinessLabel Slightly Clickbaity">
+                    <tr id="clickbaitinessLabel-Slightly-Clickbaity">
                         <th scope="row"></th>
                         <td></td>
                     </tr>
-                    <tr id="clickbaitinessLabel Not Clickbait at all">
+                    <tr id="clickbaitinessLabel-Not-Clickbait-at-all">
                         <th scope="row"></th>
                         <td></td>
                     </tr>
@@ -56,7 +55,7 @@
                 <tfoot>
                     <tr>
                         <th scope="row"></th>
-                        <td scope="row"></td>
+                        <td></td>
                     </tr>
                 </tfoot>
             </table>
@@ -67,7 +66,7 @@
         <div id="feedbackview-general-feedback">
             <h2 id="feedbackview-general-feedback-header" class="feedbackview-header"></h2>
             <hr>
-            <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSfmiipCpNLI6HLg1n0cUJhRiicIz3BHcbCH9cll4fX0HRj6-g/viewform?embedded=true" width="640" height="491" frameborder="0" marginheight="0" marginwidth="0"></iframe>
+            <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSfmiipCpNLI6HLg1n0cUJhRiicIz3BHcbCH9cll4fX0HRj6-g/viewform?embedded=true" width="640" height="491"></iframe>
         </div>
     </div>
 
@@ -80,26 +79,24 @@
 
     <!-- NAVI[GATION] -->
     <div id="navi">
-        <!-- NOTE that id isn't used for the element(s) in order to apply .hidden from JS -->
         <div>
             <input id="navi-main" class="open-home hidden" type="radio" name="navi" checked>
             <label for="navi-main" class="push-button">
-                <img class="icon" src="images/icon_home.svg" height="15">
+                <img class="icon" src="images/icon_home.svg" height="15" alt="Home icon">
             </label>
         </div>
 
         <div>
             <input id="navi-feedback" class="open-feedbackview hidden" type="radio" name="navi">
             <label for="navi-feedback" class="push-button">
-                <img class="icon" src="images/icon_comment.svg" height="15">
+                <img class="icon" src="images/icon_comment.svg" height="15" alt="Comment icon">
             </label>
         </div>
 
         <div>
-        </button>
             <input id="navi-settings" class="open-settingsview hidden" type="radio" name="navi">
             <label for="navi-settings" class="push-button">
-                <img class="icon" src="images/icon_slider.svg" height="15">
+                <img class="icon" src="images/icon_slider.svg" height="15" alt="Slider icon">
             </label>
         </div>
     </div>

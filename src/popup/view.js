@@ -75,8 +75,10 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
     const clickbaitinessTableRows = table.querySelector("tbody").children;
 
     for (const row of clickbaitinessTableRows) {
-        row.querySelector("th").textContent = browser().i18n.getMessage(row.id);
-        row.querySelector("td").textContent = statsTableData[row.id.split("clickbaitinessLabel ")[1]] || 0;
+        const levelI8nKey = row.id.replaceAll("-", " ");
+        const levelKey = levelI8nKey.split("clickbaitinessLabel ")[1];
+        row.querySelector("th").textContent = browser().i18n.getMessage(levelI8nKey);
+        row.querySelector("td").textContent = statsTableData[levelKey] || 0;
     }
 
     document.getElementById("statsview-header").textContent =
