@@ -260,6 +260,8 @@ const refresh = async () => {
         browser().i18n.getMessage("navigationFeedbackLabel");
     document.getElementById("navi-settings").parentElement.title =
         browser().i18n.getMessage("navigationSettingsLabel");
+    document.getElementById("open-options").title =
+        browser().i18n.getMessage("navigationSettingsLabel");
 
     document.querySelector("label[for=enable-devmode] span").title =
         browser().i18n.getMessage("devmodeHiddenButtonTitle");
@@ -280,6 +282,11 @@ const refresh = async () => {
     // Register main of/off switch.
     document.getElementById("extension-enabled")
         .addEventListener("click", view.handleClickMainSwitch);
+    document.getElementById("open-options")
+        .addEventListener("click", () => {
+            browser().runtime.openOptionsPage();
+            window.close();
+        });
     // Register site switches under settings view.
     for (const pageEnabledSwitch of document.querySelectorAll(".settingsview .conversion-switch")) {
         pageEnabledSwitch.addEventListener("click", view.handleClickConversionSwitch);
