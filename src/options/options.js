@@ -1,11 +1,12 @@
 import { getConfig } from '../config.js';
 import { browser } from '../utils.js';
-import { isSiteEnabled } from './utils.js';
+import { isSiteEnabled, displayProductInfo } from './utils.js';
 import { model } from '../model.js';
 
 // Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {
     await loadSettings();
+    displayProductInfo();
     setupEventListeners();
 });
 

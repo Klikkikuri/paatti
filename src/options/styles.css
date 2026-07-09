@@ -340,3 +340,12 @@ tbody > tr:nth-of-type(even) > td {
     background: whitesmoke;
     text-align: left;
 }
+
+#version-info {
+    text-align: center;
+    font-size: 0.75em;
+    color: #666;
+    opacity: 0.6;
+    margin-top: -0.6em;
+    user-select: none;
+}

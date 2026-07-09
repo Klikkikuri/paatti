@@ -4,6 +4,7 @@ import { getLogger, browser, getCurrentTabHostname } from "../utils.js";
 import { model, modelEvents } from "../model.js";
 import { controller } from "../controller.js";
 import { getConfig } from "../config.js";
+import { displayProductInfo } from "./utils.js";
 
 const log = getLogger("view");
 
@@ -285,6 +286,9 @@ const refresh = async () => {
         data: pageStatistics,
         isSiteEnabled: sitesEnabled[pageHostname],
     });
+
+    // Load product name and version from manifest
+    displayProductInfo();
 
     // Rest of localizations.
     document.getElementById("feedbackview-general-feedback").querySelector("iframe").textContent =

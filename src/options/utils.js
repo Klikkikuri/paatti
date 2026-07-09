@@ -20,4 +20,22 @@ const isSiteEnabled = async (domain) => {
     return enabled && hasPermission;
 };
 
-export { isSiteEnabled };
+// Display product name and version in the options page header and footer
+const displayProductInfo = () => {
+    try {
+        const manifest = browser().runtime.getManifest();
+
+        const productNameEl = document.getElementById("product-name");
+        const productVersionEl = document.getElementById("product-version");
+        if (productNameEl) {
+            productNameEl.textContent = manifest.name;
+        }
+        if (productVersionEl) {
+            productVersionEl.textContent = `v${manifest.version}`;
+        }
+    } catch (e) {
+        log("Failed to load product name and version from manifest:", e);
+    }
+};
+
+export { isSiteEnabled, displayProductInfo };
