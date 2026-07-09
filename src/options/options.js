@@ -49,9 +49,29 @@ async function loadSettings() {
 
         // Site configurations
         renderSiteList(config.siteConfigs || {});
+
+        // Load database status
+        await refreshDatabaseStatus();
     } catch (error) {
         console.error('Error loading settings:', error);
         showStatus('Virhe asetusten lataamisessa', true);
+    }
+}
+
+async function refreshDatabaseStatus() {
+    try {
+        const data = await browser().storage.local.get("lastDatabaseUpdate");
+        const dbLastUpdatedText = document.getElementById("dbLastUpdatedText");
+        if (dbLastUpdatedText) {
+            if (data.lastDatabaseUpdate) {
+                const date = new Date(data.lastDatabaseUpdate);
+                dbLastUpdatedText.textContent = date.toLocaleString("fi-FI");
+            } else {
+                dbLastUpdatedText.textContent = "Ei koskaan";
+            }
+        }
+    } catch (error) {
+        console.error("Error loading database status:", error);
     }
 }
 
@@ -272,6 +292,32 @@ async function setupEventListeners() {
     
     // Reset button
     document.getElementById('resetBtn').addEventListener('click', resetSettings);
+
+    // Manual database update button
+    const manualUpdateBtn = document.getElementById('manualUpdateBtn');
+    if (manualUpdateBtn) {
+        manualUpdateBtn.addEventListener('click', async () => {
+            manualUpdateBtn.disabled = true;
+            const originalText = manualUpdateBtn.textContent;
+            manualUpdateBtn.textContent = 'Päivitetään...';
+            
+            try {
+                const response = await browser().runtime.sendMessage({ action: "updateDatabase" });
+                if (response && response.success) {
+                    showStatus('Tietokanta päivitetty onnistuneesti!');
+                    await refreshDatabaseStatus();
+                } else {
+                    showStatus('Tietokannan päivitys epäonnistui: ' + (response?.error || 'Tuntematon virhe'), true);
+                }
+            } catch (error) {
+                console.error('Error updating database:', error);
+                showStatus('Tietokannan päivitys epäonnistui', true);
+            } finally {
+                manualUpdateBtn.disabled = false;
+                manualUpdateBtn.textContent = originalText;
+            }
+        });
+    }
 }
 
 

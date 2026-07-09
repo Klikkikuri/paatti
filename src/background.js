@@ -71,3 +71,25 @@ browser().alarms.onAlarm.addListener((alarm) => {
         fetchRahtiData();
     }
 });
+
+// Handle manual database update requests from options and popup pages
+browser().runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "updateDatabase") {
+        log("Manual database update requested.");
+        fetchRahtiData()
+            .then((success) => {
+                if (success) {
+                    browser().storage.local.get("lastDatabaseUpdate").then((result) => {
+                        sendResponse({ success: true, lastDatabaseUpdate: result.lastDatabaseUpdate });
+                    });
+                } else {
+                    sendResponse({ success: false, error: "Tietokannan haku epäonnistui kaikista osoitteista." });
+                }
+            })
+            .catch((error) => {
+                log("Manual database update failed:", error);
+                sendResponse({ success: false, error: error.message || String(error) });
+            });
+        return true; // Keep message channel open for async response
+    }
+});

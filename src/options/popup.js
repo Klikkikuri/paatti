@@ -218,6 +218,28 @@ const refresh = async () => {
     // Update the power button.
     document.getElementById("extension-enabled").checked = isConversionEnabled;
 
+    // Load database status
+    const dbStatus = await browser().storage.local.get("lastDatabaseUpdate");
+    const lastDatabaseUpdate = dbStatus.lastDatabaseUpdate;
+    const dbTitleEl = document.getElementById("settingsview-database-status-title");
+    if (dbTitleEl) {
+        dbTitleEl.textContent = browser().i18n.getMessage("settingsviewDatabaseStatusTitle");
+    }
+    const dbLastUpdatedEl = document.getElementById("database-last-updated");
+    if (dbLastUpdatedEl) {
+        if (lastDatabaseUpdate) {
+            const date = new Date(lastDatabaseUpdate);
+            const dateString = date.toLocaleString();
+            dbLastUpdatedEl.textContent = browser().i18n.getMessage("databaseLastUpdated", [dateString]);
+        } else {
+            dbLastUpdatedEl.textContent = browser().i18n.getMessage("databaseNeverUpdated");
+        }
+    }
+    const dbUpdateBtn = document.getElementById("update-database-btn");
+    if (dbUpdateBtn && !dbUpdateBtn.disabled) {
+        dbUpdateBtn.textContent = browser().i18n.getMessage("databaseUpdateBtn");
+    }
+
     _refreshSettingsView({
         isConversionEnabled,
         sitesEnabled,
@@ -328,6 +350,30 @@ const refresh = async () => {
  * page's statistics.
  * @param {*} e 
  */
+const handleUpdateDatabaseClick = async (e) => {
+    const btn = document.getElementById("update-database-btn");
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = browser().i18n.getMessage("databaseUpdateBtnUpdating");
+    
+    try {
+        const response = await browser().runtime.sendMessage({ action: "updateDatabase" });
+        if (response && response.success) {
+            btn.textContent = browser().i18n.getMessage("databaseUpdateSuccess");
+        } else {
+            btn.textContent = browser().i18n.getMessage("databaseUpdateFailed");
+        }
+    } catch (err) {
+        log("Error updating database:", err);
+        btn.textContent = browser().i18n.getMessage("databaseUpdateFailed");
+    } finally {
+        setTimeout(async () => {
+            btn.disabled = false;
+            btn.textContent = browser().i18n.getMessage("databaseUpdateBtn");
+        }, 1500);
+    }
+};
+
 const handleDomContentLoaded = async (e) => {
     log("Setting up UI");
 
@@ -343,6 +389,12 @@ const handleDomContentLoaded = async (e) => {
     }
 
     await refresh();
+
+    // Register database update button click handler
+    const dbUpdateBtn = document.getElementById("update-database-btn");
+    if (dbUpdateBtn) {
+        dbUpdateBtn.addEventListener("click", handleUpdateDatabaseClick);
+    }
 
     // Set view height to the dimensions found when opened the popup so that the
     // view does not jump around when navigating but keeps (I hope) the view

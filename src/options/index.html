@@ -764,15 +764,31 @@
                 </div>
             </fieldset>
 
-            <!-- Refresh Interval -->
+            <!-- Database Update Settings & Status -->
             <fieldset>
-                <legend>🔄 Päivitysväli</legend>
-                <p class="section-description">Kuinka usein uusi data haetaan (minuuteissa)</p>
-                <div class="number-input-group">
-                    <label>
-                        <span>Päivitysväli:</span>
-                        <input type="number" id="refreshInterval" min="1" max="1440" value="20">
-                    </label>
+                <legend>🗄️ Tietokannan päivitys</legend>
+                <p class="section-description">Määritä tietokannan automaattinen päivitysväli ja hallitse manuaalista päivitystä</p>
+                
+                <div class="setting-group" style="display: flex; flex-direction: column; gap: 15px; align-items: stretch;">
+                    <!-- Refresh Interval Card -->
+                    <div class="number-input-group" style="margin: 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <label style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                            <div class="label-text">
+                                <strong>Automaattinen päivitysväli</strong>
+                                <span>Määritä uuden datan automaattinen hakuväli minuuteissa</span>
+                            </div>
+                            <input type="number" id="refreshInterval" min="1" max="1440" value="20" style="width: 80px; padding: 8px; border: 2px solid #ddd; border-radius: 6px; font-size: 1em; text-align: center;">
+                        </label>
+                    </div>
+
+                    <!-- Manual Update & Last Updated Card -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <div class="label-text">
+                            <strong>Viimeisin päivitys</strong>
+                            <span id="dbLastUpdatedText">Ladataan...</span>
+                        </div>
+                        <button type="button" class="btn-secondary" id="manualUpdateBtn" style="flex: 0 0 auto; width: auto; min-width: 150px; padding: 8px 16px; margin: 0;">Päivitä tietokanta</button>
+                    </div>
                 </div>
             </fieldset>
 

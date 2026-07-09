@@ -132,5 +132,39 @@
   "devmodeCopyLinkSignaturesTitle": {
     "message": "Kopioi tämän sivun linkkien suolaukset leikepöydällesi",
     "description": "Title-attribute of the hidden devmode link signature copying button"
+  },
+  "settingsviewDatabaseStatusTitle": {
+    "message": "Tietokannan tila",
+    "description": "Title of the settings view database status section"
+  },
+  "databaseLastUpdated": {
+    "message": "Päivitetty: $TIME$",
+    "description": "Text showing when the database was last updated",
+    "placeholders": {
+      "time": {
+        "content": "$1",
+        "example": "09.07.2026 15:00:00"
+      }
+    }
+  },
+  "databaseNeverUpdated": {
+    "message": "Päivitetty: Ei koskaan",
+    "description": "Text showing when the database has never been updated"
+  },
+  "databaseUpdateBtn": {
+    "message": "Päivitä tietokanta",
+    "description": "Text on the button to update database"
+  },
+  "databaseUpdateBtnUpdating": {
+    "message": "Päivitetään...",
+    "description": "Text on the database update button when update is in progress"
+  },
+  "databaseUpdateSuccess": {
+    "message": "Päivitetty!",
+    "description": "Success message after database update"
+  },
+  "databaseUpdateFailed": {
+    "message": "Virhe!",
+    "description": "Failure message after database update"
   }
 }
