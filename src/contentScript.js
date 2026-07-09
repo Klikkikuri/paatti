@@ -73,12 +73,6 @@ const hrefSign = async (url) => {
 
     const rahti = await rahtiStorage;
 
-            port.onDisconnect.addListener(() => {
-                log("Popup connection closed, removing visible class.");
-                document.body.classList.remove("paatti-popup-visible");
-            });
-        }
-    });
     if (!rahti) {
         log("No Rahti data found, aborting conversion.", rahti);
         return;
