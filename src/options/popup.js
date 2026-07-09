@@ -275,6 +275,15 @@ const refresh = async () => {
 const handleDomContentLoaded = async (e) => {
     log("Setting up UI");
 
+    // Notify content script that popup is visible
+    const [tab] = await browser().tabs.query({ active: true, currentWindow: true });
+    if (tab) {
+        browser().tabs.sendMessage(tab.id, { type: "POPUP_VISIBLE" }).catch(() => {
+            // Content script might not be ready, ignore
+            log("Content script not ready to receive POPUP_VISIBLE message, ignoring.");
+        });
+    }
+
     await refresh();
 
     // Set view height to the dimensions found when opened the popup so that the
@@ -338,6 +347,12 @@ const view = {
 ///////////////////////////////////////////////////////////////////////////////
 // "Main" for when the popup is opened.
 document.addEventListener("DOMContentLoaded", view.handleDomContentLoaded);
+// Notify content script when popup is closed
+window.addEventListener('pagehide', () => {
+    // Send a simple fire-and-forget message to the background script
+    log("Popup is being closed, sending NOTIFY_POPUP_CLOSE message to background script.");
+    browser().runtime.sendMessage({ type: "NOTIFY_POPUP_CLOSE" });
+});
 ///////////////////////////////////////////////////////////////////////////////
 // Handlers for visual changes like moving between views.
 document.querySelector(".open-feedbackview")

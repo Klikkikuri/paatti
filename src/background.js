@@ -67,3 +67,15 @@ browser().alarms.onAlarm.addListener((alarm) => {
     }
 });
 
+browser().runtime.onMessage.addListener((message) => {
+    if (message.type === "NOTIFY_POPUP_CLOSE") {
+        // Now we do the heavy lifting here where it's safe
+        browser().tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+            if (tab?.id) {
+                log("Received NOTIFY_POPUP_CLOSE message, sending POPUP_HIDDEN to content script.");
+                browser().tabs.sendMessage(tab.id, { type: "POPUP_HIDDEN" })
+                    .catch(err => console.log("Tab not ready/no content script."));
+            }
+        });
+    }
+});
