@@ -58,6 +58,19 @@ const hrefSign = async (url) => {
         return;
     }
 
+    // Listen for popup direct connection to manage visibility styling
+    browser.runtime.onConnect.addListener((port) => {
+        if (port.name === "paatti-popup-direct") {
+            log("Popup connection established, adding visible class.");
+            document.body.classList.add("paatti-popup-visible");
+
+            port.onDisconnect.addListener(() => {
+                log("Popup connection closed, removing visible class.");
+                document.body.classList.remove("paatti-popup-visible");
+            });
+        }
+    });
+
     if (!rahti) {
         log("No Rahti data found, aborting conversion.", rahti);
         return;
@@ -77,6 +90,7 @@ const hrefSign = async (url) => {
         const siteRules = await model.read.getSiteRules(newsSite);
         if (!siteRules) {
             log(`No site rules found for '${newsSite}', aborting conversion.`);
+            return [];
         }
 
         const processingPromises = [];
@@ -155,13 +169,17 @@ const hrefSign = async (url) => {
             if (rahtiEntry) {
                 const titleElem = rule.title ? container.querySelector(rule.title) : link;
                 if (titleElem) {
-                    if (await model.read.isEnabled(newsSite)) {
+                    const isSiteEnabled = await model.read.isEnabled(newsSite);
+                    const shouldConvert = await model.read.shouldConvert(rahtiEntry.clickbaitiness);
+                    if (isSiteEnabled && shouldConvert) {
                         what = "converted";
                         why = rahtiEntry.clickbaitiness;
                         how = await convertClickbait(titleElem, link, { rahtiEntry });
                     } else {
                         what = "restored";
-                        why = `Conversion not enabled for site '${newsSite}'`;
+                        why = !isSiteEnabled 
+                            ? `Conversion not enabled for site '${newsSite}'` 
+                            : `Clickbaitiness level for '${rahtiEntry.clickbaitiness}' is below threshold`;
                         how = await restoreClickbait(titleElem, link);
                     }
                 } else {

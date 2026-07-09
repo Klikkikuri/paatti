@@ -1,4 +1,4 @@
-import { getLogger } from "./utils.js";
+import { getLogger, browser } from "./utils.js";
 import { getConfig } from "./config.js";
 import { initStorage } from "./storage.js";
 
@@ -56,7 +56,7 @@ async function fetchRahtiData() {
     log("Configured Rahti data URLs:", urls);
     if (urls.length === 0) {
         log("No URLs configured for fetching Rahti data.");
-        return;
+        return false;
     }
 
     log(`Fetching Rahti data from ${urls.length} URL(s) in parallel...`);
@@ -111,12 +111,18 @@ async function fetchRahtiData() {
         }
         
         log(`Successfully fetched and stored Rahti data from ${successfulResults.length}/${urls.length} URL(s).`);
+        try {
+            await browser().storage.local.set({ lastDatabaseUpdate: Date.now() });
+        } catch (e) {
+            log("Failed to save database update timestamp:", e);
+        }
+        return true;
     } else {
         log("All attempts to fetch Rahti data failed.");
-    }
-
-    if (failedResults.length > 0) {
-        log(`Failed URLs: ${failedResults.map(r => r.url).join(', ')}`);
+        if (failedResults.length > 0) {
+            log(`Failed URLs: ${failedResults.map(r => r.url).join(', ')}`);
+        }
+        return false;
     }
 }
 

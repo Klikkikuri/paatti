@@ -8,6 +8,7 @@
       "id": "klikkikuri@protonmail.com"
     }
   },
+  "homepage_url": "https://github.com/klikkikuri",
   "icons": {
     "48": "icons/klikkikuri-48.png"
   },
@@ -18,8 +19,12 @@
       "38": "icons/klikkikuri-38.png"
     },
     "default_title": "Paatti",
-    "default_popup": "src/popup/index.html",
+    "default_popup": "src/options/popup.html",
     "default_area": "navbar"
+  },
+  "options_ui": {
+    "page": "src/options/index.html",
+    "open_in_tab": true
   },
   "web_accessible_resources": [
     {

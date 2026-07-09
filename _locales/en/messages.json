@@ -109,6 +109,16 @@
     "description": "Title of the settings view enabled sites section"
   },
 
+  "settingsviewStatusTitle": {
+    "message": "Extension Status",
+    "description": "Title of the settings view status section"
+  },
+
+  "settingsviewMasterSwitchLabel": {
+    "message": "Activate Paatti",
+    "description": "Label of the settings view master switch toggle"
+  },
+
   "navigationMainLabel": {
     "message": "Home",
     "description": "Label of the navigation menu main view button"
@@ -132,5 +142,39 @@
   "devmodeCopyLinkSignaturesTitle": {
     "message": "Copy link signatures on this site to your clipboard",
     "description": "Title-attribute of the hidden devmode link signature copying button"
+  },
+  "settingsviewDatabaseStatusTitle": {
+    "message": "Database Update",
+    "description": "Title of the settings view database status section"
+  },
+  "databaseLastUpdated": {
+    "message": "Last updated: $TIME$",
+    "description": "Text showing when the database was last updated",
+    "placeholders": {
+      "time": {
+        "content": "$1",
+        "example": "07/09/2026, 3:00:00 PM"
+      }
+    }
+  },
+  "databaseNeverUpdated": {
+    "message": "Last updated: Never",
+    "description": "Text showing when the database has never been updated"
+  },
+  "databaseUpdateBtn": {
+    "message": "Update Database",
+    "description": "Text on the button to update database"
+  },
+  "databaseUpdateBtnUpdating": {
+    "message": "Updating...",
+    "description": "Text on the database update button when update is in progress"
+  },
+  "databaseUpdateSuccess": {
+    "message": "Updated!",
+    "description": "Success message after database update"
+  },
+  "databaseUpdateFailed": {
+    "message": "Failed!",
+    "description": "Failure message after database update"
   }
 }

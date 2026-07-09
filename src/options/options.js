@@ -1,0 +1,390 @@
+import { getConfig } from '../config.js';
+import { browser } from '../utils.js';
+import { isSiteEnabled, displayProductInfo } from './utils.js';
+import { model } from '../model.js';
+
+// Load settings on page load
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadSettings();
+    displayProductInfo();
+    setupEventListeners();
+});
+
+async function loadSettings() {
+    try {
+        const config = await getConfig();
+        
+        // Extension enabled
+        document.getElementById('extensionEnabled').checked = config.enabled || false;
+
+        // Environment
+        const envRadio = document.querySelector(`input[value="${config.activeEnv || 'free'}"]`);
+        if (envRadio) {
+            envRadio.checked = true;
+            document.querySelectorAll('.env-option').forEach(opt => opt.classList.remove('selected'));
+            document.querySelector(`label[data-env="${config.activeEnv || 'free'}"]`).classList.add('selected');
+        }
+        
+        // Show/hide debug settings based on environment
+        toggleDebugSettings(config.activeEnv || 'free');
+        
+        // Refresh interval
+        document.getElementById('refreshInterval').value = config.refreshIntervalMinutes || 20;
+        
+        // Debug visuals
+        document.getElementById('debugVisuals').checked = config.debugVisualsEnabled || false;
+
+        // Clickbait level
+        document.getElementById('clickbaitLevel').value = config.clickbaitLevel !== undefined ? config.clickbaitLevel : 2;
+        
+        // Load saved email for paid environment
+        let savedEmail = '';
+        try {
+            savedEmail = config.environmentConfigs.paid.email || '';
+            console.log('Loaded saved email:', config.environmentConfigs.paid);
+        } catch (e) {
+            savedEmail = '';
+        }
+        const emailInput = document.getElementById('invitationEmail');
+        emailInput.value = savedEmail;
+
+        // Site configurations
+        renderSiteList(config.siteConfigs || {});
+
+        // Load database status
+        await refreshDatabaseStatus();
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        showStatus('Virhe asetusten lataamisessa', true);
+    }
+}
+
+async function refreshDatabaseStatus() {
+    try {
+        const data = await browser().storage.local.get("lastDatabaseUpdate");
+        const dbLastUpdatedText = document.getElementById("dbLastUpdatedText");
+        if (dbLastUpdatedText) {
+            if (data.lastDatabaseUpdate) {
+                const date = new Date(data.lastDatabaseUpdate);
+                dbLastUpdatedText.textContent = date.toLocaleString("fi-FI");
+            } else {
+                dbLastUpdatedText.textContent = "Ei koskaan";
+            }
+        }
+    } catch (error) {
+        console.error("Error loading database status:", error);
+    }
+}
+
+
+function showStatus(message, isError = false) {
+    const statusEl = document.getElementById('statusMessage');
+    statusEl.textContent = message;
+    statusEl.className = 'status-message show' + (isError ? ' error' : '');
+    
+    setTimeout(() => {
+        statusEl.classList.remove('show');
+    }, 3000);
+}
+
+
+async function renderSiteList(siteConfigs) {
+    const siteList = document.getElementById('siteList');
+    siteList.innerHTML = '';
+    
+    for (const [domain, config] of Object.entries(siteConfigs)) {
+        const siteItem = document.createElement('label');
+        siteItem.setAttribute('for', `site-${domain}`);
+        siteItem.className = 'site-item';
+
+        const enabled = await isSiteEnabled(domain);
+        console.log(`Rendering site ${domain} with enabled: ${enabled}`);
+
+        const faviconUrl = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
+        siteItem.innerHTML = `
+            <div class="site-info">
+                <img src="${faviconUrl}" alt="" width="24" height="24" class="site-favicon">
+                <div>
+                    <div class="site-name">${config.name || domain}</div>
+                    <div class="site-domain">${domain}</div>
+                </div>
+            </div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="site-${domain}" data-site="${domain}" ${enabled ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+            </label>
+        `;
+        siteList.appendChild(siteItem);
+    }
+}
+
+
+function toggleDebugSettings(environment) {
+    const debugSettings = document.getElementById('debug-settings');
+    const invitationSection = document.getElementById('invitation-section');
+    
+    if (environment === 'development') {
+        debugSettings.classList.add('visible');
+    } else {
+        debugSettings.classList.remove('visible');
+    }
+    
+    if (environment === 'paid') {
+        invitationSection.classList.add('visible');
+    } else {
+        invitationSection.classList.remove('visible');
+    }
+}
+
+async function registerEmail() {
+
+    const emailInput = document.getElementById('invitationEmail');
+    const submitButton = document.getElementById('submitInvitation');
+    const email = emailInput.value.trim();
+    if (!email) {
+        showStatus('Syötä sähköpostiosoite', true);
+        return;
+    }
+    
+    // Disable button during submission
+    const originalText = submitButton.textContent;
+    submitButton.disabled = true;
+    submitButton.textContent = 'Lähetetään...';
+    
+    // Placeholder function to simulate email registration
+    const action = "https://docs.google.com/forms/d/e/1FAIpQLSf0m5X_EKJume6oSbz5o36CmOVofsNy8F8AjrwOLQ4Tm4B_8g/formResponse";
+    const formData = new FormData();
+    // emailAddress	"test@example.com"
+    // fvv	"1"
+    // partialResponse	'[null,null,"-689544841256870296"]'
+    // pageHistory	"0"
+    // fbzx	"-689544841256870296"
+    // submissionTimestamp	"1768143435223"
+    formData.append('emailAddress', email);
+    formData.append('pageHistory', '0');
+    formData.append('submissionTimestamp', Date.now().toString());
+
+    try {
+        const response = await fetch(action, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: formData
+        });
+        
+        // Store email in sync settings
+        await model.write.setEmail(email, 'paid');
+        
+        // Show success state on button
+        submitButton.textContent = '✓ Lähetetty';
+        submitButton.classList.add('success');
+        showStatus('Sähköposti rekisteröity onnistuneesti!');
+
+        // Reset button after fade completes
+        setTimeout(() => {
+            submitButton.textContent = originalText;
+            submitButton.classList.remove('success');
+            submitButton.disabled = false;
+        }, 3300);
+    } catch (error) {
+        console.error('Error registering email:', error);
+        showStatus('Virhe sähköpostin rekisteröinnissä', true);
+
+        // Reset button on error
+        submitButton.textContent = originalText;
+        submitButton.disabled = false;
+    }
+}
+
+
+async function setupEventListeners() {
+
+    // Clickbait level slider
+    document.getElementById('clickbaitLevel').addEventListener('input', (e) => {
+        console.log('Clickbait level changed to', e.target.value);
+    });
+    
+    // Make slider labels clickable
+    document.querySelectorAll('.slider-labels label').forEach(label => {
+        label.addEventListener('click', (e) => {
+            const value = parseInt(e.target.dataset.value);
+            if (!isNaN(value)) {
+                document.getElementById('clickbaitLevel').value = value;
+                console.log('Clickbait level changed to', value);
+            }
+        });
+    });
+
+    // Site list checkboxes
+    const config = await getConfig();
+    document.getElementById('siteList').addEventListener('change', (e) => {
+        if (e.target && e.target.type === 'checkbox') {
+            // Request permission if enabling site
+            if (e.target.checked) {
+                console.log(`Requesting permission for ${e.target.dataset.site}`);
+                try {
+                    browser().permissions.request({
+                        origins: config.siteConfigs[e.target.dataset.site].origins
+                    }).then(granted => {
+                        if (!granted) {
+                            e.target.checked = false;
+                            console.warn(`Permission denied for ${e.target.dataset.site}`);
+                        } else {
+                            console.log(`Permission granted for ${e.target.dataset.site}`);
+                        }
+                    });
+                } catch (error) {
+                    showStatus('BUGI: Virhe pyydettäessä lupaa', true);
+                    console.error('Error requesting permission:', error);
+                    e.target.checked = false;
+                    throw error;
+                }
+            }
+            try {
+                // Set sync override
+                browser().storage.sync.get("userSiteOverrides").then(data => {
+                    const overrides = data.userSiteOverrides || {};
+                    overrides[e.target.dataset.site] = overrides[e.target.dataset.site] || {};
+                    overrides[e.target.dataset.site].enabled = e.target.checked;
+                    return browser().storage.sync.set({ userSiteOverrides: overrides });
+                });
+                showStatus(`Sivuston ${e.target.dataset.site} asetus tallennettu!`);
+            } catch (error) {
+                showStatus('BUGI: Virhe tallennettaessa sivuston asetusta', true);
+                console.error('Error saving site override:', error);
+                throw error;
+            }
+        }
+    });
+
+    // Environment selection
+    document.querySelectorAll('input[name="environment"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            document.querySelectorAll('.env-option').forEach(opt => opt.classList.remove('selected'));
+            e.target.closest('.env-option').classList.add('selected');
+            toggleDebugSettings(e.target.value);
+        });
+    });
+    
+    document.getElementById('submitInvitation').addEventListener('click', registerEmail);
+    
+    // Monitor email input changes to enable/disable submit button
+    document.getElementById('invitationEmail').addEventListener('input', (e) => {
+        const submitButton = document.getElementById('submitInvitation');
+        const currentEmail = e.target.value.trim();
+        
+        // Disable button if email is empty or not valid
+        if (currentEmail === '' || e.target.validity.typeMismatch) {
+            submitButton.disabled = true;
+        } else {
+            submitButton.disabled = false;
+        }
+    });
+    
+    // Handle Enter key on email input
+    document.getElementById('invitationEmail').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            registerEmail();
+        }
+    });
+
+    // Save button
+    document.getElementById('saveBtn').addEventListener('click', saveSettings);
+    
+    // Reset button
+    document.getElementById('resetBtn').addEventListener('click', resetSettings);
+
+    // Manual database update button
+    const manualUpdateBtn = document.getElementById('manualUpdateBtn');
+    if (manualUpdateBtn) {
+        manualUpdateBtn.addEventListener('click', async () => {
+            manualUpdateBtn.disabled = true;
+            const originalText = manualUpdateBtn.textContent;
+            manualUpdateBtn.textContent = 'Päivitetään...';
+            
+            try {
+                const response = await browser().runtime.sendMessage({ action: "updateDatabase" });
+                if (response && response.success) {
+                    showStatus('Tietokanta päivitetty onnistuneesti!');
+                    await refreshDatabaseStatus();
+                } else {
+                    showStatus('Tietokannan päivitys epäonnistui: ' + (response?.error || 'Tuntematon virhe'), true);
+                }
+            } catch (error) {
+                console.error('Error updating database:', error);
+                showStatus('Tietokannan päivitys epäonnistui', true);
+            } finally {
+                manualUpdateBtn.disabled = false;
+                manualUpdateBtn.textContent = originalText;
+            }
+        });
+    }
+}
+
+
+
+async function saveSettings() {
+    try {
+        const extensionEnabled = document.getElementById('extensionEnabled').checked;
+        const clickbaitLevel = parseInt(document.getElementById('clickbaitLevel').value);
+        const environment = document.querySelector('input[name="environment"]:checked')?.value || 'free';
+        const refreshIntervalMinutes = parseInt(document.getElementById('refreshInterval').value);
+        const debugVisualsEnabled = document.getElementById('debugVisuals').checked;
+        
+        // Collect site overrides correctly matching the userSiteOverrides structure: { [domain]: { enabled: boolean } }
+        const syncData = await browser().storage.sync.get("userSiteOverrides");
+        const siteOverrides = syncData.userSiteOverrides || {};
+        document.querySelectorAll('#siteList input[type="checkbox"]').forEach(checkbox => {
+            const domain = checkbox.dataset.site;
+            siteOverrides[domain] = siteOverrides[domain] || {};
+            siteOverrides[domain].enabled = checkbox.checked;
+        });
+        
+        // Save userPreferences safely merging other fields like environmentConfigs
+        const data = await browser().storage.local.get("userPreferences");
+        const userPreferences = data.userPreferences || {};
+        userPreferences.enabled = extensionEnabled;
+        userPreferences.clickbaitLevel = clickbaitLevel;
+        userPreferences.environment = environment;
+        userPreferences.refreshIntervalMinutes = refreshIntervalMinutes;
+        userPreferences.debugVisualsEnabled = debugVisualsEnabled;
+        
+        // Keep persistentConvertedHighlight in sync with debugVisualsEnabled for development mode
+        if (!userPreferences.environmentConfigs) {
+            userPreferences.environmentConfigs = {};
+        }
+        if (!userPreferences.environmentConfigs[environment]) {
+            userPreferences.environmentConfigs[environment] = {};
+        }
+        userPreferences.environmentConfigs[environment].persistentConvertedHighlight = debugVisualsEnabled;
+        
+        await browser().storage.local.set({ userPreferences });
+        await browser().storage.sync.set({ userSiteOverrides: siteOverrides });
+        
+        showStatus('Asetukset tallennettu!');
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        showStatus('Virhe asetusten tallentamisessa', true);
+    }
+}
+
+
+async function resetSettings() {
+    if (confirm('Haluatko varmasti palauttaa kaikki asetukset oletusarvoihin?')) {
+        try {
+            await browser().storage.local.remove('userPreferences');
+            await browser().storage.sync.remove('userSiteOverrides');
+            await loadSettings();
+            showStatus('Asetukset palautettu!');
+        } catch (error) {
+            console.error('Error resetting settings:', error);
+            showStatus('Virhe asetusten palauttamisessa', true);
+        }
+    }
+}
+
+// Keep options page synchronized with settings changes from other parts of the extension (e.g. popup)
+browser().storage.onChanged.addListener(async (changes, area) => {
+    console.log("Storage changed, reloading settings in options page");
+    await loadSettings();
+});

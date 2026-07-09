@@ -7,7 +7,7 @@ const log = getLogger("model");
 
 const modelEvents = {
     statisticsChange: "statisticsChange",
-    enabledChange: "enabledChange",
+    enabledChange: "enabledChange"
 };
 
 /**
@@ -133,11 +133,23 @@ const model = (() => {
             setPersistentConvertedHighlight: async (value) => {
                 const data = await browser().storage.local.get("userPreferences");
                 const userPreferences = data.userPreferences || {};
-                const oldEnv = userPreferences.environment || "Unknown";
+                const env = userPreferences.environment || "free";
+                if (!userPreferences.environmentConfigs) {
+                    userPreferences.environmentConfigs = {};
+                }
+                if (!userPreferences.environmentConfigs[env]) {
+                    userPreferences.environmentConfigs[env] = {};
+                }
+                const oldVal = userPreferences.environmentConfigs[env].persistentConvertedHighlight;
+                log(`Setting persistentConvertedHighlight for environment ${env} from ${oldVal} to ${value}`);
+                userPreferences.environmentConfigs[env].persistentConvertedHighlight = value;
+                await browser().storage.local.set({ userPreferences });
+            },
 
-                log(`Setting persistentConvertedHighlight from ${userPreferences.environment.persistentConvertedHighlight} to ${value}`);
-
-                userPreferences.environment.persistentConvertedHighlight = value;
+            setDebugVisualsEnabled: async (value) => {
+                const data = await browser().storage.local.get("userPreferences");
+                const userPreferences = data.userPreferences || {};
+                userPreferences.debugVisualsEnabled = value;
                 await browser().storage.local.set({ userPreferences });
             },
 
@@ -170,6 +182,25 @@ const model = (() => {
                 userPreferences.testTitleDataUrl = value;
                 await browser().storage.local.set({ userPreferences });
             },
+
+            setEmail: async (value, env) => {
+                // Email is property of environment
+                if (!env) {
+                    env = await getConfig().then(cfg => cfg.activeEnv);
+                }
+                log(`Setting email for environment '${env}' to '${value}'`);
+                const data = await browser().storage.local.get("userPreferences");
+                const userPreferences = data.userPreferences || {};
+                if (!userPreferences.environmentConfigs) {
+                    userPreferences.environmentConfigs = {};
+                }
+                if (!userPreferences.environmentConfigs[env]) {
+                    userPreferences.environmentConfigs[env] = {};
+                }
+                userPreferences.environmentConfigs[env].email = value;
+                await browser().storage.local.set({ userPreferences });
+            },
+
         },
 
         read: {
@@ -218,9 +249,27 @@ const model = (() => {
                 return Object.fromEntries(sitesEnabled);
             },
 
-            getSiteRules: async (hostname) => {
-                return await getConfig().then((cfg) => cfg.siteConfigs[hostname].rules);
+            getMatchingSiteDomain: async (hostname) => {
+                if (!hostname) return null;
+                const config = await getConfig();
+                for (const [domain, siteConfig] of Object.entries(config.siteConfigs)) {
+                    if (siteConfig.origins && matchesAnyOrigin(hostname, siteConfig.origins)) {
+                        return domain;
+                    }
+                }
+                return null;
             },
+
+            getSiteRules: async (hostname) => {
+                const config = await getConfig();
+                for (const [domain, siteConfig] of Object.entries(config.siteConfigs)) {
+                    if (siteConfig.origins && matchesAnyOrigin(hostname, siteConfig.origins)) {
+                        return siteConfig.rules;
+                    }
+                }
+                return null;
+            },
+
 
             getTitleDataUrls: async () => {
                 const config = await getConfig();
@@ -256,6 +305,14 @@ const model = (() => {
                 log(`The mutation prone selectors for ${hostname}:`, selectors);
                 return selectors;
             },
+
+            getEmail: async () => {
+                const config = await getConfig();
+                const env = config.activeEnv;
+                const email = config.environmentConfigs[env]?.email || "";
+                log(`Retrieved email for environment '${env}': '${email}'`);
+                return email;
+            }
         },
     };
 })();

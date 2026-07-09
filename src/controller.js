@@ -99,7 +99,10 @@ const controller = {
     },
 };
 
-model.events.addEventListener(modelEvents.enabledChange, controller.dispatchConversion);
-model.events.addEventListener(modelEvents.environmentChange, controller.dispatchConversion);
+if (browser().tabs) {
+    model.events.addEventListener(modelEvents.enabledChange, controller.dispatchConversion);
+    model.events.addEventListener(modelEvents.environmentChange, controller.dispatchConversion);
+}
 
 export { controller };
+

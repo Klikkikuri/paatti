@@ -71,6 +71,13 @@ body {
 
 /* Power details */
 
+#power div:nth-child(2) {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    align-items: center;
+}
+
 #power div:nth-child(2) .push-button {
     user-select: none;
     font-size: 350%;
@@ -83,6 +90,13 @@ body {
     width: 50px;
     height: 50px;
     min-width: 0;
+}
+
+#open-options {
+    border: none;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Content details */
@@ -171,6 +185,7 @@ body {
 }
 
 /* When checked - looks like pressed in */
+.push-button:active,
 input:checked+.push-button {
     box-shadow:
         #777 0px 0px,
@@ -324,4 +339,13 @@ tbody > tr:nth-of-type(even) > th {
 tbody > tr:nth-of-type(even) > td {
     background: whitesmoke;
     text-align: left;
+}
+
+#version-info {
+    text-align: center;
+    font-size: 0.75em;
+    color: #666;
+    opacity: 0.6;
+    margin-top: -0.6em;
+    user-select: none;
 }

@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Klikkikuri ⛵</title>
+    <title></title>
     <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -13,6 +13,9 @@
     <div id="power">
         <h2 id="site-host"></h2>
         <div>
+            <button id="open-options" class="push-button">
+                <img class="icon" src="images/icon_gear.svg" height="20" alt="Settings icon">
+            </button>
             <input class="conversion-switch hidden" id="extension-enabled" type="checkbox" checked>
             <label class="push-button" for="extension-enabled">&#x23FB;</label>
         </div>
@@ -71,10 +74,38 @@
     </div>
 
     <div class="content settingsview hidden">
+        <h2 id="settingsview-status-title" class="settingsview-header"></h2>
+        <hr>
+        <div style="margin-top: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <label for="settingsview-extension-enabled" id="settingsview-master-switch-label" style="font-weight: bold; cursor: pointer;"></label>
+            <input class="toggle" id="settingsview-extension-enabled" type="checkbox">
+        </div>
+
         <h2 id="settingsview-sites-enabled-title" class="settingsview-header"></h2>
         <hr>
         <ul id="sites-enabled-ul">
         </ul>
+
+        <h2 id="settingsview-database-status-title" class="settingsview-header" style="margin-top: 15px;"></h2>
+        <hr>
+        <div class="database-status-section" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px; align-items: center; width: 100%;">
+            <p id="database-last-updated" style="font-size: 0.9em; color: #555; text-align: center; margin: 0;"></p>
+            <button id="update-database-btn" class="push-button" style="width: 100%; box-sizing: border-box; margin: 0; padding: 6px 12px; min-height: 32px; font-size: 0.9em;"></button>
+        </div>
+
+        <div class="devmode hidden">
+            <h2 id="settingsview-devmode-title" class="settingsview-header"></h2>
+            <hr>
+            <input class="hidden" id="devmode-dumpLinkHash" type="button" value="no-op">
+            <label class="push-button" for="devmode-dumpLinkHash">dumpLinkHash</label>
+
+            <input class="hidden" id="devmode-setDebugVisuals" type="checkbox">
+            <label class="push-button" for="devmode-setDebugVisuals">setDebugVisuals</label>
+
+            <select class="push-button" title="setTitleDataUrl" id="devmode-setTitleDataUrl">
+                <option value="https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json">Klikkikuri Rahti</option>
+            </select>
+        </div>
     </div>
 
     <!-- NAVI[GATION] -->
@@ -118,9 +149,15 @@
         <span>by Klikkikuri</span>
     </div>
 
+    <!-- VERSION INFO -->
+    <div id="version-info">
+        <span id="product-name"></span>
+        <span id="product-version"></span>
+    </div>
+
     <script type="module" src="../utils.js"></script>
     <script type="module" src="../model.js"></script>
-    <script type="module" src="view.js"></script>
+    <script type="module" src="popup.js"></script>
     <script type="module" src="../controller.js"></script>
 </body>
 

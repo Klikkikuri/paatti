@@ -20,11 +20,28 @@ async function scheduleAlarm(minutes) {
 /**
  * Handle alarm settings changes.
  */
-// browser.storage.onChanged.addListener((changes, area) => {
-//   if (area === 'local' && changes.refreshIntervalMinutes) {
-//     scheduleAlarm(changes.refreshIntervalMinutes.newValue);
-//   }
-// });
+browser().storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.userPreferences) {
+        const oldVal = changes.userPreferences.oldValue || {};
+        const newVal = changes.userPreferences.newValue || {};
+        if (newVal.refreshIntervalMinutes !== oldVal.refreshIntervalMinutes) {
+            log(`Refresh interval changed from ${oldVal.refreshIntervalMinutes} to ${newVal.refreshIntervalMinutes}`);
+            scheduleAlarm(newVal.refreshIntervalMinutes || 20);
+        }
+        if (newVal.clickbaitLevel !== oldVal.clickbaitLevel || newVal.enabled !== oldVal.enabled) {
+            log("Clickbait level or extension status changed, notifying active tab");
+            browser().tabs.query({ active: true, currentWindow: true }).then(tabs => {
+                if (tabs[0] && tabs[0].id) {
+                    browser().tabs.sendMessage(tabs[0].id, { command: "convertClickbaits" }).catch(err => {
+                        // ignore error if tab doesn't have listener
+                    });
+                }
+            }).catch(err => {
+                log("Error querying active tab:", err);
+            });
+        }
+    }
+});
 
 browser().runtime.onInstalled.addListener(async () => {
 
@@ -67,3 +84,24 @@ browser().alarms.onAlarm.addListener((alarm) => {
     }
 });
 
+// Handle manual database update requests from options and popup pages
+browser().runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "updateDatabase") {
+        log("Manual database update requested.");
+        fetchRahtiData()
+            .then((success) => {
+                if (success) {
+                    browser().storage.local.get("lastDatabaseUpdate").then((result) => {
+                        sendResponse({ success: true, lastDatabaseUpdate: result.lastDatabaseUpdate });
+                    });
+                } else {
+                    sendResponse({ success: false, error: "Tietokannan haku epäonnistui kaikista osoitteista." });
+                }
+            })
+            .catch((error) => {
+                log("Manual database update failed:", error);
+                sendResponse({ success: false, error: error.message || String(error) });
+            });
+        return true; // Keep message channel open for async response
+    }
+});

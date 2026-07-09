@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="50.828079mm"
+   height="40.263279mm"
+   viewBox="0 0 50.828079 40.263279"
+   version="1.1"
+   id="svg5"
+   xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <mask id="gear-mask">
+      <!-- White area keeps the shapes visible -->
+      <rect x="0" y="0" width="50.828079" height="40.263279" fill="#ffffff" />
+      <!-- Black circle cuts out the center hole -->
+      <circle cx="25.414" cy="20.131" r="5" fill="#000000" />
+    </mask>
+  </defs>
+  <g mask="url(#gear-mask)" fill="#000000">
+    <!-- Teeth at 0, 45, 90, 135 degrees -->
+    <rect x="22.914" y="4.131" width="5" height="32" rx="1.5" />
+    <rect x="9.414" y="17.631" width="32" height="5" rx="1.5" />
+    <rect x="22.914" y="4.131" width="5" height="32" rx="1.5" transform="rotate(45 25.414 20.131)" />
+    <rect x="22.914" y="4.131" width="5" height="32" rx="1.5" transform="rotate(135 25.414 20.131)" />
+    <!-- Main gear body -->
+    <circle cx="25.414" cy="20.131" r="11" />
+  </g>
+</svg>

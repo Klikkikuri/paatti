@@ -4,8 +4,10 @@ import { getLogger, browser, getCurrentTabHostname } from "../utils.js";
 import { model, modelEvents } from "../model.js";
 import { controller } from "../controller.js";
 import { getConfig } from "../config.js";
+import { displayProductInfo } from "./utils.js";
 
 const log = getLogger("view");
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Helper procedures and definitions.
@@ -135,6 +137,33 @@ const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlS
     if (isDevelopmentEnv) {
         document.querySelectorAll(".devmode").forEach((x) => x.classList.remove("hidden"));
         document.querySelector("#logo img").classList.add("hidden");
+
+        // Set devmode debug visuals checkbox state
+        const debugVisualsCheckbox = document.getElementById("devmode-setDebugVisuals");
+        if (debugVisualsCheckbox) {
+            debugVisualsCheckbox.checked = config.debugVisualsEnabled || false;
+        }
+
+        // Set devmode title data url selection options and active value
+        const titleDataUrlSelect = document.getElementById("devmode-setTitleDataUrl");
+        if (titleDataUrlSelect) {
+            titleDataUrlSelect.innerHTML = "";
+            const envUrls = config.environmentConfigs?.development?.titleDataUrls || [];
+            for (const url of envUrls) {
+                const opt = document.createElement("option");
+                opt.value = url;
+                try {
+                    const parsed = new URL(url);
+                    opt.textContent = parsed.hostname + parsed.pathname;
+                } catch(e) {
+                    opt.textContent = url;
+                }
+                titleDataUrlSelect.appendChild(opt);
+            }
+            if (titleDataUrlSelected && titleDataUrlSelected.length > 0) {
+                titleDataUrlSelect.value = titleDataUrlSelected[0];
+            }
+        }
     } else {
         document.querySelectorAll(".devmode").forEach((x) => x.classList.add("hidden"));
         document.querySelector("#logo img").classList.remove("hidden");
@@ -187,8 +216,63 @@ const refresh = async () => {
     const config = await getConfig();
 
 
-    // Update the power button.
-    document.getElementById("extension-enabled").checked = isConversionEnabled;
+    // Update the power button to imply site status.
+    const matchingDomain = await model.read.getMatchingSiteDomain(pageHostname);
+    const isCurrentSiteEnabled = matchingDomain ? (sitesEnabled[matchingDomain] || false) : false;
+    const isSiteSupported = matchingDomain !== null;
+    const powerCheckbox = document.getElementById("extension-enabled");
+    if (powerCheckbox) {
+        powerCheckbox.checked = isCurrentSiteEnabled;
+        powerCheckbox.disabled = !isSiteSupported;
+        powerCheckbox.dataset.hostname = matchingDomain || pageHostname;
+    }
+
+    const powerLabel = document.querySelector("label[for=extension-enabled]");
+    if (powerLabel) {
+        if (!isSiteSupported) {
+            powerLabel.style.opacity = "0.5";
+            powerLabel.style.cursor = "not-allowed";
+        } else {
+            powerLabel.style.opacity = "1.0";
+            powerLabel.style.cursor = "pointer";
+        }
+    }
+
+    // Update settings view master switch
+    const settingsviewStatusTitle = document.getElementById("settingsview-status-title");
+    if (settingsviewStatusTitle) {
+        settingsviewStatusTitle.textContent = browser().i18n.getMessage("settingsviewStatusTitle");
+    }
+    const settingsviewMasterSwitchLabel = document.getElementById("settingsview-master-switch-label");
+    if (settingsviewMasterSwitchLabel) {
+        settingsviewMasterSwitchLabel.textContent = browser().i18n.getMessage("settingsviewMasterSwitchLabel");
+    }
+    const settingsviewExtensionEnabled = document.getElementById("settingsview-extension-enabled");
+    if (settingsviewExtensionEnabled) {
+        settingsviewExtensionEnabled.checked = isConversionEnabled;
+    }
+
+    // Load database status
+    const dbStatus = await browser().storage.local.get("lastDatabaseUpdate");
+    const lastDatabaseUpdate = dbStatus.lastDatabaseUpdate;
+    const dbTitleEl = document.getElementById("settingsview-database-status-title");
+    if (dbTitleEl) {
+        dbTitleEl.textContent = browser().i18n.getMessage("settingsviewDatabaseStatusTitle");
+    }
+    const dbLastUpdatedEl = document.getElementById("database-last-updated");
+    if (dbLastUpdatedEl) {
+        if (lastDatabaseUpdate) {
+            const date = new Date(lastDatabaseUpdate);
+            const dateString = date.toLocaleString();
+            dbLastUpdatedEl.textContent = browser().i18n.getMessage("databaseLastUpdated", [dateString]);
+        } else {
+            dbLastUpdatedEl.textContent = browser().i18n.getMessage("databaseNeverUpdated");
+        }
+    }
+    const dbUpdateBtn = document.getElementById("update-database-btn");
+    if (dbUpdateBtn && !dbUpdateBtn.disabled) {
+        dbUpdateBtn.textContent = browser().i18n.getMessage("databaseUpdateBtn");
+    }
 
     _refreshSettingsView({
         isConversionEnabled,
@@ -201,8 +285,11 @@ const refresh = async () => {
     _refreshContentView({
         site: pageHostname,
         data: pageStatistics,
-        isSiteEnabled: sitesEnabled[pageHostname],
+        isSiteEnabled: matchingDomain ? isCurrentSiteEnabled : undefined,
     });
+
+    // Load product name and version from manifest
+    displayProductInfo();
 
     // Rest of localizations.
     document.getElementById("feedbackview-general-feedback").querySelector("iframe").textContent =
@@ -232,6 +319,8 @@ const refresh = async () => {
         browser().i18n.getMessage("navigationFeedbackLabel");
     document.getElementById("navi-settings").parentElement.title =
         browser().i18n.getMessage("navigationSettingsLabel");
+    document.getElementById("open-options").title =
+        browser().i18n.getMessage("navigationSettingsLabel");
 
     document.querySelector("label[for=enable-devmode] span").title =
         browser().i18n.getMessage("devmodeHiddenButtonTitle");
@@ -251,7 +340,14 @@ const refresh = async () => {
     ///////////////////////////////////////////////////////////////////////////////
     // Register main of/off switch.
     document.getElementById("extension-enabled")
+        .addEventListener("click", view.handleClickConversionSwitch);
+    document.getElementById("settingsview-extension-enabled")
         .addEventListener("click", view.handleClickMainSwitch);
+    document.getElementById("open-options")
+        .addEventListener("click", () => {
+            browser().runtime.openOptionsPage();
+            window.close();
+        });
     // Register site switches under settings view.
     for (const pageEnabledSwitch of document.querySelectorAll(".settingsview .conversion-switch")) {
         pageEnabledSwitch.addEventListener("click", view.handleClickConversionSwitch);
@@ -264,6 +360,25 @@ const refresh = async () => {
     document.getElementById("copy-link-signatures")
         .addEventListener("click", __devmodeCopyLinkSignatures);
 
+    // Wire up devmode settings elements
+    const dumpLinkHashBtn = document.getElementById("devmode-dumpLinkHash");
+    if (dumpLinkHashBtn) {
+        dumpLinkHashBtn.addEventListener("click", __devmodeCopyLinkSignatures);
+    }
+    const setDebugVisualsCheckbox = document.getElementById("devmode-setDebugVisuals");
+    if (setDebugVisualsCheckbox) {
+        setDebugVisualsCheckbox.addEventListener("change", async (e) => {
+            await model.write.setDebugVisualsEnabled(e.target.checked);
+            await model.write.setPersistentConvertedHighlight(e.target.checked);
+        });
+    }
+    const setTitleDataUrlSelect = document.getElementById("devmode-setTitleDataUrl");
+    if (setTitleDataUrlSelect) {
+        setTitleDataUrlSelect.addEventListener("change", async (e) => {
+            await controller.devmode.setTitleDataUrl(e.target.value);
+        });
+    }
+
 
     // Inform content script that the popup is opened.
     await controller.notifyPopupOpened();
@@ -274,10 +389,51 @@ const refresh = async () => {
  * page's statistics.
  * @param {*} e 
  */
+const handleUpdateDatabaseClick = async (e) => {
+    const btn = document.getElementById("update-database-btn");
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = browser().i18n.getMessage("databaseUpdateBtnUpdating");
+    
+    try {
+        const response = await browser().runtime.sendMessage({ action: "updateDatabase" });
+        if (response && response.success) {
+            btn.textContent = browser().i18n.getMessage("databaseUpdateSuccess");
+        } else {
+            btn.textContent = browser().i18n.getMessage("databaseUpdateFailed");
+        }
+    } catch (err) {
+        log("Error updating database:", err);
+        btn.textContent = browser().i18n.getMessage("databaseUpdateFailed");
+    } finally {
+        setTimeout(async () => {
+            btn.disabled = false;
+            btn.textContent = browser().i18n.getMessage("databaseUpdateBtn");
+        }, 1500);
+    }
+};
+
 const handleDomContentLoaded = async (e) => {
     log("Setting up UI");
 
+    // Connect directly to the content script in the active tab.
+    // The connection automatically signals visibility, and disconnection signals closure.
+    const [tab] = await browser().tabs.query({ active: true, currentWindow: true });
+    if (tab) {
+        try {
+            window.contentPort = browser().tabs.connect(tab.id, { name: "paatti-popup-direct" });
+        } catch (err) {
+            log("Content script not ready to receive connection:", err);
+        }
+    }
+
     await refresh();
+
+    // Register database update button click handler
+    const dbUpdateBtn = document.getElementById("update-database-btn");
+    if (dbUpdateBtn) {
+        dbUpdateBtn.addEventListener("click", handleUpdateDatabaseClick);
+    }
 
     // Set view height to the dimensions found when opened the popup so that the
     // view does not jump around when navigating but keeps (I hope) the view
@@ -291,7 +447,7 @@ const handleDomContentLoaded = async (e) => {
 
 const __devmodeEnable = async () => {
     await controller.setEnvironment(
-        await model.read.isDevelopmentEnv() ? "production" : "development"
+        await model.read.isDevelopmentEnv() ? "free" : "development"
     );
 };
 
@@ -352,6 +508,7 @@ const view = {
 // "Main" handler for when the popup is opened.
 document.addEventListener("DOMContentLoaded", view.handleDomContentLoaded);
 
+
 ///////////////////////////////////////////////////////////////////////////////
 // Handlers related to other non-popup-parts of the extension.
 browser().runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -360,7 +517,7 @@ browser().runtime.onMessage.addListener((request, sender, sendResponse) => {
             sendResponse({ "isOpen": true });
             break;
         default:
-            log("Unknown message: ", message);
+            log("Unknown message: ", request);
     }
 });
 
