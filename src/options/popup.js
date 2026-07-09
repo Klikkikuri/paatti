@@ -7,6 +7,7 @@ import { getConfig } from "../config.js";
 
 const log = getLogger("view");
 
+
 ///////////////////////////////////////////////////////////////////////////////
 // Helper procedures and definitions.
 ///////////////////////////////////////////////////////////////////////////////
@@ -275,13 +276,15 @@ const refresh = async () => {
 const handleDomContentLoaded = async (e) => {
     log("Setting up UI");
 
-    // Notify content script that popup is visible
+    // Connect directly to the content script in the active tab.
+    // The connection automatically signals visibility, and disconnection signals closure.
     const [tab] = await browser().tabs.query({ active: true, currentWindow: true });
     if (tab) {
-        browser().tabs.sendMessage(tab.id, { type: "POPUP_VISIBLE" }).catch(() => {
-            // Content script might not be ready, ignore
-            log("Content script not ready to receive POPUP_VISIBLE message, ignoring.");
-        });
+        try {
+            window.contentPort = browser().tabs.connect(tab.id, { name: "paatti-popup-direct" });
+        } catch (err) {
+            log("Content script not ready to receive connection:", err);
+        }
     }
 
     await refresh();
@@ -347,12 +350,6 @@ const view = {
 ///////////////////////////////////////////////////////////////////////////////
 // "Main" for when the popup is opened.
 document.addEventListener("DOMContentLoaded", view.handleDomContentLoaded);
-// Notify content script when popup is closed
-window.addEventListener('pagehide', () => {
-    // Send a simple fire-and-forget message to the background script
-    log("Popup is being closed, sending NOTIFY_POPUP_CLOSE message to background script.");
-    browser().runtime.sendMessage({ type: "NOTIFY_POPUP_CLOSE" });
-});
 ///////////////////////////////////////////////////////////////////////////////
 // Handlers for visual changes like moving between views.
 document.querySelector(".open-feedbackview")

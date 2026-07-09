@@ -49,14 +49,16 @@ let convertTitles;
         return;
     }
 
-    // Listen for popup visibility messages
-    browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        log(`Received message '${JSON.stringify(message)}' from ${sender.id} in content script.`);
-        if (message.type === "POPUP_VISIBLE") {
+    // Listen for popup direct connection to manage visibility styling
+    browser.runtime.onConnect.addListener((port) => {
+        if (port.name === "paatti-popup-direct") {
+            log("Popup connection established, adding visible class.");
             document.body.classList.add("paatti-popup-visible");
-        } else if (message.type === "POPUP_HIDDEN") {
-            log("Received POPUP_HIDDEN message, removing popup visible class.");
-            document.body.classList.remove("paatti-popup-visible");
+
+            port.onDisconnect.addListener(() => {
+                log("Popup connection closed, removing visible class.");
+                document.body.classList.remove("paatti-popup-visible");
+            });
         }
     });
 
