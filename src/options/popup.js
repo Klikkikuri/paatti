@@ -217,13 +217,14 @@ const refresh = async () => {
 
 
     // Update the power button to imply site status.
-    const isCurrentSiteEnabled = sitesEnabled[pageHostname] || false;
-    const isSiteSupported = sitesEnabled[pageHostname] !== undefined;
+    const matchingDomain = await model.read.getMatchingSiteDomain(pageHostname);
+    const isCurrentSiteEnabled = matchingDomain ? (sitesEnabled[matchingDomain] || false) : false;
+    const isSiteSupported = matchingDomain !== null;
     const powerCheckbox = document.getElementById("extension-enabled");
     if (powerCheckbox) {
         powerCheckbox.checked = isCurrentSiteEnabled;
         powerCheckbox.disabled = !isSiteSupported;
-        powerCheckbox.dataset.hostname = pageHostname;
+        powerCheckbox.dataset.hostname = matchingDomain || pageHostname;
     }
 
     const powerLabel = document.querySelector("label[for=extension-enabled]");
@@ -284,7 +285,7 @@ const refresh = async () => {
     _refreshContentView({
         site: pageHostname,
         data: pageStatistics,
-        isSiteEnabled: sitesEnabled[pageHostname],
+        isSiteEnabled: matchingDomain ? isCurrentSiteEnabled : undefined,
     });
 
     // Load product name and version from manifest
@@ -516,7 +517,7 @@ browser().runtime.onMessage.addListener((request, sender, sendResponse) => {
             sendResponse({ "isOpen": true });
             break;
         default:
-            log("Unknown message: ", message);
+            log("Unknown message: ", request);
     }
 });
 

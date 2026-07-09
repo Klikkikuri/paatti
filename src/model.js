@@ -7,7 +7,7 @@ const log = getLogger("model");
 
 const modelEvents = {
     statisticsChange: "statisticsChange",
-    enabledChange: "enabledChange",
+    enabledChange: "enabledChange"
 };
 
 /**
@@ -249,9 +249,27 @@ const model = (() => {
                 return Object.fromEntries(sitesEnabled);
             },
 
-            getSiteRules: async (hostname) => {
-                return await getConfig().then((cfg) => cfg.siteConfigs[hostname].rules);
+            getMatchingSiteDomain: async (hostname) => {
+                if (!hostname) return null;
+                const config = await getConfig();
+                for (const [domain, siteConfig] of Object.entries(config.siteConfigs)) {
+                    if (siteConfig.origins && matchesAnyOrigin(hostname, siteConfig.origins)) {
+                        return domain;
+                    }
+                }
+                return null;
             },
+
+            getSiteRules: async (hostname) => {
+                const config = await getConfig();
+                for (const [domain, siteConfig] of Object.entries(config.siteConfigs)) {
+                    if (siteConfig.origins && matchesAnyOrigin(hostname, siteConfig.origins)) {
+                        return siteConfig.rules;
+                    }
+                }
+                return null;
+            },
+
 
             getTitleDataUrls: async () => {
                 const config = await getConfig();
