@@ -109,6 +109,16 @@
     "description": "Title of the settings view enabled sites section"
   },
 
+  "settingsviewStatusTitle": {
+    "message": "Laajennuksen tila",
+    "description": "Title of the settings view status section"
+  },
+
+  "settingsviewMasterSwitchLabel": {
+    "message": "Aktivoi Paatti",
+    "description": "Label of the settings view master switch toggle"
+  },
+
   "navigationMainLabel": {
     "message": "Koti",
     "description": "Label of the navigation menu main view button"

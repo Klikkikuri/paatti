@@ -109,6 +109,16 @@
     "description": "Title of the settings view enabled sites section"
   },
 
+  "settingsviewStatusTitle": {
+    "message": "Extension Status",
+    "description": "Title of the settings view status section"
+  },
+
+  "settingsviewMasterSwitchLabel": {
+    "message": "Activate Paatti",
+    "description": "Label of the settings view master switch toggle"
+  },
+
   "navigationMainLabel": {
     "message": "Home",
     "description": "Label of the navigation menu main view button"

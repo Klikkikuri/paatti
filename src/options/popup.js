@@ -218,6 +218,20 @@ const refresh = async () => {
     // Update the power button.
     document.getElementById("extension-enabled").checked = isConversionEnabled;
 
+    // Update settings view master switch
+    const settingsviewStatusTitle = document.getElementById("settingsview-status-title");
+    if (settingsviewStatusTitle) {
+        settingsviewStatusTitle.textContent = browser().i18n.getMessage("settingsviewStatusTitle");
+    }
+    const settingsviewMasterSwitchLabel = document.getElementById("settingsview-master-switch-label");
+    if (settingsviewMasterSwitchLabel) {
+        settingsviewMasterSwitchLabel.textContent = browser().i18n.getMessage("settingsviewMasterSwitchLabel");
+    }
+    const settingsviewExtensionEnabled = document.getElementById("settingsview-extension-enabled");
+    if (settingsviewExtensionEnabled) {
+        settingsviewExtensionEnabled.checked = isConversionEnabled;
+    }
+
     // Load database status
     const dbStatus = await browser().storage.local.get("lastDatabaseUpdate");
     const lastDatabaseUpdate = dbStatus.lastDatabaseUpdate;
@@ -303,6 +317,8 @@ const refresh = async () => {
     ///////////////////////////////////////////////////////////////////////////////
     // Register main of/off switch.
     document.getElementById("extension-enabled")
+        .addEventListener("click", view.handleClickMainSwitch);
+    document.getElementById("settingsview-extension-enabled")
         .addEventListener("click", view.handleClickMainSwitch);
     document.getElementById("open-options")
         .addEventListener("click", () => {
