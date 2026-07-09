@@ -28,6 +28,18 @@ browser().storage.onChanged.addListener((changes, area) => {
             log(`Refresh interval changed from ${oldVal.refreshIntervalMinutes} to ${newVal.refreshIntervalMinutes}`);
             scheduleAlarm(newVal.refreshIntervalMinutes || 20);
         }
+        if (newVal.clickbaitLevel !== oldVal.clickbaitLevel || newVal.enabled !== oldVal.enabled) {
+            log("Clickbait level or extension status changed, notifying active tab");
+            browser().tabs.query({ active: true, currentWindow: true }).then(tabs => {
+                if (tabs[0] && tabs[0].id) {
+                    browser().tabs.sendMessage(tabs[0].id, { command: "convertClickbaits" }).catch(err => {
+                        // ignore error if tab doesn't have listener
+                    });
+                }
+            }).catch(err => {
+                log("Error querying active tab:", err);
+            });
+        }
     }
 });
 
