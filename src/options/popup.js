@@ -215,8 +215,26 @@ const refresh = async () => {
     const config = await getConfig();
 
 
-    // Update the power button.
-    document.getElementById("extension-enabled").checked = isConversionEnabled;
+    // Update the power button to imply site status.
+    const isCurrentSiteEnabled = sitesEnabled[pageHostname] || false;
+    const isSiteSupported = sitesEnabled[pageHostname] !== undefined;
+    const powerCheckbox = document.getElementById("extension-enabled");
+    if (powerCheckbox) {
+        powerCheckbox.checked = isCurrentSiteEnabled;
+        powerCheckbox.disabled = !isSiteSupported;
+        powerCheckbox.dataset.hostname = pageHostname;
+    }
+
+    const powerLabel = document.querySelector("label[for=extension-enabled]");
+    if (powerLabel) {
+        if (!isSiteSupported) {
+            powerLabel.style.opacity = "0.5";
+            powerLabel.style.cursor = "not-allowed";
+        } else {
+            powerLabel.style.opacity = "1.0";
+            powerLabel.style.cursor = "pointer";
+        }
+    }
 
     // Update settings view master switch
     const settingsviewStatusTitle = document.getElementById("settingsview-status-title");
@@ -317,7 +335,7 @@ const refresh = async () => {
     ///////////////////////////////////////////////////////////////////////////////
     // Register main of/off switch.
     document.getElementById("extension-enabled")
-        .addEventListener("click", view.handleClickMainSwitch);
+        .addEventListener("click", view.handleClickConversionSwitch);
     document.getElementById("settingsview-extension-enabled")
         .addEventListener("click", view.handleClickMainSwitch);
     document.getElementById("open-options")
