@@ -13,6 +13,7 @@ const DEFAULT_ENV = {
 const DEFAULT_CONFIG = {
     // CONFIG: Configure extension to start enabled here.
     "enabled": true,
+    "environment": "free",
 
     // CONFIG: Configure per-site settings here.
     "siteConfigs": {
@@ -169,9 +170,19 @@ async function getConfig() {
     const userPreferences = localData.userPreferences || {};
     const syncOverrides = syncData.userSiteOverrides || {}; // Structure: { "yle.fi": false }
 
-    const activeEnv = userPreferences.environment || DEFAULT_CONFIG.environment;
+    const activeEnv = userPreferences.environment || DEFAULT_CONFIG.environment || "free";
 
-    const envData = DEFAULT_CONFIG.environmentConfigs[activeEnv];
+    // Merge environment configs to avoid overwriting defaults
+    const mergedEnvConfigs = {};
+    const environments = ["free", "paid", "development"];
+    for (const env of environments) {
+        mergedEnvConfigs[env] = {
+            ...DEFAULT_CONFIG.environmentConfigs[env],
+            ...(userPreferences.environmentConfigs?.[env] || {})
+        };
+    }
+
+    const envData = mergedEnvConfigs[activeEnv];
 
     const mergedSiteConfigs = { ...DEFAULT_CONFIG.siteConfigs };
     for (const [domain, siteConfig] of Object.entries(mergedSiteConfigs)) {
@@ -195,6 +206,7 @@ async function getConfig() {
     return {
         ...DEFAULT_CONFIG,
         ...userPreferences, // Overwrite defaults with user choices (e.g., "enabled": false)
+        environmentConfigs: mergedEnvConfigs,
         siteConfigs: mergedSiteConfigs, // Use properly merged site configs
         activeEnv: activeEnv,
         ...envData    // Flatten environment data (e.g., titleDataUrl) into the top level
