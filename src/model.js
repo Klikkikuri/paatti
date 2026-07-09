@@ -133,11 +133,23 @@ const model = (() => {
             setPersistentConvertedHighlight: async (value) => {
                 const data = await browser().storage.local.get("userPreferences");
                 const userPreferences = data.userPreferences || {};
-                const oldEnv = userPreferences.environment || "Unknown";
+                const env = userPreferences.environment || "free";
+                if (!userPreferences.environmentConfigs) {
+                    userPreferences.environmentConfigs = {};
+                }
+                if (!userPreferences.environmentConfigs[env]) {
+                    userPreferences.environmentConfigs[env] = {};
+                }
+                const oldVal = userPreferences.environmentConfigs[env].persistentConvertedHighlight;
+                log(`Setting persistentConvertedHighlight for environment ${env} from ${oldVal} to ${value}`);
+                userPreferences.environmentConfigs[env].persistentConvertedHighlight = value;
+                await browser().storage.local.set({ userPreferences });
+            },
 
-                log(`Setting persistentConvertedHighlight from ${userPreferences.environment.persistentConvertedHighlight} to ${value}`);
-
-                userPreferences.environment.persistentConvertedHighlight = value;
+            setDebugVisualsEnabled: async (value) => {
+                const data = await browser().storage.local.get("userPreferences");
+                const userPreferences = data.userPreferences || {};
+                userPreferences.debugVisualsEnabled = value;
                 await browser().storage.local.set({ userPreferences });
             },
 

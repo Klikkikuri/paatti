@@ -20,11 +20,16 @@ async function scheduleAlarm(minutes) {
 /**
  * Handle alarm settings changes.
  */
-// browser.storage.onChanged.addListener((changes, area) => {
-//   if (area === 'local' && changes.refreshIntervalMinutes) {
-//     scheduleAlarm(changes.refreshIntervalMinutes.newValue);
-//   }
-// });
+browser().storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.userPreferences) {
+        const oldVal = changes.userPreferences.oldValue || {};
+        const newVal = changes.userPreferences.newValue || {};
+        if (newVal.refreshIntervalMinutes !== oldVal.refreshIntervalMinutes) {
+            log(`Refresh interval changed from ${oldVal.refreshIntervalMinutes} to ${newVal.refreshIntervalMinutes}`);
+            scheduleAlarm(newVal.refreshIntervalMinutes || 20);
+        }
+    }
+});
 
 browser().runtime.onInstalled.addListener(async () => {
 

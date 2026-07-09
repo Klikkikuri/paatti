@@ -20,6 +20,7 @@ async function loadSettings() {
         const envRadio = document.querySelector(`input[value="${config.activeEnv || 'free'}"]`);
         if (envRadio) {
             envRadio.checked = true;
+            document.querySelectorAll('.env-option').forEach(opt => opt.classList.remove('selected'));
             document.querySelector(`label[data-env="${config.activeEnv || 'free'}"]`).classList.add('selected');
         }
         
@@ -31,6 +32,9 @@ async function loadSettings() {
         
         // Debug visuals
         document.getElementById('debugVisuals').checked = config.debugVisualsEnabled || false;
+
+        // Clickbait level
+        document.getElementById('clickbaitLevel').value = config.clickbaitLevel !== undefined ? config.clickbaitLevel : 2;
         
         // Load saved email for paid environment
         let savedEmail = '';
@@ -273,7 +277,6 @@ async function setupEventListeners() {
 
 
 async function saveSettings() {
-    return;
     try {
         const extensionEnabled = document.getElementById('extensionEnabled').checked;
         const clickbaitLevel = parseInt(document.getElementById('clickbaitLevel').value);
@@ -281,27 +284,35 @@ async function saveSettings() {
         const refreshIntervalMinutes = parseInt(document.getElementById('refreshInterval').value);
         const debugVisualsEnabled = document.getElementById('debugVisuals').checked;
         
-        // Collect site overrides
-        const siteOverrides = {};
+        // Collect site overrides correctly matching the userSiteOverrides structure: { [domain]: { enabled: boolean } }
+        const syncData = await browser().storage.sync.get("userSiteOverrides");
+        const siteOverrides = syncData.userSiteOverrides || {};
         document.querySelectorAll('#siteList input[type="checkbox"]').forEach(checkbox => {
             const domain = checkbox.dataset.site;
-            siteOverrides[domain] = checkbox.checked;
+            siteOverrides[domain] = siteOverrides[domain] || {};
+            siteOverrides[domain].enabled = checkbox.checked;
         });
         
-        // Save to storage
-        await browser().storage.local.set({
-            userPreferences: {
-                enabled: extensionEnabled,
-                clickbaitLevel: clickbaitLevel,
-                environment: environment,
-                refreshIntervalMinutes: refreshIntervalMinutes,
-                debugVisualsEnabled: debugVisualsEnabled
-            }
-        });
+        // Save userPreferences safely merging other fields like environmentConfigs
+        const data = await browser().storage.local.get("userPreferences");
+        const userPreferences = data.userPreferences || {};
+        userPreferences.enabled = extensionEnabled;
+        userPreferences.clickbaitLevel = clickbaitLevel;
+        userPreferences.environment = environment;
+        userPreferences.refreshIntervalMinutes = refreshIntervalMinutes;
+        userPreferences.debugVisualsEnabled = debugVisualsEnabled;
         
-        await browser().storage.sync.set({
-            userSiteOverrides: siteOverrides
-        });
+        // Keep persistentConvertedHighlight in sync with debugVisualsEnabled for development mode
+        if (!userPreferences.environmentConfigs) {
+            userPreferences.environmentConfigs = {};
+        }
+        if (!userPreferences.environmentConfigs[environment]) {
+            userPreferences.environmentConfigs[environment] = {};
+        }
+        userPreferences.environmentConfigs[environment].persistentConvertedHighlight = debugVisualsEnabled;
+        
+        await browser().storage.local.set({ userPreferences });
+        await browser().storage.sync.set({ userSiteOverrides: siteOverrides });
         
         showStatus('Asetukset tallennettu!');
     } catch (error) {
@@ -324,3 +335,9 @@ async function resetSettings() {
         }
     }
 }
+
+// Keep options page synchronized with settings changes from other parts of the extension (e.g. popup)
+browser().storage.onChanged.addListener(async (changes, area) => {
+    console.log("Storage changed, reloading settings in options page");
+    await loadSettings();
+});

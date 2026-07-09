@@ -136,6 +136,33 @@ const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlS
     if (isDevelopmentEnv) {
         document.querySelectorAll(".devmode").forEach((x) => x.classList.remove("hidden"));
         document.querySelector("#logo img").classList.add("hidden");
+
+        // Set devmode debug visuals checkbox state
+        const debugVisualsCheckbox = document.getElementById("devmode-setDebugVisuals");
+        if (debugVisualsCheckbox) {
+            debugVisualsCheckbox.checked = config.debugVisualsEnabled || false;
+        }
+
+        // Set devmode title data url selection options and active value
+        const titleDataUrlSelect = document.getElementById("devmode-setTitleDataUrl");
+        if (titleDataUrlSelect) {
+            titleDataUrlSelect.innerHTML = "";
+            const envUrls = config.environmentConfigs?.development?.titleDataUrls || [];
+            for (const url of envUrls) {
+                const opt = document.createElement("option");
+                opt.value = url;
+                try {
+                    const parsed = new URL(url);
+                    opt.textContent = parsed.hostname + parsed.pathname;
+                } catch(e) {
+                    opt.textContent = url;
+                }
+                titleDataUrlSelect.appendChild(opt);
+            }
+            if (titleDataUrlSelected && titleDataUrlSelected.length > 0) {
+                titleDataUrlSelect.value = titleDataUrlSelected[0];
+            }
+        }
     } else {
         document.querySelectorAll(".devmode").forEach((x) => x.classList.add("hidden"));
         document.querySelector("#logo img").classList.remove("hidden");
@@ -265,6 +292,25 @@ const refresh = async () => {
     document.getElementById("copy-link-signatures")
         .addEventListener("click", __devmodeCopyLinkSignatures);
 
+    // Wire up devmode settings elements
+    const dumpLinkHashBtn = document.getElementById("devmode-dumpLinkHash");
+    if (dumpLinkHashBtn) {
+        dumpLinkHashBtn.addEventListener("click", __devmodeCopyLinkSignatures);
+    }
+    const setDebugVisualsCheckbox = document.getElementById("devmode-setDebugVisuals");
+    if (setDebugVisualsCheckbox) {
+        setDebugVisualsCheckbox.addEventListener("change", async (e) => {
+            await model.write.setDebugVisualsEnabled(e.target.checked);
+            await model.write.setPersistentConvertedHighlight(e.target.checked);
+        });
+    }
+    const setTitleDataUrlSelect = document.getElementById("devmode-setTitleDataUrl");
+    if (setTitleDataUrlSelect) {
+        setTitleDataUrlSelect.addEventListener("change", async (e) => {
+            await controller.devmode.setTitleDataUrl(e.target.value);
+        });
+    }
+
 
     // Inform content script that the popup is opened.
     await controller.notifyPopupOpened();
@@ -303,7 +349,7 @@ const handleDomContentLoaded = async (e) => {
 
 const __devmodeEnable = async () => {
     await controller.setEnvironment(
-        await model.read.isDevelopmentEnv() ? "production" : "development"
+        await model.read.isDevelopmentEnv() ? "free" : "development"
     );
 };
 
