@@ -14,3 +14,9 @@
         transform: translateY(-8px) rotate(3deg);
     }
 }
+
+body.paatti-popup-visible *[data-klikkikuri-original-title] {
+    text-decoration: blink !important;
+    color: red !important;
+    border: 1px solid red !important;
+}

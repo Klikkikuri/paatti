@@ -58,6 +58,16 @@ const hrefSign = async (url) => {
         return;
     }
 
+    // Listen for popup visibility messages
+    browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        log(`Received message '${JSON.stringify(message)}' from ${sender.id} in content script.`);
+        if (message.type === "POPUP_VISIBLE") {
+            document.body.classList.add("paatti-popup-visible");
+        } else if (message.type === "POPUP_HIDDEN") {
+            log("Received POPUP_HIDDEN message, removing popup visible class.");
+            document.body.classList.remove("paatti-popup-visible");
+        }
+    });
     if (!rahti) {
         log("No Rahti data found, aborting conversion.", rahti);
         return;
