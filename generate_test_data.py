@@ -14,7 +14,7 @@ if __name__ == "__main__":
         "Extremely Clickbaity",
     ]
 
-    test_titles = [
+    _fallback_titles = [
         "Tämä on aikas pitkä otsikko: Sellaisen luominen ei ole ihanteellista, mutta ajoittain voi olla vaikeuksia tiivistää juttua sopivasti ja pitää vain toivoa, ettei tule romaanin mittaista selitystä",
         "Tämä on ytimekäs otsikko",
         "Tämä on asiallisempi otsikko",
@@ -37,7 +37,18 @@ if __name__ == "__main__":
     if not signatures:
         print("The `test_data/signatures.txt` file seems to contain zero rows.", err_signature_links_instruction, file=sys.stderr)
         sys.exit(1)
-        
+
+    _words_file = "/usr/share/dict/words"
+    if os.path.isfile(_words_file):
+        import random
+        with open(_words_file, "r", errors="replace") as _wf:
+            _wordlist = [w.strip() for w in _wf if w.strip() and w.strip().isalpha()]
+        def _random_title():
+            length = random.randint(3, 9)
+            return " ".join(random.choice(_wordlist).capitalize() for _ in range(length))
+        test_titles = [_random_title() for _ in range(len(signatures))]
+    else:
+        test_titles = _fallback_titles
 
     # Generate test data from predefined signatures.
     data = {
