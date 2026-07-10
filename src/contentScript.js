@@ -32,8 +32,6 @@ const hrefSign = async (url) => {
 
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
 
-    const { highlightElemConverted, highlightElemOriginal } = await import(browser.runtime.getURL("src/conversionUtils.js"));
-
     const log = getLogger("content_script");
 
     await model.events.removeEventListener(modelEvents.enabledChange, controller.dispatchConversion);
@@ -170,44 +168,6 @@ const hrefSign = async (url) => {
         // Convert clickbaits OR 2) Restore clickbaits (i.e., restore the
         // originals).
 
-        const convertClickbait = async (titleElem, link, { rahtiEntry }) => {
-            const originalTitle = titleElem.textContent;
-            const convertedTitle = rahtiEntry.title;
-
-            if (titleElem.dataset.klikkikuriConvertedTitle === convertedTitle) {
-                return `No action needed, already converted ${link} before`;
-            }
-
-            titleElem.dataset.klikkikuriOriginalTitle = originalTitle;
-            titleElem.dataset.klikkikuriConvertedTitle = convertedTitle;
-            titleElem.dataset.klikkikuriClickbaitLevel = rahtiEntry.clickbaitiness;
-
-            // Replace the title text.
-            titleElem.textContent = `${convertedTitle}`;
-
-            await highlightElemConverted(titleElem);
-
-            return `Converted title from '${originalTitle}' to '${convertedTitle}' for link: ${link}`;
-        };
-
-        const restoreClickbait = async (titleElem, link) => {
-            const convertedTitle = titleElem.dataset.klikkikuriConvertedTitle;
-            const originalTitle = titleElem.dataset.klikkikuriOriginalTitle;
-
-            if (!originalTitle) {
-                return `No action needed, ${link} has not been processed yet`;
-            }
-
-            titleElem.textContent = originalTitle;
-            await highlightElemOriginal(titleElem);
-
-            // This needs to be removed so that the next
-            // conversion will not be skipped.
-            delete titleElem.dataset.klikkikuriConvertedTitle;
-
-            return `Restored title from '${convertedTitle}' to '${originalTitle}' for link ${link}`;
-        };
-
         const processingPromises = await processTitleElems(async (rule, container, link) => {
             let what = klikkikuriStatus.SKIPPED;
             let why = "";
@@ -254,23 +214,19 @@ const hrefSign = async (url) => {
                 if (isSiteEnabled && shouldConvert) {
                     what = "converted";
                     why = rahtiEntry.clickbaitiness;
-                    how = await convertClickbait(titleElem, link, { rahtiEntry });
+                    how = (titleElem.textContent = rahtiEntry.title);
 
                     container.dataset.klikkikuriStatus = klikkikuriStatus.CONVERTED;
                     container.dataset.klikkikuriReason = `Converted (Clickbaitiness level: ${why})`;
-
-                    log(`[Match] Converted clickbait: "${titleElem.dataset.klikkikuriOriginalTitle}" -> "${rahtiEntry.title}" (level: ${why}) at ${href}`);
                 } else {
-                    what = "restored";
+                    what = "original";
                     why = !isSiteEnabled 
                         ? `Conversion not enabled for site '${newsSite}'` 
                         : `Clickbaitiness level for '${rahtiEntry.clickbaitiness}' is below threshold`;
-                    how = await restoreClickbait(titleElem, link);
+                    how = (titleElem.textContent = titleElem.dataset.klikkikuriOriginalTitle);
 
-                    container.dataset.klikkikuriStatus = klikkikuriStatus.RESTORED;
+                    container.dataset.klikkikuriStatus = klikkikuriStatus.ORIGINAL;
                     container.dataset.klikkikuriReason = why;
-
-                    log(`[Match] Restored clickbait: "${titleElem.textContent}" (reason: ${why}) at ${href}`);
                 }
             } catch (err) {
                 what = "error";
@@ -306,7 +262,7 @@ const hrefSign = async (url) => {
                 acc[item.what] = (acc[item.what] || 0) + 1;
                 return acc;
             },
-            { converted: 0, restored: 0, skipped: 0, error: errors.length }
+            { converted: 0, original: 0, skipped: 0, error: errors.length }
         );
 
         await controller.updateStatistics({
@@ -327,7 +283,7 @@ const hrefSign = async (url) => {
 
         log(`Finished conversion procedure on '${newsSite}' in ${duration.toFixed(2)}ms. Stats:`, stats);
 
-        const matchesCount = stats.converted + stats.restored;
+        const matchesCount = stats.converted + stats.original;
         if (matchesCount > 0) {
             log(`[Debug] Page processed with ${matchesCount} matching clickbait entries.`);
         } else {
@@ -395,7 +351,7 @@ const hrefSign = async (url) => {
         rahti,
         getStats: () => {
             const elements = document.querySelectorAll("[data-klikkikuri-status]");
-            const stats = { converted: 0, restored: 0, skipped: 0, error: 0 };
+            const stats = { converted: 0, original: 0, skipped: 0, error: 0 };
             elements.forEach(el => {
                 const status = el.dataset.klikkikuriStatus;
                 if (status in stats) {

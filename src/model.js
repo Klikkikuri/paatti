@@ -13,10 +13,62 @@ const modelEvents = {
 
 const klikkikuriStatus = Object.freeze({
     CONVERTED: "converted",
-    RESTORED: "restored",
+    ORIGINAL: "original",
     SKIPPED: "skipped",
     ERROR: "error"
 });
+
+class Clickbaitiness {
+    static LEVEL_NONE = "Not Clickbait at all";
+    static LEVEL_LOW = "Slightly Clickbaity";
+    static LEVEL_MODERATE = "Moderately Clickbaity";
+    static LEVEL_HIGH = "Very Clickbaity";
+    static LEVEL_EXTREME = "Extremely Clickbaity";
+
+    static LEVELS = [
+        Clickbaitiness.LEVEL_NONE,
+        Clickbaitiness.LEVEL_LOW,
+        Clickbaitiness.LEVEL_MODERATE,
+        Clickbaitiness.LEVEL_HIGH,
+        Clickbaitiness.LEVEL_EXTREME
+    ];
+
+    /**
+     * Map a clickbaitiness level string to its corresponding numeric value (0-4).
+     * @param {string} level - Clickbait level string
+     * @returns {number} The numeric value, or -1 if invalid
+     */
+    static stringToNumber(level) {
+        return Clickbaitiness.LEVELS.indexOf(level);
+    }
+
+    /**
+     * Constructor for Clickbaitiness instance.
+     * Can be initialized with a number or a level string.
+     * @param {number|string} value - Numeric level or level string
+     */
+    constructor(value) {
+        if (typeof value === "number") {
+            this.value = value;
+        } else if (typeof value === "string") {
+            this.value = Clickbaitiness.stringToNumber(value);
+        } else {
+            this.value = -1;
+        }
+    }
+
+    /**
+     * Checks if the current clickbaitiness meets or exceeds a given threshold level.
+     * @param {number|string} thresholdVal - Threshold level index (0-4) or string
+     * @returns {boolean} True if current level is greater than or equal to threshold
+     */
+    meetsThreshold(thresholdVal) {
+        const threshold = typeof thresholdVal === "number"
+            ? thresholdVal
+            : Clickbaitiness.stringToNumber(thresholdVal);
+        return this.value >= threshold && this.value !== -1 && threshold !== -1;
+    }
+}
 
 /**
  * Matches a hostname against an origin pattern, following browser permission matching logic.
@@ -149,6 +201,14 @@ const model = (() => {
                 await browser().storage.local.set({ userPreferences });
             },
 
+            setClickbaitLevel: async (value) => {
+                log(`Setting clickbait level to ${value}`);
+                const data = await browser().storage.local.get("userPreferences");
+                const userPreferences = data.userPreferences || {};
+                userPreferences.clickbaitLevel = value;
+                await browser().storage.local.set({ userPreferences });
+            },
+
             setStatistics: async (value, { hostname }) => {
                 log(`Storing stats for ${hostname}`);
                 const data = await browser().storage.local.get("statistics");
@@ -243,6 +303,18 @@ const model = (() => {
                 return config["debugVisualsEnabled"];
             },
 
+            getClickbaitLevel: async () => {
+                const config = await getConfig();
+                return config.clickbaitLevel !== undefined ? config.clickbaitLevel : 2;
+            },
+
+            shouldConvert: async (clickbaitinessLevel) => {
+                const config = await getConfig();
+                const sliderVal = config.clickbaitLevel !== undefined ? config.clickbaitLevel : 2;
+                const clickbaitiness = new Clickbaitiness(clickbaitinessLevel);
+                return clickbaitiness.meetsThreshold(sliderVal);
+            },
+
             getSitesEnabled: async () => {
                 const config = await getConfig();
                 const sitesEnabled = Object.entries(config.siteConfigs)
@@ -320,4 +392,4 @@ const model = (() => {
     };
 })();
 
-export { model, modelEvents, klikkikuriStatus };
+export { model, modelEvents, klikkikuriStatus, Clickbaitiness };

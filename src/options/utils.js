@@ -37,5 +37,15 @@ const displayProductInfo = () => {
         log("Failed to load product name and version from manifest:", e);
     }
 };
+/**
+ * Gets localized title and description for a clickbait level (0-4).
+ * @param {number} level - Clickbait level index (0-4)
+ * @returns {{title: string, description: string}} Title and description
+ */
+const getClickbaitLevelInfo = (level) => {
+    const title = browser().i18n.getMessage(`clickbaitLevel${level}Title`);
+    const description = browser().i18n.getMessage(`clickbaitLevel${level}Desc`);
+    return { title, description };
+};
 
-export { isSiteEnabled, displayProductInfo };
+export { isSiteEnabled, displayProductInfo, getClickbaitLevelInfo };

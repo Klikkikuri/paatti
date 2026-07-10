@@ -43,13 +43,13 @@ html.klikkikuri-visual-hilight *[data-klikkikuri-status="converted"]::after {
     background-color: #2e7d32 !important;
 }
 
-html.klikkikuri-visual-hilight *[data-klikkikuri-status="restored"] {
+html.klikkikuri-visual-hilight *[data-klikkikuri-status="original"] {
     outline: 2px solid #ef6c00 !important;
     background-color: rgba(239, 108, 0, 0.04) !important;
     box-shadow: 0 0 8px rgba(239, 108, 0, 0.2) !important;
 }
-html.klikkikuri-visual-hilight *[data-klikkikuri-status="restored"]::after {
-    content: "🔄 Restored";
+html.klikkikuri-visual-hilight *[data-klikkikuri-status="original"]::after {
+    content: "🔄 Original";
     background-color: #ef6c00 !important;
 }
 

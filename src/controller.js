@@ -48,6 +48,11 @@ const controller = {
 
     setSiteEnabled: _setSiteEnabled,
 
+    setClickbaitLevel: async (value) => {
+        log(`Setting clickbait level to ${value}`);
+        await model.write.setClickbaitLevel(value);
+    },
+
     dispatchConversion: _dispatchConversion,
 
     updateStatistics: async ({ hostname, siteStats, links }) => {

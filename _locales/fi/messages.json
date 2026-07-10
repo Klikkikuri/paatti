@@ -196,5 +196,49 @@
   "databaseUpdateFailed": {
     "message": "Virhe!",
     "description": "Failure message after database update"
+  },
+  "settingsviewClickbaitLevelTitle": {
+    "message": "Klikkiotsikoiden raja-arvo",
+    "description": "Title of the settings view clickbait level section"
+  },
+  "clickbaitLevel0Title": {
+    "message": "Kaikki otsikot",
+    "description": "Otsikko klikkitason raja-arvolle 0 (Not Clickbait at all)"
+  },
+  "clickbaitLevel0Desc": {
+    "message": "Käsitellään kaikki otsikot, myös neutraalit",
+    "description": "Kuvaus klikkitason raja-arvolle 0 (Not Clickbait at all)"
+  },
+  "clickbaitLevel1Title": {
+    "message": "Lievästi klikkimäiset",
+    "description": "Otsikko klikkitason raja-arvolle 1 (Slightly Clickbaity)"
+  },
+  "clickbaitLevel1Desc": {
+    "message": "Käsitellään myös hieman houkuttelevat otsikot",
+    "description": "Kuvaus klikkitason raja-arvolle 1 (Slightly Clickbaity)"
+  },
+  "clickbaitLevel2Title": {
+    "message": "Kohtalaisesti klikkimäiset",
+    "description": "Otsikko klikkitason raja-arvolle 2 (Moderately Clickbaity)"
+  },
+  "clickbaitLevel2Desc": {
+    "message": "Käsitellään kohtuullisen sensaatiohakuiset otsikot",
+    "description": "Kuvaus klikkitason raja-arvolle 2 (Moderately Clickbaity)"
+  },
+  "clickbaitLevel3Title": {
+    "message": "Voimakkaasti klikkimäiset",
+    "description": "Otsikko klikkitason raja-arvolle 3 (Very Clickbaity)"
+  },
+  "clickbaitLevel3Desc": {
+    "message": "Käsitellään erittäin sensaatiohakuiset otsikot",
+    "description": "Kuvaus klikkitason raja-arvolle 3 (Very Clickbaity)"
+  },
+  "clickbaitLevel4Title": {
+    "message": "Vain äärimmäiset",
+    "description": "Otsikko klikkitason raja-arvolle 4 (Extremely Clickbaity)"
+  },
+  "clickbaitLevel4Desc": {
+    "message": "Käsitellään vain harhaanjohtavat otsikot",
+    "description": "Kuvaus klikkitason raja-arvolle 4 (Extremely Clickbaity)"
   }
 }

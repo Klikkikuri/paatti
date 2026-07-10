@@ -2,6 +2,7 @@ import { getConfig } from '../config.js';
 import { browser } from '../utils.js';
 import { isSiteEnabled, displayProductInfo } from './utils.js';
 import { model } from '../model.js';
+import { controller } from '../controller.js';
 
 // Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {
@@ -199,17 +200,26 @@ async function registerEmail() {
 async function setupEventListeners() {
 
     // Clickbait level slider
-    document.getElementById('clickbaitLevel').addEventListener('input', (e) => {
-        console.log('Clickbait level changed to', e.target.value);
-    });
+    const clickbaitSlider = document.getElementById('clickbaitLevel');
+    if (clickbaitSlider) {
+        clickbaitSlider.addEventListener('change', async () => {
+            const value = parseInt(clickbaitSlider.value);
+            if (!isNaN(value)) {
+                await controller.setClickbaitLevel(value);
+                showStatus('Asetus tallennettu!');
+            }
+        });
+    }
     
     // Make slider labels clickable
     document.querySelectorAll('.slider-labels label').forEach(label => {
-        label.addEventListener('click', (e) => {
-            const value = parseInt(e.target.dataset.value);
-            if (!isNaN(value)) {
-                document.getElementById('clickbaitLevel').value = value;
-                console.log('Clickbait level changed to', value);
+        label.addEventListener('click', async (e) => {
+            e.preventDefault(); // Prevent browser default focusing to avoid double events
+            const value = parseInt(label.dataset.value);
+            if (!isNaN(value) && clickbaitSlider) {
+                clickbaitSlider.value = value;
+                await controller.setClickbaitLevel(value);
+                showStatus('Asetus tallennettu!');
             }
         });
     });

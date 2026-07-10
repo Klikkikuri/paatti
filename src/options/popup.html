@@ -81,6 +81,16 @@
             <input class="toggle" id="settingsview-extension-enabled" type="checkbox">
         </div>
 
+        <h2 id="settingsview-clickbait-level-title" class="settingsview-header"></h2>
+        <hr>
+        <div style="margin-top: 10px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 6px; width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <label for="settingsview-clickbait-level" id="settingsview-clickbait-level-label" style="font-weight: bold; cursor: pointer;"></label>
+                <input id="settingsview-clickbait-level" type="range" min="0" max="4" step="1" value="2" style="width: 45%; height: auto; appearance: auto; background: none; box-shadow: none; cursor: pointer;">
+            </div>
+            <span id="settingsview-clickbait-level-description" style="font-size: 0.85em; color: #666; text-align: left;"></span>
+        </div>
+
         <h2 id="settingsview-sites-enabled-title" class="settingsview-header"></h2>
         <hr>
         <ul id="sites-enabled-ul">

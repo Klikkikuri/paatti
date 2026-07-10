@@ -196,5 +196,49 @@
   "databaseUpdateFailed": {
     "message": "Failed!",
     "description": "Failure message after database update"
+  },
+  "settingsviewClickbaitLevelTitle": {
+    "message": "Clickbait Threshold",
+    "description": "Title of the settings view clickbait level section"
+  },
+  "clickbaitLevel0Title": {
+    "message": "All titles",
+    "description": "Title for clickbait level 0 (Not Clickbait at all)"
+  },
+  "clickbaitLevel0Desc": {
+    "message": "Process all titles, including neutral ones",
+    "description": "Description for clickbait level 0 (Not Clickbait at all)"
+  },
+  "clickbaitLevel1Title": {
+    "message": "Slightly clickbaity",
+    "description": "Title for clickbait level 1 (Slightly Clickbaity)"
+  },
+  "clickbaitLevel1Desc": {
+    "message": "Also process slightly clickbaity titles",
+    "description": "Description for clickbait level 1 (Slightly Clickbaity)"
+  },
+  "clickbaitLevel2Title": {
+    "message": "Moderately clickbaity",
+    "description": "Title for clickbait level 2 (Moderately Clickbaity)"
+  },
+  "clickbaitLevel2Desc": {
+    "message": "Process moderately clickbaity titles",
+    "description": "Description for clickbait level 2 (Moderately Clickbaity)"
+  },
+  "clickbaitLevel3Title": {
+    "message": "Strongly clickbaity",
+    "description": "Title for clickbait level 3 (Very Clickbaity)"
+  },
+  "clickbaitLevel3Desc": {
+    "message": "Process highly sensational titles",
+    "description": "Description for clickbait level 3 (Very Clickbaity)"
+  },
+  "clickbaitLevel4Title": {
+    "message": "Only extreme",
+    "description": "Title for clickbait level 4 (Extremely Clickbaity)"
+  },
+  "clickbaitLevel4Desc": {
+    "message": "Process only misleading titles",
+    "description": "Description for clickbait level 4 (Extremely Clickbaity)"
   }
 }

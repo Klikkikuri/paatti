@@ -4,7 +4,7 @@ import { getLogger, browser, getCurrentTabHostname } from "../utils.js";
 import { model, modelEvents } from "../model.js";
 import { controller } from "../controller.js";
 import { getConfig } from "../config.js";
-import { displayProductInfo } from "./utils.js";
+import { displayProductInfo, getClickbaitLevelInfo } from "./utils.js";
 
 const log = getLogger("view");
 
@@ -256,6 +256,26 @@ const refresh = async () => {
         settingsviewExtensionEnabled.checked = isConversionEnabled;
     }
 
+    // Update settings view clickbait level section
+    const settingsviewClickbaitLevelTitle = document.getElementById("settingsview-clickbait-level-title");
+    if (settingsviewClickbaitLevelTitle) {
+        settingsviewClickbaitLevelTitle.textContent = browser().i18n.getMessage("settingsviewClickbaitLevelTitle");
+    }
+    const clickbaitLevel = await model.read.getClickbaitLevel();
+    const clickbaitLevelInput = document.getElementById("settingsview-clickbait-level");
+    if (clickbaitLevelInput) {
+        clickbaitLevelInput.value = clickbaitLevel;
+        const levelInfo = getClickbaitLevelInfo(clickbaitLevel);
+        const clickbaitLevelLabel = document.getElementById("settingsview-clickbait-level-label");
+        if (clickbaitLevelLabel) {
+            clickbaitLevelLabel.textContent = levelInfo.title;
+        }
+        const clickbaitLevelDesc = document.getElementById("settingsview-clickbait-level-description");
+        if (clickbaitLevelDesc) {
+            clickbaitLevelDesc.textContent = levelInfo.description;
+        }
+    }
+
     // Load database status
     const dbStatus = await browser().storage.local.get("lastDatabaseUpdate");
     const lastDatabaseUpdate = dbStatus.lastDatabaseUpdate;
@@ -369,6 +389,21 @@ const refresh = async () => {
         .addEventListener("click", view.handleClickConversionSwitch);
     document.getElementById("settingsview-extension-enabled")
         .addEventListener("click", view.handleClickMainSwitch);
+    const clickbaitSlider = document.getElementById("settingsview-clickbait-level");
+    if (clickbaitSlider) {
+        clickbaitSlider.addEventListener("input", (e) => {
+            const level = parseInt(e.target.value);
+            const levelInfo = getClickbaitLevelInfo(level);
+            const label = document.getElementById("settingsview-clickbait-level-label");
+            if (label) label.textContent = levelInfo.title;
+            const desc = document.getElementById("settingsview-clickbait-level-description");
+            if (desc) desc.textContent = levelInfo.description;
+        });
+        clickbaitSlider.addEventListener("change", async (e) => {
+            const level = parseInt(e.target.value);
+            await controller.setClickbaitLevel(level);
+        });
+    }
     document.getElementById("open-options")
         .addEventListener("click", () => {
             browser().runtime.openOptionsPage();
