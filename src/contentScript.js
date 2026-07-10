@@ -28,7 +28,7 @@ const hrefSign = async (url) => {
     const browser = (chrome || browser);
     const { model: model, modelEvents: modelEvents } = await import(browser.runtime.getURL("src/model.js"));
     const { controller } = await import(browser.runtime.getURL("src/controller.js"));
-    const { getLogger } = await import(browser.runtime.getURL("src/utils.js"));
+    const { getLogger, debounce } = await import(browser.runtime.getURL("src/utils.js"));
 
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
 
@@ -243,7 +243,15 @@ const hrefSign = async (url) => {
         })
     );
 
-    const observer = new MutationObserver(async (mutations) => {
+    const debouncedProcessSite = debounce(async () => {
+        try {
+            await processSite();
+        } catch (e) {
+            log("Error during conversion after DOM mutation:", e);
+        }
+    }, 150);
+
+    const observer = new MutationObserver((mutations) => {
         // Use original title as the flag, as a converted title would be
         // removed when restoring page to show original titles.
         const isInternalChange = mutations.every(mutation =>
@@ -254,12 +262,8 @@ const hrefSign = async (url) => {
             return;
         }
 
-        log(`Observed ${mutations.length} DOM mutations, triggering conversion process.`);
-        try {
-            await processSite();
-        } catch (e) {
-            log("Error during conversion after DOM mutation:", e);
-        }
+        log(`Observed ${mutations.length} DOM mutations, scheduling conversion.`);
+        debouncedProcessSite();
     });
     observer.observe(document.body, {
         childList: true,

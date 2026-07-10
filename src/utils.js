@@ -49,4 +49,12 @@ const getCurrentTabHostname = async () => {
     return thisTabUrl.hostname;
 };
 
-export { getLogger, browser, getCurrentTabHostname };
+const debounce = (func, wait) => {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+    };
+};
+
+export { getLogger, browser, getCurrentTabHostname, debounce };
