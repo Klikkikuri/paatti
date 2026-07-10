@@ -106,27 +106,55 @@ async function renderSiteList(siteConfigs) {
     siteList.innerHTML = '';
     
     for (const [domain, config] of Object.entries(siteConfigs)) {
-        const siteItem = document.createElement('label');
-        siteItem.setAttribute('for', `site-${domain}`);
+        const siteItem = document.createElement('div');
         siteItem.className = 'site-item';
 
         const enabled = await isSiteEnabled(domain);
         console.log(`Rendering site ${domain} with enabled: ${enabled}`);
 
         const faviconUrl = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
-        siteItem.innerHTML = `
-            <div class="site-info">
-                <img src="${faviconUrl}" alt="" width="24" height="24" class="site-favicon">
-                <div>
-                    <div class="site-name">${config.name || domain}</div>
-                    <div class="site-domain">${domain}</div>
-                </div>
-            </div>
-            <label class="toggle-switch">
-                <input type="checkbox" id="site-${domain}" data-site="${domain}" ${enabled ? 'checked' : ''}>
-                <span class="toggle-slider"></span>
-            </label>
-        `;
+
+        const siteInfo = document.createElement('div');
+        siteInfo.className = 'site-info';
+
+        const faviconImg = document.createElement('img');
+        faviconImg.src = faviconUrl;
+        faviconImg.alt = '';
+        faviconImg.width = 24;
+        faviconImg.height = 24;
+        faviconImg.className = 'site-favicon';
+        siteInfo.appendChild(faviconImg);
+
+        const textContainer = document.createElement('div');
+
+        const siteName = document.createElement('div');
+        siteName.className = 'site-name';
+        siteName.textContent = config.name || domain;
+        textContainer.appendChild(siteName);
+
+        const siteDomain = document.createElement('div');
+        siteDomain.className = 'site-domain';
+        siteDomain.textContent = domain;
+        textContainer.appendChild(siteDomain);
+
+        siteInfo.appendChild(textContainer);
+        siteItem.appendChild(siteInfo);
+
+        const toggleSwitch = document.createElement('label');
+        toggleSwitch.className = 'toggle-switch';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `site-${domain}`;
+        checkbox.dataset.site = domain;
+        checkbox.checked = enabled;
+        toggleSwitch.appendChild(checkbox);
+
+        const toggleSlider = document.createElement('span');
+        toggleSlider.className = 'toggle-slider';
+        toggleSwitch.appendChild(toggleSlider);
+
+        siteItem.appendChild(toggleSwitch);
         siteList.appendChild(siteItem);
     }
 }

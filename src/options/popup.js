@@ -478,13 +478,25 @@ const refresh = async () => {
                     }
                 };
 
+                const setFeedbackStatus = (text, color, isBold) => {
+                    buttonsDiv.textContent = "";
+                    const span = document.createElement("span");
+                    span.style.color = color;
+                    span.style.fontSize = "0.85em";
+                    if (isBold) {
+                        span.style.fontWeight = "bold";
+                    }
+                    span.textContent = text;
+                    buttonsDiv.appendChild(span);
+                };
+
                 goodBtn.addEventListener("click", async () => {
-                    buttonsDiv.innerHTML = "<span style='color: #666; font-size: 0.85em;'>...</span>";
+                    setFeedbackStatus("...", "#666", false);
                     const success = await submitFeedback("good_conversion");
                     if (success) {
-                        buttonsDiv.innerHTML = "<span style='color: green; font-size: 0.85em; font-weight: bold;'>" + browser().i18n.getMessage("feedbackviewReportSuccess") + "</span>";
+                        setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportSuccess"), "green", true);
                     } else {
-                        buttonsDiv.innerHTML = "<span style='color: #e14942; font-size: 0.85em; font-weight: bold;'>" + browser().i18n.getMessage("feedbackviewReportFailure") + "</span>";
+                        setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportFailure"), "#e14942", true);
                     }
                 });
 
@@ -504,9 +516,9 @@ const refresh = async () => {
                     formDiv.classList.add("hidden");
                     buttonsDiv.style.display = "flex";
                     if (success) {
-                        buttonsDiv.innerHTML = "<span style='color: green; font-size: 0.85em; font-weight: bold;'>" + browser().i18n.getMessage("feedbackviewReportSuccess") + "</span>";
+                        setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportSuccess"), "green", true);
                     } else {
-                        buttonsDiv.innerHTML = "<span style='color: #e14942; font-size: 0.85em; font-weight: bold;'>" + browser().i18n.getMessage("feedbackviewReportFailure") + "</span>";
+                        setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportFailure"), "#e14942", true);
                     }
                 };
 
