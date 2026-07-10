@@ -66,15 +66,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     do_HEAD = do_GET
 
     def get_data_path(self):
-        # 1. Check Meri location
-        if MERI_INSTANCE.exists():
-            print(f"Using Meri instance data from {MERI_INSTANCE}")
-            return MERI_INSTANCE
-        
-        # 2. Check test_data directory
+        # Check test_data directory
         if TEST_DATA.exists():
             print(f"Using test data from {TEST_DATA}")
             return TEST_DATA
+
+        # Check Meri location
+        if MERI_INSTANCE.exists():
+            print(f"Using Meri instance data from {MERI_INSTANCE}")
+            return MERI_INSTANCE
         
         print("Warning: No data.json file found.")
         return None
