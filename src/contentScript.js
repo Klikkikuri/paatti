@@ -200,7 +200,9 @@ const hrefSign = async (url) => {
                     return { what, why, how };
                 }
 
-                titleElem.dataset.klikkikuriOriginalTitle = titleElem.textContent;
+                if (!titleElem.dataset.klikkikuriOriginalTitle) {
+                    titleElem.dataset.klikkikuriOriginalTitle = titleElem.textContent;
+                }
                 titleElem.dataset.klikkikuriConvertedTitle = rahtiEntry.title;
 
                 const isSiteEnabled = await model.read.isEnabled(newsSite);
@@ -321,6 +323,16 @@ const hrefSign = async (url) => {
         attributes: false // Ignore attribute changes to prevent loop from setAttribute
     });
 
+    function isElementVisibleInViewport(el) {
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) {
+            return false;
+        }
+        const viewHeight = Math.max(document.documentElement.clientHeight, window.innerHeight);
+        const viewWidth = Math.max(document.documentElement.clientWidth, window.innerWidth);
+        return !(rect.bottom < 0 || rect.top > viewHeight || rect.right < 0 || rect.left > viewWidth);
+    }
+
     // Set up communication between content script and rest of extension (e.g., the popup).
     browser.runtime.onMessage.addListener(async (message) => {
         log(`Received message '${JSON.stringify(message)}' on '${newsSite}'`);
@@ -333,6 +345,45 @@ const hrefSign = async (url) => {
                 const links = Array.from(document.querySelectorAll("a"));
                 const signaturePromises = links.map((x) => hrefSign(x.href));
                 return Promise.all(signaturePromises);
+            case "getConversions": {
+                const onlyVisible = message.onlyVisible;
+                const containers = Array.from(document.querySelectorAll("[data-klikkikuri-status='converted']"));
+                const results = [];
+                for (const container of containers) {
+                    if (onlyVisible && !isElementVisibleInViewport(container)) {
+                        continue;
+                    }
+                    const titleElem = container.querySelector("[data-klikkikuri-original-title]") || container;
+                    results.push({
+                        urlSign: container.dataset.klikkikuriUrlSign || "",
+                        originalTitle: titleElem.dataset.klikkikuriOriginalTitle || titleElem.textContent,
+                        convertedTitle: titleElem.dataset.klikkikuriConvertedTitle || "",
+                        clickbaitLevel: titleElem.dataset.klikkikuriClickbaitLevel || ""
+                    });
+                }
+
+                if (rahti) {
+                    try {
+                        const pageUrl = window.location.href;
+                        const pageSign = await hrefSign(pageUrl);
+                        const pageRahtiEntry = await rahti.get(pageSign);
+                        if (pageRahtiEntry) {
+                            const pageOriginalTitle = document.querySelector("h1")?.textContent?.trim() || document.title;
+                            results.push({
+                                urlSign: pageSign,
+                                originalTitle: pageOriginalTitle,
+                                convertedTitle: pageRahtiEntry.title,
+                                clickbaitLevel: pageRahtiEntry.clickbaitiness,
+                                isMainPage: true
+                            });
+                        }
+                    } catch (err) {
+                        log("Error checking current page URL signature:", err);
+                    }
+                }
+
+                return results;
+            }
             default:
                 log(`Unknown command '${message.command}'`);
                 break;
