@@ -86,7 +86,7 @@ browser().alarms.onAlarm.addListener((alarm) => {
 browser().runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "updateDatabase") {
         log("Manual database update requested.");
-        fetchRahtiData()
+        fetchRahtiData({ force: true })
             .then((success) => {
                 if (success) {
                     browser().storage.local.get("lastDatabaseUpdate").then((result) => {

@@ -53,7 +53,7 @@ function validRahtiData(data) {
     return true;
 }
 
-async function fetchRahtiData() {
+async function fetchRahtiData(options = {}) {
     // TODO: Implement not modified checks with ETag/Last-Modified headers
     log("Starting fetch of Rahti data...");
     const config = await getConfig();
@@ -72,8 +72,12 @@ async function fetchRahtiData() {
     log(`Fetching Rahti data from ${urls.length} URL(s) in parallel...`);
 
     // Fetch all URLs in parallel
-    const fetchPromises = urls.map(url => 
-        fetch(url)
+    const fetchPromises = urls.map(url => {
+        const fetchOpts = {};
+        if (options.force) {
+            fetchOpts.cache = "no-cache";
+        }
+        return fetch(url, fetchOpts)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -84,8 +88,8 @@ async function fetchRahtiData() {
             .catch(error => {
                 log(`Failed to fetch from ${url}:`, error.message);
                 return { success: false, url, error: error.message };
-            })
-    );
+            });
+    });
 
     const results = await Promise.all(fetchPromises);
  

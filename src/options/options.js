@@ -49,6 +49,18 @@ async function loadSettings() {
         const emailInput = document.getElementById('invitationEmail');
         emailInput.value = savedEmail;
 
+        // Load saved titleDataUrls for development environment
+        let devUrls = [];
+        try {
+            devUrls = config.environmentConfigs.development.titleDataUrls || [];
+        } catch (e) {
+            devUrls = [];
+        }
+        const devUrlsTextarea = document.getElementById('devTitleDataUrls');
+        if (devUrlsTextarea) {
+            devUrlsTextarea.value = devUrls.join('\n');
+        }
+
         // Site configurations
         renderSiteList(config.siteConfigs || {});
 
@@ -358,6 +370,33 @@ async function saveSettings() {
         userPreferences.environment = environment;
         userPreferences.refreshIntervalMinutes = refreshIntervalMinutes;
         userPreferences.debugVisualsEnabled = debugVisualsEnabled;
+
+        // Save titleDataUrls for development environment
+        const devUrlsTextarea = document.getElementById('devTitleDataUrls');
+        if (devUrlsTextarea) {
+            const urls = devUrlsTextarea.value
+                .split('\n')
+                .map(u => u.trim())
+                .filter(u => u.length > 0);
+            
+            // Validate URLs
+            for (const url of urls) {
+                try {
+                    new URL(url);
+                } catch (e) {
+                    showStatus(`Virheellinen kehitys-URL: ${url}`, true);
+                    return;
+                }
+            }
+            
+            if (!userPreferences.environmentConfigs) {
+                userPreferences.environmentConfigs = {};
+            }
+            if (!userPreferences.environmentConfigs.development) {
+                userPreferences.environmentConfigs.development = {};
+            }
+            userPreferences.environmentConfigs.development.titleDataUrls = urls;
+        }
         
         await browser().storage.local.set({ userPreferences });
         await browser().storage.sync.set({ userSiteOverrides: siteOverrides });

@@ -544,7 +544,7 @@
         }
 
         #debug-settings.visible {
-            max-height: 300px;
+            max-height: 500px;
             opacity: 1;
             margin-top: 25px;
         }
@@ -760,6 +760,15 @@
                                 <span class="toggle-slider"></span>
                             </label>
                         </label>
+                    </div>
+                    <div class="setting-group" style="margin-top: 15px;">
+                        <div class="number-input-group" style="margin: 0; padding: 15px; background: #f8f9fa; border-radius: 8px; display: flex; flex-direction: column; gap: 10px;">
+                            <div class="label-text">
+                                <strong>Tietokannan osoitteet (titleDataUrls)</strong>
+                                <span style="display: block; margin-top: 5px; margin-bottom: 8px;">Syötä JSON-tietokantojen osoitteet kehitysympäristöä varten, yksi osoite per rivi.</span>
+                            </div>
+                            <textarea id="devTitleDataUrls" rows="3" placeholder="http://localhost:3000/data.json" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 0.95em; font-family: monospace; resize: vertical; box-sizing: border-box;"></textarea>
+                        </div>
                     </div>
                 </div>
             </fieldset>
