@@ -35,12 +35,22 @@ function rahtiToKeyed(rahti) {
 
 function validRahtiData(data) {
     const SUPPORTED_SCHEMA_VERSION = "0.1.0";
+    if (!data || typeof data !== "object") {
+        log("Invalid Rahti payload type:", data);
+        return false;
+    }
+
+    if (!Array.isArray(data.entries)) {
+        log("Invalid Rahti payload: missing entries array.", data);
+        return false;
+    }
+
     if (data.schema_version != SUPPORTED_SCHEMA_VERSION) {
         // TODO: What now? Navigate the user to an update page?
         throw `The title data format is not compatible: version is ${data.schema_version} when expected ${SUPPORTED_SCHEMA_VERSION}. Update Paatti or use some other compatible title data source in order to fix.`;
     }
 
-    return data && typeof data === 'object' && Array.isArray(data.entries);
+    return true;
 }
 
 async function fetchRahtiData() {
