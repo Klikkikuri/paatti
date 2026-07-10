@@ -380,8 +380,6 @@ const refresh = async () => {
     }
 
 
-    // Inform content script that the popup is opened.
-    await controller.notifyPopupOpened();
 };
 
 /**
@@ -509,17 +507,7 @@ const view = {
 document.addEventListener("DOMContentLoaded", view.handleDomContentLoaded);
 
 
-///////////////////////////////////////////////////////////////////////////////
-// Handlers related to other non-popup-parts of the extension.
-browser().runtime.onMessage.addListener((request, sender, sendResponse) => {
-    switch (request.message) {
-        case "isPopupOpen":
-            sendResponse({ "isOpen": true });
-            break;
-        default:
-            log("Unknown message: ", request);
-    }
-});
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // "We have events at home."

@@ -45,7 +45,7 @@ const hrefSign = async (url) => {
 
     const rahti = await rahtiStorage;
     const newsSite = window.location.hostname;
-    let isPopupOpen;
+    let isPopupOpen = false;
 
     ////////////////////////////////////////////////////////////////////////////
     // Initialization.
@@ -58,15 +58,19 @@ const hrefSign = async (url) => {
         return;
     }
 
-    // Listen for popup direct connection to manage visibility styling
+    // Listen for popup direct connection to manage visibility styling and highlighting
     browser.runtime.onConnect.addListener((port) => {
         if (port.name === "paatti-popup-direct") {
             log("Popup connection established, adding visible class.");
             document.body.classList.add("paatti-popup-visible");
+            isPopupOpen = true;
+            refreshHighlights();
 
             port.onDisconnect.addListener(() => {
                 log("Popup connection closed, removing visible class.");
                 document.body.classList.remove("paatti-popup-visible");
+                isPopupOpen = false;
+                refreshHighlights();
             });
         }
     });
@@ -263,25 +267,6 @@ const hrefSign = async (url) => {
         attributes: false // Ignore attribute changes to prevent loop from setAttribute
     });
 
-    // Keep polling the popup in order to highlight converted titles
-    // during and only during the time when the popup window is open.
-    isPopupOpen = false;
-    const popupPoller = async () => {
-        try {
-            const response = await browser.runtime.sendMessage({ message: "isPopupOpen" });
-            isPopupOpen = response.isOpen;
-        } catch (e) {
-            // (Assume) popup failed to response because it is closed
-            isPopupOpen = false;
-        }
-
-        await refreshHighlights();
-
-        setTimeout(popupPoller, 500);
-    };
-    // Start the polling
-    setTimeout(popupPoller, 500);
-
     // Set up communication between content script and rest of extension (e.g., the popup).
     browser.runtime.onMessage.addListener(async (message) => {
         log(`Received message '${JSON.stringify(message)}' on '${newsSite}'`);
@@ -289,11 +274,6 @@ const hrefSign = async (url) => {
         switch (message.command) {
             case "convertClickbaits":
                 await processSite();
-                break;
-            case "popupOpened":
-                const extensionPort = browser.runtime.connect();
-                isPopupOpen = true;
-                refreshHighlights();
                 break;
             case "devmode_generateLinkSignatures":
                 const links = Array.from(document.querySelectorAll("a"));

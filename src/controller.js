@@ -50,16 +50,6 @@ const controller = {
 
     dispatchConversion: _dispatchConversion,
 
-    notifyPopupOpened: async () => {
-        log("Notifying that popup was opened...");
-        // Get the active tab.
-        const tabs = browser().tabs;
-        const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
-        await tabs.sendMessage(activeTabId, { command: "popupOpened" });
-
-        log("Popup opened notify performed.");
-    },
-
     updateStatistics: async ({ hostname, siteStats, links }) => {
         model.write.setStatistics(siteStats, { hostname });
     },
