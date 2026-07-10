@@ -104,6 +104,42 @@
     "description": "Text on the button in the feedback view converted title rating that the user can rate the conversion as 'bad'"
   },
 
+  "feedbackviewNoConversions": {
+    "message": "No converted headlines on this page.",
+    "description": "Message displayed when there are no converted clickbaits on the current page"
+  },
+
+  "feedbackviewCurrentPageLabel": {
+    "message": "Current page",
+    "description": "Label indicating that the conversion is for the active page itself"
+  },
+
+  "feedbackviewReportIssueBtn": {
+    "message": "Report Issue",
+    "description": "Label for the button that opens the issue reporting form"
+  },
+
+  "feedbackviewReportCommentPlaceholder": {
+    "message": "Describe the issue...",
+    "description": "Placeholder for comments in reporting form"
+  },
+  "feedbackviewReportSubmitBtn": {
+    "message": "Submit",
+    "description": "Label for submit button in reporting form"
+  },
+  "feedbackviewReportCancelBtn": {
+    "message": "Cancel",
+    "description": "Label for cancel button in reporting form"
+  },
+  "feedbackviewReportSuccess": {
+    "message": "✓ Feedback submitted!",
+    "description": "Success message after reporting conversion"
+  },
+  "feedbackviewReportFailure": {
+    "message": "✗ Failed to send report.",
+    "description": "Failure message after reporting conversion"
+  },
+
   "settingsviewSitesEnabledTitle": {
     "message": "News sites to process",
     "description": "Title of the settings view enabled sites section"

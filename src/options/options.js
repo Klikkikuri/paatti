@@ -397,7 +397,7 @@ async function saveSettings() {
             }
             userPreferences.environmentConfigs.development.titleDataUrls = urls;
         }
-        
+
         await browser().storage.local.set({ userPreferences });
         await browser().storage.sync.set({ userSiteOverrides: siteOverrides });
         

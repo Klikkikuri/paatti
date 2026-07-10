@@ -8,6 +8,7 @@ const DEFAULT_ENV = {
     "refreshIntervalMinutes": 20,
     "email": "",
     "titleDataUrls": ["https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"],
+    "feedbackServerUrl": "https://docs.google.com/forms/d/e/1FAIpQLSf_vo9tpXAjbP1JyhNlgRdPnpPD1K3w6aPfern_jZfJVcHtCw/formResponse",
 }
 
 const DEFAULT_CONFIG = {
@@ -152,6 +153,7 @@ const DEFAULT_CONFIG = {
                 "http://localhost:3000/data.json",
                 "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"
             ],
+            // "feedbackServerUrl": "http://localhost:3000/api/v1/feedback",
         },
     },
     "statistics": {},
@@ -187,8 +189,8 @@ async function getConfig() {
     for (const [domain, siteConfig] of Object.entries(mergedSiteConfigs)) {
         // Merge siteConfigs with sync overrides
         if (syncOverrides.hasOwnProperty(domain)) {
-            log("Applying sync override for", domain, "to", syncOverrides[domain]);
             const overrides = syncOverrides[domain]
+            log("Applying sync override for", domain, "to", overrides);
             mergedSiteConfigs[domain] = {
                 ...siteConfig,
                 ...overrides

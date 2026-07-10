@@ -316,27 +316,222 @@ const refresh = async () => {
     // Load product name and version from manifest
     displayProductInfo();
 
-    // Rest of localizations.
-    document.getElementById("feedbackview-general-feedback").querySelector("iframe").textContent =
-        browser().i18n.getMessage("feedbackviewGeneralFeedbackLoading");
-    document.getElementById("feedbackview-general-feedback-header").textContent =
-        browser().i18n.getMessage("feedbackviewGeneralFeedbackHeader");
+    // Load conversions list in feedback view
+    const feedbackHeader = document.getElementById("feedbackview-header");
+    if (feedbackHeader) {
+        feedbackHeader.textContent = browser().i18n.getMessage("feedbackviewRateTitleHeader");
+    }
 
-    /*
-     * TODO: Implement converted vs. original title rating.
-    document.getElementById("feedbackview-rate-title-header").textContent =
-        browser().i18n.getMessage("feedbackviewRateTitleHeader");
-    document.getElementById("feedbackview-rate-title").querySelector("p strong:first-child").textContent =
-        browser().i18n.getMessage("feedbackviewRateTitleOriginalTitleLabel");
-    document.getElementById("feedbackview-rate-title").querySelector("p strong:nth-child(1)").textContent =
-        browser().i18n.getMessage("feedbackviewRateTitleConvertedTitleLabel");
-    document.getElementById("feedbackview-rate-title").querySelector("p strong:nth-child(1)").textContent =
-        browser().i18n.getMessage("feedbackviewRateTitleConvertedTitleLabel");
-    document.querySelector("label[for=good]").textContent =
-        browser().i18n.getMessage("feedbackviewRateTitleConversionIsGood");
-    document.querySelector("label[for=bad]").textContent =
-        browser().i18n.getMessage("feedbackviewRateTitleConversionIsBad");
-    */
+    const noConversionsEl = document.getElementById("feedbackview-no-conversions");
+    const conversionsListEl = document.getElementById("feedbackview-conversions-list");
+
+    let conversions = [];
+    const [tab] = await browser().tabs.query({ active: true, currentWindow: true });
+    if (tab) {
+        try {
+            conversions = await browser().tabs.sendMessage(tab.id, { 
+                command: "getConversions", 
+                onlyVisible: true 
+            });
+        } catch (err) {
+            log("Failed to fetch conversions from content script:", err);
+        }
+    }
+
+    if (conversionsListEl) {
+        conversionsListEl.innerHTML = "";
+        if (!conversions || conversions.length === 0) {
+            if (noConversionsEl) {
+                noConversionsEl.textContent = browser().i18n.getMessage("feedbackviewNoConversions");
+                noConversionsEl.classList.remove("hidden");
+            }
+        } else {
+            if (noConversionsEl) {
+                noConversionsEl.classList.add("hidden");
+            }
+            const template = document.getElementById("feedback-item-template");
+            for (const item of conversions) {
+                const clone = template.content.cloneNode(true);
+
+                const origLabelEl = clone.querySelector(".feedback-orig-label");
+                const origTextEl = clone.querySelector(".feedback-orig-text");
+                let origLabel = browser().i18n.getMessage("feedbackviewRateTitleOriginalTitleLabel");
+                if (item.isMainPage) {
+                    origLabel += " (" + browser().i18n.getMessage("feedbackviewCurrentPageLabel") + ")";
+                }
+                origLabelEl.textContent = origLabel;
+                origTextEl.textContent = item.originalTitle;
+
+                const convLabelEl = clone.querySelector(".feedback-conv-label");
+                const convTextEl = clone.querySelector(".feedback-conv-text");
+                convLabelEl.textContent = browser().i18n.getMessage("feedbackviewRateTitleConvertedTitleLabel");
+                convTextEl.textContent = item.convertedTitle;
+
+                const buttonsDiv = clone.querySelector(".feedback-buttons-container");
+                const formDiv = clone.querySelector(".feedback-form-container");
+                const feedbackInput = clone.querySelector(".feedback-input");
+                
+                const goodBtn = clone.querySelector(".feedback-good-btn");
+                const badBtn = clone.querySelector(".feedback-bad-btn");
+                const submitBtn = clone.querySelector(".feedback-submit-btn");
+
+                feedbackInput.placeholder = browser().i18n.getMessage("feedbackviewReportCommentPlaceholder");
+                goodBtn.textContent = "👍 " + browser().i18n.getMessage("feedbackviewRateTitleConversionIsGood");
+                badBtn.textContent = "👎 " + browser().i18n.getMessage("feedbackviewRateTitleConversionIsBad");
+                submitBtn.textContent = browser().i18n.getMessage("feedbackviewReportSubmitBtn");
+
+                const submitFeedback = async (type, comment = "") => {
+                    let feedbackServerUrl = "https://api.klikkikuri.fi/v1/feedback";
+                    try {
+                        const config = await getConfig();
+                        if (config && config.feedbackServerUrl) {
+                            feedbackServerUrl = config.feedbackServerUrl;
+                        }
+                    } catch (err) {
+                        log("Error loading config for feedback server URL:", err);
+                    }
+
+                    const dbStatus = await browser().storage.local.get("lastDatabaseUpdate");
+                    const databaseUpdated = dbStatus.lastDatabaseUpdate ? new Date(dbStatus.lastDatabaseUpdate).toISOString() : "Unknown";
+                    const commentVal = comment.trim() || "-";
+
+                    const pageUrl = tab?.url || "";
+                    const urlSign = item.urlSign || "";
+                    const originalTitle = item.originalTitle || "";
+                    const convertedTitle = item.convertedTitle || "";
+                    const clickbaitLevel = (item.clickbaitLevel !== undefined && item.clickbaitLevel !== null) ? String(item.clickbaitLevel) : "";
+
+                    // Client-side validation: all fields are required
+                    if (!pageUrl || !urlSign || !originalTitle || !convertedTitle || clickbaitLevel === "" || !type || !commentVal || !databaseUpdated) {
+                        log("Validation failed: missing required feedback fields", {
+                            pageUrl,
+                            urlSign,
+                            originalTitle,
+                            convertedTitle,
+                            clickbaitLevel,
+                            type,
+                            commentVal,
+                            databaseUpdated
+                        });
+                        return false;
+                    }
+
+                    const isGoogleForm = feedbackServerUrl.includes("docs.google.com/forms");
+
+                    try {
+                        if (isGoogleForm) {
+                            let postUrl = feedbackServerUrl;
+                            if (postUrl.endsWith("/viewform")) {
+                                postUrl = postUrl.replace("/viewform", "/formResponse");
+                            } else if (!postUrl.endsWith("/formResponse")) {
+                                if (postUrl.endsWith("/")) {
+                                    postUrl += "formResponse";
+                                } else {
+                                    postUrl += "/formResponse";
+                                }
+                            }
+
+                            const formData = new URLSearchParams();
+                            formData.append("entry.1944615860", pageUrl);
+                            formData.append("entry.1369854914", urlSign);
+                            formData.append("entry.917360051", originalTitle);
+                            formData.append("entry.1935829065", convertedTitle);
+                            formData.append("entry.1807257025", clickbaitLevel);
+                            formData.append("entry.167673994", type);
+                            formData.append("entry.78795748", commentVal);
+                            formData.append("entry.364993842", databaseUpdated);
+
+                            await fetch(postUrl, {
+                                method: "POST",
+                                mode: "no-cors",
+                                headers: {
+                                    "Content-Type": "application/x-www-form-urlencoded"
+                                },
+                                body: formData.toString()
+                            });
+                        } else {
+                            const payload = {
+                                timestamp: new Date().toISOString(),
+                                pageUrl: pageUrl,
+                                urlSign: urlSign,
+                                originalTitle: originalTitle,
+                                convertedTitle: convertedTitle,
+                                clickbaitLevel: item.clickbaitLevel,
+                                feedbackType: type,
+                                comment: comment,
+                                databaseUpdated: databaseUpdated
+                            };
+
+                            await fetch(feedbackServerUrl, {
+                                method: "POST",
+                                mode: "no-cors",
+                                headers: {
+                                    "Content-Type": "text/plain"
+                                },
+                                body: JSON.stringify(payload)
+                            });
+                        }
+                        return true;
+                    } catch (err) {
+                        log("Failed to submit feedback:", err);
+                        return false;
+                    }
+                };
+
+                goodBtn.addEventListener("click", async () => {
+                    buttonsDiv.innerHTML = "<span style='color: #666; font-size: 0.85em;'>...</span>";
+                    const success = await submitFeedback("good_conversion");
+                    if (success) {
+                        buttonsDiv.innerHTML = "<span style='color: green; font-size: 0.85em; font-weight: bold;'>" + browser().i18n.getMessage("feedbackviewReportSuccess") + "</span>";
+                    } else {
+                        buttonsDiv.innerHTML = "<span style='color: #e14942; font-size: 0.85em; font-weight: bold;'>" + browser().i18n.getMessage("feedbackviewReportFailure") + "</span>";
+                    }
+                });
+
+                const cancelFlow = () => {
+                    formDiv.classList.add("hidden");
+                    buttonsDiv.style.display = "flex";
+                    feedbackInput.value = "";
+                };
+
+                const triggerSubmit = async () => {
+                    feedbackInput.disabled = true;
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = "...";
+
+                    const success = await submitFeedback("bad_conversion", feedbackInput.value);
+
+                    formDiv.classList.add("hidden");
+                    buttonsDiv.style.display = "flex";
+                    if (success) {
+                        buttonsDiv.innerHTML = "<span style='color: green; font-size: 0.85em; font-weight: bold;'>" + browser().i18n.getMessage("feedbackviewReportSuccess") + "</span>";
+                    } else {
+                        buttonsDiv.innerHTML = "<span style='color: #e14942; font-size: 0.85em; font-weight: bold;'>" + browser().i18n.getMessage("feedbackviewReportFailure") + "</span>";
+                    }
+                };
+
+                badBtn.addEventListener("click", () => {
+                    buttonsDiv.style.display = "none";
+                    formDiv.classList.remove("hidden");
+                    feedbackInput.focus();
+                });
+
+                feedbackInput.addEventListener("keydown", async (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        await triggerSubmit();
+                    } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        cancelFlow();
+                    }
+                });
+
+                submitBtn.addEventListener("click", triggerSubmit);
+
+                conversionsListEl.appendChild(clone);
+            }
+        }
+    }
 
     document.getElementById("navi-main").parentElement.title =
         browser().i18n.getMessage("navigationMainLabel");

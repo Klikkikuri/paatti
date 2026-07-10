@@ -66,11 +66,39 @@
     </div>
 
     <div class="content feedbackview hidden">
-        <div id="feedbackview-general-feedback">
-            <h2 id="feedbackview-general-feedback-header" class="feedbackview-header"></h2>
-            <hr>
-            <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSfmiipCpNLI6HLg1n0cUJhRiicIz3BHcbCH9cll4fX0HRj6-g/viewform?embedded=true" width="640" height="491"></iframe>
+        <h2 id="feedbackview-header" class="feedbackview-header"></h2>
+        <hr>
+        <div id="feedbackview-conversions-container" style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+            <p id="feedbackview-no-conversions" style="text-align: center; color: #666; font-style: italic;" class="hidden"></p>
+            <ul id="feedbackview-conversions-list" style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; width: 100%;"></ul>
         </div>
+
+        <template id="feedback-item-template">
+            <li class="feedback-item">
+                <div class="feedback-orig">
+                    <strong class="feedback-orig-label"></strong>
+                    <span class="feedback-orig-text"></span>
+                </div>
+                <div class="feedback-conv">
+                    <strong class="feedback-conv-label"></strong>
+                    <span class="feedback-conv-text"></span>
+                </div>
+                
+                <hr class="feedback-item-divider">
+
+                <div class="feedback-buttons-container">
+                    <button class="push-button feedback-good-btn"></button>
+                    <button class="push-button feedback-bad-btn"></button>
+                </div>
+                
+                <div class="feedback-form-container hidden">
+                    <div class="feedback-form-row">
+                        <input type="text" class="feedback-input">
+                        <button class="push-button feedback-submit-btn"></button>
+                    </div>
+                </div>
+            </li>
+        </template>
     </div>
 
     <div class="content settingsview hidden">
