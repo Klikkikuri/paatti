@@ -36,6 +36,8 @@ const hrefSign = async (url) => {
 
     await model.events.removeEventListener(modelEvents.enabledChange, controller.dispatchConversion);
 
+    let isPopupOpen = false;
+
     const updateEnvironmentClass = async () => {
         try {
             const env = await model.read.getEnvironment();
@@ -62,7 +64,7 @@ const hrefSign = async (url) => {
                 const enabled = data.hasOwnProperty("visualHighlightEnabled")
                     ? !!data.visualHighlightEnabled
                     : debugVisuals;
-                if (enabled) {
+                if (enabled || isPopupOpen) {
                     documentElement.classList.add("klikkikuri-visual-hilight");
                 } else {
                     documentElement.classList.remove("klikkikuri-visual-hilight");
@@ -79,15 +81,7 @@ const hrefSign = async (url) => {
     // Listen for storage changes to toggle the class dynamically
     browser.storage.onChanged.addListener((changes, areaName) => {
         if (areaName === "local" && changes.visualHighlightEnabled) {
-            const enabled = changes.visualHighlightEnabled.newValue;
-            const documentElement = document.documentElement;
-            if (documentElement) {
-                if (enabled) {
-                    documentElement.classList.add("klikkikuri-visual-hilight");
-                } else {
-                    documentElement.classList.remove("klikkikuri-visual-hilight");
-                }
-            }
+            updateVisualHighlightClass();
         }
     });
 
@@ -96,7 +90,6 @@ const hrefSign = async (url) => {
 
     const rahti = await rahtiStorage;
     const newsSite = window.location.hostname;
-    let isPopupOpen = false;
 
     ////////////////////////////////////////////////////////////////////////////
     // Initialization.
@@ -115,11 +108,13 @@ const hrefSign = async (url) => {
             log("Popup connection established, adding visible class.");
             document.body.classList.add("paatti-popup-visible");
             isPopupOpen = true;
+            updateVisualHighlightClass();
 
             port.onDisconnect.addListener(() => {
                 log("Popup connection closed, removing visible class.");
                 document.body.classList.remove("paatti-popup-visible");
                 isPopupOpen = false;
+                updateVisualHighlightClass();
             });
         }
     });
