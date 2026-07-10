@@ -1,11 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Klikkikuri Paatti",
-  "description": "__MSG_extensionDescription__",
+  "description": "Klikkikuri on selainlaajennus, joka tunnistaa ja oikaisee sensaatiohakuiset uutisotsikot kun selailet verkkolehtien uutissivuja.",
   "version": "0.0.1",
   "browser_specific_settings": {
     "gecko": {
-      "id": "klikkikuri@protonmail.com"
+      "id": "klikkikuri@protonmail.com",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     }
   },
   "homepage_url": "https://github.com/klikkikuri",
@@ -77,7 +80,6 @@
     "scripts": [
       "src/background.js"
     ],
-    "service_worker": "src/background.js",
     "type": "module"
   },
   "host_permissions": [
