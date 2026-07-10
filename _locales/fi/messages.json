@@ -90,7 +90,7 @@
   },
 
   "feedbackviewRateTitleConvertedTitleLabel": {
-    "message": "Klikkikurin muunnos:",
+    "message": "Oikaistu:",
     "description": "Text marking the converted title on the feedback view converted title rating section"
   },
 
@@ -105,7 +105,7 @@
   },
 
   "feedbackviewNoConversions": {
-    "message": "Ei muunnettuja otsikoita tällä sivulla.",
+    "message": "Ei oikaistuja otsikoita tällä sivulla.",
     "description": "Message displayed when there are no converted clickbaits on the current page"
   },
 

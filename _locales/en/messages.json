@@ -81,32 +81,32 @@
 
   "feedbackviewRateTitleHeader": {
     "message": "Rate this clickbait",
-    "description": "Title of the feedback view converted title rating section"
+    "description": "Title of the feedback view aligned headline rating section"
   },
 
   "feedbackviewRateTitleOriginalTitleLabel": {
     "message": "Original:",
-    "description": "Text marking the original title on the feedback view converted title rating section"
+    "description": "Text marking the original headline on the feedback view aligned headline rating section"
   },
 
   "feedbackviewRateTitleConvertedTitleLabel": {
-    "message": "Klikkikuri conversion:",
-    "description": "Text marking the converted title on the feedback view converted title rating section"
+    "message": "Aligned:",
+    "description": "Text marking the aligned headline on the feedback view aligned headline rating section"
   },
 
   "feedbackviewRateTitleConversionIsGood": {
     "message": "Is good",
-    "description": "Text on the button in the feedback view converted title rating that the user can rate the conversion as 'good'"
+    "description": "Text on the button in the feedback view aligned headline rating that the user can rate the alignment as 'good'"
   },
 
   "feedbackviewRateTitleConversionIsBad": {
     "message": "Is no good",
-    "description": "Text on the button in the feedback view converted title rating that the user can rate the conversion as 'bad'"
+    "description": "Text on the button in the feedback view aligned headline rating that the user can rate the alignment as 'bad'"
   },
 
   "feedbackviewNoConversions": {
-    "message": "No converted headlines on this page.",
-    "description": "Message displayed when there are no converted clickbaits on the current page"
+    "message": "No aligned headlines on this page.",
+    "description": "Message displayed when there are no aligned clickbaits on the current page"
   },
 
   "feedbackviewCurrentPageLabel": {
@@ -238,11 +238,11 @@
     "description": "Title of the settings view clickbait level section"
   },
   "clickbaitLevel0Title": {
-    "message": "All titles",
+    "message": "All headlines",
     "description": "Title for clickbait level 0 (Not Clickbait at all)"
   },
   "clickbaitLevel0Desc": {
-    "message": "Process all titles, including neutral ones",
+    "message": "Process all headlines, including neutral ones",
     "description": "Description for clickbait level 0 (Not Clickbait at all)"
   },
   "clickbaitLevel1Title": {
@@ -250,7 +250,7 @@
     "description": "Title for clickbait level 1 (Slightly Clickbaity)"
   },
   "clickbaitLevel1Desc": {
-    "message": "Also process slightly clickbaity titles",
+    "message": "Also process slightly clickbaity headlines",
     "description": "Description for clickbait level 1 (Slightly Clickbaity)"
   },
   "clickbaitLevel2Title": {
@@ -258,7 +258,7 @@
     "description": "Title for clickbait level 2 (Moderately Clickbaity)"
   },
   "clickbaitLevel2Desc": {
-    "message": "Process moderately clickbaity titles",
+    "message": "Process moderately clickbaity headlines",
     "description": "Description for clickbait level 2 (Moderately Clickbaity)"
   },
   "clickbaitLevel3Title": {
@@ -266,7 +266,7 @@
     "description": "Title for clickbait level 3 (Very Clickbaity)"
   },
   "clickbaitLevel3Desc": {
-    "message": "Process highly sensational titles",
+    "message": "Process highly sensational headlines",
     "description": "Description for clickbait level 3 (Very Clickbaity)"
   },
   "clickbaitLevel4Title": {
@@ -274,7 +274,7 @@
     "description": "Title for clickbait level 4 (Extremely Clickbaity)"
   },
   "clickbaitLevel4Desc": {
-    "message": "Process only misleading titles",
+    "message": "Process only misleading headlines",
     "description": "Description for clickbait level 4 (Extremely Clickbaity)"
   }
 }
