@@ -1,0 +1,17 @@
+{
+  "addons": {
+    "klikkikuri@protonmail.com": {
+      "updates": [
+        {
+          "version": "0.0.1",
+          "update_link": "https://github.com/Klikkikuri/paatti/releases/download/v0.0.1/klikkikuri-0.0.1.xpi",
+          "applications": {
+            "gecko": {
+              "strict_min_version": "152.0"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
