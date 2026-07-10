@@ -20,25 +20,25 @@ async function scheduleAlarm(minutes) {
 /**
  * Handle alarm settings changes.
  */
-browser().storage.onChanged.addListener((changes, area) => {
+browser().storage.onChanged.addListener(async (changes, area) => {
     if (area === 'local' && changes.userPreferences) {
         const oldVal = changes.userPreferences.oldValue || {};
         const newVal = changes.userPreferences.newValue || {};
         if (newVal.refreshIntervalMinutes !== oldVal.refreshIntervalMinutes) {
             log(`Refresh interval changed from ${oldVal.refreshIntervalMinutes} to ${newVal.refreshIntervalMinutes}`);
-            scheduleAlarm(newVal.refreshIntervalMinutes || 20);
+            await scheduleAlarm(newVal.refreshIntervalMinutes || 20);
         }
         if (newVal.clickbaitLevel !== oldVal.clickbaitLevel || newVal.enabled !== oldVal.enabled) {
             log("Clickbait level or extension status changed, notifying active tab");
-            browser().tabs.query({ active: true, currentWindow: true }).then(tabs => {
+            try {
+                const tabs = await browser().tabs.query({ active: true, currentWindow: true });
                 if (tabs[0] && tabs[0].id) {
-                    browser().tabs.sendMessage(tabs[0].id, { command: "convertClickbaits" }).catch(err => {
-                        // ignore error if tab doesn't have listener
-                    });
+                    await browser().tabs.sendMessage(tabs[0].id, { command: "convertClickbaits" });
                 }
-            }).catch(err => {
-                log("Error querying active tab:", err);
-            });
+            } catch (err) {
+                // ignore error if tab doesn't have listener
+                log("Tab message send failed (likely no listener):", err);
+            }
         }
     }
 });
@@ -71,9 +71,7 @@ browser().runtime.onInstalled.addListener(async () => {
     const config = await getConfig();
     const intervalMinutes = config.refreshIntervalMinutes || 30;
 
-    scheduleAlarm(intervalMinutes);
-
-    setInterval(fetchRahtiData, intervalMinutes * 60 * 1000);
+    await scheduleAlarm(intervalMinutes);
 });
 
 // Handle periodic alarm to fetch Rahti data
