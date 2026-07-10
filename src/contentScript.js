@@ -26,7 +26,7 @@ const hrefSign = async (url) => {
     ////////////////////////////////////////////////////////////////////////////
     // Import modules.
     const browser = (chrome || browser);
-    const { model: model, modelEvents: modelEvents } = await import(browser.runtime.getURL("src/model.js"));
+    const { model: model, modelEvents: modelEvents, klikkikuriStatus: klikkikuriStatus } = await import(browser.runtime.getURL("src/model.js"));
     const { controller } = await import(browser.runtime.getURL("src/controller.js"));
     const { getLogger, debounce } = await import(browser.runtime.getURL("src/utils.js"));
 
@@ -36,9 +36,62 @@ const hrefSign = async (url) => {
 
     const log = getLogger("content_script");
 
-    // Remove the event from content script, as Chrome cries when it tries to
-    // access browser.tabs sending conversion message.
     await model.events.removeEventListener(modelEvents.enabledChange, controller.dispatchConversion);
+
+    const updateEnvironmentClass = async () => {
+        try {
+            const env = await model.read.getEnvironment();
+            const documentElement = document.documentElement;
+            if (documentElement) {
+                for (const className of Array.from(documentElement.classList)) {
+                    if (className.startsWith("klikkikuri-env-")) {
+                        documentElement.classList.remove(className);
+                    }
+                }
+                documentElement.classList.add(`klikkikuri-env-${env}`);
+            }
+        } catch (e) {
+            log("Failed to update environment class", e);
+        }
+    };
+
+    const updateVisualHighlightClass = async () => {
+        try {
+            const data = await browser.storage.local.get("visualHighlightEnabled");
+            const documentElement = document.documentElement;
+            if (documentElement) {
+                const debugVisuals = await model.read.isDebugVisualsEnabled();
+                const enabled = data.hasOwnProperty("visualHighlightEnabled")
+                    ? !!data.visualHighlightEnabled
+                    : debugVisuals;
+                if (enabled) {
+                    documentElement.classList.add("klikkikuri-visual-hilight");
+                } else {
+                    documentElement.classList.remove("klikkikuri-visual-hilight");
+                }
+            }
+        } catch (e) {
+            log("Failed to update visual highlight class", e);
+        }
+    };
+
+    await updateEnvironmentClass();
+    await updateVisualHighlightClass();
+
+    // Listen for storage changes to toggle the class dynamically
+    browser.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === "local" && changes.visualHighlightEnabled) {
+            const enabled = changes.visualHighlightEnabled.newValue;
+            const documentElement = document.documentElement;
+            if (documentElement) {
+                if (enabled) {
+                    documentElement.classList.add("klikkikuri-visual-hilight");
+                } else {
+                    documentElement.classList.remove("klikkikuri-visual-hilight");
+                }
+            }
+        }
+    });
 
     ////////////////////////////////////////////////////////////////////////////
     // Global state.
@@ -64,13 +117,11 @@ const hrefSign = async (url) => {
             log("Popup connection established, adding visible class.");
             document.body.classList.add("paatti-popup-visible");
             isPopupOpen = true;
-            refreshHighlights();
 
             port.onDisconnect.addListener(() => {
                 log("Popup connection closed, removing visible class.");
                 document.body.classList.remove("paatti-popup-visible");
                 isPopupOpen = false;
-                refreshHighlights();
             });
         }
     });
@@ -78,6 +129,8 @@ const hrefSign = async (url) => {
     if (!rahti) {
         log("No Rahti data found, aborting conversion.", rahti);
         return;
+    } else {
+        log("Rahti data loaded, starting conversion procedure.", rahti);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -111,6 +164,8 @@ const hrefSign = async (url) => {
     };
 
     const processSite = async () => {
+        const startTime = performance.now();
+
         // Define the two branches that the conversion procedure can take: 1)
         // Convert clickbaits OR 2) Restore clickbaits (i.e., restore the
         // originals).
@@ -130,9 +185,7 @@ const hrefSign = async (url) => {
             // Replace the title text.
             titleElem.textContent = `${convertedTitle}`;
 
-            if (isPopupOpen || await model.read.isPersistentConvertedHighlight()) {
-                await highlightElemConverted(titleElem);
-            }
+            await highlightElemConverted(titleElem);
 
             return `Converted title from '${originalTitle}' to '${convertedTitle}' for link: ${link}`;
         };
@@ -145,7 +198,7 @@ const hrefSign = async (url) => {
                 return `No action needed, ${link} has not been processed yet`;
             }
 
-            titleElem.textContent = originalTitle
+            titleElem.textContent = originalTitle;
             await highlightElemOriginal(titleElem);
 
             // This needs to be removed so that the next
@@ -156,60 +209,105 @@ const hrefSign = async (url) => {
         };
 
         const processingPromises = await processTitleElems(async (rule, container, link) => {
-            // TODO: Might not work on javascript generated links (onclick etc.)
-            const href = link.getAttribute('href');
-            if (!href) {
-                log("Skipping link without href:", link);
-            }
-            const urlHash = await hrefSign(href);
-            // Store for debugging
-            link.dataset.klikkikuriUrlHash = urlHash;
+            let what = klikkikuriStatus.SKIPPED;
+            let why = "";
+            let how = "";
 
-            const rahtiEntry = await rahti.get(urlHash)
-            // These are string values explaining what was done and if, how
-            // and why the title item was processed.
-            let what = "skipped";
-            let why, how;
-            if (rahtiEntry) {
-                const titleElem = rule.title ? container.querySelector(rule.title) : link;
-                if (titleElem) {
-                    const isSiteEnabled = await model.read.isEnabled(newsSite);
-                    const shouldConvert = await model.read.shouldConvert(rahtiEntry.clickbaitiness);
-                    if (isSiteEnabled && shouldConvert) {
-                        what = "converted";
-                        why = rahtiEntry.clickbaitiness;
-                        how = await convertClickbait(titleElem, link, { rahtiEntry });
-                    } else {
-                        what = "restored";
-                        why = !isSiteEnabled 
-                            ? `Conversion not enabled for site '${newsSite}'` 
-                            : `Clickbaitiness level for '${rahtiEntry.clickbaitiness}' is below threshold`;
-                        how = await restoreClickbait(titleElem, link);
-                    }
-                } else {
-                    why = `No title element found for rule title selector '${rule.title}' in link '${link}'`;
+            try {
+                // TODO: Might not work on javascript generated links (onclick etc.)
+                const href = link.getAttribute('href');
+                if (!href) {
+                    why = "Link has no href attribute";
+                    container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
+                    container.dataset.klikkikuriReason = why;
+                    return { what, why, how };
                 }
-            } else {
-                why = `No Rahti entry found for hash '${urlHash}' of link '${link}'`;
+
+                const urlSign = await hrefSign(href);
+                container.dataset.klikkikuriUrlSign = urlSign;
+
+                const rahtiEntry = await rahti.get(urlSign);
+                const titleElem = rule.title ? container.querySelector(rule.title) : link;
+
+                if (!rahtiEntry) {
+                    why = `No Rahti entry found for hash '${urlSign}'`;
+                    container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
+                    container.dataset.klikkikuriReason = why;
+                    return { what, why, how };
+                }
+
+                titleElem.dataset.klikkikuriClickbaitLevel = rahtiEntry.clickbaitiness;
+
+                if (!titleElem) {
+                    why = `No title element found for selector '${rule.title}'`;
+                    container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
+                    container.dataset.klikkikuriReason = why;
+                    return { what, why, how };
+                }
+
+                titleElem.dataset.klikkikuriOriginalTitle = titleElem.textContent;
+                titleElem.dataset.klikkikuriConvertedTitle = rahtiEntry.title;
+
+                const isSiteEnabled = await model.read.isEnabled(newsSite);
+                const shouldConvert = await model.read.shouldConvert(rahtiEntry.clickbaitiness);
+
+                if (isSiteEnabled && shouldConvert) {
+                    what = "converted";
+                    why = rahtiEntry.clickbaitiness;
+                    how = await convertClickbait(titleElem, link, { rahtiEntry });
+
+                    container.dataset.klikkikuriStatus = klikkikuriStatus.CONVERTED;
+                    container.dataset.klikkikuriReason = `Converted (Clickbaitiness level: ${why})`;
+
+                    log(`[Match] Converted clickbait: "${titleElem.dataset.klikkikuriOriginalTitle}" -> "${rahtiEntry.title}" (level: ${why}) at ${href}`);
+                } else {
+                    what = "restored";
+                    why = !isSiteEnabled 
+                        ? `Conversion not enabled for site '${newsSite}'` 
+                        : `Clickbaitiness level for '${rahtiEntry.clickbaitiness}' is below threshold`;
+                    how = await restoreClickbait(titleElem, link);
+
+                    container.dataset.klikkikuriStatus = klikkikuriStatus.RESTORED;
+                    container.dataset.klikkikuriReason = why;
+
+                    log(`[Match] Restored clickbait: "${titleElem.textContent}" (reason: ${why}) at ${href}`);
+                }
+            } catch (err) {
+                what = "error";
+                why = err.message || String(err);
+                how = err.stack || "";
+                log(`Error processing title element: ${why}`, err, link);
+
+                container.dataset.klikkikuriStatus = klikkikuriStatus.ERROR;
+                container.dataset.klikkikuriReason = why;
             }
+
             // Return classifications for gathering stats.
             return { what, why, how };
         });
 
-        // TODO: Handle any errors found in promises.
-        const reasons = (await Promise.allSettled(processingPromises))
-            .reduce(
-                (acc, x) => {
-                    if (!x.value) {
-                        throw x;
-                    }
+        // Safely collect results without crashing the entire flow if a promise rejects
+        const settledPromises = await Promise.allSettled(processingPromises);
+        const reasons = [];
+        const errors = [];
 
-                    acc.push(x.value);
+        for (const result of settledPromises) {
+            if (result.status === "fulfilled") {
+                reasons.push(result.value);
+            } else {
+                errors.push(result.reason);
+                log("Promise rejected during conversion execution:", result.reason);
+            }
+        }
 
-                    return acc;
-                },
-                [],
-            );
+        const duration = performance.now() - startTime;
+        const stats = reasons.reduce(
+            (acc, item) => {
+                acc[item.what] = (acc[item.what] || 0) + 1;
+                return acc;
+            },
+            { converted: 0, restored: 0, skipped: 0, error: errors.length }
+        );
 
         await controller.updateStatistics({
             hostname: newsSite,
@@ -227,21 +325,22 @@ const hrefSign = async (url) => {
             },
         });
 
-        log(`Finished conversion procedure with ${reasons.length} processed items: `, reasons);
-    };
+        log(`Finished conversion procedure on '${newsSite}' in ${duration.toFixed(2)}ms. Stats:`, stats);
 
-    const refreshHighlights = async () => await Promise.allSettled(
-        await processTitleElems(async (rule, container, link) => {
-            const titleElem = rule.title ? container.querySelector(rule.title) : link;
-            if (titleElem && titleElem.dataset.klikkikuriConvertedTitle === titleElem.textContent) {
-                if (isPopupOpen || await model.read.isPersistentConvertedHighlight()) {
-                    await highlightElemConverted(titleElem);
+        const matchesCount = stats.converted + stats.restored;
+        if (matchesCount > 0) {
+            log(`[Debug] Page processed with ${matchesCount} matching clickbait entries.`);
+        } else {
+            const siteRules = await model.read.getSiteRules(newsSite);
+            if (siteRules) {
+                if (reasons.length === 0) {
+                    log(`[Debug] Page '${newsSite}' is supported, but no elements matching site rules were found on the page.`);
                 } else {
-                    await highlightElemOriginal(titleElem);
+                    log(`[Debug] Page '${newsSite}' is supported, but none of the ${reasons.length} processed elements matched clickbait entries.`);
                 }
             }
-        })
-    );
+        }
+    };
 
     const debouncedProcessSite = debounce(async () => {
         try {
@@ -288,6 +387,36 @@ const hrefSign = async (url) => {
                 break;
         }
     });
+
+    // Expose developer debug helpers on window object.
+    window.__klikkikuri_debug = {
+        newsSite,
+        processSite,
+        rahti,
+        getStats: () => {
+            const elements = document.querySelectorAll("[data-klikkikuri-status]");
+            const stats = { converted: 0, restored: 0, skipped: 0, error: 0 };
+            elements.forEach(el => {
+                const status = el.dataset.klikkikuriStatus;
+                if (status in stats) {
+                    stats[status]++;
+                }
+            });
+            return stats;
+        },
+        getElements: (statusFilter) => {
+            const elements = Array.from(document.querySelectorAll("[data-klikkikuri-status]"));
+            return elements
+                .filter(el => !statusFilter || el.dataset.klikkikuriStatus === statusFilter)
+                .map(el => ({
+                    element: el,
+                    status: el.dataset.klikkikuriStatus,
+                    reason: el.dataset.klikkikuriReason,
+                    hash: el.dataset.klikkikuriUrlSign || el.dataset.klikkikuriUrlHash || el.querySelector("a")?.dataset.klikkikuriUrlSign || el.querySelector("a")?.dataset.klikkikuriUrlHash,
+                    text: el.textContent
+                }));
+        }
+    };
 
     // Run the conversion on reload.
     try {

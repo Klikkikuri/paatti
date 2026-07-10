@@ -95,7 +95,7 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
         browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelTotal");
 };
 
-const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlSelected, isDevelopmentEnv, testTitleDataUrl, config }) => {
+const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlSelected, isDevelopmentEnv, testTitleDataUrl, config, visualHighlightEnabled }) => {
 
     // First reset the view, as rahti-fetch alarm will keep re-adding enabled
     // sites to their list in UI.
@@ -141,7 +141,7 @@ const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlS
         // Set devmode debug visuals checkbox state
         const debugVisualsCheckbox = document.getElementById("devmode-setDebugVisuals");
         if (debugVisualsCheckbox) {
-            debugVisualsCheckbox.checked = config.debugVisualsEnabled || false;
+            debugVisualsCheckbox.checked = !!visualHighlightEnabled;
         }
 
         // Set devmode title data url selection options and active value
@@ -214,6 +214,10 @@ const refresh = async () => {
     const isDevelopmentEnv = await model.read.isDevelopmentEnv();
     const testTitleDataUrl = await model.read.getTestTitleDataUrl();
     const config = await getConfig();
+    const storageData = await browser().storage.local.get("visualHighlightEnabled");
+    const visualHighlightEnabled = storageData.hasOwnProperty("visualHighlightEnabled")
+        ? !!storageData.visualHighlightEnabled
+        : config.debugVisualsEnabled;
 
 
     // Update the power button to imply site status.
@@ -281,6 +285,7 @@ const refresh = async () => {
         isDevelopmentEnv,
         testTitleDataUrl,
         config,
+        visualHighlightEnabled,
     });
     _refreshContentView({
         site: pageHostname,
@@ -327,6 +332,27 @@ const refresh = async () => {
     document.querySelector("label[for=copy-link-signatures]").title =
         browser().i18n.getMessage("devmodeCopyLinkSignaturesTitle");
 
+    const settingsviewDevmodeTitle = document.getElementById("settingsview-devmode-title");
+    if (settingsviewDevmodeTitle) {
+        settingsviewDevmodeTitle.textContent = browser().i18n.getMessage("settingsviewDevmodeTitle");
+    }
+    const devmodeDumpLinkHashLabel = document.getElementById("devmode-dumpLinkHash-label");
+    if (devmodeDumpLinkHashLabel) {
+        devmodeDumpLinkHashLabel.textContent = browser().i18n.getMessage("devmodeDumpLinkHashLabel");
+    }
+    const devmodeDumpLinkHashBtn = document.getElementById("devmode-dumpLinkHash");
+    if (devmodeDumpLinkHashBtn) {
+        devmodeDumpLinkHashBtn.textContent = browser().i18n.getMessage("devmodeDumpLinkHashBtn");
+    }
+    const devmodeSetDebugVisualsLabel = document.getElementById("devmode-setDebugVisuals-label");
+    if (devmodeSetDebugVisualsLabel) {
+        devmodeSetDebugVisualsLabel.textContent = browser().i18n.getMessage("devmodeSetDebugVisualsLabel");
+    }
+    const devmodeSetTitleDataUrlLabel = document.getElementById("devmode-setTitleDataUrl-label");
+    if (devmodeSetTitleDataUrlLabel) {
+        devmodeSetTitleDataUrlLabel.textContent = browser().i18n.getMessage("devmodeSetTitleDataUrlLabel");
+    }
+
 
     ///////////////////////////////////////////////////////////////////////////////
     // Register handlers for visual changes like moving between views.
@@ -368,8 +394,7 @@ const refresh = async () => {
     const setDebugVisualsCheckbox = document.getElementById("devmode-setDebugVisuals");
     if (setDebugVisualsCheckbox) {
         setDebugVisualsCheckbox.addEventListener("change", async (e) => {
-            await model.write.setDebugVisualsEnabled(e.target.checked);
-            await model.write.setPersistentConvertedHighlight(e.target.checked);
+            await browser().storage.local.set({ visualHighlightEnabled: e.target.checked });
         });
     }
     const setTitleDataUrlSelect = document.getElementById("devmode-setTitleDataUrl");
@@ -452,7 +477,7 @@ const __devmodeEnable = async () => {
 const __devmodeCopyLinkSignatures = async (e) => {
     e.target.disabled = true;
 
-    const eventTargetLabel = document.querySelector(`label[for=${e.target.id}]`);
+    const eventTargetLabel = document.querySelector(`label[for=${e.target.id}]`) || e.target;
     const textContentTemp = eventTargetLabel.textContent;
 
     // Show that processing has started.

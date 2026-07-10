@@ -21,6 +21,18 @@ class Storage {
     }
 
     /**
+     * Reloads namespace data and index from browser storage.
+     * Keeps in-memory cache in sync with updates done in other extension contexts.
+     */
+    async reload() {
+        const stored = await browser().storage.local.get([this.ns, this.indexKey]);
+        this.data = stored[this.ns] || {};
+        this.index = stored[this.indexKey]
+            ? new Set(stored[this.indexKey])
+            : new Set(Object.keys(this.data));
+    }
+
+    /**
      * Sets a key-value pair in storage and updates the index.
      * @param {string} key - The key to set.
      * @param {*} value - The value to store.
@@ -72,8 +84,6 @@ class Storage {
             [this.indexKey]: Array.from(this.index)
         });
     }
-
-    
 
     /**
      * Removes multiple keys from storage at once.

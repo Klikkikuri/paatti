@@ -7,8 +7,16 @@ const log = getLogger("model");
 
 const modelEvents = {
     statisticsChange: "statisticsChange",
-    enabledChange: "enabledChange"
+    enabledChange: "enabledChange",
+    environmentChange: "environmentChange"
 };
+
+const klikkikuriStatus = Object.freeze({
+    CONVERTED: "converted",
+    RESTORED: "restored",
+    SKIPPED: "skipped",
+    ERROR: "error"
+});
 
 /**
  * Matches a hostname against an origin pattern, following browser permission matching logic.
@@ -128,23 +136,11 @@ const model = (() => {
 
                 userPreferences.environment = value;
                 await browser().storage.local.set({ userPreferences });
+
+                events.dispatchEvent(modelEvents.environmentChange);
             },
 
-            setPersistentConvertedHighlight: async (value) => {
-                const data = await browser().storage.local.get("userPreferences");
-                const userPreferences = data.userPreferences || {};
-                const env = userPreferences.environment || "free";
-                if (!userPreferences.environmentConfigs) {
-                    userPreferences.environmentConfigs = {};
-                }
-                if (!userPreferences.environmentConfigs[env]) {
-                    userPreferences.environmentConfigs[env] = {};
-                }
-                const oldVal = userPreferences.environmentConfigs[env].persistentConvertedHighlight;
-                log(`Setting persistentConvertedHighlight for environment ${env} from ${oldVal} to ${value}`);
-                userPreferences.environmentConfigs[env].persistentConvertedHighlight = value;
-                await browser().storage.local.set({ userPreferences });
-            },
+
 
             setDebugVisualsEnabled: async (value) => {
                 const data = await browser().storage.local.get("userPreferences");
@@ -217,6 +213,11 @@ const model = (() => {
                 return config.activeEnv === "development";
             },
 
+            getEnvironment: async () => {
+                const config = await getConfig();
+                return config.activeEnv;
+            },
+
             isEnabled: async (hostname) => {
                 const config = await getConfig();
                 const isGloballyEnabled = config.enabled;
@@ -235,9 +236,11 @@ const model = (() => {
                 return false;
             },
 
-            isPersistentConvertedHighlight: async () => {
+
+
+            isDebugVisualsEnabled: async () => {
                 const config = await getConfig();
-                return config["persistentConvertedHighlight"];
+                return config["debugVisualsEnabled"];
             },
 
             getSitesEnabled: async () => {
@@ -317,4 +320,4 @@ const model = (() => {
     };
 })();
 
-export { model, modelEvents };
+export { model, modelEvents, klikkikuriStatus };

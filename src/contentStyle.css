@@ -1,22 +1,65 @@
-.converted-title::before {
-    content: url(../icons/klikkikuri-48.png);
+/**
+ * Development mode outlines and badges for debugging
+ */
+html.klikkikuri-visual-hilight *[data-klikkikuri-status] {
+    position: relative !important;
+}
 
+html.klikkikuri-visual-hilight *[data-klikkikuri-status]::after {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    padding: 3px 8px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    color: #ffffff !important;
+    border-radius: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 2147483647;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    pointer-events: none;
+    line-height: 1.2;
     display: inline-block;
-    transform-origin: bottom center;
-    animation: bob 3s ease-in-out infinite;
 }
 
-@keyframes bob {
-    0%, 100% {
-        transform: translateY(0px) rotate(-3deg);
-    }
-    50% {
-        transform: translateY(-8px) rotate(3deg);
-    }
+html.klikkikuri-visual-hilight *[data-klikkikuri-status="skipped"] {
+    outline: 1.5px dashed #78909c !important;
+    background-color: rgba(120, 144, 156, 0.03) !important;
+}
+html.klikkikuri-visual-hilight *[data-klikkikuri-status="skipped"]::after {
+    content: "⏭️ Skipped";
+    background-color: #78909c !important;
 }
 
-body.paatti-popup-visible *[data-klikkikuri-original-title] {
-    text-decoration: blink !important;
-    color: red !important;
-    border: 1px solid red !important;
+html.klikkikuri-visual-hilight *[data-klikkikuri-status="converted"] {
+    outline: 2px solid #2e7d32 !important;
+    background-color: rgba(46, 125, 50, 0.04) !important;
+    box-shadow: 0 0 8px rgba(46, 125, 50, 0.2) !important;
 }
+html.klikkikuri-visual-hilight *[data-klikkikuri-status="converted"]::after {
+    content: "✅ Converted";
+    background-color: #2e7d32 !important;
+}
+
+html.klikkikuri-visual-hilight *[data-klikkikuri-status="restored"] {
+    outline: 2px solid #ef6c00 !important;
+    background-color: rgba(239, 108, 0, 0.04) !important;
+    box-shadow: 0 0 8px rgba(239, 108, 0, 0.2) !important;
+}
+html.klikkikuri-visual-hilight *[data-klikkikuri-status="restored"]::after {
+    content: "🔄 Restored";
+    background-color: #ef6c00 !important;
+}
+
+html.klikkikuri-visual-hilight *[data-klikkikuri-status="error"] {
+    outline: 2px solid #c62828 !important;
+    background-color: rgba(198, 40, 40, 0.06) !important;
+    box-shadow: 0 0 10px rgba(198, 40, 40, 0.3) !important;
+}
+html.klikkikuri-visual-hilight *[data-klikkikuri-status="error"]::after {
+    content: "⚠️ Error";
+    background-color: #c62828 !important;
+}
+

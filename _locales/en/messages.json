@@ -143,6 +143,26 @@
     "message": "Copy link signatures on this site to your clipboard",
     "description": "Title-attribute of the hidden devmode link signature copying button"
   },
+  "devmodeSetDebugVisualsLabel": {
+    "message": "Visual Highlight",
+    "description": "Label of the devmode debug visuals toggle"
+  },
+  "devmodeDumpLinkHashLabel": {
+    "message": "Salt Signatures",
+    "description": "Label for the devmode dump signatures section"
+  },
+  "devmodeDumpLinkHashBtn": {
+    "message": "Copy to Clipboard",
+    "description": "Button text to copy link signatures to clipboard"
+  },
+  "devmodeSetTitleDataUrlLabel": {
+    "message": "Data Source URL",
+    "description": "Label for the devmode title data source URL select dropdown"
+  },
+  "settingsviewDevmodeTitle": {
+    "message": "Developer Settings",
+    "description": "Title of the settings view developer mode section"
+  },
   "settingsviewDatabaseStatusTitle": {
     "message": "Database Update",
     "description": "Title of the settings view database status section"

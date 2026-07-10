@@ -349,15 +349,6 @@ async function saveSettings() {
         userPreferences.refreshIntervalMinutes = refreshIntervalMinutes;
         userPreferences.debugVisualsEnabled = debugVisualsEnabled;
         
-        // Keep persistentConvertedHighlight in sync with debugVisualsEnabled for development mode
-        if (!userPreferences.environmentConfigs) {
-            userPreferences.environmentConfigs = {};
-        }
-        if (!userPreferences.environmentConfigs[environment]) {
-            userPreferences.environmentConfigs[environment] = {};
-        }
-        userPreferences.environmentConfigs[environment].persistentConvertedHighlight = debugVisualsEnabled;
-        
         await browser().storage.local.set({ userPreferences });
         await browser().storage.sync.set({ userSiteOverrides: siteOverrides });
         

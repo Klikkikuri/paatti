@@ -86,25 +86,32 @@
         <ul id="sites-enabled-ul">
         </ul>
 
-        <h2 id="settingsview-database-status-title" class="settingsview-header" style="margin-top: 15px;"></h2>
-        <hr>
-        <div class="database-status-section" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px; align-items: center; width: 100%;">
-            <p id="database-last-updated" style="font-size: 0.9em; color: #555; text-align: center; margin: 0;"></p>
-            <button id="update-database-btn" class="push-button" style="width: 100%; box-sizing: border-box; margin: 0; padding: 6px 12px; min-height: 32px; font-size: 0.9em;"></button>
-        </div>
-
-        <div class="devmode hidden">
+        <div class="devmode hidden" style="margin-top: 15px;">
             <h2 id="settingsview-devmode-title" class="settingsview-header"></h2>
             <hr>
-            <input class="hidden" id="devmode-dumpLinkHash" type="button" value="no-op">
-            <label class="push-button" for="devmode-dumpLinkHash">dumpLinkHash</label>
-
-            <input class="hidden" id="devmode-setDebugVisuals" type="checkbox">
-            <label class="push-button" for="devmode-setDebugVisuals">setDebugVisuals</label>
-
-            <select class="push-button" title="setTitleDataUrl" id="devmode-setTitleDataUrl">
-                <option value="https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json">Klikkikuri Rahti</option>
-            </select>
+            <ul style="list-style: none; padding: 0; margin-top: 10px; display: flex; flex-direction: column; gap: 12px; width: 100%;">
+                <li style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <span id="settingsview-database-status-title" style="font-weight: bold;"></span>
+                        <button id="update-database-btn" class="push-button" style="margin: 0; padding: 6px 12px; min-height: 32px; font-size: 0.9em;"></button>
+                    </div>
+                    <p id="database-last-updated" style="font-size: 0.85em; color: #666; text-align: left; margin: 0;"></p>
+                </li>
+                <li style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <span id="devmode-dumpLinkHash-label" style="font-weight: bold;"></span>
+                    <button id="devmode-dumpLinkHash" class="push-button" style="margin: 0; padding: 6px 12px; min-height: 32px; font-size: 0.9em;"></button>
+                </li>
+                <li style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <label for="devmode-setDebugVisuals" id="devmode-setDebugVisuals-label" style="font-weight: bold; cursor: pointer;"></label>
+                    <input class="toggle" id="devmode-setDebugVisuals" type="checkbox">
+                </li>
+                <li style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <label for="devmode-setTitleDataUrl" id="devmode-setTitleDataUrl-label" style="font-weight: bold;"></label>
+                    <select class="push-button" id="devmode-setTitleDataUrl" style="margin: 0; padding: 4px 8px; min-height: 32px; font-size: 0.9em; box-sizing: border-box; width: auto; max-width: 50%;">
+                        <option value="https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json">Klikkikuri Rahti</option>
+                    </select>
+                </li>
+            </ul>
         </div>
     </div>
 

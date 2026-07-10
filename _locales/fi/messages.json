@@ -143,6 +143,26 @@
     "message": "Kopioi tämän sivun linkkien suolaukset leikepöydällesi",
     "description": "Title-attribute of the hidden devmode link signature copying button"
   },
+  "devmodeSetDebugVisualsLabel": {
+    "message": "Visuaalinen korostus",
+    "description": "Label of the devmode debug visuals toggle"
+  },
+  "devmodeDumpLinkHashLabel": {
+    "message": "Linkkien suolaukset",
+    "description": "Label for the devmode dump signatures section"
+  },
+  "devmodeDumpLinkHashBtn": {
+    "message": "Kopioi leikepöydälle",
+    "description": "Button text to copy link signatures to clipboard"
+  },
+  "devmodeSetTitleDataUrlLabel": {
+    "message": "Tietolähteen osoite",
+    "description": "Label for the devmode title data source URL select dropdown"
+  },
+  "settingsviewDevmodeTitle": {
+    "message": "Kehittäjäasetukset",
+    "description": "Title of the settings view developer mode section"
+  },
   "settingsviewDatabaseStatusTitle": {
     "message": "Tietokannan tila",
     "description": "Title of the settings view database status section"

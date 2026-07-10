@@ -137,16 +137,6 @@ body {
     height: 20px;
 }
 
-.devmode {
-    width: 20px;
-}
-
-.devmode:hover {
-    background: #3399df;
-    outline: 2px solid #53b9ff;
-    border-radius: 6px;
-}
-
 /* Show that navi buttons cannot be untoggled */
 #navi input:checked+.push-button:hover {
     cursor: not-allowed;
