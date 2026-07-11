@@ -22,7 +22,9 @@ package:
 	  ./src/ \
 	  ./suola/build/js.wasm \
 	  ./suola/build/suola.js \
-	  ./suola/build/wasm_exec.js
+	  ./suola/build/wasm_exec.js \
+	  ./LICENSE.md \
+	  ./LISENSSI.md
 
 test-data:
 	mkdir -p "$(TEST_DATA_BUILD_DIR)"
