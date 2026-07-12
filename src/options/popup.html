@@ -27,6 +27,23 @@
         <hr>
         <div id="homeview-content" style="display: flex; flex-direction: column; gap: 10px; width: 100%; text-align: center; justify-content: center; align-items: center; height: 100%;">
             <p id="homeview-status-text" style="font-weight: bold; font-size: 1.1em; margin: 0;"></p>
+            <div id="gauge-container" class="hidden" style="margin: 10px 0; display: flex; flex-direction: column; align-items: center;">
+                <svg viewBox="0 0 100 60" width="160" height="100">
+                    <defs>
+                        <linearGradient id="gauge-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#4caf50" />
+                            <stop offset="35%" stop-color="#8bc34a" />
+                            <stop offset="65%" stop-color="#ffc107" />
+                            <stop offset="100%" stop-color="#f44336" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M 15 50 A 35 35 0 0 1 85 50" fill="none" stroke="#e0e0e0" stroke-width="8" stroke-linecap="round"/>
+                    <path id="gauge-fill" d="M 15 50 A 35 35 0 0 1 85 50" fill="none" stroke="url(#gauge-grad)" stroke-width="8" stroke-linecap="round"
+                          stroke-dasharray="110" stroke-dashoffset="110" style="transition: stroke-dashoffset 1.0s cubic-bezier(0.4, 0, 0.2, 1);"/>
+                    <text id="gauge-text" x="50" y="45" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#222">0%</text>
+                    <text id="gauge-label" x="50" y="58" font-family="Arial, sans-serif" font-size="5.5" font-weight="bold" text-anchor="middle" fill="#666"></text>
+                </svg>
+            </div>
             <p id="homeview-desc-text" style="color: #666; font-size: 0.9em; margin: 0; line-height: 1.4;"></p>
         </div>
     </div>

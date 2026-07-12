@@ -52,6 +52,7 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
     // Reset possible error state.
     siteHeaderElem.classList.remove("error");
 
+    const statsTableData = (data || {}).groupedByClickbaitiness || {};
     let statusTextKey = "";
 
     // Show appropriate elements and handle errors.
@@ -87,7 +88,67 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
         homeviewDescText.textContent = browser().i18n.getMessage("homeviewDescription");
     }
 
-    const statsTableData =  (data || {}).groupedByClickbaitiness || {};
+    const gaugeContainer = document.getElementById("gauge-container");
+    if (isSiteEnabled === undefined || !isSiteEnabled || Object.keys(data || {}).length === 0) {
+        if (gaugeContainer) gaugeContainer.classList.add("hidden");
+    } else {
+        if (gaugeContainer) gaugeContainer.classList.remove("hidden");
+
+        const levelValues = {
+            "Not Clickbait at all": 0,
+            "Slightly Clickbaity": 1,
+            "Moderately Clickbaity": 2,
+            "Very Clickbaity": 3,
+            "Extremely Clickbaity": 4
+        };
+
+        let totalCount = 0;
+        let totalValue = 0;
+        for (const [key, count] of Object.entries(statsTableData)) {
+            const val = levelValues[key];
+            if (val !== undefined) {
+                totalCount += count;
+                totalValue += count * val;
+            }
+        }
+
+        const averageValue = totalCount > 0 ? (totalValue / totalCount) : 0;
+        const percentage = Math.round((averageValue / 4) * 100);
+
+        // Update gauge meter fill
+        const gaugeFill = document.getElementById("gauge-fill");
+        if (gaugeFill) {
+            const offset = 110 - (percentage / 100) * 110;
+            gaugeFill.style.strokeDashoffset = `${offset}px`;
+            gaugeFill.setAttribute("stroke-dashoffset", offset);
+        }
+
+        // Update gauge text
+        const gaugeText = document.getElementById("gauge-text");
+        if (gaugeText) {
+            gaugeText.textContent = `${percentage}%`;
+        }
+
+        // Determine descriptive label
+        let labelI18nKey = "";
+        if (averageValue < 0.5) {
+            labelI18nKey = "clickbaitinessLabel Not Clickbait at all";
+        } else if (averageValue < 1.5) {
+            labelI18nKey = "clickbaitinessLabel Slightly Clickbaity";
+        } else if (averageValue < 2.5) {
+            labelI18nKey = "clickbaitinessLabel Moderately Clickbaity";
+        } else if (averageValue < 3.5) {
+            labelI18nKey = "clickbaitinessLabel Very Clickbaity";
+        } else {
+            labelI18nKey = "clickbaitinessLabel Extremely Clickbaity";
+        }
+
+        const gaugeLabel = document.getElementById("gauge-label");
+        if (gaugeLabel) {
+            gaugeLabel.textContent = browser().i18n.getMessage(labelI18nKey);
+        }
+    }
+
     // Display total amount of found titles on this page.
     const table = document.getElementById("statistics-grouped-by-clickbaitiness");
     table.querySelector("tfoot td").textContent = Object.values(statsTableData).reduce((acc, x) => acc + x, 0);
@@ -836,6 +897,7 @@ document.addEventListener("DOMContentLoaded", view.handleDomContentLoaded);
 ///////////////////////////////////////////////////////////////////////////////
 
 model.events.addEventListener(modelEvents.enabledChange, view.refresh);
+model.events.addEventListener(modelEvents.statisticsChange, view.refresh);
 // TODO: Maybe refactor this to abstract local storage away (or don't, wtfgas).
 browser().storage.local.onChanged.addListener(view.refresh);
 
