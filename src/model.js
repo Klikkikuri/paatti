@@ -18,6 +18,14 @@ const klikkikuriStatus = Object.freeze({
     ERROR: "error"
 });
 
+/**
+ * Levels of clickbaitiness, from least to most clickbaity.
+ * 
+ * Keep thease in sync with meri clickbaitiness levels in the backend.
+ * 
+ * @enum {string}
+ * @readonly
+ */
 class Clickbaitiness {
     static LEVEL_NONE = "Not Clickbait at all";
     static LEVEL_LOW = "Slightly Clickbaity";
