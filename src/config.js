@@ -77,10 +77,10 @@ const DEFAULT_CONFIG = {
             "rules": [
                 {
                     // Each individual news card is marked with this test id
-                    "container": "[data-testid='article-teaser-component']",
+                    "container": "[data-testid='article-teaser-component'], [data-testid='teaser-content']",
 
                     // The specific link that contains the article ID
-                    "link": "a[data-testid^='teaser-link-']",
+                    "link": "a[data-testid^='teaser-link-'], a[data-testid='internal-link']",
 
                     // The headline is an h2 inside the content area
                     "title": "h2"
@@ -93,6 +93,15 @@ const DEFAULT_CONFIG = {
 
                     // The headline element to be replaced
                     "title": "span.typography-title-4"
+                },
+                { // Ticker list (newsfeed) at the top of frontpage
+                    "container": "li[data-testid='newsfeed-list-item']",
+
+                    // The link containing the unique numeric ID
+                    "link": "a[data-testid='internal-link']",
+
+                    // The headline element to be replaced
+                    "title": "span[data-testid='newsfeed-item-title']"
                 },
                 {
                     // Targets the specific list item component
