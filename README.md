@@ -1,90 +1,266 @@
-# ⛵ Paatti
+# ⛵ Klikkikuri Paatti
 
 Sail smoothly through the clickbait-infested web using this browser extension.
 
+- [⛵ Klikkikuri Paatti](#-klikkikuri-paatti)
+  - [Features](#features)
+    - [Supported Sites](#supported-sites)
+  - [Screenshots](#screenshots)
+    - [Comparison of replaced headlines on a news site](#comparison-of-replaced-headlines-on-a-news-site)
+    - [Feedback and correction interface](#feedback-and-correction-interface)
+    - [Normal operation](#normal-operation)
+  - [Installing](#installing)
+    - [Installing the pre-packaged browser extension](#installing-the-pre-packaged-browser-extension)
+    - [Building from Source](#building-from-source)
+      - [Requirements](#requirements)
+      - [Configuration](#configuration)
+    - [Temporary Development Loading](#temporary-development-loading)
+      - [For Firefox (Manual)](#for-firefox-manual)
+      - [Via web-ext run](#via-web-ext-run)
+  - [Development](#development)
+    - [Local Test Data \& Hashed Signatures](#local-test-data--hashed-signatures)
+      - [Step 1: Dump URL Signatures from the Page](#step-1-dump-url-signatures-from-the-page)
+      - [Step 2: Save the Signatures](#step-2-save-the-signatures)
+      - [Step 3: Generate the Mock Database](#step-3-generate-the-mock-database)
+      - [Step 4: Serve the Database Locally](#step-4-serve-the-database-locally)
+      - [Step 5: Switch Extension Environment \& Grant Permissions](#step-5-switch-extension-environment--grant-permissions)
+  - [Architecture](#architecture)
+  - [License](#license)
+
+
+## Features
+
+- Automatically **replaces sensational, misleading, or clickbaity headlines** with neutral, factual alternatives on supported sites.
+- Uses the Go-compiled WebAssembly module [`suola`](https://github.com/Klikkikuri/suola) to normalize and hash (SHA-256) URLs locally. Because replaced **headlines are looked up from a cached local database**, your **browsing history is never transmitted** to external servers.
+- You can request support for additional sites by submitting a GitHub issue.
+- Monitors page updates using a **debounced DOM `MutationObserver`** to instantly process and replace new headlines as the user scrolls or navigates.
+- Integrates a **feature-rich popup interface** containing:
+  - A visual **clickbait density gauge** showing the overall clickbait percentage of the current page.
+  - Headline statistics grouped by **severity levels** (from "Not Clickbait at all" to "Extremely Clickbaity").
+  - An interactive **feedback loop** displaying all converted headlines, allowing users to vote on alignment quality and submit suggestions.
+- Provides **granular controls & options** via the settings page:
+  - Toggle switches for per-site filtering.
+  - A clickbait severity **threshold slider** to customize replacement sensitivity.
+- Equipped with **developer and diagnostic utilities** to debug and trace behavior:
+  - Appends semantic **`data-klikkikuri-*` DOM attributes** (status, reason, signatures) directly to elements.
+  - Overlay outlines and status badges under a **visual debug mode**.
+  - A **signature dumper** to copy normalized URL signatures of all page links to the clipboard.
+  - A local mock database generator [`generate_test_data.py`](./generate_test_data.py) and a custom Python HTTP server [`httpserver.py`](./httpserver.py) for offline testing.
+
+### Supported Sites
+
+- **Supported news websites**:
+  - *Helsingin Sanomat* (`hs.fi`)
+  - *Iltalehti* (`iltalehti.fi`)
+  - *Yle* (`yle.fi`)
+  - *MTV Uutiset* (`mtvuutiset.fi`)
+  - *Äänekosken Kaupunkisanomat* (`aksa.fi`)
+
+## Screenshots
+
+### Comparison of replaced headlines on a news site
+
+Showing the clickbait replacement feature in action on different levels of clickbaitiness replacement, with visual debug mode enabled to highlight replaced headlines and their severity levels:
+
+![Clickbait replacement in moderate levels](./docs/screenshots/v002-levels-moderate.png)
+![Clickbait replacement only in extreme levels](./docs/screenshots/v002-levels-extreme.png)
+
+### Feedback and correction interface
+
+Sending feedback on replaced headlines via the inline popup interface:
+
+![Feedback interface](./docs/screenshots/v002-feedback-popup.png)
+
+### Normal operation
+
+Extension in normal action, staying out of the way unless specifically invoked by the user. By design, sport news are excluded from the replacement feature, even if they are written in a sensational style.
+
+![Extension replaced headlines on a news site](./docs/screenshots/v002-in-action.png)
+
 ## Installing
 
-### Building
-Requirements
+### Installing the pre-packaged browser extension
+
+To install the pre-packaged browser extension:
+
+1. **Download the Release**: Go to the [Klikkikuri Paatti Releases](https://github.com/Klikkikuri/paatti/releases) page on GitHub and download the latest `klikkikuri` `.xpi` file.
+2. **Open Firefox Add-ons**: Navigate to `about:addons` in the Firefox address bar (or open the Menu and select **Add-ons and Themes**).
+3. **Install from File**:
+   - Click the gear icon (⚙️) next to "Manage Your Add-ons" at the top-right.
+   - Select **Install Add-on From File...** from the dropdown menu.
+   - Choose the downloaded `klikkikuri` `.xpi` file.
+   - Confirm the installation when prompted.
+
+> [!NOTE]
+> Firefox requires extensions to be digitally signed for permanent installation in standard releases. If you are installing an unsigned release build:
+> - **Temporarily load it** via `about:debugging` (see below under [Temporary Development Loading](#temporary-development-loading)).
+> - **Or install permanently** by using Firefox Developer Edition, Nightly, or ESR, and setting `xpinstall.signatures.required` to `false` in `about:config`.
+
+### Building from Source
+
+#### Requirements
+
 - `make`
 - `bash`
 - Python 3
 - Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2)
 - Access to Klikkikuri GitHub repositories:
-    - `suola`
+    - [`suola`](https://github.com/Klikkikuri/suola)
 
 Fetch and build dependencies and package for distribution with `make`.
 
-### Configuration
-Search for string `CONFIG` from the JavaScript files for various points where configuration values can be edited (yes really, edit the source code and then re-package).
+#### Configuration
 
-## How do I get it on my browser
+Search for the string `CONFIG` in the JavaScript source files for various configuration values that can be customized before compiling and packaging the extension.
 
-### For Firefox
+### Temporary Development Loading
 
-Enter `about:debugging` to the address bar and from the This Firefox -tab select any file at project root (e.g., `manifest.json`) from Load Temporary Add-on...
+#### For Firefox (Manual)
 
-#### web-ext run
+1. Open Firefox and enter `about:debugging` in the address bar.
+2. Select **This Firefox** from the sidebar.
+3. Click **Load Temporary Add-on...**.
+4. Choose [`manifest.json`](./manifest.json) from the project root.
 
-Alternatively, you can use [`web-ext`](https://extensionworkshop.com/documentation/develop/getting-started-with-web-ext/) to run the extension:
+#### Via web-ext run
+
+Alternatively, you can run the extension in a clean development profile using [`web-ext`](https://extensionworkshop.com/documentation/develop/getting-started-with-web-ext/):
 ```sh
 web-ext run --devtools [--firefox firefox-devedition] [--url http://www.yle.fi/uutiset]
 ```
 
+
 ## Development
 
-### Test data
-Start the local HTTP server to serve test data:
+### Local Test Data & Hashed Signatures
+
+For local development and testing, you can generate and serve mock clickbait databases using the two Python helper scripts ([`generate_test_data.py`](./generate_test_data.py) and [`httpserver.py`](./httpserver.py)).
+
+#### Step 1: Dump URL Signatures from the Page
+
+1. Enable **Developer Mode** in the extension (e.g. by toggle-clicking the developer mode controls or enabling it in the Options UI).
+2. Visit the news website you want to test (e.g. `iltalehti.fi`).
+3. Open the Paatti popup and click the salt emoji (🧂) or the **Dump link hashes** button. This normalizes and copies the SHA-256 signature hashes of all news article links currently loaded on the page to your clipboard.
+
+#### Step 2: Save the Signatures
+Paste the copied signatures directly into `test_data/signatures.txt`.
+
+#### Step 3: Generate the Mock Database
+
+Run [`generate_test_data.py`](./generate_test_data.py) to parse the signatures and generate a mock clickbait database (`test_data/data.json`):
+
+```sh
+python3 generate_test_data.py
+```
+
+#### Step 4: Serve the Database Locally
+Start the mock HTTP server [`httpserver.py`](./httpserver.py):
 ```sh
 python3 httpserver.py
 ```
+This serves your mock data at `http://localhost:3000/data.json` with appropriate CORS and cache headers.
 
-### Visual Studio Code debugging
-You can also use Visual Studio Code to debug the extension. See the `.vscode/launch.json` for configuration.
+#### Step 5: Switch Extension Environment & Grant Permissions
+1. Open the extension options page in Firefox (`about:addons` > Click the three dots next to **Klikkikuri Paatti** > Select **Preferences** / **Options**).
+2. Change the environment setting to **Development**.
+3. **Grant Localhost Permissions**: Because `localhost` is listed as an optional permission, Firefox blocks requests to it by default. Navigate to the **Permissions** tab of the Klikkikuri Paatti extension page in `about:addons`, and toggle the permission switch for **Access your data for localhost** (or `http://localhost/*`) to **On**.
+4. The extension will now be able to periodically fetch database updates from your local test server.
+
 
 ## Architecture
 ```mermaid
 ---
-title: Architecture v0.2
+title: Architecture v0.0.2
 ---
 classDiagram
     direction TB
-    class LocalStore{
+    class BrowserStorage {
+        +local
+        +sync
     }
-    class Config{
-        bool enabled
+    class Storage {
+        +string ns
+        +reload()
+        +get(key)
+        +store(entries)
+        +remove(keys)
     }
-    class Statistics{
+    class Model {
+        +events
+        +read
+        +write
+        +setEnabled(value)
+        +setStatistics(value)
     }
-    class Popup{
+    class Config {
+        +enabled
+        +activeEnv
+        +siteConfigs
+        +environmentConfigs
+        +getConfig()
     }
-    class SettingsView{
+    class Controller {
+        +setEnabled(value)
+        +setSiteEnabled(value)
+        +dispatchConversion()
+        +updateStatistics()
     }
-    class MainContentView{
+    class BackgroundScript {
+        +updateDynamicContentScripts()
+        +fetchRahtiData()
+        +alarms
     }
-    class FeedbackView{
+    class ContentScript {
+        +MutationObserver
+        +processSite()
+        +convertClickbaits()
+        +getConversions()
     }
-    class ContentScripts{
+    class SuolaWasm {
+        +rules_yaml
+        +hashUrl(url)
+        +initSuola()
+    }
+    class Popup {
+        +HomeView
+        +StatsView
+        +FeedbackView
+        +SettingsView
+    }
+    class OptionsUI {
+        +MasterSwitch
+        +ThresholdSlider
+        +SiteConfigs
+        +DevSettings
+    }
+    class FeedbackServer {
+        +submitFeedback()
+    }
+    class TitleDataServer {
+        +data_json
     }
 
-    LocalStore *-- Config
-
-    Config *-- Statistics
-
-    ContentScripts <-- Config
-    ContentScripts --> Statistics
-    ContentScripts --() Meri : Fetch conversions
-
-    Popup *-- MainContentView
-    Popup *-- SettingsView
-    Popup *-- FeedbackView
-
-    MainContentView <-- Statistics
-    MainContentView <--> Config
-
-    SettingsView <--> Config
-
-    FeedbackView --() FeedbackServer : Submit feedback
+    Storage --> BrowserStorage : Reads/writes namespaced keys
+    Model --> BrowserStorage : Reads/writes preferences & stats
+    Config --> BrowserStorage : Merges defaults & overrides
+    
+    Controller <--> Model : Orchestrates state updates
+    
+    BackgroundScript --> Config : Reads enabled origins
+    BackgroundScript --> Storage : Stores fetched data
+    BackgroundScript ..> TitleDataServer : Fetch updates
+    
+    ContentScript --> Storage : Reads cached conversions
+    ContentScript --> SuolaWasm : Normalizes & hashes URLs
+    ContentScript --> Controller : Updates active page stats
+    
+    Popup *-- Controller : Dispatches user preferences
+    Popup *-- Model : Reads config & stats
+    Popup --> ContentScript : Port connection (highlights)
+    Popup ..> FeedbackServer : Submits user corrections
+    
+    OptionsUI *-- Controller : Dispatches settings changes
+    OptionsUI *-- Model : Reads config & stats
 ```
 
 ## License
