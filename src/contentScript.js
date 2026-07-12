@@ -169,6 +169,7 @@ const hrefSign = async (url) => {
             let what = klikkikuriStatus.SKIPPED;
             let why = "";
             let how = "";
+            let clickbaitiness = null;
 
             try {
                 // TODO: Might not work on javascript generated links (onclick etc.)
@@ -177,7 +178,7 @@ const hrefSign = async (url) => {
                     why = "Link has no href attribute";
                     container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
                     container.dataset.klikkikuriReason = why;
-                    return { what, why, how };
+                    return { what, why, how, clickbaitiness };
                 }
 
                 const urlSign = await hrefSign(href);
@@ -192,16 +193,17 @@ const hrefSign = async (url) => {
                     why = `No Rahti entry found for hash '${urlSign}'`;
                     container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
                     container.dataset.klikkikuriReason = why;
-                    return { what, why, how };
+                    return { what, why, how, clickbaitiness };
                 }
 
+                clickbaitiness = rahtiEntry.clickbaitiness;
                 titleElem.dataset.klikkikuriClickbaitLevel = rahtiEntry.clickbaitiness;
 
                 if (!titleElem) {
                     why = `No title element found for selector '${rule.title}'`;
                     container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
                     container.dataset.klikkikuriReason = why;
-                    return { what, why, how };
+                    return { what, why, how, clickbaitiness };
                 }
 
                 if (!titleElem.dataset.klikkikuriOriginalTitle) {
@@ -240,7 +242,7 @@ const hrefSign = async (url) => {
             }
 
             // Return classifications for gathering stats.
-            return { what, why, how };
+            return { what, why, how, clickbaitiness };
         });
 
         // Safely collect results without crashing the entire flow if a promise rejects
@@ -270,8 +272,8 @@ const hrefSign = async (url) => {
             hostname: newsSite,
             siteStats: {
                 groupedByClickbaitiness: reasons
-                    .map((x) => x.what === "converted" ? x.why : null)
-                    .filter((x) => x !== null)
+                    .map((x) => x.clickbaitiness)
+                    .filter((x) => x !== null && x !== undefined)
                     .reduce((acc, x) => {
                         if (acc[x] === undefined) {
                             acc[x] = 0;

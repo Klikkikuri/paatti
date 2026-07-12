@@ -22,10 +22,12 @@ const getSitesEnabledItemId = (host) => `${host}-enabled`;
 const _viewSelectors = {
     "main":
         { "content": ".main-content", "naviItem": "#navi-main" },
+    "stats":
+        { "content": ".statsview", "naviItem": "#navi-stats" },
     "feedback":
         { "content": ".feedbackview", "naviItem": "#navi-feedback" },
     "settings":
-        { "content": ".settingsview", "naviItem": "#navi-feedback" },
+        { "content": ".settingsview", "naviItem": "#navi-settings" },
 };
 
 const _setCheckBoxReadonly = (checkbox, makeReadonly) => {
@@ -50,22 +52,39 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
     // Reset possible error state.
     siteHeaderElem.classList.remove("error");
 
+    let statusTextKey = "";
+
     // Show appropriate elements and handle errors.
     if (isSiteEnabled === undefined) {
         siteHeaderElem.classList.add("error");
-
         siteHeaderElem.textContent = browser().i18n.getMessage("siteTitleProcessingNotSupported");
+        statusTextKey = "homeviewStatusNotSupported";
     } else if (!isSiteEnabled) {
         siteHeaderElem.classList.add("error");
-
         siteHeaderElem.textContent = browser().i18n.getMessage("siteTitleProcessingDisabled");
+        statusTextKey = "homeviewStatusDisabled";
     } else if (Object.keys(data || {}).length === 0) {
         siteHeaderElem.classList.add("error");
-
         siteHeaderElem.textContent = browser().i18n.getMessage("statsErrorUserFixInstructions");
+        statusTextKey = "statsErrorUserFixInstructions";
     } else {
         // Display that this site is supported and processed.
         document.getElementById("site-host").textContent = site;
+        statusTextKey = "homeviewStatusActive";
+    }
+
+    // Populate Home/Status view elements
+    const homeviewHeader = document.getElementById("homeview-header");
+    if (homeviewHeader) {
+        homeviewHeader.textContent = browser().i18n.getMessage("homeviewHeader");
+    }
+    const homeviewStatusText = document.getElementById("homeview-status-text");
+    if (homeviewStatusText) {
+        homeviewStatusText.textContent = browser().i18n.getMessage(statusTextKey);
+    }
+    const homeviewDescText = document.getElementById("homeview-desc-text");
+    if (homeviewDescText) {
+        homeviewDescText.textContent = browser().i18n.getMessage("homeviewDescription");
     }
 
     const statsTableData =  (data || {}).groupedByClickbaitiness || {};
@@ -584,6 +603,8 @@ const refresh = async () => {
 
     document.getElementById("navi-main").parentElement.title =
         browser().i18n.getMessage("navigationMainLabel");
+    document.getElementById("navi-stats").parentElement.title =
+        browser().i18n.getMessage("navigationStatsLabel");
     document.getElementById("navi-feedback").parentElement.title =
         browser().i18n.getMessage("navigationFeedbackLabel");
     document.getElementById("navi-settings").parentElement.title =
@@ -665,6 +686,8 @@ const handleDomContentLoaded = async (e) => {
 
     ///////////////////////////////////////////////////////////////////////////////
     // Register handlers for visual changes like moving between views.
+    document.querySelector(".open-statsview")
+        .addEventListener("click", () => view.showView("stats"));
     document.querySelector(".open-feedbackview")
         .addEventListener("click", () => view.showView("feedback"));
     document.querySelector(".open-settingsview")

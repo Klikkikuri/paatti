@@ -23,6 +23,16 @@
 
     <!-- CONTENT -->
     <div class="content main-content">
+        <h2 id="homeview-header"></h2>
+        <hr>
+        <div id="homeview-content" style="display: flex; flex-direction: column; gap: 10px; width: 100%; text-align: center; justify-content: center; align-items: center; height: 100%;">
+            <p id="homeview-status-text" style="font-weight: bold; font-size: 1.1em; margin: 0;"></p>
+            <p id="homeview-desc-text" style="color: #666; font-size: 0.9em; margin: 0; line-height: 1.4;"></p>
+        </div>
+    </div>
+
+    <!-- STATS VIEW -->
+    <div class="content statsview hidden">
         <h2 id="statsview-header"></h2>
         <hr>
         <div id="statsview">
@@ -153,6 +163,13 @@
             <input id="navi-main" class="open-home hidden" type="radio" name="navi" checked>
             <label for="navi-main" class="push-button">
                 <img class="icon" src="images/icon_home.svg" height="15" alt="Home icon">
+            </label>
+        </div>
+
+        <div>
+            <input id="navi-stats" class="open-statsview hidden" type="radio" name="navi">
+            <label for="navi-stats" class="push-button">
+                <img class="icon" src="images/icon_chart.svg" height="15" alt="Stats icon">
             </label>
         </div>
 

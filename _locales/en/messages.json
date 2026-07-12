@@ -160,6 +160,36 @@
     "description": "Label of the navigation menu main view button"
   },
 
+  "navigationStatsLabel": {
+    "message": "Statistics",
+    "description": "Label of the navigation menu statistics view button"
+  },
+
+  "homeviewHeader": {
+    "message": "Status",
+    "description": "Title of the home/status view"
+  },
+
+  "homeviewStatusActive": {
+    "message": "Paatti is active on this site.",
+    "description": "Text saying that Paatti is active on the current site"
+  },
+
+  "homeviewStatusDisabled": {
+    "message": "Paatti is disabled on this site.",
+    "description": "Text saying that Paatti is disabled on the current site"
+  },
+
+  "homeviewStatusNotSupported": {
+    "message": "This site is not supported by Paatti.",
+    "description": "Text saying that the site is not supported"
+  },
+
+  "homeviewDescription": {
+    "message": "Paatti monitors and refactors clickbait headlines to improve your reading experience. Use the navigation buttons below to view statistics, submit feedback, or change settings.",
+    "description": "General description text on the home tab"
+  },
+
   "navigationFeedbackLabel": {
     "message": "Feedback and rating",
     "description": "Label of the navigation menu feedback view button"

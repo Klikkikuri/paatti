@@ -160,6 +160,36 @@
     "description": "Label of the navigation menu main view button"
   },
 
+  "navigationStatsLabel": {
+    "message": "Tilastot",
+    "description": "Label of the navigation menu statistics view button"
+  },
+
+  "homeviewHeader": {
+    "message": "Tila",
+    "description": "Title of the home/status view"
+  },
+
+  "homeviewStatusActive": {
+    "message": "Paatti on aktiivisena tällä sivustolla.",
+    "description": "Text saying that Paatti is active on the current site"
+  },
+
+  "homeviewStatusDisabled": {
+    "message": "Paatti on pois käytöstä tällä sivustolla.",
+    "description": "Text saying that Paatti is disabled on the current site"
+  },
+
+  "homeviewStatusNotSupported": {
+    "message": "Paatti ei tue tätä sivustoa.",
+    "description": "Text saying that the site is not supported"
+  },
+
+  "homeviewDescription": {
+    "message": "Paatti tarkkailee ja suoristaa klikkiotsikoita parantaakseen lukukokemustasi. Käytä alla olevia painikkeita nähdäksesi tilastoja, antaaksesi palautetta tai muuttaaksesi asetuksia.",
+    "description": "General description text on the home tab"
+  },
+
   "navigationFeedbackLabel": {
     "message": "Palaute ja arviointi",
     "description": "Label of the navigation menu feedback view button"
