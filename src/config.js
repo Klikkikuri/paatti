@@ -79,44 +79,28 @@ const DEFAULT_CONFIG = {
                     // Section: Main news cards and teaser components on the frontpage and category pages
                     // Each individual news card is marked with this test id
                     "container": "[data-testid='article-teaser-component'], [data-testid='teaser-content']",
-
-                    // The specific link that contains the article ID
                     "link": "a[data-testid^='teaser-link-'], a[data-testid='internal-link']",
-
-                    // The headline is an h2 inside the content area
                     "title": "h2"
                 },
                 {
                     // Section: Horizontal/vertical news ticker widget at the top of the frontpage (e.g. data-testid='news-ticker-component')
                     // Ticker list at the top of frontpage
                     "container": "ul[data-testid='news-ticker-component'] li",
-
-                    // The link containing the unique numeric ID (9280388)
                     "link": "a[data-testid='internal-link']",
-
-                    // The headline element to be replaced (accepts flexible typography classes)
                     "title": "span[class*='typography-title']"
                 },
                 {
                     // Section: MTV Uutiset Nyt (newsfeed) feed carousel at the top of the frontpage
                     // Ticker list (newsfeed) at the top of frontpage
                     "container": "li[data-testid='newsfeed-list-item']",
-
-                    // The link containing the unique numeric ID
                     "link": "a[data-testid='internal-link']",
-
-                    // The headline element to be replaced
                     "title": "span[data-testid='newsfeed-item-title'], span[class*='typography-subtitle']"
                 },
                 {
                     // Section: Standard news lists/feeds with media elements on category/topic pages
                     // Targets the specific list item component
                     "container": "ul li[data-testid='article-media-list-item-component']",
-
-                    // Finds the link containing the unique article ID
                     "link": "a[data-testid='internal-link']",
-
-                    // In this list format, the title is an H3
                     "title": "h3"
                 },
                 {
