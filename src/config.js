@@ -76,6 +76,7 @@ const DEFAULT_CONFIG = {
             // MTV uutiset uses react
             "rules": [
                 {
+                    // Section: Main news cards and teaser components on the frontpage and category pages
                     // Each individual news card is marked with this test id
                     "container": "[data-testid='article-teaser-component'], [data-testid='teaser-content']",
 
@@ -85,25 +86,29 @@ const DEFAULT_CONFIG = {
                     // The headline is an h2 inside the content area
                     "title": "h2"
                 },
-                { // Ticker list at the top of frontpage
+                {
+                    // Ticker list at the top of frontpage
                     "container": "ul[data-testid='news-ticker-component'] li",
 
                     // The link containing the unique numeric ID (9280388)
                     "link": "a[data-testid='internal-link']",
 
-                    // The headline element to be replaced
-                    "title": "span.typography-title-4"
+                    // The headline element to be replaced (accepts flexible typography classes)
+                    "title": "span[class*='typography-title'], span"
                 },
-                { // Ticker list (newsfeed) at the top of frontpage
+                {
+                    // Section: MTV Uutiset Nyt (newsfeed) feed carousel at the top of the frontpage
+                    // Ticker list (newsfeed) at the top of frontpage
                     "container": "li[data-testid='newsfeed-list-item']",
 
                     // The link containing the unique numeric ID
                     "link": "a[data-testid='internal-link']",
 
                     // The headline element to be replaced
-                    "title": "span[data-testid='newsfeed-item-title']"
+                    "title": "span[data-testid='newsfeed-item-title'], span[class*='typography-subtitle'], span"
                 },
                 {
+                    // Section: Standard news lists/feeds with media elements on category/topic pages
                     // Targets the specific list item component
                     "container": "ul li[data-testid='article-media-list-item-component']",
 
@@ -112,6 +117,25 @@ const DEFAULT_CONFIG = {
 
                     // In this list format, the title is an H3
                     "title": "h3"
+                },
+                {
+                    // Section: "Tuoreimmat aiheesta" (Latest on topic) list shown under article pages
+                    "container": "ul[data-testid='unordered-list'] li",
+                    "link": "a[data-testid='internal-link']",
+                    "title": "h3"
+                },
+                {
+                    // Section: "Lisää aiheesta" (More on topic) suggestions links under/in articles
+                    // The link element is the container itself
+                    "container": "[data-testid='article-suggestions-component'] a[data-testid='internal-link']",
+                    "link": "self",
+                    "title": "self"
+                },
+                {
+                    // Section: Video gallery/carousel list items shown on video section pages (e.g. "Enemmän katsottavaa")
+                    "container": "[data-testid='video-gallery-list-item-view-component']",
+                    "link": "a[data-testid='internal-link']",
+                    "title": "h2[data-testid='video-title']"
                 }
             ]
         },
