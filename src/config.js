@@ -201,24 +201,34 @@ const DEFAULT_CONFIG = {
             "enabled": true,
             "rules": [
                 {
-                    "container": "div.border-b.border-gray",
-                    "link": "a[href]",
-                    "title": "h3.robotoc a"
+                    // Front page big cards
+                    "container": "div.container div.block > div.w-full > div:not(.vaihtuvamainos)",
+                    "link": ":scope > a[href]",
+                    "title": ":scope > h2.entry-title"
                 },
                 {
-                    "container": "div.sivupalkkilistauksetsisalto ul > li",
-                    "link": "a[href]",
+                    // Front page small cards
+                    "container": "div.w-full > div:not(.vaihtuvamainos) h3 > a",
+                    "link": "self",
+                    "title": "self"
+                },
+                {
+                    // Luetuimmat / Uusimmat
+                    "container": "div.sivupalkkilistauksetsisalto ul li > a",
+                    "link": "self",
+                    "title": "self"
+                },
+                {
+                    // "Aiheeseen liittyy"
+                    "container": "div.jp-relatedposts a",
+                    "link": "self",
+                    "title": "self"
+                },
+                {
+                    // Lue seuraavaksi
+                    "container": "li.relevanssi_related_post",
+                    "link": "a",
                     "title": "a"
-                },
-                {
-                    // Käytetään h2:sta ankkurina, koska se on vakain osa uutisrakennetta
-                    container: "h2.entry-title",
-
-                    // Etsitään linkki h2:n sisältä
-                    link: "a",
-
-                    // Otsikko on h2:n sisällä oleva linkki (tai h2 itse)
-                    title: "a, self"
                 }
             ]
         },
