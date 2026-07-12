@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Klikkikuri Paatti",
   "description": "Tunnistaa ja oikaisee sensaatiohakuiset uutisotsikot kun selailet verkkolehtien uutissivuja.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "browser_specific_settings": {
     "gecko": {
       "id": "klikkikuri@protonmail.com",
