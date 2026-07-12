@@ -87,6 +87,7 @@ const DEFAULT_CONFIG = {
                     "title": "h2"
                 },
                 {
+                    // Section: Horizontal/vertical news ticker widget at the top of the frontpage (e.g. data-testid='news-ticker-component')
                     // Ticker list at the top of frontpage
                     "container": "ul[data-testid='news-ticker-component'] li",
 
@@ -94,7 +95,7 @@ const DEFAULT_CONFIG = {
                     "link": "a[data-testid='internal-link']",
 
                     // The headline element to be replaced (accepts flexible typography classes)
-                    "title": "span[class*='typography-title'], span"
+                    "title": "span[class*='typography-title']"
                 },
                 {
                     // Section: MTV Uutiset Nyt (newsfeed) feed carousel at the top of the frontpage
@@ -105,7 +106,7 @@ const DEFAULT_CONFIG = {
                     "link": "a[data-testid='internal-link']",
 
                     // The headline element to be replaced
-                    "title": "span[data-testid='newsfeed-item-title'], span[class*='typography-subtitle'], span"
+                    "title": "span[data-testid='newsfeed-item-title'], span[class*='typography-subtitle']"
                 },
                 {
                     // Section: Standard news lists/feeds with media elements on category/topic pages
