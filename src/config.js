@@ -97,13 +97,6 @@ const DEFAULT_CONFIG = {
                     "title": "span[data-testid='newsfeed-item-title'], span[class*='typography-subtitle']"
                 },
                 {
-                    // Section: Standard news lists/feeds with media elements on category/topic pages
-                    // Targets the specific list item component
-                    "container": "ul li[data-testid='article-media-list-item-component']",
-                    "link": "a[data-testid='internal-link']",
-                    "title": "h3"
-                },
-                {
                     // Section: "Tuoreimmat aiheesta" (Latest on topic) list shown under article pages
                     "container": "ul[data-testid='unordered-list'] li",
                     "link": "a[data-testid='internal-link']",
@@ -124,9 +117,15 @@ const DEFAULT_CONFIG = {
                 },
                 {
                     // In-body links to other articles (e.g. "Lue myös" links)
-                    "container": "a[data-testid='internal-link'][role='link']",
+                    "container": "div.article-text a[data-testid='internal-link'][role='link']",
                     "link": "self",
                     "title": "self"
+                },
+                {
+                    // Uutisvirta -page
+                    "container": "div.segment-uutisvirta section:has(h1) ul > li",
+                    "title": "h2",
+                    "link": "a[data-testid='internal-link'][role='link']"
                 }
             ]
         },
