@@ -265,7 +265,7 @@ input:checked+.push-button:hover {
 
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 h2 {

@@ -39,11 +39,6 @@
     "description": "Message to show in 'main' title element when the visited site is disabled in settings"
   },
 
-  "siteTitleError": {
-    "message": "Karilla!",
-    "description": "Message to show in 'main' title element when there was an unexpected error processing the site"
-  },
-
   "statsErrorUserFixInstructions": {
     "message": "Sivun tietoja ei saatu ladattua. Koeta päivittää ikkuna.",
     "description": "Instruction text to show in the bottom of 'main' view to help user with an unexpected error"
@@ -67,16 +62,6 @@
   "statsviewGroupedByClickbaitinessLabelTotal": {
     "message": "Yhteensä",
     "description": "Title of the stats section clickbaitiness grouping table for the total amount of converted titles"
-  },
-
-  "feedbackviewGeneralFeedbackHeader": {
-    "message": "Avoin palaute kehittäjillet ",
-    "description": "Title of the feedback view general feedback section"
-  },
-
-  "feedbackviewGeneralFeedbackLoading": {
-    "message": "Ladataan...",
-    "description": "Text marking that the embedded generic feedback form is still loading in to the document"
   },
 
   "feedbackviewRateTitleHeader": {
@@ -114,11 +99,6 @@
     "description": "Label indicating that the conversion is for the active page itself"
   },
 
-  "feedbackviewReportIssueBtn": {
-    "message": "Ilmoita ongelmasta",
-    "description": "Label for the button that opens the issue reporting form"
-  },
-
   "feedbackviewReportCommentPlaceholder": {
     "message": "Kuvaile ongelmaa...",
     "description": "Placeholder for comments in reporting form"
@@ -127,10 +107,7 @@
     "message": "Lähetä",
     "description": "Label for submit button in reporting form"
   },
-  "feedbackviewReportCancelBtn": {
-    "message": "Peruuta",
-    "description": "Label for cancel button in reporting form"
-  },
+
   "feedbackviewReportSuccess": {
     "message": "✓ Palaute lähetetty!",
     "description": "Success message after reporting conversion"
@@ -166,13 +143,8 @@
   },
 
   "homeviewHeader": {
-    "message": "Tila",
+    "message": "Klikkikuri",
     "description": "Title of the home/status view"
-  },
-
-  "homeviewStatusActive": {
-    "message": "Paatti on aktiivisena tällä sivustolla.",
-    "description": "Text saying that Paatti is active on the current site"
   },
 
   "homeviewStatusDisabled": {
@@ -185,9 +157,9 @@
     "description": "Text saying that the site is not supported"
   },
 
-  "homeviewDescription": {
-    "message": "Paatti tarkkailee ja suoristaa klikkiotsikoita parantaakseen lukukokemustasi. Käytä alla olevia painikkeita nähdäksesi tilastoja, antaaksesi palautetta tai muuttaaksesi asetuksia.",
-    "description": "General description text on the home tab"
+  "homeviewRequestSiteBtn": {
+    "message": "Pyydä sivutukea",
+    "description": "Label of the button to request site support on GitHub"
   },
 
   "navigationFeedbackLabel": {

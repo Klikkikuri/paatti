@@ -55,23 +55,36 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
     const statsTableData = (data || {}).groupedByClickbaitiness || {};
     let statusTextKey = "";
 
+    const requestSiteBtn = document.getElementById("request-site-btn");
+
     // Show appropriate elements and handle errors.
     if (isSiteEnabled === undefined) {
         siteHeaderElem.classList.add("error");
         siteHeaderElem.textContent = browser().i18n.getMessage("siteTitleProcessingNotSupported");
         statusTextKey = "homeviewStatusNotSupported";
-    } else if (!isSiteEnabled) {
-        siteHeaderElem.classList.add("error");
-        siteHeaderElem.textContent = browser().i18n.getMessage("siteTitleProcessingDisabled");
-        statusTextKey = "homeviewStatusDisabled";
-    } else if (Object.keys(data || {}).length === 0) {
-        siteHeaderElem.classList.add("error");
-        siteHeaderElem.textContent = browser().i18n.getMessage("statsErrorUserFixInstructions");
-        statusTextKey = "statsErrorUserFixInstructions";
+
+        if (requestSiteBtn) {
+            requestSiteBtn.classList.remove("hidden");
+            requestSiteBtn.textContent = browser().i18n.getMessage("homeviewRequestSiteBtn");
+        }
     } else {
-        // Display that this site is supported and processed.
-        document.getElementById("site-host").textContent = site;
-        statusTextKey = "homeviewStatusActive";
+        if (requestSiteBtn) {
+            requestSiteBtn.classList.add("hidden");
+        }
+
+        if (!isSiteEnabled) {
+            siteHeaderElem.classList.add("error");
+            siteHeaderElem.textContent = browser().i18n.getMessage("siteTitleProcessingDisabled");
+            statusTextKey = "homeviewStatusDisabled";
+        } else if (Object.keys(data || {}).length === 0) {
+            siteHeaderElem.classList.add("error");
+            siteHeaderElem.textContent = browser().i18n.getMessage("statsErrorUserFixInstructions");
+            statusTextKey = "statsErrorUserFixInstructions";
+        } else {
+            // Display that this site is supported and processed.
+            document.getElementById("site-host").textContent = site;
+            statusTextKey = "";
+        }
     }
 
     // Populate Home/Status view elements
@@ -81,11 +94,7 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
     }
     const homeviewStatusText = document.getElementById("homeview-status-text");
     if (homeviewStatusText) {
-        homeviewStatusText.textContent = browser().i18n.getMessage(statusTextKey);
-    }
-    const homeviewDescText = document.getElementById("homeview-desc-text");
-    if (homeviewDescText) {
-        homeviewDescText.textContent = browser().i18n.getMessage("homeviewDescription");
+        homeviewStatusText.textContent = statusTextKey ? browser().i18n.getMessage(statusTextKey) : "";
     }
 
     const gaugeContainer = document.getElementById("gauge-container");
@@ -782,6 +791,15 @@ const handleDomContentLoaded = async (e) => {
             browser().runtime.openOptionsPage();
             window.close();
         });
+
+    const requestSiteBtn = document.getElementById("request-site-btn");
+    if (requestSiteBtn) {
+        requestSiteBtn.addEventListener("click", async () => {
+            const hostname = await getCurrentTabHostname();
+            const url = `https://github.com/klikkikuri/paatti/issues?q=is%3Aissue+${encodeURIComponent(hostname)}`;
+            browser().tabs.create({ url });
+        });
+    }
 
     // Register database update button click handler
     const dbUpdateBtn = document.getElementById("update-database-btn");
