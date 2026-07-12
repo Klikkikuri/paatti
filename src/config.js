@@ -21,8 +21,51 @@ const DEFAULT_CONFIG = {
         "www.iltalehti.fi": {
             "name": "Iltalehti",
             "origins": ["https://*.iltalehti.fi/*"],
-            "enabled": false,
+            "enabled": true,
             "rules": [
+                {
+                    // Breaking / Ticker section on front page
+                    "container": "div.newsticker > a.news-ticker-item",
+                    "link": "self",
+                    "title": "span.newsticker-title-text"
+                },
+                {
+                    // Sidebar content
+                    "container": "aside a.article-container",
+                    "link": "self",
+                    "title": "div.title"
+                },
+                {
+                    // card on front page
+                    "container": "main#main-content div.category-list div.card a",
+                    "link": "self",
+                    "title": "div.front-title"
+                },
+                {
+                    // card on topic index page
+                    "container": "main#main-content div.front div.card a",
+                    "link": "self",
+                    "title": "div.front-title"
+                },
+                {
+                    // Article page; inline "Lue myös" links
+                    "container": "article div.article-body div.related-article",
+                    "link": "a",
+                    "title": "a"
+                },
+                {
+                    // Article page: "Lue myös", "Suosittelemme" links
+                    "container": "article div.related-articles-list > a, article div.recommendations > a",
+                    "link": "self",
+                    "title": "div.title"
+                },
+                {
+                    // Luetuimmat card
+                    "container": "article div.card div.article-list > a",
+                    "link": "self",
+                    "title": "div.title"
+                }
+
             ],
         },
         "www.hs.fi": {
