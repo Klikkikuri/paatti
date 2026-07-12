@@ -19,6 +19,15 @@
               "strict_min_version": "152.0"
             }
           }
+        },
+        {
+          "version": "0.0.3",
+          "update_link": "https://github.com/Klikkikuri/paatti/releases/download/v0.0.3/klikkikuri-0.0.3.xpi",
+          "applications": {
+            "gecko": {
+              "strict_min_version": "152.0"
+            }
+          }
         }
       ]
     }
