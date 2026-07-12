@@ -59,3 +59,40 @@ html.klikkikuri-visual-hilight *[data-klikkikuri-status="error"]::after {
     background-color: #c62828 !important;
 }
 
+/* Hover highlight style for corresponding feedback element (high specificity to override status outline) */
+html .klikkikuri-hover-highlight,
+html.klikkikuri-visual-hilight .klikkikuri-hover-highlight,
+html.klikkikuri-visual-hilight *[data-klikkikuri-status].klikkikuri-hover-highlight {
+    outline: 3px solid #00d2ff !important;
+    box-shadow: 0 0 12px rgba(0, 210, 255, 0.8) !important;
+    position: relative !important;
+    z-index: 2147483646 !important;
+    animation: klikkikuri-pulse 1.2s infinite ease-in-out !important;
+}
+
+@keyframes klikkikuri-pulse {
+    0% {
+        outline-color: rgba(0, 210, 255, 0.6);
+        box-shadow: 0 0 8px rgba(0, 210, 255, 0.4);
+    }
+    50% {
+        outline-color: rgba(0, 210, 255, 1);
+        box-shadow: 0 0 18px rgba(0, 210, 255, 0.9);
+    }
+    100% {
+        outline-color: rgba(0, 210, 255, 0.6);
+        box-shadow: 0 0 8px rgba(0, 210, 255, 0.4);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html .klikkikuri-hover-highlight,
+    html.klikkikuri-visual-hilight .klikkikuri-hover-highlight,
+    html.klikkikuri-visual-hilight *[data-klikkikuri-status].klikkikuri-hover-highlight {
+        animation: none !important;
+    }
+}
+
+
+
+

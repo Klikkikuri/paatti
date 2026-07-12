@@ -352,7 +352,15 @@ tbody > tr:nth-of-type(even) > td {
     width: 100%;
     box-sizing: border-box;
     margin-bottom: 8px;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    cursor: pointer;
 }
+
+.feedback-item:hover {
+    background: #f0f7ff;
+    border-color: #b3d7ff;
+}
+
 
 .feedback-orig {
     font-size: 0.85em;

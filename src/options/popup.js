@@ -666,6 +666,26 @@ const refresh = async () => {
 
                 submitBtn.addEventListener("click", triggerSubmit);
 
+                const feedbackItemEl = clone.querySelector(".feedback-item");
+                if (feedbackItemEl && item.highlightId) {
+                    feedbackItemEl.addEventListener("mouseenter", () => {
+                        if (tab) {
+                            browser().tabs.sendMessage(tab.id, {
+                                command: "highlightElement",
+                                highlightId: item.highlightId
+                            }).catch((err) => log("Failed to send highlight message:", err));
+                        }
+                    });
+                    feedbackItemEl.addEventListener("mouseleave", () => {
+                        if (tab) {
+                            browser().tabs.sendMessage(tab.id, {
+                                command: "unhighlightElement",
+                                highlightId: item.highlightId
+                            }).catch((err) => log("Failed to send unhighlight message:", err));
+                        }
+                    });
+                }
+
                 conversionsListEl.appendChild(clone);
             }
         }

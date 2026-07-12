@@ -115,6 +115,12 @@ const hrefSign = async (url) => {
                 document.body.classList.remove("paatti-popup-visible");
                 isPopupOpen = false;
                 updateVisualHighlightClass();
+
+                // Clear any hover highlights when popup is closed
+                const highlightedElements = document.querySelectorAll(".klikkikuri-hover-highlight");
+                for (const el of highlightedElements) {
+                    el.classList.remove("klikkikuri-hover-highlight");
+                }
             });
         }
     });
@@ -355,12 +361,16 @@ const hrefSign = async (url) => {
                 const onlyVisible = message.onlyVisible;
                 const containers = Array.from(document.querySelectorAll("[data-klikkikuri-status='converted']"));
                 const results = [];
+                let counter = 0;
                 for (const container of containers) {
                     if (onlyVisible && !isElementVisibleInViewport(container)) {
                         continue;
                     }
                     const titleElem = container.querySelector("[data-klikkikuri-original-title]") || container;
+                    const highlightId = `kk-hl-${counter++}`;
+                    container.dataset.klikkikuriHighlightId = highlightId;
                     results.push({
+                        highlightId,
                         urlSign: container.dataset.klikkikuriUrlSign || "",
                         originalTitle: titleElem.dataset.klikkikuriOriginalTitle || titleElem.textContent,
                         convertedTitle: titleElem.dataset.klikkikuriConvertedTitle || "",
@@ -375,7 +385,13 @@ const hrefSign = async (url) => {
                         const pageRahtiEntry = await rahti.get(pageSign);
                         if (pageRahtiEntry) {
                             const pageOriginalTitle = document.querySelector("h1")?.textContent?.trim() || document.title;
+                            const h1 = document.querySelector("h1");
+                            const highlightId = `kk-hl-main`;
+                            if (h1) {
+                                h1.dataset.klikkikuriHighlightId = highlightId;
+                            }
                             results.push({
+                                highlightId,
                                 urlSign: pageSign,
                                 originalTitle: pageOriginalTitle,
                                 convertedTitle: pageRahtiEntry.title,
@@ -389,6 +405,27 @@ const hrefSign = async (url) => {
                 }
 
                 return results;
+            }
+            case "highlightElement": {
+                const el = document.querySelector(`[data-klikkikuri-highlight-id="${message.highlightId}"]`);
+                if (el) {
+                    el.classList.add("klikkikuri-hover-highlight");
+                }
+                break;
+            }
+            case "unhighlightElement": {
+                const el = document.querySelector(`[data-klikkikuri-highlight-id="${message.highlightId}"]`);
+                if (el) {
+                    el.classList.remove("klikkikuri-hover-highlight");
+                }
+                break;
+            }
+            case "clearAllHighlights": {
+                const els = document.querySelectorAll(".klikkikuri-hover-highlight");
+                for (const el of els) {
+                    el.classList.remove("klikkikuri-hover-highlight");
+                }
+                break;
             }
             default:
                 log(`Unknown command '${message.command}'`);
