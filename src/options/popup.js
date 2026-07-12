@@ -318,6 +318,8 @@ const showView = (viewName) => {
     document.querySelector(_viewSelectors[viewName]["content"]).classList.remove("hidden");
 };
 
+let initialViewSelected = false;
+
 /**
  * Load up current settings to UI.
  */
@@ -728,7 +730,16 @@ const refresh = async () => {
         devmodeSetTitleDataUrlLabel.textContent = browser().i18n.getMessage("devmodeSetTitleDataUrlLabel");
     }
 
-
+    if (!initialViewSelected) {
+        initialViewSelected = true;
+        if (conversions && conversions.some(item => item.isMainPage)) {
+            view.showView("feedback");
+            const naviFeedback = document.getElementById("navi-feedback");
+            if (naviFeedback) {
+                naviFeedback.checked = true;
+            }
+        }
+    }
 };
 
 /**
