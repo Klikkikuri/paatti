@@ -12,10 +12,9 @@ const isSiteEnabled = async (domain) => {
         return false;
     }
 
-    let enabled = siteConfig.enabled !== undefined ? siteConfig.enabled : false;
-
-    const current = await browser().permissions.getAll();
-    const hasPermission = current.origins.some(origin => siteConfig.origins.includes(origin));
+    const enabled = siteConfig.enabled !== undefined ? siteConfig.enabled : false;
+    const origins = siteConfig.origins || [];
+    const hasPermission = origins.length > 0 ? await browser().permissions.contains({ origins }) : false;
 
     return enabled && hasPermission;
 };

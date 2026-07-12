@@ -4,7 +4,7 @@ import { getLogger, browser, getCurrentTabHostname } from "../utils.js";
 import { model, modelEvents } from "../model.js";
 import { controller } from "../controller.js";
 import { getConfig } from "../config.js";
-import { displayProductInfo, getClickbaitLevelInfo } from "./utils.js";
+import { isSiteEnabled, displayProductInfo, getClickbaitLevelInfo } from "./utils.js";
 
 const log = getLogger("view");
 
@@ -253,9 +253,8 @@ const refresh = async () => {
     }
 
 
-    // Update the power button to imply site status.
     const matchingDomain = await model.read.getMatchingSiteDomain(pageHostname);
-    const isCurrentSiteEnabled = matchingDomain ? (sitesEnabled[matchingDomain] || false) : false;
+    const isCurrentSiteEnabled = matchingDomain ? await isSiteEnabled(matchingDomain) : false;
     const isSiteSupported = matchingDomain !== null;
     const powerCheckbox = document.getElementById("site-enabled");
     if (powerCheckbox) {
