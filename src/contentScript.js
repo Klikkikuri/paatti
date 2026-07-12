@@ -25,7 +25,7 @@ const hrefSign = async (url) => {
 (async () => {
     ////////////////////////////////////////////////////////////////////////////
     // Import modules.
-    const browser = (chrome || browser);
+    const browser = (typeof chrome !== "undefined" ? chrome : globalThis.browser);
     const { model: model, modelEvents: modelEvents, klikkikuriStatus: klikkikuriStatus } = await import(browser.runtime.getURL("src/model.js"));
     const { controller } = await import(browser.runtime.getURL("src/controller.js"));
     const { getLogger, debounce } = await import(browser.runtime.getURL("src/utils.js"));
