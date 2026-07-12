@@ -147,7 +147,9 @@ const hrefSign = async (url) => {
         for (const rule of siteRules) {
             const containers = document.querySelectorAll(rule.container);
             for (const container of containers) {
-                const links = container.querySelectorAll(rule.link);
+                const links = (!rule.link || rule.link === "self" || rule.link === ":scope")
+                    ? [container]
+                    : container.querySelectorAll(rule.link);
                 for (const link of links) {
                     processingPromises.push(f(rule, container, link));
                 }
@@ -182,7 +184,9 @@ const hrefSign = async (url) => {
                 container.dataset.klikkikuriUrlSign = urlSign;
 
                 const rahtiEntry = await rahti.get(urlSign);
-                const titleElem = rule.title ? container.querySelector(rule.title) : link;
+                const titleElem = (rule.title === "self" || rule.title === ":scope")
+                    ? container
+                    : (rule.title ? container.querySelector(rule.title) : link);
 
                 if (!rahtiEntry) {
                     why = `No Rahti entry found for hash '${urlSign}'`;

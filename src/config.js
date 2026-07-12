@@ -76,33 +76,56 @@ const DEFAULT_CONFIG = {
             // MTV uutiset uses react
             "rules": [
                 {
+                    // Section: Main news cards and teaser components on the frontpage and category pages
                     // Each individual news card is marked with this test id
-                    "container": "[data-testid='article-teaser-component']",
-
-                    // The specific link that contains the article ID
-                    "link": "a[data-testid^='teaser-link-']",
-
-                    // The headline is an h2 inside the content area
+                    "container": "[data-testid='article-teaser-component'], [data-testid='teaser-content']",
+                    "link": "a[data-testid^='teaser-link-'], a[data-testid='internal-link']",
                     "title": "h2"
                 },
-                { // Ticker list at the top of frontpage
+                {
+                    // Section: Horizontal/vertical news ticker widget at the top of the frontpage (e.g. data-testid='news-ticker-component')
+                    // Ticker list at the top of frontpage
                     "container": "ul[data-testid='news-ticker-component'] li",
-
-                    // The link containing the unique numeric ID (9280388)
                     "link": "a[data-testid='internal-link']",
-
-                    // The headline element to be replaced
-                    "title": "span.typography-title-4"
+                    "title": "span[class*='typography-title']"
                 },
                 {
-                    // Targets the specific list item component
-                    "container": "ul li[data-testid='article-media-list-item-component']",
-
-                    // Finds the link containing the unique article ID
+                    // Section: MTV Uutiset Nyt (newsfeed) feed carousel at the top of the frontpage
+                    // Ticker list (newsfeed) at the top of frontpage
+                    "container": "li[data-testid='newsfeed-list-item']",
                     "link": "a[data-testid='internal-link']",
-
-                    // In this list format, the title is an H3
+                    "title": "span[data-testid='newsfeed-item-title'], span[class*='typography-subtitle']"
+                },
+                {
+                    // Section: "Tuoreimmat aiheesta" (Latest on topic) list shown under article pages
+                    "container": "ul[data-testid='unordered-list'] li",
+                    "link": "a[data-testid='internal-link']",
                     "title": "h3"
+                },
+                {
+                    // Section: "Lisää aiheesta" (More on topic) suggestions links under/in articles
+                    // The link element is the container itself
+                    "container": "[data-testid='article-suggestions-component'] a[data-testid='internal-link']",
+                    "link": "self",
+                    "title": "self"
+                },
+                {
+                    // Section: Video gallery/carousel list items shown on video section pages (e.g. "Enemmän katsottavaa")
+                    "container": "[data-testid='video-gallery-list-item-view-component']",
+                    "link": "a[data-testid='internal-link']",
+                    "title": "h2[data-testid='video-title']"
+                },
+                {
+                    // In-body links to other articles (e.g. "Lue myös" links)
+                    "container": "div.article-text a[data-testid='internal-link'][role='link']",
+                    "link": "self",
+                    "title": "self"
+                },
+                {
+                    // Uutisvirta -page
+                    "container": "div.segment-uutisvirta section:has(h1) ul > li",
+                    "title": "h2",
+                    "link": "a[data-testid='internal-link'][role='link']"
                 }
             ]
         },
