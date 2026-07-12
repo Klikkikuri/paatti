@@ -70,9 +70,33 @@ const DEFAULT_CONFIG = {
         },
         "www.hs.fi": {
             "name": "Helsingin Sanomat",
-            "enabled": false,
+            "enabled": true,
             "origins": ["https://*.hs.fi/*"],
             "rules": [
+                {
+                    // Sidebar content: "Luetuimmat", "Uusimmat"
+                    "container": "aside article ol > li",
+                    "link": "a",
+                    "title": "h3 span:last-child"
+                },
+                {
+                    // Main frontpage content card
+                    "container": "section[data-testid='main-lane-container'] article",
+                    "link": ":scope > a[class*='block']",
+                    "title": "h2 span:last-child"
+                },
+                {
+                    // Main frontpage list card, e.g. "Tärkeimmät tänään"
+                    "container": "section[data-testid='main-lane-container'] article > div > ol > li",
+                    "link": ":scope > a",
+                    "title": "h3 span:last-child"
+                },
+                {
+                    // Article page; "Artikkeliin liittyvää"
+                    "container": "section[data-testid='main-lane-container'] article .related-articles > a",
+                    "link": ":scope",
+                    "title": "h3 span:last-child"
+                }
             ],
         },
         "yle.fi": {
