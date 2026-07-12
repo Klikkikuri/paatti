@@ -390,7 +390,7 @@ const hrefSign = async (url) => {
                             if (h1) {
                                 h1.dataset.klikkikuriHighlightId = highlightId;
                             }
-                            results.push({
+                            results.unshift({
                                 highlightId,
                                 urlSign: pageSign,
                                 originalTitle: pageOriginalTitle,
