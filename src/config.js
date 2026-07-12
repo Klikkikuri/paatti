@@ -137,6 +137,12 @@ const DEFAULT_CONFIG = {
                     "container": "[data-testid='video-gallery-list-item-view-component']",
                     "link": "a[data-testid='internal-link']",
                     "title": "h2[data-testid='video-title']"
+                },
+                {
+                    // In-body links to other articles (e.g. "Lue myös" links)
+                    "container": "a[data-testid='internal-link'][role='link']",
+                    "link": "self",
+                    "title": "self"
                 }
             ]
         },
