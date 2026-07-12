@@ -75,9 +75,11 @@ browser().storage.onChanged.addListener(async (changes, area) => {
     if (isPreferencesChanged) {
         const oldVal = changes.userPreferences.oldValue || {};
         const newVal = changes.userPreferences.newValue || {};
-        if (newVal.refreshIntervalMinutes !== oldVal.refreshIntervalMinutes) {
-            log(`Refresh interval changed from ${oldVal.refreshIntervalMinutes} to ${newVal.refreshIntervalMinutes}`);
-            await scheduleAlarm(newVal.refreshIntervalMinutes || 20);
+        if (newVal.refreshIntervalMinutes !== oldVal.refreshIntervalMinutes || newVal.environment !== oldVal.environment) {
+            const config = await getConfig();
+            const intervalMinutes = config.refreshIntervalMinutes || 20;
+            log(`Effective refresh interval is now ${intervalMinutes} minutes.`);
+            await scheduleAlarm(intervalMinutes);
         }
         if (newVal.clickbaitLevel !== oldVal.clickbaitLevel || newVal.enabled !== oldVal.enabled) {
             log("Clickbait level or extension status changed, notifying active tab");
@@ -116,7 +118,11 @@ browser().runtime.onInstalled.addListener(async () => {
     }
 
     // Initial fetch of Rahti data
-    await fetchRahtiData();
+    try {
+        await fetchRahtiData();
+    } catch (err) {
+        log("Failed to perform initial fetch of Rahti data on install:", err);
+    }
 
     // Set up periodic fetching of Rahti data
     const config = await getConfig();
@@ -130,7 +136,9 @@ browser().runtime.onInstalled.addListener(async () => {
 browser().alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === PULL_ALARM_NAME) {
         log("Alarm triggered: fetching Rahti data.");
-        fetchRahtiData();
+        fetchRahtiData().catch((err) => {
+            log("Failed to fetch Rahti data on alarm:", err);
+        });
     }
 });
 
@@ -159,6 +167,21 @@ browser().runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Perform initial update of dynamic content scripts on startup
 updateDynamicContentScripts().catch((err) => {
     log("Failed to run initial script update:", err);
+});
+
+// Ensure periodic alarm is scheduled on startup if missing
+browser().alarms.get(PULL_ALARM_NAME).then(async (alarm) => {
+    if (!alarm) {
+        try {
+            const config = await getConfig();
+            const intervalMinutes = config.refreshIntervalMinutes || 30;
+            await scheduleAlarm(intervalMinutes);
+        } catch (err) {
+            log("Failed to schedule alarm on startup:", err);
+        }
+    }
+}).catch((err) => {
+    log("Failed to check alarm status on startup:", err);
 });
 
 // Listen to browser permission additions to synchronize model state
