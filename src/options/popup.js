@@ -112,6 +112,7 @@ const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlS
         input.id = getSitesEnabledItemId(host);
         input.dataset.hostname = host;
         input.type = "checkbox";
+        input.addEventListener("click", view.handleClickConversionSwitch);
         const label = document.createElement("label");
         label.for = input.id;
         label.textContent = site.name;
@@ -224,14 +225,14 @@ const refresh = async () => {
     const matchingDomain = await model.read.getMatchingSiteDomain(pageHostname);
     const isCurrentSiteEnabled = matchingDomain ? (sitesEnabled[matchingDomain] || false) : false;
     const isSiteSupported = matchingDomain !== null;
-    const powerCheckbox = document.getElementById("extension-enabled");
+    const powerCheckbox = document.getElementById("site-enabled");
     if (powerCheckbox) {
         powerCheckbox.checked = isCurrentSiteEnabled;
         powerCheckbox.disabled = !isSiteSupported;
         powerCheckbox.dataset.hostname = matchingDomain || pageHostname;
     }
 
-    const powerLabel = document.querySelector("label[for=extension-enabled]");
+    const powerLabel = document.querySelector("label[for=site-enabled]");
     if (powerLabel) {
         if (!isSiteSupported) {
             powerLabel.style.opacity = "0.5";
@@ -581,72 +582,6 @@ const refresh = async () => {
     }
 
 
-    ///////////////////////////////////////////////////////////////////////////////
-    // Register handlers for visual changes like moving between views.
-    document.querySelector(".open-feedbackview")
-        .addEventListener("click", () => view.showView("feedback"));
-    document.querySelector(".open-settingsview")
-        .addEventListener("click", () => view.showView("settings"));
-    document.querySelector(".open-home")
-        .addEventListener("click", () => view.showView("main"));
-
-    ///////////////////////////////////////////////////////////////////////////////
-    // Register main of/off switch.
-    document.getElementById("extension-enabled")
-        .addEventListener("click", view.handleClickConversionSwitch);
-    document.getElementById("settingsview-extension-enabled")
-        .addEventListener("click", view.handleClickMainSwitch);
-    const clickbaitSlider = document.getElementById("settingsview-clickbait-level");
-    if (clickbaitSlider) {
-        clickbaitSlider.addEventListener("input", (e) => {
-            const level = parseInt(e.target.value);
-            const levelInfo = getClickbaitLevelInfo(level);
-            const label = document.getElementById("settingsview-clickbait-level-label");
-            if (label) label.textContent = levelInfo.title;
-            const desc = document.getElementById("settingsview-clickbait-level-description");
-            if (desc) desc.textContent = levelInfo.description;
-        });
-        clickbaitSlider.addEventListener("change", async (e) => {
-            const level = parseInt(e.target.value);
-            await controller.setClickbaitLevel(level);
-        });
-    }
-    document.getElementById("open-options")
-        .addEventListener("click", () => {
-            browser().runtime.openOptionsPage();
-            window.close();
-        });
-    // Register site switches under settings view.
-    for (const pageEnabledSwitch of document.querySelectorAll(".settingsview .conversion-switch")) {
-        pageEnabledSwitch.addEventListener("click", view.handleClickConversionSwitch);
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////
-    // Register devmode controls.
-    document.getElementById("enable-devmode")
-        .addEventListener("click", __devmodeEnable);
-    document.getElementById("copy-link-signatures")
-        .addEventListener("click", __devmodeCopyLinkSignatures);
-
-    // Wire up devmode settings elements
-    const dumpLinkHashBtn = document.getElementById("devmode-dumpLinkHash");
-    if (dumpLinkHashBtn) {
-        dumpLinkHashBtn.addEventListener("click", __devmodeCopyLinkSignatures);
-    }
-    const setDebugVisualsCheckbox = document.getElementById("devmode-setDebugVisuals");
-    if (setDebugVisualsCheckbox) {
-        setDebugVisualsCheckbox.addEventListener("change", async (e) => {
-            await browser().storage.local.set({ visualHighlightEnabled: e.target.checked });
-        });
-    }
-    const setTitleDataUrlSelect = document.getElementById("devmode-setTitleDataUrl");
-    if (setTitleDataUrlSelect) {
-        setTitleDataUrlSelect.addEventListener("change", async (e) => {
-            await controller.devmode.setTitleDataUrl(e.target.value);
-        });
-    }
-
-
 };
 
 /**
@@ -692,13 +627,74 @@ const handleDomContentLoaded = async (e) => {
         }
     }
 
-    await refresh();
+    ///////////////////////////////////////////////////////////////////////////////
+    // Register handlers for visual changes like moving between views.
+    document.querySelector(".open-feedbackview")
+        .addEventListener("click", () => view.showView("feedback"));
+    document.querySelector(".open-settingsview")
+        .addEventListener("click", () => view.showView("settings"));
+    document.querySelector(".open-home")
+        .addEventListener("click", () => view.showView("main"));
+
+    ///////////////////////////////////////////////////////////////////////////////
+    // Register main of/off switch.
+    document.getElementById("site-enabled")
+        .addEventListener("click", view.handleClickConversionSwitch);
+    document.getElementById("settingsview-extension-enabled")
+        .addEventListener("click", view.handleClickMainSwitch);
+    const clickbaitSlider = document.getElementById("settingsview-clickbait-level");
+    if (clickbaitSlider) {
+        clickbaitSlider.addEventListener("input", (e) => {
+            const level = parseInt(e.target.value);
+            const levelInfo = getClickbaitLevelInfo(level);
+            const label = document.getElementById("settingsview-clickbait-level-label");
+            if (label) label.textContent = levelInfo.title;
+            const desc = document.getElementById("settingsview-clickbait-level-description");
+            if (desc) desc.textContent = levelInfo.description;
+        });
+        clickbaitSlider.addEventListener("change", async (e) => {
+            const level = parseInt(e.target.value);
+            await controller.setClickbaitLevel(level);
+        });
+    }
+    document.getElementById("open-options")
+        .addEventListener("click", () => {
+            browser().runtime.openOptionsPage();
+            window.close();
+        });
 
     // Register database update button click handler
     const dbUpdateBtn = document.getElementById("update-database-btn");
     if (dbUpdateBtn) {
         dbUpdateBtn.addEventListener("click", handleUpdateDatabaseClick);
     }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    // Register devmode controls.
+    document.getElementById("enable-devmode")
+        .addEventListener("click", __devmodeEnable);
+    document.getElementById("copy-link-signatures")
+        .addEventListener("click", __devmodeCopyLinkSignatures);
+
+    // Wire up devmode settings elements
+    const dumpLinkHashBtn = document.getElementById("devmode-dumpLinkHash");
+    if (dumpLinkHashBtn) {
+        dumpLinkHashBtn.addEventListener("click", __devmodeCopyLinkSignatures);
+    }
+    const setDebugVisualsCheckbox = document.getElementById("devmode-setDebugVisuals");
+    if (setDebugVisualsCheckbox) {
+        setDebugVisualsCheckbox.addEventListener("change", async (e) => {
+            await browser().storage.local.set({ visualHighlightEnabled: e.target.checked });
+        });
+    }
+    const setTitleDataUrlSelect = document.getElementById("devmode-setTitleDataUrl");
+    if (setTitleDataUrlSelect) {
+        setTitleDataUrlSelect.addEventListener("change", async (e) => {
+            await controller.devmode.setTitleDataUrl(e.target.value);
+        });
+    }
+
+    await refresh();
 
     // Set view height to the dimensions found when opened the popup so that the
     // view does not jump around when navigating but keeps (I hope) the view
