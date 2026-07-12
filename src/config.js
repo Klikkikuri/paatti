@@ -112,22 +112,32 @@ const DEFAULT_CONFIG = {
                 { // Lyhyesti tab
                     // The main article wrapper
                     "container": "article.yle__article",
-
                     // We look for the ID in the 'Avaa koko juttu' link at the bottom
                     "link": "section a[href*='/a/']",
-
                     // The target to replace is the H2 heading
                     "title": "header h2"
                 },
                 { // Pääuutiset cards
                     // The outermost wrapper that contains one full uutiskortti
-                    container: "[class*='GenericStory__GenericStoryBackground'], [class*='Card__StyledImpressionTrigger']",
+                    container: "#yle__contentAnchor div[class*='GenericStory__GenericStoryBackground']",
 
                     // We target the link that contains the stable content-id attribute
                     // We also look for the ID in the URL as a fallback
                     link: "a[data-card-heading-content-id], a[href*='/a/']",
 
                     // The title is always the <h3> or the <a> inside the <h3>
+                    title: "h3 a, h2 a"
+                },
+                {
+                    // Frontpage featured story card (title over image / video)
+                    container: "#yle__contentAnchor div[class*='FeatureStory__FeatureOverlay']",
+                    link: "h2 a",
+                    title: "h2 a"
+                },
+                {
+                    // Paikallisuutiset -scroller carousel on front page
+                    container: "ol > li div[class*='CarouselStory__Wrapper']",
+                    link: "a[href*='/a/']",
                     title: "h3 a"
                 },
                 { // Aiheesta enemmän cards
