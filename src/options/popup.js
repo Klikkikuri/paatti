@@ -95,7 +95,7 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
         browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelTotal");
 };
 
-const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlSelected, isDevelopmentEnv, testTitleDataUrl, config, visualHighlightEnabled }) => {
+const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlSelected, isDevelopmentEnv, testTitleDataUrl, config, visualHighlightEnabled, sitesPermissions }) => {
 
     // First reset the view, as rahti-fetch alarm will keep re-adding enabled
     // sites to their list in UI.
@@ -111,6 +111,8 @@ const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlS
         input.classList.add("conversion-switch");
         input.id = getSitesEnabledItemId(host);
         input.dataset.hostname = host;
+        input.dataset.origins = JSON.stringify(site.origins || [`https://${host}/*`]);
+        input.dataset.hasPermission = String(sitesPermissions?.[host] || false);
         input.type = "checkbox";
         input.addEventListener("click", view.handleClickConversionSwitch);
         const label = document.createElement("label");
@@ -185,7 +187,31 @@ const handleClickMainSwitch = async (e) => {
 };
 
 const handleClickConversionSwitch = async (e) => {
-    await controller.setSiteEnabled(e.target.checked, e.target.dataset.hostname);
+    const checked = e.target.checked;
+    const hostname = e.target.dataset.hostname;
+    const hasPermission = e.target.dataset.hasPermission === "true";
+    
+    let origins = [];
+    try {
+        origins = JSON.parse(e.target.dataset.origins || "[]");
+    } catch (err) {
+        log("Error parsing origins dataset:", err);
+    }
+
+    if (checked && origins.length > 0) {
+        if (hasPermission) {
+            // Already has permissions, just update settings
+            await controller.setSiteEnabled(true, hostname);
+        } else {
+            // Request permissions synchronously (gesture is active) and close the popup immediately so it doesn't cover the prompt
+            log("Requesting optional permissions for:", origins);
+            browser().permissions.request({ origins });
+            window.close();
+        }
+    } else {
+        // If disabling, update settings but do NOT drop the permission (keep it granted)
+        await controller.setSiteEnabled(false, hostname);
+    }
 };
 
 /**
@@ -220,6 +246,12 @@ const refresh = async () => {
         ? !!storageData.visualHighlightEnabled
         : config.debugVisualsEnabled;
 
+    const sitesPermissions = {};
+    for (const host of Object.keys(config.siteConfigs)) {
+        const origins = config.siteConfigs[host]?.origins || [];
+        sitesPermissions[host] = origins.length > 0 ? await browser().permissions.contains({ origins }) : false;
+    }
+
 
     // Update the power button to imply site status.
     const matchingDomain = await model.read.getMatchingSiteDomain(pageHostname);
@@ -230,6 +262,10 @@ const refresh = async () => {
         powerCheckbox.checked = isCurrentSiteEnabled;
         powerCheckbox.disabled = !isSiteSupported;
         powerCheckbox.dataset.hostname = matchingDomain || pageHostname;
+        const origins = matchingDomain ? config.siteConfigs[matchingDomain]?.origins : [];
+        powerCheckbox.dataset.origins = JSON.stringify(origins || [`https://${pageHostname}/*`]);
+        const hasPowerPermission = matchingDomain ? (sitesPermissions[matchingDomain] || false) : false;
+        powerCheckbox.dataset.hasPermission = String(hasPowerPermission);
     }
 
     const powerLabel = document.querySelector("label[for=site-enabled]");
@@ -307,6 +343,7 @@ const refresh = async () => {
         testTitleDataUrl,
         config,
         visualHighlightEnabled,
+        sitesPermissions,
     });
     _refreshContentView({
         site: pageHostname,

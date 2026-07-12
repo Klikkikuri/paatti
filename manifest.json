@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Klikkikuri Paatti",
-  "description": "Klikkikuri on selainlaajennus, joka tunnistaa ja oikaisee sensaatiohakuiset uutisotsikot kun selailet verkkolehtien uutissivuja.",
+  "description": "Tunnistaa ja oikaisee sensaatiohakuiset uutisotsikot kun selailet verkkolehtien uutissivuja.",
   "version": "0.0.1",
   "browser_specific_settings": {
     "gecko": {
@@ -35,7 +35,6 @@
       "resources": [
         "icons/klikkikuri-48.png",
         "src/utils.js",
-        "src/conversionUtils.js",
         "src/model.js",
         "src/controller.js",
         "src/config.js",
@@ -54,29 +53,6 @@
       ]
     }
   ],
-  
-  "content_scripts": [
-    {
-      "matches": [
-        "https://*.iltalehti.fi/*",
-        "https://*.hs.fi/*",
-        "https://yle.fi/*",
-        "https://www.mtvuutiset.fi/*",
-        "https://aksa.fi/*"
-      ],
-      "css": [
-        "src/contentStyle.css"
-      ],
-      "js": [
-        // Glue code provided with Go.
-        "suola/build/wasm_exec.js",
-        // This script should contain an initialization function for the WebAssembly module.
-        "suola/build/suola.js",
-        // Main module.
-        "src/contentScript.js"
-      ]
-    }
-  ],
   "background": {
     "scripts": [
       "src/background.js"
@@ -85,11 +61,19 @@
   },
   "host_permissions": [
     "https://raw.githubusercontent.com/*",
+    "https://*.iltalehti.fi/*",
+    "https://*.hs.fi/*",
+    "https://yle.fi/*",
+    "https://www.mtvuutiset.fi/*",
+    "https://aksa.fi/*"
+  ],
+  "optional_host_permissions": [
     "http://localhost/*"
   ],
   "permissions": [
     "storage",
     "alarms",
-    "tabs"
+    "tabs",
+    "scripting"
   ]
 }

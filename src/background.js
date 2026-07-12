@@ -3,11 +3,54 @@
 import { browser, getLogger } from "./utils.js";
 import { getConfig } from "./config.js";
 import { fetchRahtiData } from "./rahti.js";
+import { controller } from "./controller.js";
 
 const log = getLogger("background");
 
 const DEFAULT_ENVIRONMENT = "free";
 const PULL_ALARM_NAME = "periodic-data-pull";
+
+async function updateDynamicContentScripts() {
+    try {
+        const config = await getConfig();
+        const enabledOrigins = [];
+
+        if (config.enabled) {
+            for (const [domain, siteConfig] of Object.entries(config.siteConfigs)) {
+                if (siteConfig.enabled && siteConfig.origins) {
+                    enabledOrigins.push(...siteConfig.origins);
+                }
+            }
+        }
+
+        try {
+            await browser().scripting.unregisterContentScripts({ ids: ["paatti-content-script"] });
+        } catch (e) {
+            // Ignore if not registered yet
+        }
+
+        if (enabledOrigins.length > 0) {
+            log("Registering content scripts for origins:", enabledOrigins);
+            await browser().scripting.registerContentScripts([{
+                id: "paatti-content-script",
+                js: [
+                    "suola/build/wasm_exec.js",
+                    "suola/build/suola.js",
+                    "src/contentScript.js"
+                ],
+                css: [
+                    "src/contentStyle.css"
+                ],
+                matches: enabledOrigins,
+                runAt: "document_idle"
+            }]);
+        } else {
+            log("No origins enabled, no content scripts registered.");
+        }
+    } catch (err) {
+        log("Error updating dynamic content scripts:", err);
+    }
+}
 
 async function scheduleAlarm(minutes) {
     await browser().alarms.clear(PULL_ALARM_NAME);
@@ -21,7 +64,15 @@ async function scheduleAlarm(minutes) {
  * Handle alarm settings changes.
  */
 browser().storage.onChanged.addListener(async (changes, area) => {
-    if (area === 'local' && changes.userPreferences) {
+    const isPreferencesChanged = area === 'local' && changes.userPreferences;
+    const isOverridesChanged = area === 'sync' && changes.userSiteOverrides;
+
+    if (isPreferencesChanged || isOverridesChanged) {
+        log("Config changed, updating dynamic content scripts...");
+        await updateDynamicContentScripts();
+    }
+
+    if (isPreferencesChanged) {
         const oldVal = changes.userPreferences.oldValue || {};
         const newVal = changes.userPreferences.newValue || {};
         if (newVal.refreshIntervalMinutes !== oldVal.refreshIntervalMinutes) {
@@ -72,6 +123,7 @@ browser().runtime.onInstalled.addListener(async () => {
     const intervalMinutes = config.refreshIntervalMinutes || 30;
 
     await scheduleAlarm(intervalMinutes);
+    await updateDynamicContentScripts();
 });
 
 // Handle periodic alarm to fetch Rahti data
@@ -101,5 +153,42 @@ browser().runtime.onMessage.addListener((message, sender, sendResponse) => {
                 sendResponse({ success: false, error: error.message || String(error) });
             });
         return true; // Keep message channel open for async response
+    }
+});
+
+// Perform initial update of dynamic content scripts on startup
+updateDynamicContentScripts().catch((err) => {
+    log("Failed to run initial script update:", err);
+});
+
+// Listen to browser permission additions to synchronize model state
+browser().permissions.onAdded.addListener(async (permissions) => {
+    log("Permissions added:", permissions);
+    if (permissions.origins) {
+        const config = await getConfig();
+        for (const origin of permissions.origins) {
+            for (const [domain, siteConfig] of Object.entries(config.siteConfigs)) {
+                if (siteConfig.origins && siteConfig.origins.includes(origin)) {
+                    log(`Enabling site in storage for matched origin: ${domain}`);
+                    await controller.setSiteEnabled(true, domain);
+                }
+            }
+        }
+    }
+});
+
+// Listen to browser permission removals to synchronize model state
+browser().permissions.onRemoved.addListener(async (permissions) => {
+    log("Permissions removed:", permissions);
+    if (permissions.origins) {
+        const config = await getConfig();
+        for (const origin of permissions.origins) {
+            for (const [domain, siteConfig] of Object.entries(config.siteConfigs)) {
+                if (siteConfig.origins && siteConfig.origins.includes(origin)) {
+                    log(`Disabling site in storage for revoked origin: ${domain}`);
+                    await controller.setSiteEnabled(false, domain);
+                }
+            }
+        }
     }
 });

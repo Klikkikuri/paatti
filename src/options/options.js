@@ -148,6 +148,12 @@ async function renderSiteList(siteConfigs) {
         checkbox.id = `site-${domain}`;
         checkbox.dataset.site = domain;
         checkbox.checked = enabled;
+
+        const origins = config.origins || [`https://${domain}/*`];
+        checkbox.dataset.origins = JSON.stringify(origins);
+        const hasPermission = origins.length > 0 ? await browser().permissions.contains({ origins }) : false;
+        checkbox.dataset.hasPermission = String(hasPermission);
+
         toggleSwitch.appendChild(checkbox);
 
         const toggleSlider = document.createElement('span');
@@ -265,43 +271,54 @@ async function setupEventListeners() {
     });
 
     // Site list checkboxes
-    const config = await getConfig();
-    document.getElementById('siteList').addEventListener('change', (e) => {
+    document.getElementById('siteList').addEventListener('change', async (e) => {
         if (e.target && e.target.type === 'checkbox') {
-            // Request permission if enabling site
-            if (e.target.checked) {
-                console.log(`Requesting permission for ${e.target.dataset.site}`);
-                try {
-                    browser().permissions.request({
-                        origins: config.siteConfigs[e.target.dataset.site].origins
-                    }).then(granted => {
-                        if (!granted) {
-                            e.target.checked = false;
-                            console.warn(`Permission denied for ${e.target.dataset.site}`);
-                        } else {
-                            console.log(`Permission granted for ${e.target.dataset.site}`);
-                        }
-                    });
-                } catch (error) {
-                    showStatus('BUGI: Virhe pyydettäessä lupaa', true);
-                    console.error('Error requesting permission:', error);
-                    e.target.checked = false;
-                    throw error;
-                }
-            }
+            const checked = e.target.checked;
+            const domain = e.target.dataset.site;
+            const hasPermission = e.target.dataset.hasPermission === "true";
+            
+            let origins = [];
             try {
-                // Set sync override
-                browser().storage.sync.get("userSiteOverrides").then(data => {
-                    const overrides = data.userSiteOverrides || {};
-                    overrides[e.target.dataset.site] = overrides[e.target.dataset.site] || {};
-                    overrides[e.target.dataset.site].enabled = e.target.checked;
-                    return browser().storage.sync.set({ userSiteOverrides: overrides });
-                });
-                showStatus(`Sivuston ${e.target.dataset.site} asetus tallennettu!`);
-            } catch (error) {
-                showStatus('BUGI: Virhe tallennettaessa sivuston asetusta', true);
-                console.error('Error saving site override:', error);
-                throw error;
+                origins = JSON.parse(e.target.dataset.origins || "[]");
+            } catch (err) {
+                console.error("Error parsing origins dataset:", err);
+            }
+
+            if (checked && origins.length > 0) {
+                if (hasPermission) {
+                    try {
+                        await controller.setSiteEnabled(true, domain);
+                        showStatus(`Sivuston ${domain} asetus tallennettu!`);
+                    } catch (error) {
+                        showStatus('Virhe tallennettaessa sivuston asetusta', true);
+                        e.target.checked = false;
+                    }
+                } else {
+                    console.log(`Requesting permission for ${domain}`);
+                    try {
+                        const granted = await browser().permissions.request({ origins });
+                        if (granted) {
+                            await controller.setSiteEnabled(true, domain);
+                            e.target.dataset.hasPermission = "true";
+                            showStatus(`Sivuston ${domain} asetus tallennettu!`);
+                        } else {
+                            e.target.checked = false;
+                            console.warn(`Permission denied for ${domain}`);
+                        }
+                    } catch (error) {
+                        showStatus('Virhe pyydettäessä lupaa', true);
+                        console.error('Error requesting permission:', error);
+                        e.target.checked = false;
+                    }
+                }
+            } else {
+                try {
+                    await controller.setSiteEnabled(false, domain);
+                    showStatus(`Sivuston ${domain} asetus tallennettu!`);
+                } catch (error) {
+                    showStatus('Virhe tallennettaessa sivuston asetusta', true);
+                    e.target.checked = true;
+                }
             }
         }
     });

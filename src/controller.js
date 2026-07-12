@@ -3,6 +3,8 @@
 import { getLogger, browser, getCurrentTabHostname } from "./utils.js";
 import { model, modelEvents } from "./model.js";
 
+import { getConfig } from "./config.js";
+
 const log = getLogger("controller");
 
 const _dispatchConversion = async () => {
@@ -22,6 +24,7 @@ const _setSiteEnabled = async (isEnabled, hostname) => {
     }
 
     await model.write.setEnabled(isEnabled, hostname);
+    return true;
 };
 
 /**
