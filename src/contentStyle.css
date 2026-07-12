@@ -26,7 +26,6 @@ html.klikkikuri-visual-hilight *[data-klikkikuri-status]::after {
 
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="skipped"] {
     outline: 1.5px dashed #78909c !important;
-    background-color: rgba(120, 144, 156, 0.03) !important;
 }
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="skipped"]::after {
     content: "⏭️ Skipped";
@@ -35,7 +34,6 @@ html.klikkikuri-visual-hilight *[data-klikkikuri-status="skipped"]::after {
 
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="converted"] {
     outline: 2px solid #2e7d32 !important;
-    background-color: rgba(46, 125, 50, 0.04) !important;
     box-shadow: 0 0 8px rgba(46, 125, 50, 0.2) !important;
 }
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="converted"]::after {
@@ -45,7 +43,6 @@ html.klikkikuri-visual-hilight *[data-klikkikuri-status="converted"]::after {
 
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="original"] {
     outline: 2px solid #ef6c00 !important;
-    background-color: rgba(239, 108, 0, 0.04) !important;
     box-shadow: 0 0 8px rgba(239, 108, 0, 0.2) !important;
 }
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="original"]::after {
@@ -55,7 +52,6 @@ html.klikkikuri-visual-hilight *[data-klikkikuri-status="original"]::after {
 
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="error"] {
     outline: 2px solid #c62828 !important;
-    background-color: rgba(198, 40, 40, 0.06) !important;
     box-shadow: 0 0 10px rgba(198, 40, 40, 0.3) !important;
 }
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="error"]::after {
