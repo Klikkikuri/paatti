@@ -4,6 +4,7 @@ import { browser, getLogger } from "./utils.js";
 import { getConfig } from "./config.js";
 import { fetchRahtiData } from "./rahti.js";
 import { controller } from "./controller.js";
+import "./../suola/build/wasm_exec.js";
 
 const log = getLogger("background");
 
@@ -34,8 +35,6 @@ async function updateDynamicContentScripts() {
             await browser().scripting.registerContentScripts([{
                 id: "paatti-content-script",
                 js: [
-                    "suola/build/wasm_exec.js",
-                    "suola/build/suola.js",
                     "src/contentScript.js"
                 ],
                 css: [
@@ -142,7 +141,28 @@ browser().alarms.onAlarm.addListener((alarm) => {
     }
 });
 
-// Handle manual database update requests from options and popup pages
+// Handle manual database update and URL signature requests
+let suolaPromise = null;
+
+async function initSuola() {
+    if (suolaPromise) return suolaPromise;
+    suolaPromise = (async () => {
+        try {
+            const go = new Go();
+            const wasmUrl = browser().runtime.getURL("suola/build/js.wasm");
+            const response = await fetch(wasmUrl);
+            const result = await WebAssembly.instantiateStreaming(response, go.importObject);
+            go.run(result.instance);
+            log("Suola WebAssembly initialized in background.");
+        } catch (err) {
+            log("Failed to initialize Suola WebAssembly in background:", err);
+            suolaPromise = null;
+            throw err;
+        }
+    })();
+    return suolaPromise;
+}
+
 browser().runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "updateDatabase") {
         log("Manual database update requested.");
@@ -160,6 +180,28 @@ browser().runtime.onMessage.addListener((message, sender, sendResponse) => {
                 log("Manual database update failed:", error);
                 sendResponse({ success: false, error: error.message || String(error) });
             });
+        return true; // Keep message channel open for async response
+    }
+
+    if (message.action === "hashUrls") {
+        initSuola().then(() => {
+            if (typeof globalThis.hashUrl === "function") {
+                const results = {};
+                for (const url of message.urls) {
+                    try {
+                        results[url] = globalThis.hashUrl(url);
+                    } catch (e) {
+                        log(`Error hashing URL '${url}':`, e);
+                        results[url] = null;
+                    }
+                }
+                sendResponse({ success: true, hashes: results });
+            } else {
+                sendResponse({ success: false, error: "hashUrl function not found after initialization" });
+            }
+        }).catch((err) => {
+            sendResponse({ success: false, error: err.message || String(err) });
+        });
         return true; // Keep message channel open for async response
     }
 });

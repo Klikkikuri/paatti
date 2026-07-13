@@ -16,10 +16,7 @@
 // Use this to access this source file in the browser debugger.
 //debugger;
 
-const hrefSign = async (url) => {
-    const urlObj = new URL(url, window.location.href);
-    return await hashUrl(urlObj.href);
-}
+let hrefSign;
 
 // Main.
 (async () => {
@@ -33,6 +30,19 @@ const hrefSign = async (url) => {
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
 
     const log = getLogger("content_script");
+
+    hrefSign = async (url) => {
+        try {
+            const urlObj = new URL(url, window.location.href);
+            const response = await browser.runtime.sendMessage({ action: "hashUrls", urls: [urlObj.href] });
+            if (response && response.success && response.hashes) {
+                return response.hashes[urlObj.href];
+            }
+        } catch (err) {
+            log("Error generating signature for single URL:", err);
+        }
+        return null;
+    };
 
     await model.events.removeEventListener(modelEvents.enabledChange, controller.dispatchConversion);
 
@@ -93,14 +103,6 @@ const hrefSign = async (url) => {
 
     ////////////////////////////////////////////////////////////////////////////
     // Initialization.
-
-    try {
-        await initSuola(browser.runtime.getURL("suola/build/js.wasm"));
-    } catch (e) {
-        log("Paatti sailing in fresh water :/ ", e);
-        // TODO: Try a couple times and eventually set some error state for GUI.
-        return;
-    }
 
     // Listen for popup direct connection to manage visibility styling and highlighting
     browser.runtime.onConnect.addListener((port) => {
@@ -167,27 +169,69 @@ const hrefSign = async (url) => {
     const processSite = async () => {
         const startTime = performance.now();
 
-        // Define the two branches that the conversion procedure can take: 1)
-        // Convert clickbaits OR 2) Restore clickbaits (i.e., restore the
-        // originals).
+        // Get site rules
+        const siteRules = await model.read.getSiteRules(newsSite);
+        if (!siteRules) {
+            log(`No site rules found for '${newsSite}', aborting conversion.`);
+            return;
+        }
 
-        const processingPromises = await processTitleElems(async (rule, container, link) => {
+        // Scan and collect elements to process
+        const linksToProcess = [];
+        for (const rule of siteRules) {
+            const containers = document.querySelectorAll(rule.container);
+            for (const container of containers) {
+                const links = (!rule.link || rule.link === "self" || rule.link === ":scope")
+                    ? [container]
+                    : container.querySelectorAll(rule.link);
+                for (const link of links) {
+                    const href = link.getAttribute('href');
+                    if (href) {
+                        try {
+                            const urlObj = new URL(href, window.location.href);
+                            linksToProcess.push({ container, link, rule, href: urlObj.href });
+                        } catch (e) {
+                            // ignore invalid URL
+                        }
+                    } else {
+                        container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
+                        container.dataset.klikkikuriReason = "Link has no href attribute";
+                    }
+                }
+            }
+        }
+
+        // Batch generate signatures from background service worker
+        const uniqueUrls = Array.from(new Set(linksToProcess.map(x => x.href)));
+        let urlHashes = {};
+        if (uniqueUrls.length > 0) {
+            try {
+                const response = await browser.runtime.sendMessage({ action: "hashUrls", urls: uniqueUrls });
+                if (response && response.success) {
+                    urlHashes = response.hashes;
+                } else {
+                    log("Batch hashing failed:", response?.error);
+                }
+            } catch (err) {
+                log("Failed to communicate with background for hashing:", err);
+            }
+        }
+
+        // Process each element using pre-computed hashes
+        const processingPromises = linksToProcess.map(async ({ container, link, rule, href }) => {
             let what = klikkikuriStatus.SKIPPED;
             let why = "";
             let how = "";
             let clickbaitiness = null;
 
             try {
-                // TODO: Might not work on javascript generated links (onclick etc.)
-                const href = link.getAttribute('href');
-                if (!href) {
-                    why = "Link has no href attribute";
+                const urlSign = urlHashes[href];
+                if (!urlSign) {
+                    why = `Failed to generate signature for URL '${href}'`;
                     container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
                     container.dataset.klikkikuriReason = why;
                     return { what, why, how, clickbaitiness };
                 }
-
-                const urlSign = await hrefSign(href);
                 container.dataset.klikkikuriUrlSign = urlSign;
 
                 const rahtiEntry = await rahti.get(urlSign);
@@ -296,7 +340,6 @@ const hrefSign = async (url) => {
         if (matchesCount > 0) {
             log(`[Debug] Page processed with ${matchesCount} matching clickbait entries.`);
         } else {
-            const siteRules = await model.read.getSiteRules(newsSite);
             if (siteRules) {
                 if (reasons.length === 0) {
                     log(`[Debug] Page '${newsSite}' is supported, but no elements matching site rules were found on the page.`);
