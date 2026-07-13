@@ -141,15 +141,15 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
         // Determine descriptive label
         let labelI18nKey = "";
         if (averageValue < 0.5) {
-            labelI18nKey = "clickbaitinessLabel Not Clickbait at all";
+            labelI18nKey = "clickbaitinessLabel_Not_Clickbait_at_all";
         } else if (averageValue < 1.5) {
-            labelI18nKey = "clickbaitinessLabel Slightly Clickbaity";
+            labelI18nKey = "clickbaitinessLabel_Slightly_Clickbaity";
         } else if (averageValue < 2.5) {
-            labelI18nKey = "clickbaitinessLabel Moderately Clickbaity";
+            labelI18nKey = "clickbaitinessLabel_Moderately_Clickbaity";
         } else if (averageValue < 3.5) {
-            labelI18nKey = "clickbaitinessLabel Very Clickbaity";
+            labelI18nKey = "clickbaitinessLabel_Very_Clickbaity";
         } else {
-            labelI18nKey = "clickbaitinessLabel Extremely Clickbaity";
+            labelI18nKey = "clickbaitinessLabel_Extremely_Clickbaity";
         }
 
         const gaugeLabel = document.getElementById("gauge-label");
@@ -166,8 +166,8 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
     const clickbaitinessTableRows = table.querySelector("tbody").children;
 
     for (const row of clickbaitinessTableRows) {
-        const levelI8nKey = row.id.replaceAll("-", " ");
-        const levelKey = levelI8nKey.split("clickbaitinessLabel ")[1];
+        const levelI8nKey = row.id.replaceAll("-", "_");
+        const levelKey = levelI8nKey.split("clickbaitinessLabel_")[1].replaceAll("_", " ");
         row.querySelector("th").textContent = browser().i18n.getMessage(levelI8nKey);
         row.querySelector("td").textContent = statsTableData[levelKey] || 0;
     }

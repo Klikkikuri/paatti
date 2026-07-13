@@ -4,27 +4,27 @@
     "description": "Description of the extension."
   },
 
-  "clickbaitinessLabel Not Clickbait at all": {
+  "clickbaitinessLabel_Not_Clickbait_at_all": {
       "message": "Ei lainkaan klikkiotsikko",
       "description": "Label for the not clickbait at all title 'type' or 'severity'"
   },
 
-  "clickbaitinessLabel Slightly Clickbaity": {
+  "clickbaitinessLabel_Slightly_Clickbaity": {
       "message": "Hieman klikkiotsikko",
       "description": "Label for the slightly clickbaity title 'type' or 'severity'"
   },
 
-  "clickbaitinessLabel Moderately Clickbaity": {
+  "clickbaitinessLabel_Moderately_Clickbaity": {
       "message": "Melko klikkiotsikko",
       "description": "Label for the moderately clickbaity title 'type' or 'severity'"
   },
 
-  "clickbaitinessLabel Very Clickbaity": {
+  "clickbaitinessLabel_Very_Clickbaity": {
       "message": "Hyvin klikkiotsikko",
       "description": "Label for the very clickbaity title 'type' or 'severity'"
   },
 
-  "clickbaitinessLabel Extremely Clickbaity": {
+  "clickbaitinessLabel_Extremely_Clickbaity": {
       "message": "Erittäin klikkiotsikko",
       "description": "Label for the extremely clickbaity title 'type' or 'severity'"
   },
