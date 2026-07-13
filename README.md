@@ -122,11 +122,20 @@ Search for the string `CONFIG` in the JavaScript source files for various config
 3. Click **Load Temporary Add-on...**.
 4. Choose [`manifest.json`](./manifest.json) from the project root.
 
+#### For Chrome / Chromium (Manual)
+
+1. Open Google Chrome or Chromium and enter `chrome://extensions` in the address bar.
+2. Enable **Developer mode** using the toggle switch in the top-right corner.
+3. Click **Load unpacked** in the top-left corner.
+4. Choose the project root directory containing [`manifest.json`](./manifest.json).
+
 #### Via web-ext run
 
 Alternatively, you can run the extension in a clean development profile using [`web-ext`](https://extensionworkshop.com/documentation/develop/getting-started-with-web-ext/):
 ```sh
 web-ext run --devtools [--firefox firefox-devedition] [--url http://www.yle.fi/uutiset]
+# Or chrome:
+web-ext run --devtools [--chromium-binary /usr/bin/chromium] -t chromium [--url http://www.yle.fi/]
 ```
 
 
@@ -170,7 +179,7 @@ This serves your mock data at `http://localhost:3000/data.json` with appropriate
 ## Architecture
 ```mermaid
 ---
-title: Architecture v0.0.2
+title: Architecture v0.0.4
 ---
 classDiagram
     direction TB
@@ -209,6 +218,8 @@ classDiagram
         +updateDynamicContentScripts()
         +fetchRahtiData()
         +alarms
+        +initSuola()
+        +hashUrls(urls)
     }
     class ContentScript {
         +MutationObserver
@@ -251,7 +262,8 @@ classDiagram
     BackgroundScript ..> TitleDataServer : Fetch updates
     
     ContentScript --> Storage : Reads cached conversions
-    ContentScript --> SuolaWasm : Normalizes & hashes URLs
+    ContentScript --> BackgroundScript : Requests batch URL hashing
+    BackgroundScript --> SuolaWasm : Instantiates & runs Go Wasm
     ContentScript --> Controller : Updates active page stats
     
     Popup *-- Controller : Dispatches user preferences
