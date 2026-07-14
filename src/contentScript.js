@@ -389,65 +389,87 @@ let hrefSign;
     }
 
     // Set up communication between content script and rest of extension (e.g., the popup).
-    browser.runtime.onMessage.addListener(async (message) => {
+    browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         log(`Received message '${JSON.stringify(message)}' on '${newsSite}'`);
 
         switch (message.command) {
             case "convertClickbaits":
-                await processSite();
-                break;
-            case "devmode_generateLinkSignatures":
+                processSite()
+                    .then(() => sendResponse({ success: true }))
+                    .catch((err) => {
+                        log("Error processing site:", err);
+                        sendResponse({ success: false, error: err.message });
+                    });
+                return true;
+            case "devmode_generateLinkSignatures": {
                 const links = Array.from(document.querySelectorAll("a"));
                 const signaturePromises = links.map((x) => hrefSign(x.href));
-                return Promise.all(signaturePromises);
-            case "getConversions": {
-                const onlyVisible = message.onlyVisible;
-                const containers = Array.from(document.querySelectorAll("[data-klikkikuri-status='converted']"));
-                const results = [];
-                let counter = 0;
-                for (const container of containers) {
-                    if (onlyVisible && !isElementVisibleInViewport(container)) {
-                        continue;
-                    }
-                    const titleElem = container.querySelector("[data-klikkikuri-original-title]") || container;
-                    const highlightId = `kk-hl-${counter++}`;
-                    container.dataset.klikkikuriHighlightId = highlightId;
-                    results.push({
-                        highlightId,
-                        urlSign: container.dataset.klikkikuriUrlSign || "",
-                        originalTitle: titleElem.dataset.klikkikuriOriginalTitle || titleElem.textContent,
-                        convertedTitle: titleElem.dataset.klikkikuriConvertedTitle || "",
-                        clickbaitLevel: titleElem.dataset.klikkikuriClickbaitLevel || ""
+                Promise.all(signaturePromises)
+                    .then((result) => sendResponse(result))
+                    .catch((err) => {
+                        log("Error generating link signatures:", err);
+                        sendResponse([]);
                     });
-                }
-
-                if (rahti) {
-                    try {
-                        const pageUrl = window.location.href;
-                        const pageSign = await hrefSign(pageUrl);
-                        const pageRahtiEntry = await rahti.get(pageSign);
-                        if (pageRahtiEntry) {
-                            const pageOriginalTitle = document.querySelector("h1")?.textContent?.trim() || document.title;
-                            const h1 = document.querySelector("h1");
-                            const highlightId = `kk-hl-main`;
-                            if (h1) {
-                                h1.dataset.klikkikuriHighlightId = highlightId;
-                            }
-                            results.unshift({
-                                highlightId,
-                                urlSign: pageSign,
-                                originalTitle: pageOriginalTitle,
-                                convertedTitle: pageRahtiEntry.title,
-                                clickbaitLevel: pageRahtiEntry.clickbaitiness,
-                                isMainPage: true
-                            });
+                return true;
+            }
+            case "getConversions": {
+                (async () => {
+                    const onlyVisible = message.onlyVisible;
+                    const containers = Array.from(document.querySelectorAll("[data-klikkikuri-status='converted']"));
+                    const results = [];
+                    let counter = 0;
+                    for (const container of containers) {
+                        if (onlyVisible && !isElementVisibleInViewport(container)) {
+                            continue;
                         }
-                    } catch (err) {
-                        log("Error checking current page URL signature:", err);
+                        const titleElem = container.querySelector("[data-klikkikuri-original-title]") || container;
+                        const highlightId = `kk-hl-${counter++}`;
+                        container.dataset.klikkikuriHighlightId = highlightId;
+                        results.push({
+                            highlightId,
+                            urlSign: container.dataset.klikkikuriUrlSign || "",
+                            originalTitle: titleElem.dataset.klikkikuriOriginalTitle || titleElem.textContent,
+                            convertedTitle: titleElem.dataset.klikkikuriConvertedTitle || "",
+                            clickbaitLevel: titleElem.dataset.klikkikuriClickbaitLevel || ""
+                        });
                     }
-                }
 
-                return results;
+                    if (rahti) {
+                        try {
+                            const pageUrl = window.location.href;
+                            const pageSign = await hrefSign(pageUrl);
+                            if (pageSign) {
+                                const pageRahtiEntry = await rahti.get(pageSign);
+                                if (pageRahtiEntry) {
+                                    const pageOriginalTitle = document.querySelector("h1")?.textContent?.trim() || document.title;
+                                    const h1 = document.querySelector("h1");
+                                    const highlightId = `kk-hl-main`;
+                                    if (h1) {
+                                        h1.dataset.klikkikuriHighlightId = highlightId;
+                                    }
+                                    results.unshift({
+                                        highlightId,
+                                        urlSign: pageSign,
+                                        originalTitle: pageOriginalTitle,
+                                        convertedTitle: pageRahtiEntry.title,
+                                        clickbaitLevel: pageRahtiEntry.clickbaitiness,
+                                        isMainPage: true
+                                    });
+                                }
+                            }
+                        } catch (err) {
+                            log("Error checking current page URL signature:", err);
+                        }
+                    }
+
+                    return results;
+                })()
+                .then((results) => sendResponse(results))
+                .catch((err) => {
+                    log("Error in getConversions:", err);
+                    sendResponse([]);
+                });
+                return true;
             }
             case "highlightElement": {
                 const el = document.querySelector(`[data-klikkikuri-highlight-id="${message.highlightId}"]`);
@@ -512,6 +534,13 @@ let hrefSign;
     } catch (e) {
         log("Failed on page load -conversion:", e);
     }
+
+    // Send a message to the popup when the user scrolls the page.
+    window.addEventListener("scroll", debounce(() => {
+        browser.runtime.sendMessage({ action: "pageScrolled" }).catch((err) => {
+            // Ignore error when popup/background is not listening.
+        });
+    }, 200));
 
     log("Loaded");
 })();

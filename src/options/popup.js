@@ -950,3 +950,13 @@ model.events.addEventListener(modelEvents.statisticsChange, view.refresh);
 // TODO: Maybe refactor this to abstract local storage away (or don't, wtfgas).
 browser().storage.local.onChanged.addListener(view.refresh);
 
+// Listen for page scroll events sent from the content script and refresh the popup content.
+browser().runtime.onMessage.addListener((message) => {
+    if (message.action === "pageScrolled") {
+        const activeFeedbackForm = document.querySelector(".feedback-form-container:not(.hidden)");
+        if (!activeFeedbackForm) {
+            view.refresh();
+        }
+    }
+});
+
