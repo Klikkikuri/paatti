@@ -417,21 +417,35 @@ let hrefSign;
                     const onlyVisible = message.onlyVisible;
                     const containers = Array.from(document.querySelectorAll("[data-klikkikuri-status='converted']"));
                     const results = [];
+                    const seen = new Map();
                     let counter = 0;
                     for (const container of containers) {
                         if (onlyVisible && !isElementVisibleInViewport(container)) {
                             continue;
                         }
                         const titleElem = container.querySelector("[data-klikkikuri-original-title]") || container;
-                        const highlightId = `kk-hl-${counter++}`;
-                        container.dataset.klikkikuriHighlightId = highlightId;
-                        results.push({
-                            highlightId,
-                            urlSign: container.dataset.klikkikuriUrlSign || "",
-                            originalTitle: titleElem.dataset.klikkikuriOriginalTitle || titleElem.textContent,
-                            convertedTitle: titleElem.dataset.klikkikuriConvertedTitle || "",
-                            clickbaitLevel: titleElem.dataset.klikkikuriClickbaitLevel || ""
-                        });
+                        const urlSign = container.dataset.klikkikuriUrlSign || "";
+                        const originalTitle = titleElem.dataset.klikkikuriOriginalTitle || titleElem.textContent || "";
+                        const convertedTitle = titleElem.dataset.klikkikuriConvertedTitle || "";
+                        const clickbaitLevel = titleElem.dataset.klikkikuriClickbaitLevel || "";
+
+                        const key = urlSign || originalTitle;
+                        let highlightId;
+                        if (seen.has(key)) {
+                            highlightId = seen.get(key);
+                            container.dataset.klikkikuriHighlightId = highlightId;
+                        } else {
+                            highlightId = `kk-hl-${counter++}`;
+                            seen.set(key, highlightId);
+                            container.dataset.klikkikuriHighlightId = highlightId;
+                            results.push({
+                                highlightId,
+                                urlSign,
+                                originalTitle,
+                                convertedTitle,
+                                clickbaitLevel
+                            });
+                        }
                     }
 
                     if (rahti) {
@@ -472,15 +486,15 @@ let hrefSign;
                 return true;
             }
             case "highlightElement": {
-                const el = document.querySelector(`[data-klikkikuri-highlight-id="${message.highlightId}"]`);
-                if (el) {
+                const els = document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`);
+                for (const el of els) {
                     el.classList.add("klikkikuri-hover-highlight");
                 }
                 break;
             }
             case "unhighlightElement": {
-                const el = document.querySelector(`[data-klikkikuri-highlight-id="${message.highlightId}"]`);
-                if (el) {
+                const els = document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`);
+                for (const el of els) {
                     el.classList.remove("klikkikuri-hover-highlight");
                 }
                 break;
