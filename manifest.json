@@ -57,6 +57,7 @@
     "scripts": [
       "src/background.js"
     ],
+    "service_worker": "src/background.js",
     "type": "module"
   },
   "host_permissions": [
@@ -75,5 +76,8 @@
     "alarms",
     "tabs",
     "scripting"
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'none';"
+  }
 }

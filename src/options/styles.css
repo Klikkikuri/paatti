@@ -81,12 +81,13 @@ body {
 #power div:nth-child(2) .push-button {
     user-select: none;
     font-size: 350%;
-    line-height: 1.1em;
     padding: 0;
 
     /* Make the power button a circle */
     border-radius: 100%;
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 50px;
     height: 50px;
     min-width: 0;
@@ -94,9 +95,6 @@ body {
 
 #open-options {
     border: none;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
 }
 
 /* Content details */
@@ -117,12 +115,13 @@ body {
 
 #navi .push-button {
     user-select: none;
-    line-height: 2.9em;
     padding: 0;
 
     /* Make the buttons circles */
     border-radius: 100%;
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 30px;
     height: 30px;
     min-width: 0;

@@ -16,10 +16,7 @@
 // Use this to access this source file in the browser debugger.
 //debugger;
 
-const hrefSign = async (url) => {
-    const urlObj = new URL(url, window.location.href);
-    return await hashUrl(urlObj.href);
-}
+let hrefSign;
 
 // Main.
 (async () => {
@@ -33,6 +30,19 @@ const hrefSign = async (url) => {
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
 
     const log = getLogger("content_script");
+
+    hrefSign = async (url) => {
+        try {
+            const urlObj = new URL(url, window.location.href);
+            const response = await browser.runtime.sendMessage({ action: "hashUrls", urls: [urlObj.href] });
+            if (response && response.success && response.hashes) {
+                return response.hashes[urlObj.href];
+            }
+        } catch (err) {
+            log("Error generating signature for single URL:", err);
+        }
+        return null;
+    };
 
     await model.events.removeEventListener(modelEvents.enabledChange, controller.dispatchConversion);
 
@@ -93,14 +103,6 @@ const hrefSign = async (url) => {
 
     ////////////////////////////////////////////////////////////////////////////
     // Initialization.
-
-    try {
-        await initSuola(browser.runtime.getURL("suola/build/js.wasm"));
-    } catch (e) {
-        log("Paatti sailing in fresh water :/ ", e);
-        // TODO: Try a couple times and eventually set some error state for GUI.
-        return;
-    }
 
     // Listen for popup direct connection to manage visibility styling and highlighting
     browser.runtime.onConnect.addListener((port) => {
@@ -167,27 +169,69 @@ const hrefSign = async (url) => {
     const processSite = async () => {
         const startTime = performance.now();
 
-        // Define the two branches that the conversion procedure can take: 1)
-        // Convert clickbaits OR 2) Restore clickbaits (i.e., restore the
-        // originals).
+        // Get site rules
+        const siteRules = await model.read.getSiteRules(newsSite);
+        if (!siteRules) {
+            log(`No site rules found for '${newsSite}', aborting conversion.`);
+            return;
+        }
 
-        const processingPromises = await processTitleElems(async (rule, container, link) => {
+        // Scan and collect elements to process
+        const linksToProcess = [];
+        for (const rule of siteRules) {
+            const containers = document.querySelectorAll(rule.container);
+            for (const container of containers) {
+                const links = (!rule.link || rule.link === "self" || rule.link === ":scope")
+                    ? [container]
+                    : container.querySelectorAll(rule.link);
+                for (const link of links) {
+                    const href = link.getAttribute('href');
+                    if (href) {
+                        try {
+                            const urlObj = new URL(href, window.location.href);
+                            linksToProcess.push({ container, link, rule, href: urlObj.href });
+                        } catch (e) {
+                            // ignore invalid URL
+                        }
+                    } else {
+                        container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
+                        container.dataset.klikkikuriReason = "Link has no href attribute";
+                    }
+                }
+            }
+        }
+
+        // Batch generate signatures from background service worker
+        const uniqueUrls = Array.from(new Set(linksToProcess.map(x => x.href)));
+        let urlHashes = {};
+        if (uniqueUrls.length > 0) {
+            try {
+                const response = await browser.runtime.sendMessage({ action: "hashUrls", urls: uniqueUrls });
+                if (response && response.success) {
+                    urlHashes = response.hashes;
+                } else {
+                    log("Batch hashing failed:", response?.error);
+                }
+            } catch (err) {
+                log("Failed to communicate with background for hashing:", err);
+            }
+        }
+
+        // Process each element using pre-computed hashes
+        const processingPromises = linksToProcess.map(async ({ container, link, rule, href }) => {
             let what = klikkikuriStatus.SKIPPED;
             let why = "";
             let how = "";
             let clickbaitiness = null;
 
             try {
-                // TODO: Might not work on javascript generated links (onclick etc.)
-                const href = link.getAttribute('href');
-                if (!href) {
-                    why = "Link has no href attribute";
+                const urlSign = urlHashes[href];
+                if (!urlSign) {
+                    why = `Failed to generate signature for URL '${href}'`;
                     container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
                     container.dataset.klikkikuriReason = why;
                     return { what, why, how, clickbaitiness };
                 }
-
-                const urlSign = await hrefSign(href);
                 container.dataset.klikkikuriUrlSign = urlSign;
 
                 const rahtiEntry = await rahti.get(urlSign);
@@ -296,7 +340,6 @@ const hrefSign = async (url) => {
         if (matchesCount > 0) {
             log(`[Debug] Page processed with ${matchesCount} matching clickbait entries.`);
         } else {
-            const siteRules = await model.read.getSiteRules(newsSite);
             if (siteRules) {
                 if (reasons.length === 0) {
                     log(`[Debug] Page '${newsSite}' is supported, but no elements matching site rules were found on the page.`);
@@ -316,11 +359,19 @@ const hrefSign = async (url) => {
     }, 150);
 
     const observer = new MutationObserver((mutations) => {
+        // Check if extension context was invalidated (e.g. extension updated/reloaded)
+        const browserObj = (typeof chrome !== "undefined" ? chrome : globalThis.browser);
+        if (!browserObj || !browserObj.runtime || !browserObj.runtime.id) {
+            log("Extension context is invalidated. Disconnecting MutationObserver.");
+            observer.disconnect();
+            return;
+        }
+
         // Use original title as the flag, as a converted title would be
         // removed when restoring page to show original titles.
         const isInternalChange = mutations.every(mutation =>
-            mutation.target.dataset.klikkikuriOriginalTitle ||
-            mutation.target.parentElement?.dataset.klikkikuriOriginalTitle
+            mutation.target.dataset?.klikkikuriOriginalTitle ||
+            mutation.target.parentElement?.dataset?.klikkikuriOriginalTitle
         );
         if (isInternalChange) {
             return;
@@ -346,76 +397,112 @@ const hrefSign = async (url) => {
     }
 
     // Set up communication between content script and rest of extension (e.g., the popup).
-    browser.runtime.onMessage.addListener(async (message) => {
+    browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         log(`Received message '${JSON.stringify(message)}' on '${newsSite}'`);
 
         switch (message.command) {
             case "convertClickbaits":
-                await processSite();
-                break;
-            case "devmode_generateLinkSignatures":
+                processSite()
+                    .then(() => sendResponse({ success: true }))
+                    .catch((err) => {
+                        log("Error processing site:", err);
+                        sendResponse({ success: false, error: err.message });
+                    });
+                return true;
+            case "devmode_generateLinkSignatures": {
                 const links = Array.from(document.querySelectorAll("a"));
                 const signaturePromises = links.map((x) => hrefSign(x.href));
-                return Promise.all(signaturePromises);
-            case "getConversions": {
-                const onlyVisible = message.onlyVisible;
-                const containers = Array.from(document.querySelectorAll("[data-klikkikuri-status='converted']"));
-                const results = [];
-                let counter = 0;
-                for (const container of containers) {
-                    if (onlyVisible && !isElementVisibleInViewport(container)) {
-                        continue;
-                    }
-                    const titleElem = container.querySelector("[data-klikkikuri-original-title]") || container;
-                    const highlightId = `kk-hl-${counter++}`;
-                    container.dataset.klikkikuriHighlightId = highlightId;
-                    results.push({
-                        highlightId,
-                        urlSign: container.dataset.klikkikuriUrlSign || "",
-                        originalTitle: titleElem.dataset.klikkikuriOriginalTitle || titleElem.textContent,
-                        convertedTitle: titleElem.dataset.klikkikuriConvertedTitle || "",
-                        clickbaitLevel: titleElem.dataset.klikkikuriClickbaitLevel || ""
+                Promise.all(signaturePromises)
+                    .then((result) => sendResponse(result))
+                    .catch((err) => {
+                        log("Error generating link signatures:", err);
+                        sendResponse([]);
                     });
-                }
+                return true;
+            }
+            case "getConversions": {
+                (async () => {
+                    const onlyVisible = message.onlyVisible;
+                    const containers = Array.from(document.querySelectorAll("[data-klikkikuri-status='converted']"));
+                    const results = [];
+                    const seen = new Map();
+                    let counter = 0;
+                    for (const container of containers) {
+                        if (onlyVisible && !isElementVisibleInViewport(container)) {
+                            continue;
+                        }
+                        const titleElem = container.querySelector("[data-klikkikuri-original-title]") || container;
+                        const urlSign = container.dataset.klikkikuriUrlSign || "";
+                        const originalTitle = titleElem.dataset.klikkikuriOriginalTitle || titleElem.textContent || "";
+                        const convertedTitle = titleElem.dataset.klikkikuriConvertedTitle || "";
+                        const clickbaitLevel = titleElem.dataset.klikkikuriClickbaitLevel || "";
 
-                if (rahti) {
-                    try {
-                        const pageUrl = window.location.href;
-                        const pageSign = await hrefSign(pageUrl);
-                        const pageRahtiEntry = await rahti.get(pageSign);
-                        if (pageRahtiEntry) {
-                            const pageOriginalTitle = document.querySelector("h1")?.textContent?.trim() || document.title;
-                            const h1 = document.querySelector("h1");
-                            const highlightId = `kk-hl-main`;
-                            if (h1) {
-                                h1.dataset.klikkikuriHighlightId = highlightId;
-                            }
-                            results.unshift({
+                        const key = urlSign || originalTitle;
+                        let highlightId;
+                        if (seen.has(key)) {
+                            highlightId = seen.get(key);
+                            container.dataset.klikkikuriHighlightId = highlightId;
+                        } else {
+                            highlightId = `kk-hl-${counter++}`;
+                            seen.set(key, highlightId);
+                            container.dataset.klikkikuriHighlightId = highlightId;
+                            results.push({
                                 highlightId,
-                                urlSign: pageSign,
-                                originalTitle: pageOriginalTitle,
-                                convertedTitle: pageRahtiEntry.title,
-                                clickbaitLevel: pageRahtiEntry.clickbaitiness,
-                                isMainPage: true
+                                urlSign,
+                                originalTitle,
+                                convertedTitle,
+                                clickbaitLevel
                             });
                         }
-                    } catch (err) {
-                        log("Error checking current page URL signature:", err);
                     }
-                }
 
-                return results;
+                    if (rahti) {
+                        try {
+                            const pageUrl = window.location.href;
+                            const pageSign = await hrefSign(pageUrl);
+                            if (pageSign) {
+                                const pageRahtiEntry = await rahti.get(pageSign);
+                                if (pageRahtiEntry) {
+                                    const pageOriginalTitle = document.querySelector("h1")?.textContent?.trim() || document.title;
+                                    const h1 = document.querySelector("h1");
+                                    const highlightId = `kk-hl-main`;
+                                    if (h1) {
+                                        h1.dataset.klikkikuriHighlightId = highlightId;
+                                    }
+                                    results.unshift({
+                                        highlightId,
+                                        urlSign: pageSign,
+                                        originalTitle: pageOriginalTitle,
+                                        convertedTitle: pageRahtiEntry.title,
+                                        clickbaitLevel: pageRahtiEntry.clickbaitiness,
+                                        isMainPage: true
+                                    });
+                                }
+                            }
+                        } catch (err) {
+                            log("Error checking current page URL signature:", err);
+                        }
+                    }
+
+                    return results;
+                })()
+                .then((results) => sendResponse(results))
+                .catch((err) => {
+                    log("Error in getConversions:", err);
+                    sendResponse([]);
+                });
+                return true;
             }
             case "highlightElement": {
-                const el = document.querySelector(`[data-klikkikuri-highlight-id="${message.highlightId}"]`);
-                if (el) {
+                const els = document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`);
+                for (const el of els) {
                     el.classList.add("klikkikuri-hover-highlight");
                 }
                 break;
             }
             case "unhighlightElement": {
-                const el = document.querySelector(`[data-klikkikuri-highlight-id="${message.highlightId}"]`);
-                if (el) {
+                const els = document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`);
+                for (const el of els) {
                     el.classList.remove("klikkikuri-hover-highlight");
                 }
                 break;
@@ -469,6 +556,16 @@ const hrefSign = async (url) => {
     } catch (e) {
         log("Failed on page load -conversion:", e);
     }
+
+    // Send a message to the popup when the user scrolls the page.
+    window.addEventListener("scroll", debounce(() => {
+        const browserObj = (typeof chrome !== "undefined" ? chrome : globalThis.browser);
+        if (browserObj && browserObj.runtime && browserObj.runtime.id) {
+            browserObj.runtime.sendMessage({ action: "pageScrolled" }).catch((err) => {
+                // Ignore error when popup/background is not listening.
+            });
+        }
+    }, 200));
 
     log("Loaded");
 })();
