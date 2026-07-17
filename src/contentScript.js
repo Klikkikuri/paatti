@@ -359,11 +359,19 @@ let hrefSign;
     }, 150);
 
     const observer = new MutationObserver((mutations) => {
+        // Check if extension context was invalidated (e.g. extension updated/reloaded)
+        const browserObj = (typeof chrome !== "undefined" ? chrome : globalThis.browser);
+        if (!browserObj || !browserObj.runtime || !browserObj.runtime.id) {
+            log("Extension context is invalidated. Disconnecting MutationObserver.");
+            observer.disconnect();
+            return;
+        }
+
         // Use original title as the flag, as a converted title would be
         // removed when restoring page to show original titles.
         const isInternalChange = mutations.every(mutation =>
-            mutation.target.dataset.klikkikuriOriginalTitle ||
-            mutation.target.parentElement?.dataset.klikkikuriOriginalTitle
+            mutation.target.dataset?.klikkikuriOriginalTitle ||
+            mutation.target.parentElement?.dataset?.klikkikuriOriginalTitle
         );
         if (isInternalChange) {
             return;
@@ -551,9 +559,12 @@ let hrefSign;
 
     // Send a message to the popup when the user scrolls the page.
     window.addEventListener("scroll", debounce(() => {
-        browser.runtime.sendMessage({ action: "pageScrolled" }).catch((err) => {
-            // Ignore error when popup/background is not listening.
-        });
+        const browserObj = (typeof chrome !== "undefined" ? chrome : globalThis.browser);
+        if (browserObj && browserObj.runtime && browserObj.runtime.id) {
+            browserObj.runtime.sendMessage({ action: "pageScrolled" }).catch((err) => {
+                // Ignore error when popup/background is not listening.
+            });
+        }
     }, 200));
 
     log("Loaded");
