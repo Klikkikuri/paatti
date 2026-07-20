@@ -146,6 +146,8 @@ web-ext run --devtools [--chromium-binary /usr/bin/chromium] -t chromium [--url 
 
 For local development and testing, you can generate and serve mock clickbait databases using the two Python helper scripts ([`generate_test_data.py`](./generate_test_data.py) and [`httpserver.py`](./httpserver.py)).
 
+If you are adding support for a new site, see [docs/development/adding-a-new-site.md](./docs/development/adding-a-new-site.md).
+
 #### Step 1: Dump URL Signatures from the Page
 
 1. Enable **Developer Mode** in the extension (e.g. by toggle-clicking the developer mode controls or enabling it in the Options UI).
