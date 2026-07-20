@@ -47,7 +47,8 @@
         "https://*.hs.fi/*",
         "https://yle.fi/*",
         "https://www.mtvuutiset.fi/*",
-        "https://aksa.fi/*"
+        "https://aksa.fi/*",
+        "https://www.ampparit.com/*"
       ]
     }
   ],
@@ -67,6 +68,7 @@
     "https://aksa.fi/*"
   ],
   "optional_host_permissions": [
+    "https://www.ampparit.com/*",
     "http://localhost/*"
   ],
   "permissions": [

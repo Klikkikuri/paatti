@@ -242,6 +242,23 @@ const DEFAULT_CONFIG = {
                 }
             ]
         },
+        "www.ampparit.com": {
+            "name": "Ampparit Uutispalvelut",
+            "enabled": false,  // Optional
+            "rules": [
+                {
+                    // Main list of news items on front page
+                    "container": "article.item",
+                    "link": ".item-title > a",
+                    "title": ".item-title > a"
+                },
+                {
+                    "container": "div.sidebox.popular .sidebox-content div.simple-item a[rel=\"noopener\"]",
+                    "link": "self",
+                    "title": "self"
+                }
+            ]
+        }
     },
 
     "environmentConfigs": {
