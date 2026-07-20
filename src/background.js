@@ -4,7 +4,7 @@ import { browser, getLogger } from "./utils.js";
 import { getConfig } from "./config.js";
 import { fetchRahtiData } from "./rahti.js";
 import { controller } from "./controller.js";
-import "./../suola/build/wasm_exec.js";
+import "./../build/wasm_exec.js";
 
 const log = getLogger("background");
 
@@ -149,7 +149,7 @@ async function initSuola() {
     suolaPromise = (async () => {
         try {
             const go = new Go();
-            const wasmUrl = browser().runtime.getURL("suola/build/js.wasm");
+            const wasmUrl = browser().runtime.getURL("build/js.wasm");
             const response = await fetch(wasmUrl);
             const result = await WebAssembly.instantiateStreaming(response, go.importObject);
             go.run(result.instance);

@@ -16,10 +16,10 @@ build-suola:
 	@if [ -d suola ] && (cd suola && git diff-index --quiet HEAD -- && git describe --tags --exact-match >/dev/null 2>&1); then \
 		SUOLA_TAG=$$(cd suola && git describe --tags --exact-match); \
 		echo "suola submodule is clean and tagged at $$SUOLA_TAG. Fetching pre-built artifacts from GitHub releases..."; \
-		mkdir -p suola/build; \
-		rm -f suola/build/js.wasm suola/build/wasm_exec.js; \
-		curl -L -f -o suola/build/js.wasm "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/js.wasm" && \
-		curl -L -f -o suola/build/wasm_exec.js "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/wasm_exec.js" || \
+		mkdir -p $(BUILD_DIR); \
+		rm -f $(BUILD_DIR)/js.wasm $(BUILD_DIR)/wasm_exec.js; \
+		curl -L -f -o $(BUILD_DIR)/js.wasm "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/js.wasm" && \
+		curl -L -f -o $(BUILD_DIR)/wasm_exec.js "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/wasm_exec.js" || \
 		{ echo "Failed to download pre-built artifacts. Falling back to docker build..."; $(MAKE) build-suola-local; }; \
 	else \
 		echo "suola submodule is modified or untagged. Building suola artifacts locally using docker..."; \
@@ -27,8 +27,12 @@ build-suola:
 	fi
 
 build-suola-local:
+	mkdir -p suola/build
 	$(DOCKER) build --target wasm-builder -t buildsuola suola/
 	$(DOCKER) run --mount type=bind,src=$(shell pwd)/suola/build/,dst=/app/build buildsuola
+	mkdir -p $(BUILD_DIR)
+	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
+	cp suola/build/wasm_exec.js $(BUILD_DIR)/wasm_exec.js
 
 package: build-suola
 	mkdir -p $(BUILD_DIR)
@@ -37,8 +41,8 @@ package: build-suola
 	  ./_locales/ \
 	  ./manifest.json \
 	  ./src/ \
-	  ./suola/build/js.wasm \
-	  ./suola/build/wasm_exec.js \
+	  build/js.wasm \
+	  build/wasm_exec.js \
 	  ./LICENSE.md \
 	  ./LISENSSI.md
 
@@ -50,8 +54,7 @@ clean:
 	rm -f "$(BUILD_TEST_DATA)" "$(TEST_DATA_SIGNATURES)" "$(BUILD_EXTENSION)"
 	rm -f $(BUILD_DIR)/klikkikuri-*.xpi
 	rm -f $(BUILD_DIR)/klikkikuri-paatti-*.xpi
-	rmdir "$(TEST_DATA_BUILD_DIR)" 2>/dev/null || true
-	rmdir "$(BUILD_DIR)" 2>/dev/null || true
+	rm -rf "$(BUILD_DIR)"
 
 release:
 	node release.js $(VERSION)
