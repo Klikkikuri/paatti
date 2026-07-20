@@ -41,8 +41,7 @@
         "src/storage.js",
         "src/rahti.js",
         "src/suola.js",
-        "suola/build/js.wasm",
-        "test_data/data.json"
+        "suola/build/js.wasm"
       ],
       "matches": [
         "https://*.iltalehti.fi/*",
