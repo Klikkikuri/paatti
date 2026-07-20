@@ -4,6 +4,10 @@ TEST_DATA_BUILD_DIR := $(BUILD_DIR)/test_data
 TEST_DATA_SIGNATURES := $(TEST_DATA_BUILD_DIR)/signatures.txt
 BUILD_TEST_DATA := $(TEST_DATA_BUILD_DIR)/data.json
 BUILD_EXTENSION := $(BUILD_DIR)/klikkikuri-paatti.zip
+DIST_DIR := $(BUILD_DIR)/dist
+EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md
+WASM_ASSETS := js.wasm wasm_exec.js
+
 
 build: build-suola package
 
@@ -34,17 +38,13 @@ build-suola-local:
 	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
 	cp suola/build/wasm_exec.js $(BUILD_DIR)/wasm_exec.js
 
-package: build-suola
-	mkdir -p $(BUILD_DIR)
-	zip -r -FS $(BUILD_EXTENSION) \
-	  ./icons/ \
-	  ./_locales/ \
-	  ./manifest.json \
-	  ./src/ \
-	  build/js.wasm \
-	  build/wasm_exec.js \
-	  ./LICENSE.md \
-	  ./LISENSSI.md
+dist: build-suola
+	mkdir -p $(DIST_DIR)/build
+	cp -r $(EXTENSION_ASSETS) $(DIST_DIR)/
+	cp $(addprefix $(BUILD_DIR)/, $(WASM_ASSETS)) $(DIST_DIR)/build/
+
+package: dist
+	cd $(DIST_DIR) && zip -r -FS $(BUILD_EXTENSION) .
 
 test-data:
 	mkdir -p "$(TEST_DATA_BUILD_DIR)"
@@ -59,4 +59,4 @@ clean:
 release:
 	node release.js $(VERSION)
 
-.PHONY: build init package test-data clean build-suola-local build-suola release
+.PHONY: build init package test-data clean build-suola-local build-suola release dist

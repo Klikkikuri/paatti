@@ -75,14 +75,6 @@ jobs:
         run: |
           make build DOCKER=false
 
-      - name: "📂 Prepare web-ext signing directory"
-        run: |
-          mkdir -p build/dist
-          cp -r icons _locales manifest.json src LICENSE.md LISENSSI.md build/dist/
-          mkdir -p build/dist/build
-          cp build/js.wasm build/dist/build/
-          cp build/wasm_exec.js build/dist/build/
-
       - name: "📦 Package Source Code for Review"
         run: |
           zip -r build/source-code.zip . -x "build/*" -x "web-ext-artifacts/*" -x "node_modules/*" -x ".git/*" -x "suola/.git/*"
