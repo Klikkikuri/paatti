@@ -40,7 +40,7 @@
         "src/config.js",
         "src/storage.js",
         "src/rahti.js",
-        "suola/build/suola.js",
+        "src/suola.js",
         "suola/build/js.wasm",
         "test_data/data.json"
       ],
