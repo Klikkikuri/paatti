@@ -9,7 +9,7 @@ EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md
 WASM_ASSETS := js.wasm wasm_exec.js
 
 
-build: build-suola package
+build: init build-suola package
 
 init:
 	git submodule init
