@@ -40,7 +40,6 @@
         "src/config.js",
         "src/storage.js",
         "src/rahti.js",
-        "src/suola.js",
         "build/js.wasm"
       ],
       "matches": [
