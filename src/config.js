@@ -263,6 +263,18 @@ const DEFAULT_CONFIG = {
                     "title": "self"
                 }
             ]
+        },
+        "old.reddit.com": {
+            "name": "Reddit (old)",
+            "enabled": false,  // Optional
+            "rules": [
+                {
+                    // Main list of posts on front page and subreddit pages
+                    "container": "div.linklisting div.entry",
+                    "link": "p.title a.title",
+                    "title": "p.title a.title"
+                }
+            ]
         }
     },
 

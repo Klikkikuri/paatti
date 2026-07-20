@@ -48,7 +48,8 @@
         "https://yle.fi/*",
         "https://www.mtvuutiset.fi/*",
         "https://aksa.fi/*",
-        "https://www.ampparit.com/*"
+        "https://www.ampparit.com/*",
+        "https://old.reddit.com/*"
       ]
     }
   ],
@@ -69,6 +70,7 @@
   ],
   "optional_host_permissions": [
     "https://www.ampparit.com/*",
+    "https://old.reddit.com/*",
     "http://localhost/*"
   ],
   "permissions": [
