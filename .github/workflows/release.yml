@@ -67,12 +67,42 @@ jobs:
         run: |
           make build DOCKER=false
 
+      - name: "🔧 Set up Node.js"
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: "📂 Prepare web-ext signing directory"
+        run: |
+          mkdir -p build/dist
+          cp -r icons _locales manifest.json src LICENSE.md LISENSSI.md build/dist/
+          mkdir -p build/dist/build
+          cp build/js.wasm build/dist/build/
+          cp build/wasm_exec.js build/dist/build/
+
+      - name: "📦 Package Source Code for Review"
+        run: |
+          zip -r build/source-code.zip . -x "build/*" -x "web-ext-artifacts/*" -x "node_modules/*" -x ".git/*" -x "suola/.git/*"
+
+      - name: "🔏 Sign Firefox Extension"
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          npx web-ext sign \
+            --source-dir build/dist \
+            --channel unlisted \
+            --api-key "$AMO_JWT_ISSUER" \
+            --api-secret "$AMO_JWT_SECRET" \
+            --upload-source-code build/source-code.zip
+
       - name: "🔧 Prepare Release Files"
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
           cp build/klikkikuri-paatti.zip build/klikkikuri-paatti-${VERSION}.zip
-          cp build/klikkikuri-paatti.zip build/klikkikuri-paatti-${VERSION}.xpi
+          # Copy the signed XPI downloaded by web-ext from the artifacts folder
+          cp web-ext-artifacts/*.xpi build/klikkikuri-paatti-${VERSION}.xpi
 
       - name: "🏷️ Create GitHub Release"
         uses: softprops/action-gh-release@v3
