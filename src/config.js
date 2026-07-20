@@ -108,14 +108,19 @@ const DEFAULT_CONFIG = {
                     "title": "h3 a",
                     "link": "a[href*='/a/']",
                 },
-
-                { // Lyhyesti tab
+                {
                     // The main article wrapper
                     "container": "article.yle__article",
-                    // We look for the ID in the 'Avaa koko juttu' link at the bottom
-                    "link": "section a[href*='/a/']",
+                    // We look for 'Avaa koko juttu' link at the bottom
+                    "link": "section a[href^='/a/']:last-child",
                     // The target to replace is the H2 heading
                     "title": "header h2"
+                },
+                {
+                    // Lyhyesti -scroller
+                    "container": "aside[aria-labelledby=newsbriefly-heading] li a",
+                    "link": "self",
+                    "title": "self"
                 },
                 { // Pääuutiset cards
                     // The outermost wrapper that contains one full uutiskortti
@@ -155,8 +160,8 @@ const DEFAULT_CONFIG = {
                 {
                     // Section: Main news cards and teaser components on the frontpage and category pages
                     // Each individual news card is marked with this test id
-                    "container": "[data-testid='article-teaser-component'], [data-testid='teaser-content']",
-                    "link": "a[data-testid^='teaser-link-'], a[data-testid='internal-link']",
+                    "container": "[data-testid='teaser-content']",
+                    "link": "a[data-testid='internal-link']",
                     "title": "h2"
                 },
                 {
@@ -242,6 +247,35 @@ const DEFAULT_CONFIG = {
                 }
             ]
         },
+        "www.ampparit.com": {
+            "name": "Ampparit Uutispalvelut",
+            "enabled": false,  // Optional
+            "rules": [
+                {
+                    // Main list of news items on front page
+                    "container": "article.item",
+                    "link": ".item-title > a",
+                    "title": ".item-title > a"
+                },
+                {
+                    "container": "div.sidebox.popular .sidebox-content div.simple-item a[rel=\"noopener\"]",
+                    "link": "self",
+                    "title": "self"
+                }
+            ]
+        },
+        "old.reddit.com": {
+            "name": "Reddit (old)",
+            "enabled": false,  // Optional
+            "rules": [
+                {
+                    // Main list of posts on front page and subreddit pages
+                    "container": "div.linklisting div.entry",
+                    "link": "p.title a.title",
+                    "title": "p.title a.title"
+                }
+            ]
+        }
     },
 
     "environmentConfigs": {

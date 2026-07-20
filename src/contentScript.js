@@ -174,11 +174,21 @@ let hrefSign;
                     ? [container]
                     : container.querySelectorAll(rule.link);
                 for (const link of links) {
+                    const titleElem = (rule.title === "self" || rule.title === ":scope")
+                        ? container
+                        : (rule.title ? container.querySelector(rule.title) : link);
+
+                    if (!titleElem) {
+                        container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
+                        container.dataset.klikkikuriReason = `No title element found for selector '${rule.title}'`;
+                        continue;
+                    }
+
                     const href = link.getAttribute('href');
                     if (href) {
                         try {
                             const urlObj = new URL(href, window.location.href);
-                            linksToProcess.push({ container, link, rule, href: urlObj.href });
+                            linksToProcess.push({ container, link, rule, href: urlObj.href, titleElem });
                         } catch (e) {
                             // ignore invalid URL
                         }
@@ -207,7 +217,7 @@ let hrefSign;
         }
 
         // Process each element using pre-computed hashes
-        const processingPromises = linksToProcess.map(async ({ container, link, rule, href }) => {
+        const processingPromises = linksToProcess.map(async ({ container, link, rule, href, titleElem }) => {
             let what = klikkikuriStatus.SKIPPED;
             let why = "";
             let how = "";
@@ -224,10 +234,6 @@ let hrefSign;
                 container.dataset.klikkikuriUrlSign = urlSign;
 
                 const rahtiEntry = await rahti.get(urlSign);
-                const titleElem = (rule.title === "self" || rule.title === ":scope")
-                    ? container
-                    : (rule.title ? container.querySelector(rule.title) : link);
-
                 if (!rahtiEntry) {
                     why = `No Rahti entry found for hash '${urlSign}'`;
                     container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
@@ -237,13 +243,6 @@ let hrefSign;
 
                 clickbaitiness = rahtiEntry.clickbaitiness;
                 titleElem.dataset.klikkikuriClickbaitLevel = rahtiEntry.clickbaitiness;
-
-                if (!titleElem) {
-                    why = `No title element found for selector '${rule.title}'`;
-                    container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
-                    container.dataset.klikkikuriReason = why;
-                    return { what, why, how, clickbaitiness };
-                }
 
                 if (!titleElem.dataset.klikkikuriOriginalTitle) {
                     titleElem.dataset.klikkikuriOriginalTitle = titleElem.textContent;

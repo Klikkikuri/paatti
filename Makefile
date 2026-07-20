@@ -59,4 +59,7 @@ clean:
 release:
 	node release.js $(VERSION)
 
-.PHONY: build init package test-data clean build-suola-local build-suola release dist
+test:
+	node tests/config.test.mjs
+
+.PHONY: build init package test-data clean build-suola-local build-suola release dist test
