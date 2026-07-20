@@ -16,7 +16,9 @@ Sail smoothly through the clickbait-infested web using this browser extension.
       - [Configuration](#configuration)
     - [Temporary Development Loading](#temporary-development-loading)
       - [For Firefox (Manual)](#for-firefox-manual)
+      - [For Chrome / Chromium (Manual)](#for-chrome--chromium-manual)
       - [Via web-ext run](#via-web-ext-run)
+  - [Permission Requirements](#permission-requirements)
   - [Development](#development)
     - [Local Test Data \& Hashed Signatures](#local-test-data--hashed-signatures)
       - [Step 1: Dump URL Signatures from the Page](#step-1-dump-url-signatures-from-the-page)
@@ -139,6 +141,13 @@ web-ext run --devtools [--firefox firefox-devedition] [--url http://www.yle.fi/u
 web-ext run --devtools [--chromium-binary /usr/bin/chromium] -t chromium [--url http://www.yle.fi/]
 ```
 
+## Permission Requirements
+
+- `host_permissions`: Host permissions are required to access the DOM of supported news websites. This allows the extension to read the original headlines on the page and modify them with the aligned, clickbait-free text.
+- `alarms`: The alarms API is used to periodically schedule background fetches for the latest headline correction database. This ensures the user has up-to-date corrections while allowing the background service worker to sleep, saving system resources.
+- `storage`: The storage API is used to cache the downloaded headline correction list locally to reduce network requests and improve page load performance. It is also used to save the user's personal settings, such as their preferred clickbait severity threshold and per-site enable/disable preferences.
+- `tabs`: The tabs API is required to detect when a user navigates to a supported news website or when a page dynamically updates its content (e.g., Single Page Applications), so the extension knows exactly when to trigger the headline replacement script.
+- `scripting`: The scripting API is used to inject the headline-replacement logic (content scripts) directly into the news website's active tab so that the DOM elements containing clickbait titles can be safely modified.
 
 ## Development
 
