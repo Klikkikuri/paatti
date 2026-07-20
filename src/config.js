@@ -108,14 +108,19 @@ const DEFAULT_CONFIG = {
                     "title": "h3 a",
                     "link": "a[href*='/a/']",
                 },
-
-                { // Lyhyesti tab
+                {
                     // The main article wrapper
                     "container": "article.yle__article",
-                    // We look for the ID in the 'Avaa koko juttu' link at the bottom
-                    "link": "section a[href*='/a/']",
+                    // We look for 'Avaa koko juttu' link at the bottom
+                    "link": "section a[href^='/a/']:last-child",
                     // The target to replace is the H2 heading
                     "title": "header h2"
+                },
+                {
+                    // Lyhyesti -scroller
+                    "container": "aside[aria-labelledby=newsbriefly-heading] li a",
+                    "link": "self",
+                    "title": "self"
                 },
                 { // Pääuutiset cards
                     // The outermost wrapper that contains one full uutiskortti
