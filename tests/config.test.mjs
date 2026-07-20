@@ -26,10 +26,8 @@ async function runTests() {
 
   const config = await getConfig();
   const siteConfigs = config.siteConfigs;
-  const hostPermissions = new Set([
-    ...(manifest.host_permissions || []),
-    ...(manifest.optional_host_permissions || [])
-  ]);
+  const manifestHostPermissions = new Set(manifest.host_permissions || []);
+  const manifestOptionalHostPermissions = new Set(manifest.optional_host_permissions || []);
 
   // Find matches in web_accessible_resources
   const webAccessibleMatches = new Set();
@@ -45,13 +43,23 @@ async function runTests() {
 
   console.log('\n--- Host Permissions Check ---');
   for (const [domain, siteConfig] of Object.entries(siteConfigs)) {
+    const isEnabledByDefault = siteConfig.enabled !== false;
     const origins = siteConfig.origins || [`https://${domain}/*`];
     for (const origin of origins) {
-      if (!hostPermissions.has(origin)) {
-        console.error(`❌ Error: Origin "${origin}" for site "${domain}" is not declared in host_permissions or optional_host_permissions of manifest.json.`);
-        failed = true;
+      if (isEnabledByDefault) {
+        if (!manifestHostPermissions.has(origin)) {
+          console.error(`❌ Error: Site "${domain}" is enabled by default, but its origin "${origin}" is not in host_permissions of manifest.json.`);
+          failed = true;
+        } else {
+          console.log(`✅ Origin "${origin}" for default-enabled site "${domain}" is in host_permissions.`);
+        }
       } else {
-        console.log(`✅ Origin "${origin}" is declared in manifest permissions.`);
+        if (!manifestOptionalHostPermissions.has(origin)) {
+          console.error(`❌ Error: Site "${domain}" is disabled by default (optional), but its origin "${origin}" is not in optional_host_permissions of manifest.json.`);
+          failed = true;
+        } else {
+          console.log(`✅ Origin "${origin}" for optional site "${domain}" is in optional_host_permissions.`);
+        }
       }
     }
   }
