@@ -48,6 +48,10 @@ test-data:
 clean:
 	rm -f "$(BUILD_TEST_DATA)" "$(TEST_DATA_SIGNATURES)" "$(BUILD_EXTENSION)"
 	rm -f $(BUILD_DIR)/klikkikuri-*.xpi
+	rm -f $(BUILD_DIR)/klikkikuri-*.zip
 	rmdir "$(TEST_DATA_BUILD_DIR)" 2>/dev/null || true
 
-.PHONY: build init package test-data clean build-suola-local build-suola
+release:
+	node release.js $(VERSION)
+
+.PHONY: build init package test-data clean build-suola-local build-suola release
