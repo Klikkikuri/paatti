@@ -71,16 +71,16 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
-          cp klikkikuri-paatti.zip klikkikuri-paatti-${VERSION}.zip
-          cp klikkikuri-paatti.zip klikkikuri-paatti-${VERSION}.xpi
+          cp build/klikkikuri-paatti.zip build/klikkikuri-paatti-${VERSION}.zip
+          cp build/klikkikuri-paatti.zip build/klikkikuri-paatti-${VERSION}.xpi
 
       - name: "🏷️ Create GitHub Release"
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            klikkikuri-paatti.zip
-            klikkikuri-paatti-${VERSION}.xpi
-            klikkikuri-paatti-${VERSION}.zip
+            build/klikkikuri-paatti.zip
+            build/klikkikuri-paatti-${{ steps.get_version.outputs.VERSION }}.xpi
+            build/klikkikuri-paatti-${{ steps.get_version.outputs.VERSION }}.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -89,6 +89,6 @@ jobs:
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
-            klikkikuri-paatti.zip
-            klikkikuri-paatti-${VERSION}.xpi
-            klikkikuri-paatti-${VERSION}.zip
+            build/klikkikuri-paatti.zip
+            build/klikkikuri-paatti-${{ steps.get_version.outputs.VERSION }}.xpi
+            build/klikkikuri-paatti-${{ steps.get_version.outputs.VERSION }}.zip

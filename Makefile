@@ -1,5 +1,5 @@
 DOCKER := docker
-BUILD_DIR := $(shell pwd)
+BUILD_DIR := $(shell pwd)/build
 TEST_DATA_BUILD_DIR := $(BUILD_DIR)/test_data
 TEST_DATA_SIGNATURES := $(TEST_DATA_BUILD_DIR)/signatures.txt
 BUILD_TEST_DATA := $(TEST_DATA_BUILD_DIR)/data.json
@@ -28,9 +28,10 @@ build-suola:
 
 build-suola-local:
 	$(DOCKER) build --target wasm-builder -t buildsuola suola/
-	$(DOCKER) run --mount type=bind,src=$(BUILD_DIR)/suola/build/,dst=/app/build buildsuola
+	$(DOCKER) run --mount type=bind,src=$(shell pwd)/suola/build/,dst=/app/build buildsuola
 
 package: build-suola
+	mkdir -p $(BUILD_DIR)
 	zip -r -FS $(BUILD_EXTENSION) \
 	  ./icons/ \
 	  ./_locales/ \
@@ -48,8 +49,9 @@ test-data:
 clean:
 	rm -f "$(BUILD_TEST_DATA)" "$(TEST_DATA_SIGNATURES)" "$(BUILD_EXTENSION)"
 	rm -f $(BUILD_DIR)/klikkikuri-*.xpi
-	rm -f $(BUILD_DIR)/klikkikuri-*.zip
+	rm -f $(BUILD_DIR)/klikkikuri-paatti-*.xpi
 	rmdir "$(TEST_DATA_BUILD_DIR)" 2>/dev/null || true
+	rmdir "$(BUILD_DIR)" 2>/dev/null || true
 
 release:
 	node release.js $(VERSION)
