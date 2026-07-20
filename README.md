@@ -93,9 +93,9 @@ To install the pre-packaged browser extension:
    - Confirm the installation when prompted.
 
 > [!NOTE]
-> Firefox requires extensions to be digitally signed for permanent installation in standard releases. If you are installing an unsigned release build:
-> - **Temporarily load it** via `about:debugging` (see below under [Temporary Development Loading](#temporary-development-loading)).
-> - **Or install permanently** by using Firefox Developer Edition, Nightly, or ESR, and setting `xpinstall.signatures.required` to `false` in `about:config`.
+> Firefox requires extensions to be digitally signed for permanent installation.
+> - **Official Releases**: The `.xpi` files uploaded to the GitHub Releases page are automatically signed during build execution and can be installed directly.
+> - **Local/Custom Builds**: If you build the extension locally or use an unsigned package, you must load it temporarily via `about:debugging` or use Firefox Developer Edition/Nightly/ESR with `xpinstall.signatures.required` set to `false`.
 
 ### Building from Source
 
@@ -190,7 +190,7 @@ The project uses a semi-automated, tag-driven release process:
    git push origin HEAD --follow-tags
    ```
    *(Note: If pushing to a branch with branch protection, you can push the commit first as a PR, merge it, pull `main` locally, and then tag and push the tag).*
-4. **CI/CD Processing**: Once the tag `v*` is pushed, the GitHub Actions release workflow validates that the tag matches the version config, builds the package (compiling or fetching `suola` WASM), generates build provenance attestations, and uploads the `.zip` and `.xpi` release assets to a newly created GitHub Release.
+4. **CI/CD Processing**: Once the tag `v*` is pushed, the GitHub Actions release workflow validates that the tag matches the version config, builds the package, submits it to Mozilla for unlisted signing (with source code uploaded for WebAssembly verification), generates build provenance attestations, and uploads the `.zip` and signed `.xpi` release assets to a newly created GitHub Release.
 
 
 ## Architecture
