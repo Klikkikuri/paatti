@@ -160,8 +160,8 @@ const DEFAULT_CONFIG = {
                 {
                     // Section: Main news cards and teaser components on the frontpage and category pages
                     // Each individual news card is marked with this test id
-                    "container": "[data-testid='article-teaser-component'], [data-testid='teaser-content']",
-                    "link": "a[data-testid^='teaser-link-'], a[data-testid='internal-link']",
+                    "container": "[data-testid='teaser-content']",
+                    "link": "a[data-testid='internal-link']",
                     "title": "h2"
                 },
                 {
