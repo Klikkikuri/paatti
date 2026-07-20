@@ -7,3 +7,7 @@ test_data/data.json
 
 # Packaged extension for Firefox.
 *.zip
+*.xpi
+
+# Local build directory.
+build/

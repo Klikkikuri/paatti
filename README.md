@@ -24,6 +24,7 @@ Sail smoothly through the clickbait-infested web using this browser extension.
       - [Step 3: Generate the Mock Database](#step-3-generate-the-mock-database)
       - [Step 4: Serve the Database Locally](#step-4-serve-the-database-locally)
       - [Step 5: Switch Extension Environment \& Grant Permissions](#step-5-switch-extension-environment--grant-permissions)
+    - [Generating a Release](#generating-a-release)
   - [Architecture](#architecture)
   - [License](#license)
 
@@ -92,9 +93,9 @@ To install the pre-packaged browser extension:
    - Confirm the installation when prompted.
 
 > [!NOTE]
-> Firefox requires extensions to be digitally signed for permanent installation in standard releases. If you are installing an unsigned release build:
-> - **Temporarily load it** via `about:debugging` (see below under [Temporary Development Loading](#temporary-development-loading)).
-> - **Or install permanently** by using Firefox Developer Edition, Nightly, or ESR, and setting `xpinstall.signatures.required` to `false` in `about:config`.
+> Firefox requires extensions to be digitally signed for permanent installation.
+> - **Official Releases**: The `.xpi` files uploaded to the GitHub Releases page are automatically signed during build execution and can be installed directly.
+> - **Local/Custom Builds**: If you build the extension locally or use an unsigned package, you must load it temporarily via `about:debugging` or use Firefox Developer Edition/Nightly/ESR with `xpinstall.signatures.required` set to `false`.
 
 ### Building from Source
 
@@ -174,6 +175,22 @@ This serves your mock data at `http://localhost:3000/data.json` with appropriate
 2. Change the environment setting to **Development**.
 3. **Grant Localhost Permissions**: Because `localhost` is listed as an optional permission, Firefox blocks requests to it by default. Navigate to the **Permissions** tab of the Klikkikuri Paatti extension page in `about:addons`, and toggle the permission switch for **Access your data for localhost** (or `http://localhost/*`) to **On**.
 4. The extension will now be able to periodically fetch database updates from your local test server.
+
+### Generating a Release
+
+The project uses a semi-automated, tag-driven release process:
+
+1. **Verify your local branch**: Ensure your local branch is clean and updated.
+2. **Bump version, commit, and tag**: Run the release task providing the new version (e.g. `0.0.4`). This bumps `manifest.json`, appends the release update block to `updates.json`, commits the change, and tags the commit locally:
+   ```sh
+   make release VERSION=0.0.4
+   ```
+3. **Push to Remote**: Push the commit and tags upstream:
+   ```sh
+   git push origin HEAD --follow-tags
+   ```
+   *(Note: If pushing to a branch with branch protection, you can push the commit first as a PR, merge it, pull `main` locally, and then tag and push the tag).*
+4. **CI/CD Processing**: Once the tag `v*` is pushed, the GitHub Actions release workflow validates that the tag matches the version config, builds the package, submits it to Mozilla for unlisted signing (with source code uploaded for WebAssembly verification), generates build provenance attestations, and uploads the `.zip` and signed `.xpi` release assets to a newly created GitHub Release.
 
 
 ## Architecture

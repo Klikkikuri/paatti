@@ -1,0 +1,119 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: "🚀 Publish Release"
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write      # Required to create the GitHub release, upload assets, and push to main
+      id-token: write      # Required for build provenance attestation
+      attestations: write  # Required for build provenance attestation
+
+    steps:
+      - name: "🔄 Checkout Repository"
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: "🏷️ Fetch Submodule Tags"
+        run: |
+          git -C suola fetch --tags
+
+      - name: "🔧 Set up Node.js"
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: 'npm'
+          # Since this repository doesn't utilize a package.json file, set cache-dependency-path to .github/workflows/release.yml.
+          cache-dependency-path: '.github/workflows/release.yml'
+
+      - name: "🏷️ Extract version from tag"
+        id: get_version
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: "🔍 Verify tag version matches manifest.json"
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          MANIFEST_VERSION=$(node -p "require('./manifest.json').version")
+          if [ "$MANIFEST_VERSION" != "$VERSION" ]; then
+            echo "Error: Tag version ($VERSION) does not match manifest.json version ($MANIFEST_VERSION)"
+            exit 1
+          fi
+          echo "Version match verified: $VERSION"
+
+      - name: "🔍 Verify updates.json contains version entry"
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          node -e "
+          const fs = require('fs');
+          const version = process.env.VERSION;
+          const updates = JSON.parse(fs.readFileSync('updates.json', 'utf8'));
+          const addonId = 'klikkikuri@protonmail.com';
+          const addonUpdates = updates.addons[addonId].updates;
+          const exists = addonUpdates.some(u => u.version === version);
+          if (!exists) {
+            console.error('Error: updates.json does not contain an update entry for version ' + version);
+            process.exit(1);
+          }
+          console.log('updates.json contains version ' + version);
+          "
+
+      - name: "🏗️ Build Extension Package"
+        run: |
+          make build DOCKER=false
+
+      - name: "📦 Package Source Code for Review"
+        run: |
+          zip -r build/source-code.zip . -x "build/*" -x "web-ext-artifacts/*" -x "node_modules/*" -x ".git/*" -x "suola/.git/*"
+
+      - name: "🔏 Sign Firefox Extension"
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          npx web-ext sign \
+            --source-dir build/dist \
+            --channel unlisted \
+            --api-key "$AMO_JWT_ISSUER" \
+            --api-secret "$AMO_JWT_SECRET" \
+            --upload-source-code build/source-code.zip
+
+      - name: "🔧 Prepare Release Files"
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          cp build/klikkikuri-paatti.zip build/klikkikuri-paatti-${VERSION}.zip
+          # Copy the signed XPI downloaded by web-ext from the artifacts folder
+          cp web-ext-artifacts/*.xpi build/klikkikuri-paatti-${VERSION}.xpi
+
+      - name: "🏷️ Create GitHub Release"
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            build/klikkikuri-paatti.zip
+            build/klikkikuri-paatti-${{ steps.get_version.outputs.VERSION }}.xpi
+            build/klikkikuri-paatti-${{ steps.get_version.outputs.VERSION }}.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "🔒 Attest Release Artifacts"
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            build/klikkikuri-paatti.zip
+            build/klikkikuri-paatti-${{ steps.get_version.outputs.VERSION }}.xpi
+            build/klikkikuri-paatti-${{ steps.get_version.outputs.VERSION }}.zip

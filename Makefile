@@ -1,38 +1,62 @@
 DOCKER := docker
-BUILD_DIR := $(shell pwd)
+BUILD_DIR := $(shell pwd)/build
 TEST_DATA_BUILD_DIR := $(BUILD_DIR)/test_data
 TEST_DATA_SIGNATURES := $(TEST_DATA_BUILD_DIR)/signatures.txt
 BUILD_TEST_DATA := $(TEST_DATA_BUILD_DIR)/data.json
 BUILD_EXTENSION := $(BUILD_DIR)/klikkikuri-paatti.zip
+DIST_DIR := $(BUILD_DIR)/dist
+EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md
+WASM_ASSETS := js.wasm wasm_exec.js
 
-build: init package
+
+build: init build-suola package
 
 init:
 	git submodule init
 	git submodule update
-	# Build suola artifacts.
-	$(DOCKER) build --target wasm-builder -t buildsuola suola/
-	$(DOCKER) run --mount type=bind,src=$(BUILD_DIR)/suola/build/,dst=/app/build buildsuola
 
-package:
-	zip -r -FS $(BUILD_EXTENSION) \
-	  ./icons/ \
-	  ./_locales/ \
-	  ./manifest.json \
-	  ./src/ \
-	  ./suola/build/js.wasm \
-	  ./suola/build/suola.js \
-	  ./suola/build/wasm_exec.js \
-	  ./LICENSE.md \
-	  ./LISENSSI.md
+build-suola:
+	# Check if suola submodule is clean and exact-tagged
+	@if [ -d suola ] && (cd suola && git diff-index --quiet HEAD -- && git describe --tags --exact-match >/dev/null 2>&1); then \
+		SUOLA_TAG=$$(cd suola && git describe --tags --exact-match); \
+		echo "suola submodule is clean and tagged at $$SUOLA_TAG. Fetching pre-built artifacts from GitHub releases..."; \
+		mkdir -p $(BUILD_DIR); \
+		rm -f $(BUILD_DIR)/js.wasm $(BUILD_DIR)/wasm_exec.js; \
+		curl -L -f -o $(BUILD_DIR)/js.wasm "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/js.wasm" && \
+		curl -L -f -o $(BUILD_DIR)/wasm_exec.js "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/wasm_exec.js" || \
+		{ echo "Failed to download pre-built artifacts. Falling back to docker build..."; $(MAKE) build-suola-local; }; \
+	else \
+		echo "suola submodule is modified or untagged. Building suola artifacts locally using docker..."; \
+		$(MAKE) build-suola-local; \
+	fi
+
+build-suola-local:
+	mkdir -p suola/build
+	$(DOCKER) build --target wasm-builder -t buildsuola suola/
+	$(DOCKER) run --mount type=bind,src=$(shell pwd)/suola/build/,dst=/app/build buildsuola
+	mkdir -p $(BUILD_DIR)
+	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
+	cp suola/build/wasm_exec.js $(BUILD_DIR)/wasm_exec.js
+
+dist: build-suola
+	mkdir -p $(DIST_DIR)/build
+	cp -r $(EXTENSION_ASSETS) $(DIST_DIR)/
+	cp $(addprefix $(BUILD_DIR)/, $(WASM_ASSETS)) $(DIST_DIR)/build/
+
+package: dist
+	cd $(DIST_DIR) && zip -r -FS $(BUILD_EXTENSION) .
 
 test-data:
 	mkdir -p "$(TEST_DATA_BUILD_DIR)"
 	./generate_test_data.py $(TEST_DATA_SIGNATURES)
 
 clean:
-	rm "$(BUILD_TEST_DATA)" "$(TEST_DATA_SIGNATURES)" "$(BUILD_EXTENSION)"
-	rmdir "$(TEST_DATA_BUILD_DIR)"
+	rm -f "$(BUILD_TEST_DATA)" "$(TEST_DATA_SIGNATURES)" "$(BUILD_EXTENSION)"
+	rm -f $(BUILD_DIR)/klikkikuri-*.xpi
+	rm -f $(BUILD_DIR)/klikkikuri-paatti-*.xpi
+	rm -rf "$(BUILD_DIR)"
 
+release:
+	node release.js $(VERSION)
 
-.PHONY: build init package test-data clean
+.PHONY: build init package test-data clean build-suola-local build-suola release dist

@@ -1,17 +1,6 @@
 "use strict";
 
-/*
- * README:
- *
- * This file/module depends on the following functions in its global scope:
- * - `hashUrl(url: string) -> string | falsy`
- *   - Function should normalize and return a sha256 hash of the input URL or a
- *   falsy value in case of an error.
- * - `initSuola(url: string) -> void`
- *   - Function should make the hashUrl-function available based on the
- *   provided URL/path of the WebAssembly module (browser extension accesses
- *   the .wasm file differently compared to normal browser scripts/files).
- */
+
 
 // Use this to access this source file in the browser debugger.
 //debugger;
