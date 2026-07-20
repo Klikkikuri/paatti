@@ -3,6 +3,7 @@ BUILD_DIR := $(shell pwd)/build
 TEST_DATA_BUILD_DIR := $(BUILD_DIR)/test_data
 TEST_DATA_SIGNATURES := $(TEST_DATA_BUILD_DIR)/signatures.txt
 BUILD_TEST_DATA := $(TEST_DATA_BUILD_DIR)/data.json
+BUILD_SOURCE_DIST := $(BUILD_DIR)/source-code.zip
 BUILD_EXTENSION := $(BUILD_DIR)/klikkikuri-paatti.zip
 DIST_DIR := $(BUILD_DIR)/dist
 EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md
@@ -46,6 +47,10 @@ dist: build-suola
 package: dist
 	cd $(DIST_DIR) && zip -r -FS $(BUILD_EXTENSION) .
 
+source-dist:
+	mkdir -p $(BUILD_DIR)
+	git ls-files --recurse-submodules | zip -@ $(BUILD_SOURCE_DIST)
+
 test-data:
 	mkdir -p "$(TEST_DATA_BUILD_DIR)"
 	./generate_test_data.py $(TEST_DATA_SIGNATURES)
@@ -62,4 +67,4 @@ release:
 test:
 	node tests/config.test.mjs
 
-.PHONY: build init package test-data clean build-suola-local build-suola release dist test
+.PHONY: build init package source-dist test-data clean build-suola-local build-suola release dist test

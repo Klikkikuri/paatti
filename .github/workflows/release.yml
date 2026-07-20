@@ -77,7 +77,7 @@ jobs:
 
       - name: "📦 Package Source Code for Review"
         run: |
-          zip -r build/source-code.zip . -x "build/*" -x "web-ext-artifacts/*" -x "node_modules/*" -x ".git/*" -x "suola/.git/*"
+          make source-dist
 
       - name: "🔏 Sign Firefox Extension"
         env:
