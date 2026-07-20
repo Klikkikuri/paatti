@@ -1,0 +1,123 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: "🚀 Publish Release"
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write      # Required to create the GitHub release, upload assets, and push to main
+      id-token: write      # Required for build provenance attestation
+      attestations: write  # Required for build provenance attestation
+
+    steps:
+      - name: "🔄 Checkout Repository"
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: "🏷️ Fetch Submodule Tags"
+        run: |
+          git -C suola fetch --tags
+
+      - name: "🏷️ Extract version from tag"
+        id: get_version
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: "🔧 Update manifest.json and updates.json"
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          node -e "
+          const fs = require('fs');
+          const version = process.env.VERSION;
+          
+          // 1. Update manifest.json
+          const manifestPath = 'manifest.json';
+          const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+          manifest.version = version;
+          fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+          console.log('Updated manifest.json to version ' + version);
+          
+          // 2. Update updates.json
+          const updatesPath = 'updates.json';
+          if (fs.existsSync(updatesPath)) {
+            const updates = JSON.parse(fs.readFileSync(updatesPath, 'utf8'));
+            const addonId = 'klikkikuri@protonmail.com';
+            if (updates.addons && updates.addons[addonId]) {
+              const addonUpdates = updates.addons[addonId].updates;
+              const alreadyExists = addonUpdates.some(u => u.version === version);
+              if (!alreadyExists) {
+                addonUpdates.push({
+                  version: version,
+                  update_link: 'https://github.com/Klikkikuri/paatti/releases/download/v' + version + '/klikkikuri-paatti-' + version + '.xpi',
+                  applications: {
+                    gecko: {
+                      strict_min_version: '152.0'
+                    }
+                  }
+                });
+                fs.writeFileSync(updatesPath, JSON.stringify(updates, null, 2) + '\n');
+                console.log('Updated updates.json with version ' + version);
+              } else {
+                console.log('updates.json already contains version ' + version);
+              }
+            } else {
+              console.log('Addon ID not found in updates.json');
+            }
+          } else {
+            console.log('updates.json not found');
+          }
+          "
+
+      - name: "🔄 Push changes to main and update tag"
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add manifest.json updates.json
+          git commit -m "chore: update version to v${VERSION} for release [skip ci]"
+          git push origin HEAD:main
+          git tag -f -a "v${VERSION}" -m "Release v${VERSION}"
+          git push origin "v${VERSION}" --force
+
+      - name: "🏗️ Build Extension Package"
+        run: |
+          make build DOCKER=false
+
+      - name: "🔧 Prepare Release Files"
+        env:
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+        run: |
+          cp klikkikuri-paatti.zip klikkikuri-paatti-${VERSION}.xpi
+          cp klikkikuri-paatti.zip klikkikuri-${VERSION}.xpi
+
+      - name: "🏷️ Create GitHub Release"
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            klikkikuri-paatti.zip
+            klikkikuri-paatti-*.xpi
+            klikkikuri-*.xpi
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "🔒 Attest Release Artifacts"
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            klikkikuri-paatti.zip
+            klikkikuri-paatti-*.xpi
+            klikkikuri-*.xpi

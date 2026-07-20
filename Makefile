@@ -50,13 +50,4 @@ clean:
 	rm -f $(BUILD_DIR)/klikkikuri-*.xpi
 	rmdir "$(TEST_DATA_BUILD_DIR)" 2>/dev/null || true
 
-release:
-	@if ! git diff-index --quiet HEAD --; then \
-		echo "Error: Working directory has uncommitted changes. Please commit or stash them first."; \
-		exit 1; \
-	fi
-	node release.js $(VERSION)
-	$(MAKE) build
-	cp klikkikuri-paatti.zip klikkikuri-paatti-$$(node -p "require('./manifest.json').version").xpi
-
-.PHONY: build init package test-data clean release build-suola-local build-suola
+.PHONY: build init package test-data clean build-suola-local build-suola

@@ -1,0 +1,47 @@
+name: Build and Test
+
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - 'v*'
+  pull_request:
+    branches:
+      - '**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-and-test:
+    name: "🛠️ Build and Test"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "🔄 Checkout Repository"
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: "🏷️ Fetch Submodule Tags"
+        run: |
+          git -C suola fetch --tags
+
+      - name: "🏗️ Build Extension Package"
+        run: |
+          make build
+
+      - name: "⬆️ Upload Artifacts"
+        uses: actions/upload-artifact@v7
+        with:
+          name: klikkikuri-paatti-extension
+          path: klikkikuri-paatti.zip
+          if-no-files-found: error
