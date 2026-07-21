@@ -3,6 +3,25 @@ import { controller } from '../../controller.js';
 import { getConfig } from '../../config.js';
 import './toggle-button.js';
 
+const compactTemplate = document.createElement('template');
+compactTemplate.innerHTML = `
+    <span class="label-text" style="font-weight: bold;"></span>
+    <toggle-button type="toggle"></toggle-button>
+`;
+
+const detailedTemplate = document.createElement('template');
+detailedTemplate.innerHTML = `
+    <div class="setting-group">
+        <div class="setting-label">
+            <div class="label-text">
+                <strong class="title-text"></strong>
+                <span class="description-text"></span>
+            </div>
+            <toggle-button></toggle-button>
+        </div>
+    </div>
+`;
+
 /**
  * Custom element managing title modifier options (e.g. Tekoälymerkintä / AI Slop).
  * Supports layout="compact" (popup setting) and layout="detailed" (options page).
@@ -23,17 +42,18 @@ class TitleModifierSetting extends HTMLElement {
 
         if (layout === 'compact') {
             this.classList.add('compact-setting-row');
+            this.replaceChildren(compactTemplate.content.cloneNode(true));
 
             let labelText = 'Merkitse tekoälysisältö';
             if (modifier === 'aiSlop') {
                 labelText = 'Tekoälymerkintä';
             }
 
-            this.innerHTML = `
-                <span style="font-weight: bold;">${labelText}</span>
-                <toggle-button type="toggle" id="modifier-${modifier}"></toggle-button>
-            `;
+            const labelEl = this.querySelector('.label-text');
+            if (labelEl) labelEl.textContent = labelText;
         } else {
+            this.replaceChildren(detailedTemplate.content.cloneNode(true));
+
             let title = 'Tekoälymerkintä (AI)';
             let description = 'Lisää robotti-ilmaisimen 🤖 otsikoihin, jotka on tunnistettu automaattisesti luoduksi tekoälysisällöksi';
 
@@ -42,20 +62,16 @@ class TitleModifierSetting extends HTMLElement {
                 description = 'Lisää robotti-ilmaisimen 🤖 otsikoihin, jotka on tunnistettu automaattisesti luoduksi tekoälysisällöksi';
             }
 
-            this.innerHTML = `
-                <div class="setting-group">
-                    <div class="setting-label">
-                        <div class="label-text">
-                            <strong>${title}</strong>
-                            <span>${description}</span>
-                        </div>
-                        <toggle-button id="modifier-${modifier}"></toggle-button>
-                    </div>
-                </div>
-            `;
+            const titleEl = this.querySelector('.title-text');
+            const descEl = this.querySelector('.description-text');
+            if (titleEl) titleEl.textContent = title;
+            if (descEl) descEl.textContent = description;
         }
 
         const toggleBtn = this.querySelector('toggle-button');
+        if (toggleBtn) {
+            toggleBtn.setAttribute('id', `modifier-${modifier}`);
+        }
         this.loadState(toggleBtn, modifier, layout);
 
         // Auto-sync state when settings are changed elsewhere

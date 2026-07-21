@@ -4,6 +4,25 @@ import { model } from '../../model.js';
 import { getConfig } from '../../config.js';
 import './toggle-button.js';
 
+const compactTemplate = document.createElement('template');
+compactTemplate.innerHTML = `
+    <span class="label-text" style="font-weight: bold;"></span>
+    <toggle-button type="toggle" id="devmode-setDebugVisuals"></toggle-button>
+`;
+
+const detailedTemplate = document.createElement('template');
+detailedTemplate.innerHTML = `
+    <div class="setting-group">
+        <div class="setting-label">
+            <div class="label-text">
+                <strong>Debug-visualisoinnit</strong>
+                <span>Näytä visuaaliset debug-merkit käsitellyistä elementeistä</span>
+            </div>
+            <toggle-button id="debugVisuals"></toggle-button>
+        </div>
+    </div>
+`;
+
 /**
  * Custom element managing the Visual Highlight / Debug Visuals setting.
  * Supports layout="compact" (popup settings list item) and layout="detailed" (options page).
@@ -23,24 +42,15 @@ class VisualHighlightSetting extends HTMLElement {
 
         if (layout === 'compact') {
             this.classList.add('compact-setting-row');
+            this.replaceChildren(compactTemplate.content.cloneNode(true));
 
             const labelText = browser().i18n.getMessage('devmodeSetDebugVisualsLabel') || 'Visuaalinen korostus';
-            this.innerHTML = `
-                <span style="font-weight: bold;">${labelText}</span>
-                <toggle-button type="toggle" id="devmode-setDebugVisuals"></toggle-button>
-            `;
+            const labelEl = this.querySelector('.label-text');
+            if (labelEl) {
+                labelEl.textContent = labelText;
+            }
         } else {
-            this.innerHTML = `
-                <div class="setting-group">
-                    <div class="setting-label">
-                        <div class="label-text">
-                            <strong>Debug-visualisoinnit</strong>
-                            <span>Näytä visuaaliset debug-merkit käsitellyistä elementeistä</span>
-                        </div>
-                        <toggle-button id="debugVisuals"></toggle-button>
-                    </div>
-                </div>
-            `;
+            this.replaceChildren(detailedTemplate.content.cloneNode(true));
         }
 
         const toggleBtn = this.querySelector('toggle-button');

@@ -5,6 +5,12 @@ import { getConfig } from '../../config.js';
 import { isSiteEnabled } from '../utils.js';
 import { handleSiteToggleHelper } from './site-toggle.js';
 
+const template = document.createElement('template');
+template.innerHTML = `
+    <input class="conversion-switch hidden" id="site-enabled" type="checkbox">
+    <label class="push-button" for="site-enabled">&#x23FB;</label>
+`;
+
 /**
  * Custom element representing the circular power button in the popup.
  * Manages its own state, permissions, and settings toggle logic.
@@ -52,10 +58,7 @@ export class PowerButton extends HTMLElement {
      * Render the initial HTML structure.
      */
     render() {
-        this.innerHTML = `
-            <input class="conversion-switch hidden" id="site-enabled" type="checkbox">
-            <label class="push-button" for="site-enabled">&#x23FB;</label>
-        `;
+        this.replaceChildren(template.content.cloneNode(true));
     }
 
     /**

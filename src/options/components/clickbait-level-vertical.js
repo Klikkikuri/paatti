@@ -6,32 +6,43 @@ import { getClickbaitLevelInfo } from '../utils.js';
  * Detailed vertical clickbait level slider custom element for options view.
  * Inherits storage loading and onChanged synchronization hooks from ClickbaitLevelBase.
  */
+const template = document.createElement('template');
+template.innerHTML = `
+    <div class="setting-group setting-info-card" style="display: flex; flex-direction: column; gap: 15px;">
+        <div class="slider-wrapper">
+            <div class="slider-gauge">
+                <input type="range" id="clickbait-slider" min="0" max="4" step="1" value="2" orient="vertical">
+            </div>
+            <div class="slider-labels">
+            </div>
+        </div>
+    </div>
+`;
+
 class ClickbaitLevelVertical extends ClickbaitLevelBase {
     render() {
+        this.replaceChildren(template.content.cloneNode(true));
+
+        const labelsContainer = this.querySelector('.slider-labels');
         const levels = [4, 3, 2, 1, 0];
-        let labelsHtml = '';
         for (const lvl of levels) {
             const info = getClickbaitLevelInfo(lvl);
-            labelsHtml += `
-                <label for="clickbait-slider" data-value="${lvl}">
-                    <span class="label-title">${info.title}</span>
-                    <span class="label-description">${info.description}</span>
-                </label>
-            `;
-        }
+            const labelEl = document.createElement('label');
+            labelEl.setAttribute('for', 'clickbait-slider');
+            labelEl.dataset.value = lvl;
 
-        this.innerHTML = `
-            <div class="setting-group setting-info-card" style="display: flex; flex-direction: column; gap: 15px;">
-                <div class="slider-wrapper">
-                    <div class="slider-gauge">
-                        <input type="range" id="clickbait-slider" min="0" max="4" step="1" value="2" orient="vertical">
-                    </div>
-                    <div class="slider-labels">
-                        ${labelsHtml}
-                    </div>
-                </div>
-            </div>
-        `;
+            const titleEl = document.createElement('span');
+            titleEl.className = 'label-title';
+            titleEl.textContent = info.title;
+
+            const descEl = document.createElement('span');
+            descEl.className = 'label-description';
+            descEl.textContent = info.description;
+
+            labelEl.appendChild(titleEl);
+            labelEl.appendChild(descEl);
+            labelsContainer.appendChild(labelEl);
+        }
 
         const slider = this.querySelector('#clickbait-slider');
         slider.addEventListener('change', async () => {

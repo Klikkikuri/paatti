@@ -19,6 +19,16 @@ const log = getLogger("view");
 // Track the JSON of the last rendered conversions list to avoid unnecessary DOM rebuilding on scroll.
 let lastConversionsJson = null;
 
+const expandoTemplate = document.createElement("template");
+expandoTemplate.innerHTML = `
+    <button class="push-button expando-btn" style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85em; font-weight: 600; color: #475569; cursor: pointer; transition: background 0.15s ease;">
+        <span class="expando-btn-text"></span>
+        <span class="expando-arrow" style="font-size: 0.85em; transition: transform 0.2s ease;">▼</span>
+    </button>
+    <div class="expando-content" style="margin-top: 10px; display: flex; flex-direction: column; gap: 12px; width: 100%;">
+    </div>
+`;
+
 ///////////////////////////////////////////////////////////////////////////////
 // Helper procedures and definitions.
 ///////////////////////////////////////////////////////////////////////////////
@@ -401,18 +411,26 @@ const refresh = async () => {
                 const expandoBtnText = browser().i18n.getMessage("feedbackviewShowBelowThresholdBtn", [underThresholdConversions.length]) || `Näytä klikkikynnyksen alittavat otsikot (${underThresholdConversions.length})`;
 
                 // Render the expando with its previous open/closed state.
-                expandoContainer.innerHTML = `
-                    <button class="push-button expando-btn" style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: ${expandoWasOpen ? "#e2e8f0" : "#f8fafc"}; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85em; font-weight: 600; color: #475569; cursor: pointer; transition: background 0.15s ease;">
-                        <span>🔍 ${expandoBtnText}</span>
-                        <span class="expando-arrow" style="font-size: 0.85em; transition: transform 0.2s ease; ${expandoWasOpen ? "transform: rotate(180deg);" : ""}">▼</span>
-                    </button>
-                    <div class="expando-content ${expandoWasOpen ? "" : "hidden"}" style="margin-top: 10px; display: flex; flex-direction: column; gap: 12px; width: 100%;">
-                    </div>
-                `;
+                expandoContainer.replaceChildren(expandoTemplate.content.cloneNode(true));
 
                 const expandoBtn = expandoContainer.querySelector(".expando-btn");
                 const expandoContent = expandoContainer.querySelector(".expando-content");
                 const expandoArrow = expandoContainer.querySelector(".expando-arrow");
+                const expandoBtnTextEl = expandoContainer.querySelector(".expando-btn-text");
+
+                if (expandoBtnTextEl) {
+                    expandoBtnTextEl.textContent = `🔍 ${expandoBtnText}`;
+                }
+
+                if (expandoWasOpen) {
+                    expandoBtn.style.background = "#e2e8f0";
+                    expandoArrow.style.transform = "rotate(180deg)";
+                    expandoContent.classList.remove("hidden");
+                } else {
+                    expandoBtn.style.background = "#f8fafc";
+                    expandoArrow.style.transform = "";
+                    expandoContent.classList.add("hidden");
+                }
 
                 // Populate under-threshold items inside the expando content
                 for (const item of underThresholdConversions) {

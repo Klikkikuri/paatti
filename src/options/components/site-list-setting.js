@@ -40,11 +40,9 @@ class SiteListSetting extends HTMLElement {
             const config = await getConfig();
             const siteConfigs = config.siteConfigs || {};
 
-            this.innerHTML = `
-                <div class="site-list"></div>
-            `;
-
-            const listContainer = this.querySelector('.site-list');
+            const listContainer = document.createElement('div');
+            listContainer.className = 'site-list';
+            this.replaceChildren(listContainer);
             if (!listContainer) return;
 
             for (const [domain, siteConfig] of Object.entries(siteConfigs)) {

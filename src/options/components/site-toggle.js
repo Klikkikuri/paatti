@@ -3,6 +3,28 @@ import { controller } from '../../controller.js';
 import { isSiteEnabled } from '../utils.js';
 import { getConfig } from '../../config.js';
 import './toggle-button.js';
+const compactTemplate = document.createElement('template');
+compactTemplate.innerHTML = `
+    <label class="site-label"></label>
+    <toggle-button type="toggle"></toggle-button>
+`;
+
+const detailedTemplate = document.createElement('template');
+detailedTemplate.innerHTML = `
+    <div class="site-main-section" style="display: flex; flex-direction: column; flex: 1; margin-right: 20px; align-items: flex-start;">
+        <div class="site-info" style="display: flex; align-items: center; gap: 12px; width: 100%;">
+            <img alt="" width="24" height="24" class="site-favicon">
+            <div>
+                <div class="site-name" style="font-weight: bold; color: #333;"></div>
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; line-height: 1.2;">
+                    <span class="site-domain text-muted-small" style="line-height: 1.2;"></span>
+                    <span class="site-details-container" style="display: inline-flex; align-items: center; line-height: 1.2;"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <toggle-button></toggle-button>
+`;
 
 /**
  * Custom element representing a site-specific toggle setting.
@@ -38,34 +60,33 @@ class SiteToggleSetting extends HTMLElement {
         if (layout === 'compact') {
             // Compact layout for the popup settings view
             this.classList.add('compact-setting-row');
+            this.replaceChildren(compactTemplate.content.cloneNode(true));
 
-            this.innerHTML = `
-                <label for="toggle-${domain}">${name}</label>
-                <toggle-button type="toggle" id="toggle-${domain}"></toggle-button>
-            `;
+            const labelEl = this.querySelector('.site-label');
+            if (labelEl) {
+                labelEl.setAttribute('for', `toggle-${domain}`);
+                labelEl.textContent = name;
+            }
         } else {
             // Detailed layout for the options page
             this.classList.add('site-item');
-            
+            this.replaceChildren(detailedTemplate.content.cloneNode(true));
+
             const faviconUrl = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
-            this.innerHTML = `
-                <div class="site-main-section" style="display: flex; flex-direction: column; flex: 1; margin-right: 20px; align-items: flex-start;">
-                    <div class="site-info" style="display: flex; align-items: center; gap: 12px; width: 100%;">
-                        <img src="${faviconUrl}" alt="" width="24" height="24" class="site-favicon">
-                        <div>
-                            <div class="site-name" style="font-weight: bold; color: #333;">${name}</div>
-                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; line-height: 1.2;">
-                                <span class="site-domain text-muted-small" style="line-height: 1.2;">${domain}</span>
-                                <span class="site-details-container" style="display: inline-flex; align-items: center; line-height: 1.2;"></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <toggle-button id="toggle-${domain}"></toggle-button>
-            `;
+            const imgEl = this.querySelector('.site-favicon');
+            if (imgEl) imgEl.src = faviconUrl;
+
+            const nameEl = this.querySelector('.site-name');
+            if (nameEl) nameEl.textContent = name;
+
+            const domainEl = this.querySelector('.site-domain');
+            if (domainEl) domainEl.textContent = domain;
         }
 
         const toggleBtn = this.querySelector('toggle-button');
+        if (toggleBtn) {
+            toggleBtn.setAttribute('id', `toggle-${domain}`);
+        }
 
         // Allow clicking anywhere on the row to toggle (excluding detail buttons or switch itself)
         if (layout !== 'compact') {
@@ -110,7 +131,12 @@ class SiteToggleSetting extends HTMLElement {
             const detailsContainer = this.querySelector('.site-details-container');
             if (detailsContainer && layout !== 'compact' && policyUrl) {
                 const linkText = browser().i18n.getMessage('sitePolicyLinkText') || 'Julkaisijan periaatteet';
-                detailsContainer.innerHTML = `<a href="${policyUrl}" target="_blank" class="detail-button">${linkText} ↗</a>`;
+                const link = document.createElement('a');
+                link.href = policyUrl;
+                link.target = '_blank';
+                link.className = 'detail-button';
+                link.textContent = `${linkText} ↗`;
+                detailsContainer.replaceChildren(link);
             }
         } catch (err) {
             console.error('Failed to load site toggle metadata:', err);

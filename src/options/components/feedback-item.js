@@ -4,6 +4,179 @@ import { model } from '../../model.js';
 
 const log = getLogger('components/feedback-item');
 
+const template = document.createElement('template');
+template.innerHTML = `
+    <style>
+        .feedback-card {
+            background: #ffffff;
+            border: 1px solid #555;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+            box-shadow: #777 4px 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            list-style: none;
+            text-align: left;
+        }
+
+        .feedback-row {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding-left: 8px;
+        }
+
+        .feedback-row.original {
+            border-left: 3px solid #ff9f43;
+        }
+
+        .feedback-row.converted {
+            border-left: 3px solid #10b981;
+        }
+
+        .feedback-label {
+            font-size: 0.7em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #777;
+        }
+
+        .feedback-text {
+            font-size: 0.88em;
+            color: #222;
+            line-height: 1.35;
+            font-weight: bold;
+        }
+
+        .feedback-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 4px;
+            min-height: 24px;
+        }
+
+        .feedback-action-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            box-shadow: #777 2px 2px !important;
+        }
+
+        .feedback-action-btn:active {
+            box-shadow: #777 0px 0px !important;
+        }
+
+        .feedback-action-btn.good:hover {
+            background: #ecfdf5 !important;
+            outline-color: #10b981 !important;
+            color: #065f46 !important;
+        }
+
+        .feedback-action-btn.bad:hover {
+            background: #fef2f2 !important;
+            outline-color: #ef4444 !important;
+            color: #991b1b !important;
+        }
+
+        .feedback-input-container {
+            margin-top: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .feedback-input-group {
+            display: flex;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #555;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #ffffff;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .feedback-text-input {
+            flex: 1;
+            padding: 6px 10px;
+            font-size: 0.85em;
+            border: none;
+            outline: none;
+            background: transparent;
+            color: #222;
+            box-sizing: border-box;
+        }
+
+        .feedback-submit-button {
+            background: #e3e3e3;
+            border: none;
+            border-left: 1px solid #555;
+            color: #222;
+            padding: 6px 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .feedback-submit-button:hover {
+            background: #53b9ff;
+            color: white;
+        }
+
+        .clickbait-level-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.6em;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            line-height: 1;
+        }
+    </style>
+    
+    <li class="feedback-card">
+        <div class="current-page-container" style="display: flex; align-items: center; margin-bottom: 4px;">
+            <span class="current-page-tag" style="font-size: 0.72em; color: #6366f1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px;">
+                📌 <span class="current-page-label-text"></span>
+            </span>
+        </div>
+
+        <div class="feedback-row original">
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <span class="feedback-label original-label-text"></span>
+                <span class="clickbait-level-badge"></span>
+            </div>
+            <span class="feedback-text original-title-text"></span>
+        </div>
+        <div class="feedback-row converted">
+            <span class="feedback-label converted-label-text"></span>
+            <span class="feedback-text converted-title-text"></span>
+        </div>
+        
+        <hr style="border: 0; border-top: 1px solid #555; margin: 4px 0;">
+        
+        <div class="feedback-actions">
+            <button class="push-button feedback-action-btn good" style="margin: 0; padding: 4px 8px; font-size: 0.8em; min-width: 80px;"></button>
+            <button class="push-button feedback-action-btn bad" style="margin: 0; padding: 4px 8px; font-size: 0.8em; min-width: 80px;"></button>
+        </div>
+        
+        <div class="feedback-input-container hidden">
+            <div class="feedback-input-group">
+                <input type="text" class="feedback-text-input">
+                <button class="feedback-submit-button"></button>
+            </div>
+        </div>
+    </li>
+`;
+
 /**
  * Custom element representing a single feedback rating row for converted clickbait titles.
  * Features a modern, highly aesthetic card layout with left-border indicators.
@@ -103,6 +276,18 @@ class FeedbackItem extends HTMLElement {
     render() {
         if (!this._item) return;
 
+        this.replaceChildren(template.content.cloneNode(true));
+
+        const currentPageContainer = this.querySelector('.current-page-container');
+        if (this._item.isMainPage) {
+            const currentPageLabelText = this.querySelector('.current-page-label-text');
+            if (currentPageLabelText) {
+                currentPageLabelText.textContent = browser().i18n.getMessage("feedbackviewCurrentPageLabel") || "nykyinen sivu";
+            }
+        } else if (currentPageContainer) {
+            currentPageContainer.remove();
+        }
+
         const origLabel = browser().i18n.getMessage("feedbackviewRateTitleOriginalTitleLabel") || "Alkuperäinen";
         const badge = this.getClickbaitBadgeInfo(this._item.clickbaitLevel || 0);
 
@@ -111,184 +296,42 @@ class FeedbackItem extends HTMLElement {
         const goodBtnText = "👍 " + (browser().i18n.getMessage("feedbackviewRateTitleConversionIsGood") || "Hyvä korjaus");
         const badBtnText = "👎 " + (browser().i18n.getMessage("feedbackviewRateTitleConversionIsBad") || "Huono korjaus");
         const submitBtnText = browser().i18n.getMessage("feedbackviewReportSubmitBtn") || "Lähetä";
-        const cancelBtnText = "Peruuta";
 
-        this.innerHTML = `
-            <style>
-                .feedback-card {
-                    background: #ffffff;
-                    border: 1px solid #555;
-                    border-radius: 6px;
-                    padding: 10px;
-                    margin-bottom: 10px;
-                    box-shadow: #777 4px 4px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 8px;
-                    list-style: none;
-                    text-align: left;
-                }
+        const originalLabelEl = this.querySelector('.original-label-text');
+        if (originalLabelEl) originalLabelEl.textContent = origLabel;
 
-                .feedback-row {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 2px;
-                    padding-left: 8px;
-                }
+        const badgeEl = this.querySelector('.clickbait-level-badge');
+        if (badgeEl) {
+            badgeEl.textContent = badge.text;
+            badgeEl.style.background = badge.bg;
+            badgeEl.style.color = badge.color;
+            badgeEl.style.borderColor = badge.border;
+        }
 
-                .feedback-row.original {
-                    border-left: 3px solid #ff9f43;
-                }
+        const originalTitleEl = this.querySelector('.original-title-text');
+        if (originalTitleEl) originalTitleEl.textContent = this._item.originalTitle;
 
-                .feedback-row.converted {
-                    border-left: 3px solid #10b981;
-                }
+        const convertedLabelEl = this.querySelector('.converted-label-text');
+        if (convertedLabelEl) convertedLabelEl.textContent = convLabel;
 
-                .feedback-label {
-                    font-size: 0.7em;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    letter-spacing: 0.04em;
-                    color: #777;
-                }
+        const convertedTitleEl = this.querySelector('.converted-title-text');
+        if (convertedTitleEl) convertedTitleEl.textContent = this._item.convertedTitle;
 
-                .feedback-text {
-                    font-size: 0.88em;
-                    color: #222;
-                    line-height: 1.35;
-                    font-weight: bold;
-                }
+        const goodBtn = this.querySelector('.feedback-action-btn.good');
+        if (goodBtn) goodBtn.textContent = goodBtnText;
 
-                .feedback-actions {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    margin-top: 4px;
-                    min-height: 24px;
-                }
+        const badBtn = this.querySelector('.feedback-action-btn.bad');
+        if (badBtn) badBtn.textContent = badBtnText;
 
-                .feedback-action-btn {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 4px;
-                    cursor: pointer;
-                    font-family: inherit;
-                    box-shadow: #777 2px 2px !important;
-                }
+        const textInput = this.querySelector('.feedback-text-input');
+        if (textInput) textInput.placeholder = placeholderText;
 
-                .feedback-action-btn:active {
-                    box-shadow: #777 0px 0px !important;
-                }
-
-                .feedback-action-btn.good:hover {
-                    background: #ecfdf5 !important;
-                    outline-color: #10b981 !important;
-                    color: #065f46 !important;
-                }
-
-                .feedback-action-btn.bad:hover {
-                    background: #fef2f2 !important;
-                    outline-color: #ef4444 !important;
-                    color: #991b1b !important;
-                }
-
-                .feedback-input-container {
-                    margin-top: 4px;
-                    width: 100%;
-                    box-sizing: border-box;
-                }
-
-                .feedback-input-group {
-                    display: flex;
-                    width: 100%;
-                    box-sizing: border-box;
-                    border: 1px solid #555;
-                    border-radius: 6px;
-                    overflow: hidden;
-                    background: #ffffff;
-                    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
-                }
-
-                .feedback-text-input {
-                    flex: 1;
-                    padding: 6px 10px;
-                    font-size: 0.85em;
-                    border: none;
-                    outline: none;
-                    background: transparent;
-                    color: #222;
-                    box-sizing: border-box;
-                }
-
-                .feedback-submit-button {
-                    background: #e3e3e3;
-                    border: none;
-                    border-left: 1px solid #555;
-                    color: #222;
-                    padding: 6px 12px;
-                    font-size: 0.8em;
-                    font-weight: bold;
-                    cursor: pointer;
-                }
-
-                .feedback-submit-button:hover {
-                    background: #53b9ff;
-                    color: white;
-                }
-
-                .clickbait-level-badge {
-                    display: inline-flex;
-                    align-items: center;
-                    padding: 1px 6px;
-                    border-radius: 4px;
-                    font-size: 0.6em;
-                    font-weight: 800;
-                    text-transform: uppercase;
-                    letter-spacing: 0.04em;
-                    line-height: 1;
-                }
-            </style>
-            
-            <li class="feedback-card">
-                ${this._item.isMainPage ? `
-                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
-                        <span class="current-page-tag" style="font-size: 0.72em; color: #6366f1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px;">
-                            📌 ${browser().i18n.getMessage("feedbackviewCurrentPageLabel") || "nykyinen sivu"}
-                        </span>
-                    </div>
-                ` : ''}
-
-                <div class="feedback-row original">
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                        <span class="feedback-label">${origLabel}</span>
-                        <span class="clickbait-level-badge" style="background: ${badge.bg}; color: ${badge.color}; border: 1px solid ${badge.border};">${badge.text}</span>
-                    </div>
-                    <span class="feedback-text">${this._item.originalTitle}</span>
-                </div>
-                <div class="feedback-row converted">
-                    <span class="feedback-label">${convLabel}</span>
-                    <span class="feedback-text">${this._item.convertedTitle}</span>
-                </div>
-                
-                <hr style="border: 0; border-top: 1px solid #555; margin: 4px 0;">
-                
-                <div class="feedback-actions">
-                    <button class="push-button feedback-action-btn good" style="margin: 0; padding: 4px 8px; font-size: 0.8em; min-width: 80px;">${goodBtnText}</button>
-                    <button class="push-button feedback-action-btn bad" style="margin: 0; padding: 4px 8px; font-size: 0.8em; min-width: 80px;">${badBtnText}</button>
-                </div>
-                
-                <div class="feedback-input-container hidden">
-                    <div class="feedback-input-group">
-                        <input type="text" class="feedback-text-input" placeholder="${placeholderText}">
-                        <button class="feedback-submit-button">${submitBtnText}</button>
-                    </div>
-                </div>
-            </li>
-        `;
+        const submitBtn = this.querySelector('.feedback-submit-button');
+        if (submitBtn) submitBtn.textContent = submitBtnText;
 
         this.setupHandlers();
     }
+
 
     setupHandlers() {
         const buttonsDiv = this.querySelector(".feedback-actions");
