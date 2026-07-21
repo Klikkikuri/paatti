@@ -210,6 +210,28 @@ const model = (() => {
                 await browser().storage.local.set({ userPreferences });
             },
 
+            setRefreshIntervalMinutes: async (value) => {
+                log(`Setting refresh interval minutes to ${value}`);
+                const data = await browser().storage.local.get("userPreferences");
+                const userPreferences = data.userPreferences || {};
+                userPreferences.refreshIntervalMinutes = value;
+                await browser().storage.local.set({ userPreferences });
+            },
+
+            setDevTitleDataUrls: async (urls) => {
+                log(`Setting development title data URLs:`, urls);
+                const data = await browser().storage.local.get("userPreferences");
+                const userPreferences = data.userPreferences || {};
+                if (!userPreferences.environmentConfigs) {
+                    userPreferences.environmentConfigs = {};
+                }
+                if (!userPreferences.environmentConfigs.development) {
+                    userPreferences.environmentConfigs.development = {};
+                }
+                userPreferences.environmentConfigs.development.titleDataUrls = urls;
+                await browser().storage.local.set({ userPreferences });
+            },
+
             setClickbaitLevel: async (value) => {
                 log(`Setting clickbait level to ${value}`);
                 const data = await browser().storage.local.get("userPreferences");
