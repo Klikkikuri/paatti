@@ -3,7 +3,16 @@
 import datetime
 import os
 import json
+import random
 import sys
+
+
+ARTICLE_LABELS = {
+    ("com.github.klikkikuri/article-type=article", 50),
+    ("com.github.klikkikuri/paywalled=true", 15),
+    ("com.github.klikkikuri/sponsored=true", 5),
+    ("com.github.klikkikuri/ai-slop=true", 5)
+}
 
 if __name__ == "__main__":
     clickbaitscale = [
@@ -40,7 +49,6 @@ if __name__ == "__main__":
 
     _words_file = "/usr/share/dict/words"
     if os.path.isfile(_words_file):
-        import random
         with open(_words_file, "r", errors="replace") as _wf:
             _wordlist = [w.strip() for w in _wf if w.strip() and w.strip().isalpha()]
         def _random_title():
@@ -62,6 +70,10 @@ if __name__ == "__main__":
         sign = signatures[i]
         title = test_titles[i % len(test_titles)]
         clickbaitiness = clickbaitscale[i % len(clickbaitscale)]
+        entry_labels = []
+        for label, prob in sorted(ARTICLE_LABELS):
+            if random.random() * 100 < prob:
+                entry_labels.append(label)
 
         data["entries"].append({
             "updated": updated,
@@ -76,10 +88,7 @@ if __name__ == "__main__":
             ],
             "title": title,
             "clickbaitiness": clickbaitiness,
-            "labels": [
-                # TODO: Replace this default.
-                "com.github.klikkikuri/article-type=article"
-            ],
+            "labels": entry_labels,
             "outlet": "Iltalehti",
         })
     with open("test_data/data.json", "w") as fp:
