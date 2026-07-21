@@ -16,7 +16,7 @@ const DEFAULT_CONFIG = {
     "enabled": true,
     "environment": "free",
     "modifiers": {
-        "aiSlop": false
+        "aiSlop": true
     },
 
     // CONFIG: Configure per-site settings here.
