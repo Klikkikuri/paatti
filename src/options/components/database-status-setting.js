@@ -26,8 +26,8 @@ class DatabaseStatusSetting extends HTMLElement {
             this.innerHTML = `
                 <div style="margin-top: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
                     <div style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
-                        <p id="database-last-updated" style="font-size: 0.85em; color: #666; margin: 0;"></p>
-                        <p id="database-generation-date" style="font-size: 0.85em; color: #666; margin: 0;"></p>
+                        <p id="database-last-updated" class="text-muted-small" style="margin: 0;"></p>
+                        <p id="database-generation-date" class="text-muted-small" style="margin: 0;"></p>
                     </div>
                     <button id="update-database-btn" class="push-button" style="margin: 0; padding: 6px 12px; min-height: 32px; font-size: 0.9em;">${btnText}</button>
                 </div>
@@ -47,13 +47,13 @@ class DatabaseStatusSetting extends HTMLElement {
                     </div>
 
                     <!-- Manual Update & Last Updated Card -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <div class="setting-info-card" style="display: flex; justify-content: space-between; align-items: center;">
                         <div class="label-text" style="display: flex; flex-direction: column; gap: 8px; text-align: left;">
                             <div>
                                 <strong style="display: block; margin-bottom: 2px;">Viimeisin haku</strong>
                                 <span id="dbLastUpdatedText">Ladataan...</span>
                             </div>
-                            <div>
+							<div>
                                 <strong style="display: block; margin-bottom: 2px;">Tietokannan luontiaika</strong>
                                 <span id="dbGenerationDateText">Ladataan...</span>
                             </div>

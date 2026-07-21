@@ -21,7 +21,7 @@ class ClickbaitLevelVertical extends ClickbaitLevelBase {
         }
 
         this.innerHTML = `
-            <div class="setting-group" style="display: flex; flex-direction: column; gap: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+            <div class="setting-group setting-info-card" style="display: flex; flex-direction: column; gap: 15px;">
                 <div class="slider-wrapper">
                     <div class="slider-gauge">
                         <input type="range" id="clickbait-slider" min="0" max="4" step="1" value="2" orient="vertical">

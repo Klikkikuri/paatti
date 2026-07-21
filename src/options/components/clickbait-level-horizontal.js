@@ -17,7 +17,7 @@ class ClickbaitLevelHorizontal extends ClickbaitLevelBase {
                     <label id="level-label" style="font-weight: bold; cursor: pointer; text-align: left; flex: 1; margin-right: 15px; line-height: 1.2;"></label>
                     <input id="clickbait-slider" type="range" min="0" max="4" step="1" value="2" style="flex: 0 0 110px; width: 110px; height: auto; appearance: auto; background: none; box-shadow: none; cursor: pointer;">
                 </div>
-                <span id="level-description" style="font-size: 0.85em; color: #666; text-align: left; min-height: 34px; line-height: 1.3;"></span>
+                <span id="level-description" class="text-muted-small" style="text-align: left; min-height: 34px; line-height: 1.3;"></span>
             </div>
         `;
 

@@ -22,11 +22,7 @@ class TitleModifierSetting extends HTMLElement {
         const layout = this.getAttribute('layout') || 'detailed';
 
         if (layout === 'compact') {
-            this.style.display = 'flex';
-            this.style.alignItems = 'center';
-            this.style.justifyContent = 'space-between';
-            this.style.padding = '5px 0';
-            this.style.width = '100%';
+            this.classList.add('compact-setting-row');
 
             let labelText = 'Merkitse tekoälysisältö';
             if (modifier === 'aiSlop') {
@@ -49,9 +45,9 @@ class TitleModifierSetting extends HTMLElement {
             this.innerHTML = `
                 <div class="setting-group">
                     <div class="setting-label">
-                        <div class="label-text" style="flex: 1; margin-right: 15px; text-align: left;">
-                            <strong style="display: block; margin-bottom: 5px; color: #333;">${title}</strong>
-                            <span style="font-size: 0.9em; color: #666;">${description}</span>
+                        <div class="label-text">
+                            <strong>${title}</strong>
+                            <span>${description}</span>
                         </div>
                         <toggle-button id="modifier-${modifier}"></toggle-button>
                     </div>

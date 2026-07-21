@@ -22,11 +22,7 @@ class VisualHighlightSetting extends HTMLElement {
         const layout = this.getAttribute('layout') || 'detailed';
 
         if (layout === 'compact') {
-            this.style.display = 'flex';
-            this.style.alignItems = 'center';
-            this.style.justifyContent = 'space-between';
-            this.style.padding = '5px 0';
-            this.style.width = '100%';
+            this.classList.add('compact-setting-row');
 
             const labelText = browser().i18n.getMessage('devmodeSetDebugVisualsLabel') || 'Visuaalinen korostus';
             this.innerHTML = `
@@ -37,9 +33,9 @@ class VisualHighlightSetting extends HTMLElement {
             this.innerHTML = `
                 <div class="setting-group">
                     <div class="setting-label">
-                        <div class="label-text" style="flex: 1; margin-right: 15px; text-align: left;">
-                            <strong style="display: block; margin-bottom: 5px; color: #333;">Debug-visualisoinnit</strong>
-                            <span style="font-size: 0.9em; color: #666;">Näytä visuaaliset debug-merkit käsitellyistä elementeistä</span>
+                        <div class="label-text">
+                            <strong>Debug-visualisoinnit</strong>
+                            <span>Näytä visuaaliset debug-merkit käsitellyistä elementeistä</span>
                         </div>
                         <toggle-button id="debugVisuals"></toggle-button>
                     </div>

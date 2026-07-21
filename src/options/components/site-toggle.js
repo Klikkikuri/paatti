@@ -37,11 +37,7 @@ class SiteToggleSetting extends HTMLElement {
 
         if (layout === 'compact') {
             // Compact layout for the popup settings view
-            this.style.display = 'flex';
-            this.style.alignItems = 'center';
-            this.style.justifyContent = 'space-between';
-            this.style.padding = '5px 0';
-            this.style.width = '100%';
+            this.classList.add('compact-setting-row');
 
             this.innerHTML = `
                 <label for="toggle-${domain}">${name}</label>
@@ -59,7 +55,7 @@ class SiteToggleSetting extends HTMLElement {
                         <div>
                             <div class="site-name" style="font-weight: bold; color: #333;">${name}</div>
                             <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; line-height: 1.2;">
-                                <span class="site-domain" style="font-size: 0.85em; color: #666; line-height: 1.2;">${domain}</span>
+                                <span class="site-domain text-muted-small" style="line-height: 1.2;">${domain}</span>
                                 <span class="site-details-container" style="display: inline-flex; align-items: center; line-height: 1.2;"></span>
                             </div>
                         </div>
