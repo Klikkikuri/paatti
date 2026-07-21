@@ -40,15 +40,17 @@ Sail smoothly through the clickbait-infested web using this browser extension.
 - Integrates a **feature-rich popup interface** containing:
   - A visual **clickbait density gauge** showing the overall clickbait percentage of the current page.
   - Headline statistics grouped by **severity levels** (from "Not Clickbait at all" to "Extremely Clickbaity").
-  - An interactive **feedback loop** displaying all converted headlines, allowing users to vote on alignment quality and submit suggestions.
+  - An interactive **feedback loop** displaying all converted headlines, allowing users to vote on alignment quality, submit suggestions, and check an **expando section** for headlines falling below the clickbait threshold.
 - Provides **granular controls & options** via the settings page:
   - Toggle switches for per-site filtering.
   - A clickbait severity **threshold slider** to customize replacement sensitivity.
+  - Custom **Title Modifiers**, including a feature to automatically prepend a robot emoji `🤖` to headlines identified as AI-generated/manipulated content.
 - Equipped with **developer and diagnostic utilities** to debug and trace behavior:
-  - Appends semantic **`data-klikkikuri-*` DOM attributes** (status, reason, signatures) directly to elements.
+  - Appends semantic **`data-klikkikuri-*` DOM attributes** (status, reason, signatures, labels) directly to elements.
   - Overlay outlines and status badges under a **visual debug mode**.
   - A **signature dumper** to copy normalized URL signatures of all page links to the clipboard.
   - A local mock database generator [`generate_test_data.py`](./generate_test_data.py) and a custom Python HTTP server [`httpserver.py`](./httpserver.py) for offline testing.
+  - Ability to specify multiple development database endpoint URLs (`titleDataUrls`) directly in the developer settings section.
 
 ### Supported Sites
 
@@ -185,7 +187,8 @@ This serves your mock data at `http://localhost:3000/data.json` with appropriate
 1. Open the extension options page in Firefox (`about:addons` > Click the three dots next to **Klikkikuri Paatti** > Select **Preferences** / **Options**).
 2. Change the environment setting to **Development**.
 3. **Grant Localhost Permissions**: Because `localhost` is listed as an optional permission, Firefox blocks requests to it by default. Navigate to the **Permissions** tab of the Klikkikuri Paatti extension page in `about:addons`, and toggle the permission switch for **Access your data for localhost** (or `http://localhost/*`) to **On**.
-4. The extension will now be able to periodically fetch database updates from your local test server.
+4. **Configure Test URLs**: You can optionally specify multiple mock database endpoints (e.g. `http://localhost:3000/data.json`) under the **Developer Settings** section directly from the extension's Options page.
+5. The extension will now be able to periodically fetch database updates from your local test server.
 
 ### Generating a Release
 
@@ -207,7 +210,7 @@ The project uses a semi-automated, tag-driven release process:
 ## Architecture
 ```mermaid
 ---
-title: Architecture v0.0.4
+title: Architecture v0.0.6
 ---
 classDiagram
     direction TB
@@ -259,6 +262,10 @@ classDiagram
         +convertClickbaits()
         +getConversions()
     }
+    class Modifiers {
+        +titleModifiers
+        +applyModifiers(titleText, rahtiEntry)
+    }
     class SuolaWasm {
         +rules_yaml
         +hashUrl(url)
@@ -294,6 +301,8 @@ classDiagram
     BackgroundScript ..> TitleDataServer : Fetch updates
     
     ContentScript --> Storage : Reads cached conversions
+    ContentScript --> Modifiers : Applies active transformations
+    Modifiers --> Model : Reads modifier toggle preferences
     ContentScript --> BackgroundScript : Requests batch URL hashing
     BackgroundScript --> SuolaWasm : Instantiates & runs Go Wasm
     ContentScript --> Controller : Updates active page stats
