@@ -97,7 +97,7 @@ body {
     align-items: center;
 }
 
-#power div:nth-child(2) .push-button {
+#power div:nth-child(2) label.push-button {
     user-select: none;
     font-size: 350%;
     padding: 0;
@@ -110,10 +110,6 @@ body {
     width: 50px;
     height: 50px;
     min-width: 0;
-}
-
-#open-options {
-    border: none;
 }
 
 /* Content details */
@@ -130,15 +126,14 @@ body {
     width: 16em;
 }
 
-/* Navi details */
-
-#navi .push-button {
+/* Compact button helper (used by Web Components and navi) */
+.push-button.compact-button {
     user-select: none;
     padding: 0;
 
     /* Make the buttons circles */
     border-radius: 100%;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 30px;

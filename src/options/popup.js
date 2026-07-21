@@ -11,6 +11,7 @@ import "./components/master-switch-setting.js";
 import "./components/database-status-setting.js";
 import "./components/clickbait-level-horizontal.js";
 import "./components/feedback-item.js";
+import "./components/compact-button.js";
 
 const log = getLogger("view");
 
