@@ -6,6 +6,7 @@ import { controller } from '../controller.js';
 import './components/site-toggle.js';
 import './components/visual-highlight-setting.js';
 import './components/master-switch-setting.js';
+import './components/title-modifier-setting.js';
 
 // Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {
@@ -39,8 +40,7 @@ async function loadSettings() {
         
         // Debug visuals is managed by the visual-highlight-setting component
 
-        // Load modifier toggle state
-        document.getElementById('markAiSlop').checked = config.modifiers?.aiSlop || false;
+        // Modifier toggle state is managed by the title-modifier-setting component
 
         // Clickbait level
         document.getElementById('clickbaitLevel').value = config.clickbaitLevel !== undefined ? config.clickbaitLevel : 2;
@@ -227,23 +227,7 @@ async function setupEventListeners() {
         });
     }
 
-    // AI Slop toggle
-    const markAiSlopToggle = document.getElementById('markAiSlop');
-    if (markAiSlopToggle) {
-        markAiSlopToggle.addEventListener('change', async () => {
-            const checked = markAiSlopToggle.checked;
-            try {
-                // Save modifier immediately on toggle change
-                await controller.setModifierEnabled('aiSlop', checked);
-                showStatus('Asetus tallennettu!');
-            } catch (error) {
-                console.error('Error saving AI slop setting:', error);
-                showStatus('Virhe asetuksen tallentamisessa', true);
-                // Revert checkbox state on error
-                markAiSlopToggle.checked = !checked;
-            }
-        });
-    }
+    // AI Slop toggle is managed by the title-modifier-setting component
     
     // Make slider labels clickable
     document.querySelectorAll('.slider-labels label').forEach(label => {
