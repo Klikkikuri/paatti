@@ -9,7 +9,7 @@ import sys
 
 ARTICLE_LABELS = {
     ("com.github.klikkikuri/article-type=article", 50),
-    ("com.github.klikkikuri/paywalled=true", 15),
+    ("com.github.klikkikuri/paywalled=true", 30),
     ("com.github.klikkikuri/sponsored=true", 5),
     ("com.github.klikkikuri/ai-slop=true", 5)
 }
@@ -75,7 +75,7 @@ if __name__ == "__main__":
             if random.random() * 100 < prob:
                 entry_labels.append(label)
 
-        data["entries"].append({
+        entry = {
             "updated": updated,
             "urls": [
                 {
@@ -86,11 +86,15 @@ if __name__ == "__main__":
                     "sign": sign,
                 }
             ],
-            "title": title,
             "clickbaitiness": clickbaitiness,
             "labels": entry_labels,
             "outlet": "Iltalehti",
-        })
+        }
+        # If the article is paywalled, we don't want to include the title in the test data.
+        if "com.github.klikkikuri/paywalled=true" not in entry_labels:
+            entry["title"] = title
+
+        data["entries"].append(entry)
     with open("test_data/data.json", "w") as fp:
         json.dump(data, fp, indent=2)
 
