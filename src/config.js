@@ -15,6 +15,9 @@ const DEFAULT_CONFIG = {
     // CONFIG: Configure extension to start enabled here.
     "enabled": true,
     "environment": "free",
+    "modifiers": {
+        "aiSlop": false
+    },
 
     // CONFIG: Configure per-site settings here.
     "siteConfigs": {
@@ -309,11 +312,12 @@ const DEFAULT_CONFIG = {
 async function getConfig() {
     const [localData, syncData] = await Promise.all([
         browser().storage.local.get("userPreferences"),
-        browser().storage.sync.get("userSiteOverrides")
+        browser().storage.sync.get(["userSiteOverrides", "modifiers"])
     ]);
 
     const userPreferences = localData.userPreferences || {};
     const syncOverrides = syncData.userSiteOverrides || {}; // Structure: { "yle.fi": false }
+    const syncModifiers = syncData.modifiers || {};
 
     const activeEnv = userPreferences.environment || DEFAULT_CONFIG.environment || "free";
 
@@ -351,6 +355,10 @@ async function getConfig() {
     return {
         ...DEFAULT_CONFIG,
         ...userPreferences, // Overwrite defaults with user choices (e.g., "enabled": false)
+        modifiers: {
+            ...DEFAULT_CONFIG.modifiers,
+            ...syncModifiers
+        },
         environmentConfigs: mergedEnvConfigs,
         siteConfigs: mergedSiteConfigs, // Use properly merged site configs
         activeEnv: activeEnv,
