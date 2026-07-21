@@ -268,6 +268,24 @@ async function setupEventListeners() {
             }
         });
     }
+
+    // AI Slop toggle
+    const markAiSlopToggle = document.getElementById('markAiSlop');
+    if (markAiSlopToggle) {
+        markAiSlopToggle.addEventListener('change', async () => {
+            const checked = markAiSlopToggle.checked;
+            try {
+                // Save modifier immediately on toggle change
+                await controller.setModifierEnabled('aiSlop', checked);
+                showStatus('Asetus tallennettu!');
+            } catch (error) {
+                console.error('Error saving AI slop setting:', error);
+                showStatus('Virhe asetuksen tallentamisessa', true);
+                // Revert checkbox state on error
+                markAiSlopToggle.checked = !checked;
+            }
+        });
+    }
     
     // Make slider labels clickable
     document.querySelectorAll('.slider-labels label').forEach(label => {
