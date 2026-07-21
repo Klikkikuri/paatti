@@ -15,7 +15,8 @@ const klikkikuriStatus = Object.freeze({
     CONVERTED: "converted",
     ORIGINAL: "original",
     SKIPPED: "skipped",
-    ERROR: "error"
+    ERROR: "error",
+    PAYWALLED: "paywalled"
 });
 
 /**

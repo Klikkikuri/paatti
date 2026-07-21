@@ -50,6 +50,15 @@ html.klikkikuri-visual-hilight *[data-klikkikuri-status="original"]::after {
     background-color: #ef6c00 !important;
 }
 
+html.klikkikuri-visual-hilight *[data-klikkikuri-status="paywalled"] {
+    outline: 2px solid #fbc02d !important;
+    box-shadow: 0 0 8px rgba(251, 192, 45, 0.2) !important;
+}
+html.klikkikuri-visual-hilight *[data-klikkikuri-status="paywalled"]::after {
+    content: "🔒 Paywalled";
+    background-color: #fbc02d !important;
+}
+
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="error"] {
     outline: 2px solid #c62828 !important;
     box-shadow: 0 0 10px rgba(198, 40, 40, 0.3) !important;

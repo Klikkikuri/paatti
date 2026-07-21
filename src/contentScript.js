@@ -5,6 +5,8 @@
 // Use this to access this source file in the browser debugger.
 //debugger;
 
+const LABEL_PAYWALLED = "com.github.klikkikuri/paywalled=true";
+
 let hrefSign;
 
 // Main.
@@ -247,10 +249,22 @@ let hrefSign;
                 if (!titleElem.dataset.klikkikuriOriginalTitle) {
                     titleElem.dataset.klikkikuriOriginalTitle = titleElem.textContent;
                 }
-                titleElem.dataset.klikkikuriConvertedTitle = rahtiEntry.title;
+
+                if (rahtiEntry.title) {
+                    titleElem.dataset.klikkikuriConvertedTitle = rahtiEntry.title;
+                } else {
+                    delete titleElem.dataset.klikkikuriConvertedTitle;
+                }
+
+                if (rahtiEntry.labels && rahtiEntry.labels.length > 0) {
+                    container.dataset.klikkikuriLabels = rahtiEntry.labels.join(",");
+                } else {
+                    delete container.dataset.klikkikuriLabels;
+                }
 
                 const isSiteEnabled = await model.read.isEnabled(newsSite);
-                const shouldConvert = await model.read.shouldConvert(rahtiEntry.clickbaitiness);
+                const hasConvertedTitle = !!rahtiEntry.title;
+                const shouldConvert = hasConvertedTitle && await model.read.shouldConvert(rahtiEntry.clickbaitiness);
 
                 if (isSiteEnabled && shouldConvert) {
                     what = "converted";
@@ -260,13 +274,16 @@ let hrefSign;
                     container.dataset.klikkikuriStatus = klikkikuriStatus.CONVERTED;
                     container.dataset.klikkikuriReason = `Converted (Clickbaitiness level: ${why})`;
                 } else {
-                    what = "original";
+                    const isPaywalled = !hasConvertedTitle && rahtiEntry.labels && rahtiEntry.labels.includes(LABEL_PAYWALLED);
+                    what = isPaywalled ? "paywalled" : "original";
                     why = !isSiteEnabled 
                         ? `Conversion not enabled for site '${newsSite}'` 
+                        : !hasConvertedTitle
+                        ? `No converted title in dataset`
                         : `Clickbaitiness level for '${rahtiEntry.clickbaitiness}' is below threshold`;
                     how = (titleElem.textContent = titleElem.dataset.klikkikuriOriginalTitle);
 
-                    container.dataset.klikkikuriStatus = klikkikuriStatus.ORIGINAL;
+                    container.dataset.klikkikuriStatus = isPaywalled ? klikkikuriStatus.PAYWALLED : klikkikuriStatus.ORIGINAL;
                     container.dataset.klikkikuriReason = why;
                 }
             } catch (err) {
