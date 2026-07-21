@@ -117,30 +117,23 @@ class FeedbackItem extends HTMLElement {
             <style>
                 .feedback-card {
                     background: #ffffff;
-                    border: 1px solid #eef2f6;
-                    border-radius: 12px;
-                    padding: 16px;
-                    margin-bottom: 12px;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
-                    transition: all 0.2s ease-in-out;
+                    border: 1px solid #555;
+                    border-radius: 6px;
+                    padding: 10px;
+                    margin-bottom: 10px;
+                    box-shadow: #777 4px 4px;
                     display: flex;
                     flex-direction: column;
-                    gap: 12px;
+                    gap: 8px;
                     list-style: none;
                     text-align: left;
-                }
-
-                .feedback-card:hover {
-                    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
-                    border-color: #cbd5e1;
-                    transform: translateY(-1px);
                 }
 
                 .feedback-row {
                     display: flex;
                     flex-direction: column;
-                    gap: 4px;
-                    padding-left: 12px;
+                    gap: 2px;
+                    padding-left: 8px;
                 }
 
                 .feedback-row.original {
@@ -152,54 +145,52 @@ class FeedbackItem extends HTMLElement {
                 }
 
                 .feedback-label {
-                    font-size: 0.72em;
+                    font-size: 0.7em;
                     font-weight: 700;
                     text-transform: uppercase;
-                    letter-spacing: 0.06em;
-                    color: #94a3b8;
+                    letter-spacing: 0.04em;
+                    color: #777;
                 }
 
                 .feedback-text {
-                    font-size: 0.92em;
-                    color: #1e293b;
-                    line-height: 1.4;
-                    font-weight: 500;
+                    font-size: 0.88em;
+                    color: #222;
+                    line-height: 1.35;
+                    font-weight: bold;
                 }
 
                 .feedback-actions {
                     display: flex;
                     align-items: center;
-                    gap: 10px;
+                    gap: 12px;
                     margin-top: 4px;
-                    min-height: 32px;
+                    min-height: 24px;
                 }
 
                 .feedback-action-btn {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    gap: 6px;
-                    padding: 6px 12px;
-                    border-radius: 8px;
-                    font-size: 0.82em;
-                    font-weight: 600;
+                    gap: 4px;
                     cursor: pointer;
-                    border: 1px solid #e2e8f0;
-                    background: #f8fafc;
-                    color: #475569;
-                    transition: all 0.15s ease;
+                    font-family: inherit;
+                    box-shadow: #777 2px 2px !important;
+                }
+
+                .feedback-action-btn:active {
+                    box-shadow: #777 0px 0px !important;
                 }
 
                 .feedback-action-btn.good:hover {
-                    background: #ecfdf5;
-                    border-color: #a7f3d0;
-                    color: #065f46;
+                    background: #ecfdf5 !important;
+                    outline-color: #10b981 !important;
+                    color: #065f46 !important;
                 }
 
                 .feedback-action-btn.bad:hover {
-                    background: #fef2f2;
-                    border-color: #fecaca;
-                    color: #991b1b;
+                    background: #fef2f2 !important;
+                    outline-color: #ef4444 !important;
+                    color: #991b1b !important;
                 }
 
                 .feedback-input-container {
@@ -212,50 +203,45 @@ class FeedbackItem extends HTMLElement {
                     display: flex;
                     width: 100%;
                     box-sizing: border-box;
-                    border: 1px solid #cbd5e1;
-                    border-radius: 8px;
+                    border: 1px solid #555;
+                    border-radius: 6px;
                     overflow: hidden;
                     background: #ffffff;
-                    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-                }
-
-                .feedback-input-group:focus-within {
-                    border-color: #6366f1;
-                    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+                    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
                 }
 
                 .feedback-text-input {
                     flex: 1;
-                    padding: 8px 12px;
-                    font-size: 0.88em;
+                    padding: 6px 10px;
+                    font-size: 0.85em;
                     border: none;
                     outline: none;
                     background: transparent;
-                    color: #1e293b;
+                    color: #222;
                     box-sizing: border-box;
                 }
 
                 .feedback-submit-button {
-                    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-                    color: white;
+                    background: #e3e3e3;
                     border: none;
-                    padding: 8px 16px;
-                    font-size: 0.85em;
-                    font-weight: 600;
+                    border-left: 1px solid #555;
+                    color: #222;
+                    padding: 6px 12px;
+                    font-size: 0.8em;
+                    font-weight: bold;
                     cursor: pointer;
-                    transition: opacity 0.2s ease;
-                    border-radius: 0;
                 }
 
                 .feedback-submit-button:hover {
-                    opacity: 0.95;
+                    background: #53b9ff;
+                    color: white;
                 }
 
                 .clickbait-level-badge {
                     display: inline-flex;
                     align-items: center;
                     padding: 1px 6px;
-                    border-radius: 6px;
+                    border-radius: 4px;
                     font-size: 0.6em;
                     font-weight: 800;
                     text-transform: uppercase;
@@ -266,7 +252,7 @@ class FeedbackItem extends HTMLElement {
             
             <li class="feedback-card">
                 ${this._item.isMainPage ? `
-                    <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center; margin-bottom: 4px;">
                         <span class="current-page-tag" style="font-size: 0.72em; color: #6366f1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px;">
                             📌 ${browser().i18n.getMessage("feedbackviewCurrentPageLabel") || "nykyinen sivu"}
                         </span>
@@ -285,11 +271,11 @@ class FeedbackItem extends HTMLElement {
                     <span class="feedback-text">${this._item.convertedTitle}</span>
                 </div>
                 
-                <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 4px 0;">
+                <hr style="border: 0; border-top: 1px solid #555; margin: 4px 0;">
                 
                 <div class="feedback-actions">
-                    <button class="feedback-action-btn good">${goodBtnText}</button>
-                    <button class="feedback-action-btn bad">${badBtnText}</button>
+                    <button class="push-button feedback-action-btn good" style="margin: 0; padding: 4px 8px; font-size: 0.8em; min-width: 80px;">${goodBtnText}</button>
+                    <button class="push-button feedback-action-btn bad" style="margin: 0; padding: 4px 8px; font-size: 0.8em; min-width: 80px;">${badBtnText}</button>
                 </div>
                 
                 <div class="feedback-input-container hidden">
