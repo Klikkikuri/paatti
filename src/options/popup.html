@@ -11,7 +11,10 @@
 
     <!-- POWER -->
     <div id="power">
-        <h2 id="site-host"></h2>
+        <div style="display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 2px;">
+            <h2 id="site-host" style="margin: 0; line-height: 1.2; text-align: left;"></h2>
+            <div id="active-tab-indicator" class="text-muted-small" style="font-weight: bold; opacity: 0.8; text-transform: uppercase; font-size: 0.7em; letter-spacing: 0.05em; text-align: left;"></div>
+        </div>
         <div>
             <button id="open-options" class="push-button">
                 <img class="icon" src="images/icon_gear.svg" height="20" alt="Settings icon">
@@ -23,8 +26,6 @@
 
     <!-- CONTENT -->
     <div class="content main-content">
-        <h2 id="homeview-header"></h2>
-        <hr>
         <div id="homeview-content" style="display: flex; flex-direction: column; gap: 15px; width: 100%; text-align: center; justify-content: center; align-items: center; height: 100%;">
             <p id="homeview-status-text" style="font-weight: bold; font-size: 1.1em; margin: 0;"></p>
             <div id="gauge-container" class="hidden" style="margin: 15px 0; display: flex; flex-direction: column; align-items: center;">

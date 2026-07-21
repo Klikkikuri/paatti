@@ -280,6 +280,18 @@ const showView = (viewName) => {
     }
     // Show the selected view.
     document.querySelector(_viewSelectors[viewName]["content"]).classList.remove("hidden");
+
+    // Update active tab indicator.
+    const indicator = document.getElementById("active-tab-indicator");
+    if (indicator) {
+        let labelKey = "";
+        if (viewName === "main") labelKey = "navigationMainLabel";
+        else if (viewName === "stats") labelKey = "navigationStatsLabel";
+        else if (viewName === "feedback") labelKey = "navigationFeedbackLabel";
+        else if (viewName === "settings") labelKey = "navigationSettingsLabel";
+        
+        indicator.textContent = labelKey ? browser().i18n.getMessage(labelKey) : "";
+    }
 };
 
 let initialViewSelected = false;

@@ -137,7 +137,7 @@
   },
 
   "navigationMainLabel": {
-    "message": "Koti",
+    "message": "Klikkikuri",
     "description": "Label of the navigation menu main view button"
   },
 
@@ -172,7 +172,7 @@
   },
 
   "navigationSettingsLabel": {
-    "message": "Lisää asetuksia",
+    "message": "Asetukset",
     "description": "Label of the navigation menu settings view button"
   },
 
