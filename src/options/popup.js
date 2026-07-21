@@ -491,6 +491,8 @@ const refresh = async () => {
             if (naviFeedback) {
                 naviFeedback.checked = true;
             }
+        } else {
+            view.showView("main");
         }
     }
 };
