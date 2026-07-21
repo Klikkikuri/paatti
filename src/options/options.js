@@ -3,7 +3,7 @@ import { browser } from '../utils.js';
 import { displayProductInfo } from './utils.js';
 import { model } from '../model.js';
 import { controller } from '../controller.js';
-import './components/site-toggle.js';
+import './components/site-list-setting.js';
 import './components/visual-highlight-setting.js';
 import './components/master-switch-setting.js';
 import './components/title-modifier-setting.js';
@@ -67,8 +67,7 @@ async function loadSettings() {
             devUrlsTextarea.value = devUrls.join('\n');
         }
 
-        // Site configurations
-        renderSiteList(config.siteConfigs || {});
+        // Site configurations are managed by the site-list-setting component
 
         // Database status is managed by the database-status-setting component
     } catch (error) {
@@ -91,19 +90,6 @@ function showStatus(message, isError = false) {
 }
 
 
-async function renderSiteList(siteConfigs) {
-    const siteList = document.getElementById('siteList');
-    siteList.innerHTML = '';
-    
-    for (const [domain, config] of Object.entries(siteConfigs)) {
-        const siteToggle = document.createElement('site-toggle-setting');
-        siteToggle.setAttribute('domain', domain);
-        siteToggle.setAttribute('name', config.name || domain);
-        siteToggle.setAttribute('origins', JSON.stringify(config.origins || [`https://${domain}/*`]));
-        
-        siteList.appendChild(siteToggle);
-    }
-}
 
 
 function toggleDebugSettings(environment) {
