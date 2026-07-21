@@ -127,8 +127,7 @@ browser().runtime.onInstalled.addListener(async () => {
     } catch (error) {
         log("Error setting default environment on install:", error);
     }
-// Handle periodic alarm to fetch Rahti data
-
+    // Run an initial Rahti data fetch on install so the extension has data immediately.
     // Initial fetch of Rahti data
     try {
         await fetchRahtiData();
