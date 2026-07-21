@@ -1,6 +1,10 @@
-import { getLogger, browser } from "./utils.js";
+import { getLogger, browser, parseSemVer } from "./utils.js";
 import { getConfig } from "./config.js";
 import { initStorage } from "./storage.js";
+
+// The supported schema version for the Rahti data format. This is used to ensure compatibility between the extension and the fetched data.
+// Major version changes indicate breaking changes, while minor and patch versions are backward compatible.
+const SUPPORTED_SCHEMA_VERSION = "0.1.0";
 
 const log = getLogger("rahti");
 
@@ -34,7 +38,6 @@ function rahtiToKeyed(rahti) {
 }
 
 function validRahtiData(data) {
-    const SUPPORTED_SCHEMA_VERSION = "0.1.0";
     if (!data || typeof data !== "object") {
         log("Invalid Rahti payload type:", data);
         return false;
@@ -45,9 +48,19 @@ function validRahtiData(data) {
         return false;
     }
 
-    if (data.schema_version != SUPPORTED_SCHEMA_VERSION) {
-        // TODO: What now? Navigate the user to an update page?
-        throw `The title data format is not compatible: version is ${data.schema_version} when expected ${SUPPORTED_SCHEMA_VERSION}. Update Paatti or use some other compatible title data source in order to fix.`;
+    const supported = parseSemVer(SUPPORTED_SCHEMA_VERSION);
+    const incoming = parseSemVer(data.schema_version);
+
+    if (!supported || !incoming) {
+        log("Could not parse schema version.", { supported: SUPPORTED_SCHEMA_VERSION, incoming: data ? data.schema_version : undefined });
+        return false;
+    }
+
+    // Semantic Versioning rules: major versions indicate breaking changes.
+    // If the major version of the fetched data is different from the supported major version,
+    // we consider the data incompatible and throw an error.
+    if (incoming.major !== supported.major) {
+        throw `The title data format is not compatible: major version of data is ${incoming.major} when expected ${supported.major}. Update Paatti or use some other compatible title data source in order to fix.`;
     }
 
     return true;

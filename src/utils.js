@@ -57,4 +57,25 @@ const debounce = (func, wait) => {
     };
 };
 
-export { getLogger, browser, getCurrentTabHostname, debounce };
+/**
+ * Parses a semantic version string into major, minor, and patch components.
+ *
+ * @param {string} versionString - The version string to parse (e.g. "1.2.3").
+ * @returns {{major: number, minor: number, patch: number}|null} The parsed SemVer object, or null if parsing fails.
+ */
+const parseSemVer = (versionString) => {
+    if (!versionString || typeof versionString !== "string") {
+        return null;
+    }
+    const parts = versionString.split(".");
+    const major = parseInt(parts[0], 10);
+    const minor = parts.length > 1 ? parseInt(parts[1], 10) : 0;
+    const patch = parts.length > 2 ? parseInt(parts[2], 10) : 0;
+
+    if (isNaN(major) || isNaN(minor) || isNaN(patch)) {
+        return null;
+    }
+    return { major, minor, patch };
+};
+
+export { getLogger, browser, getCurrentTabHostname, debounce, parseSemVer };
