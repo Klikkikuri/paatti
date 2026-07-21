@@ -116,6 +116,10 @@
     "message": "✗ Failed to send report.",
     "description": "Failure message after reporting conversion"
   },
+  "feedbackviewShowBelowThresholdBtn": {
+    "message": "Show headlines below threshold ($1)",
+    "description": "Button to expand list showing headlines below clickbait threshold"
+  },
 
   "settingsviewSitesEnabledTitle": {
     "message": "News sites to process",
@@ -133,7 +137,7 @@
   },
 
   "navigationMainLabel": {
-    "message": "Home",
+    "message": "Klikkikuri",
     "description": "Label of the navigation menu main view button"
   },
 
@@ -169,8 +173,12 @@
   },
 
   "navigationSettingsLabel": {
-    "message": "More settings",
+    "message": "Preferences",
     "description": "Label of the navigation menu settings view button"
+  },
+  "preferencesViewMoreSettingsBtn": {
+    "message": "More settings...",
+    "description": "Label of the button in preferences view that opens options page"
   },
 
   "devmodeHiddenButtonTitle": {
@@ -293,5 +301,9 @@
   "clickbaitLevel4Desc": {
     "message": "Process only misleading headlines",
     "description": "Description for clickbait level 4 (Extremely Clickbaity)"
+  },
+  "sitePolicyLinkText": {
+    "message": "Publisher's policy",
+    "description": "Short link text for publisher's policy button"
   }
 }

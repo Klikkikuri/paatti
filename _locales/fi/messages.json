@@ -116,6 +116,10 @@
     "message": "✗ Lähetys epäonnistui.",
     "description": "Failure message after reporting conversion"
   },
+  "feedbackviewShowBelowThresholdBtn": {
+    "message": "Näytä klikkikynnyksen alittavat otsikot ($1)",
+    "description": "Button to expand list showing headlines below clickbait threshold"
+  },
 
   "settingsviewSitesEnabledTitle": {
     "message": "Käsiteltävät uutissivustot",
@@ -133,7 +137,7 @@
   },
 
   "navigationMainLabel": {
-    "message": "Koti",
+    "message": "Klikkikuri",
     "description": "Label of the navigation menu main view button"
   },
 
@@ -168,8 +172,12 @@
   },
 
   "navigationSettingsLabel": {
-    "message": "Lisää asetuksia",
+    "message": "Asetukset",
     "description": "Label of the navigation menu settings view button"
+  },
+  "preferencesViewMoreSettingsBtn": {
+    "message": "Lisää asetuksia...",
+    "description": "Label of the button in preferences view that opens options page"
   },
 
   "devmodeHiddenButtonTitle": {
@@ -292,5 +300,9 @@
   "clickbaitLevel4Desc": {
     "message": "Käsitellään vain harhaanjohtavat otsikot",
     "description": "Kuvaus klikkitason raja-arvolle 4 (Extremely Clickbaity)"
+  },
+  "sitePolicyLinkText": {
+    "message": "Julkaisijan periaatteet",
+    "description": "Short link text for publisher's policy button"
   }
 }

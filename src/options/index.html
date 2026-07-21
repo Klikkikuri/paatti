@@ -126,6 +126,17 @@
             cursor: pointer;
         }
 
+        .setting-info-card {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .text-muted-small {
+            font-size: 0.85em;
+            color: #666;
+        }
+
         .label-text {
             flex: 1;
             margin-right: 15px;
@@ -292,6 +303,34 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .site-item:hover {
+            background: #e9ecef;
+        }
+
+        .detail-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75em;
+            color: #667eea;
+            border: 1.2px solid #667eea;
+            border-radius: 4px;
+            padding: 2px 8px;
+            text-decoration: none;
+            font-weight: bold;
+            line-height: 1.2;
+            transition: all 0.2s;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .detail-button:hover {
+            background: #667eea;
+            color: white;
         }
 
         .site-info {
@@ -649,80 +688,28 @@
             <fieldset>
                 <legend>🔌 Laajennuksen tila</legend>
                 <p class="section-description">Ota laajennus käyttöön tai pois käytöstä</p>
-                <div class="setting-group">
-                    <label class="setting-label">
-                        <div class="label-text">
-                            <strong>Aktivoi Paatti</strong>
-                            <span>Kun päällä, laajennus käsittelee klikkiotsikot määritetyillä sivustoilla</span>
-                        </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="extensionEnabled">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </label>
-                </div>
+                <master-switch-setting></master-switch-setting>
             </fieldset>
 
             <!-- Clickbait Level -->
             <fieldset>
                 <legend>🎯 Klikkiotsikoiden taso</legend>
                 <p class="section-description">Määritä, kuinka klikkikynnystä nostetaan</p>
-                <div class="slider-container">
-                    <div class="slider-wrapper">
-                        <div class="slider-gauge">
-                            <input type="range" id="clickbaitLevel" min="0" max="4" step="1" value="2" orient="vertical">
-                        </div>
-                        <div class="slider-labels">
-                            <label for="clickbaitLevel" data-value="4">
-                                <span class="label-title">Vain äärimmäiset</span>
-                                <span class="label-description">Käsitellään vain harhaanjohtavat otsikot</span>
-                            </label>
-                            <label for="clickbaitLevel" data-value="3">
-                                <span class="label-title">Voimakkaasti klikkimäiset</span>
-                                <span class="label-description">Käsitellään erittäin sensaatiohakuiset otsikot</span>
-                            </label>
-                            <label for="clickbaitLevel" data-value="2">
-                                <span class="label-title">Kohtalaisesti klikkimäiset</span>
-                                <span class="label-description">Käsitellään kohtuullisen sensaatiohakuiset otsikot</span>
-                            </label>
-                            <label for="clickbaitLevel" data-value="1">
-                                <span class="label-title">Lievästi klikkimäiset</span>
-                                <span class="label-description">Käsitellään myös hieman houkuttelevat otsikot</span>
-                            </label>
-                            <label for="clickbaitLevel" data-value="0">
-                                <span class="label-title">Kaikki otsikot</span>
-                                <span class="label-description">Käsitellään kaikki otsikot, myös neutraalit</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
+                <clickbait-level-vertical></clickbait-level-vertical>
             </fieldset>
 
             <!-- Site Configuration -->
             <fieldset>
                 <legend>🌐 Sivustokohtaiset asetukset</legend>
                 <p class="section-description">Valitse, millä sivustoilla laajennus on käytössä</p>
-                <div class="site-list" id="siteList">
-                    <!-- Populated by JavaScript -->
-                </div>
+                <site-list-setting id="siteList"></site-list-setting>
             </fieldset>
 
             <!-- Title Modifiers -->
             <fieldset>
                 <legend>🏷️ Otsikkomerkinnät</legend>
                 <p class="section-description">Ota käyttöön automaattiset ilmaisimet ja muokkaukset otsikoille (voimassa kaikilla laitteilla)</p>
-                <div class="setting-group">
-                    <label class="setting-label">
-                        <div class="label-text">
-                            <strong>🤖 Tekoälymerkintä (AI)</strong>
-                            <span>Lisää robotti-ilmaisimen 🤖 otsikoihin, jotka on tunnistettu automaattisesti luoduksi tekoälysisällöksi</span>
-                        </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="markAiSlop">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </label>
-                </div>
+                <title-modifier-setting modifier="aiSlop"></title-modifier-setting>
             </fieldset>
 
             <!-- Environment Configuration -->
@@ -767,18 +754,7 @@
                 <div id="debug-settings">
                     <hr>
                     <h3 style="margin-bottom: 15px; color: #667eea;">🐛 Debug-asetukset</h3>
-                    <div class="setting-group">
-                        <label class="setting-label">
-                            <div class="label-text">
-                                <strong>Debug-visualisoinnit</strong>
-                                <span>Näytä visuaaliset debug-merkit käsitellyistä elementeistä</span>
-                            </div>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="debugVisuals">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </label>
-                    </div>
+                    <visual-highlight-setting></visual-highlight-setting>
                     <div class="setting-group" style="margin-top: 15px;">
                         <div class="number-input-group" style="margin: 0; padding: 15px; background: #f8f9fa; border-radius: 8px; display: flex; flex-direction: column; gap: 10px;">
                             <div class="label-text">
@@ -786,6 +762,7 @@
                                 <span style="display: block; margin-top: 5px; margin-bottom: 8px;">Syötä JSON-tietokantojen osoitteet kehitysympäristöä varten, yksi osoite per rivi.</span>
                             </div>
                             <textarea id="devTitleDataUrls" rows="3" placeholder="http://localhost:3000/data.json" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 0.95em; font-family: monospace; resize: vertical; box-sizing: border-box;"></textarea>
+                            <button type="button" class="btn-primary" id="saveDevUrlsBtn" style="margin-top: 5px; padding: 8px 16px; width: auto; align-self: flex-end;">💾 Tallenna osoitteet</button>
                         </div>
                     </div>
                 </div>
@@ -796,41 +773,10 @@
                 <legend>🗄️ Tietokannan päivitys</legend>
                 <p class="section-description">Määritä tietokannan automaattinen päivitysväli ja hallitse manuaalista päivitystä</p>
                 
-                <div class="setting-group" style="display: flex; flex-direction: column; gap: 15px; align-items: stretch;">
-                    <!-- Refresh Interval Card -->
-                    <div class="number-input-group" style="margin: 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                        <label style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
-                            <div class="label-text">
-                                <strong>Automaattinen päivitysväli</strong>
-                                <span>Määritä uuden datan automaattinen hakuväli minuuteissa</span>
-                            </div>
-                            <input type="number" id="refreshInterval" min="1" max="1440" value="20" style="width: 80px; padding: 8px; border: 2px solid #ddd; border-radius: 6px; font-size: 1em; text-align: center;">
-                        </label>
-                    </div>
-
-                    <!-- Manual Update & Last Updated Card -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                        <div class="label-text" style="display: flex; flex-direction: column; gap: 8px;">
-                            <div>
-                                <strong style="display: block; margin-bottom: 2px;">Viimeisin haku</strong>
-                                <span id="dbLastUpdatedText">Ladataan...</span>
-                            </div>
-                            <div>
-                                <strong style="display: block; margin-bottom: 2px;">Tietokannan luontiaika</strong>
-                                <span id="dbGenerationDateText">Ladataan...</span>
-                            </div>
-                        </div>
-                        <button type="button" class="btn-secondary" id="manualUpdateBtn" style="flex: 0 0 auto; width: auto; min-width: 150px; padding: 8px 16px; margin: 0;">Päivitä tietokanta</button>
-                    </div>
-                </div>
+                <database-status-setting></database-status-setting>
             </fieldset>
 
 
-            <!-- Buttons -->
-            <div class="button-group">
-                <button class="btn-primary" id="saveBtn">💾 Tallenna asetukset</button>
-                <button class="btn-secondary" id="resetBtn">🔄 Palauta oletukset</button>
-            </div>
         </div>
 
         <footer>

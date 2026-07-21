@@ -1,8 +1,14 @@
 import { getConfig } from '../config.js';
 import { browser } from '../utils.js';
-import { isSiteEnabled, displayProductInfo } from './utils.js';
+import { displayProductInfo } from './utils.js';
 import { model } from '../model.js';
 import { controller } from '../controller.js';
+import './components/site-list-setting.js';
+import './components/visual-highlight-setting.js';
+import './components/master-switch-setting.js';
+import './components/title-modifier-setting.js';
+import './components/database-status-setting.js';
+import './components/clickbait-level-vertical.js';
 
 // Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {
@@ -15,8 +21,7 @@ async function loadSettings() {
     try {
         const config = await getConfig();
         
-        // Extension enabled
-        document.getElementById('extensionEnabled').checked = config.enabled || false;
+        // Extension enabled state is managed by the master-switch-setting component
 
         // Environment
         const envRadio = document.querySelector(`input[value="${config.activeEnv || 'free'}"]`);
@@ -29,17 +34,13 @@ async function loadSettings() {
         // Show/hide debug settings based on environment
         toggleDebugSettings(config.activeEnv || 'free');
         
-        // Refresh interval
-        document.getElementById('refreshInterval').value = config.refreshIntervalMinutes || 20;
+        // Refresh interval is managed by the database-status-setting component
         
-        // Debug visuals
-        document.getElementById('debugVisuals').checked = config.debugVisualsEnabled || false;
+        // Debug visuals is managed by the visual-highlight-setting component
 
-        // Load modifier toggle state
-        document.getElementById('markAiSlop').checked = config.modifiers?.aiSlop || false;
+        // Modifier toggle state is managed by the title-modifier-setting component
 
-        // Clickbait level
-        document.getElementById('clickbaitLevel').value = config.clickbaitLevel !== undefined ? config.clickbaitLevel : 2;
+        // Clickbait level is managed by the clickbait-level-vertical component
         
         // Load saved email for paid environment
         let savedEmail = '';
@@ -50,7 +51,9 @@ async function loadSettings() {
             savedEmail = '';
         }
         const emailInput = document.getElementById('invitationEmail');
-        emailInput.value = savedEmail;
+        if (emailInput && document.activeElement !== emailInput) {
+            emailInput.value = savedEmail;
+        }
 
         // Load saved titleDataUrls for development environment
         let devUrls = [];
@@ -60,46 +63,20 @@ async function loadSettings() {
             devUrls = [];
         }
         const devUrlsTextarea = document.getElementById('devTitleDataUrls');
-        if (devUrlsTextarea) {
+        if (devUrlsTextarea && document.activeElement !== devUrlsTextarea) {
             devUrlsTextarea.value = devUrls.join('\n');
         }
 
-        // Site configurations
-        renderSiteList(config.siteConfigs || {});
+        // Site configurations are managed by the site-list-setting component
 
-        // Load database status
-        await refreshDatabaseStatus();
+        // Database status is managed by the database-status-setting component
     } catch (error) {
         console.error('Error loading settings:', error);
         showStatus('Virhe asetusten lataamisessa', true);
     }
 }
 
-async function refreshDatabaseStatus() {
-    try {
-        const data = await browser().storage.local.get(["lastDatabaseUpdate", "databaseGenerationDate"]);
-        const dbLastUpdatedText = document.getElementById("dbLastUpdatedText");
-        if (dbLastUpdatedText) {
-            if (data.lastDatabaseUpdate) {
-                const date = new Date(data.lastDatabaseUpdate);
-                dbLastUpdatedText.textContent = date.toLocaleString("fi-FI");
-            } else {
-                dbLastUpdatedText.textContent = "Ei koskaan";
-            }
-        }
-        const dbGenerationDateText = document.getElementById("dbGenerationDateText");
-        if (dbGenerationDateText) {
-            if (data.databaseGenerationDate) {
-                const date = new Date(data.databaseGenerationDate);
-                dbGenerationDateText.textContent = date.toLocaleString("fi-FI");
-            } else {
-                dbGenerationDateText.textContent = "Tuntematon";
-            }
-        }
-    } catch (error) {
-        console.error("Error loading database status:", error);
-    }
-}
+// refreshDatabaseStatus is now encapsulated in the database-status-setting component
 
 
 function showStatus(message, isError = false) {
@@ -113,69 +90,6 @@ function showStatus(message, isError = false) {
 }
 
 
-async function renderSiteList(siteConfigs) {
-    const siteList = document.getElementById('siteList');
-    siteList.innerHTML = '';
-    
-    for (const [domain, config] of Object.entries(siteConfigs)) {
-        const siteItem = document.createElement('div');
-        siteItem.className = 'site-item';
-
-        const enabled = await isSiteEnabled(domain);
-        console.log(`Rendering site ${domain} with enabled: ${enabled}`);
-
-        const faviconUrl = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
-
-        const siteInfo = document.createElement('div');
-        siteInfo.className = 'site-info';
-
-        const faviconImg = document.createElement('img');
-        faviconImg.src = faviconUrl;
-        faviconImg.alt = '';
-        faviconImg.width = 24;
-        faviconImg.height = 24;
-        faviconImg.className = 'site-favicon';
-        siteInfo.appendChild(faviconImg);
-
-        const textContainer = document.createElement('div');
-
-        const siteName = document.createElement('div');
-        siteName.className = 'site-name';
-        siteName.textContent = config.name || domain;
-        textContainer.appendChild(siteName);
-
-        const siteDomain = document.createElement('div');
-        siteDomain.className = 'site-domain';
-        siteDomain.textContent = domain;
-        textContainer.appendChild(siteDomain);
-
-        siteInfo.appendChild(textContainer);
-        siteItem.appendChild(siteInfo);
-
-        const toggleSwitch = document.createElement('label');
-        toggleSwitch.className = 'toggle-switch';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = `site-${domain}`;
-        checkbox.dataset.site = domain;
-        checkbox.checked = enabled;
-
-        const origins = config.origins || [`https://${domain}/*`];
-        checkbox.dataset.origins = JSON.stringify(origins);
-        const hasPermission = origins.length > 0 ? await browser().permissions.contains({ origins }) : false;
-        checkbox.dataset.hasPermission = String(hasPermission);
-
-        toggleSwitch.appendChild(checkbox);
-
-        const toggleSlider = document.createElement('span');
-        toggleSlider.className = 'toggle-slider';
-        toggleSwitch.appendChild(toggleSlider);
-
-        siteItem.appendChild(toggleSwitch);
-        siteList.appendChild(siteItem);
-    }
-}
 
 
 function toggleDebugSettings(environment) {
@@ -257,108 +171,31 @@ async function registerEmail() {
 
 async function setupEventListeners() {
 
-    // Clickbait level slider
-    const clickbaitSlider = document.getElementById('clickbaitLevel');
-    if (clickbaitSlider) {
-        clickbaitSlider.addEventListener('change', async () => {
-            const value = parseInt(clickbaitSlider.value);
-            if (!isNaN(value)) {
-                await controller.setClickbaitLevel(value);
-                showStatus('Asetus tallennettu!');
-            }
-        });
-    }
+    // Extension enabled toggle is managed by the master-switch-setting component
 
-    // AI Slop toggle
-    const markAiSlopToggle = document.getElementById('markAiSlop');
-    if (markAiSlopToggle) {
-        markAiSlopToggle.addEventListener('change', async () => {
-            const checked = markAiSlopToggle.checked;
-            try {
-                // Save modifier immediately on toggle change
-                await controller.setModifierEnabled('aiSlop', checked);
-                showStatus('Asetus tallennettu!');
-            } catch (error) {
-                console.error('Error saving AI slop setting:', error);
-                showStatus('Virhe asetuksen tallentamisessa', true);
-                // Revert checkbox state on error
-                markAiSlopToggle.checked = !checked;
-            }
-        });
-    }
-    
-    // Make slider labels clickable
-    document.querySelectorAll('.slider-labels label').forEach(label => {
-        label.addEventListener('click', async (e) => {
-            e.preventDefault(); // Prevent browser default focusing to avoid double events
-            const value = parseInt(label.dataset.value);
-            if (!isNaN(value) && clickbaitSlider) {
-                clickbaitSlider.value = value;
-                await controller.setClickbaitLevel(value);
-                showStatus('Asetus tallennettu!');
-            }
-        });
-    });
+    // Clickbait level slider and labels are managed by the clickbait-level-vertical component
+    // AI Slop toggle is managed by the title-modifier-setting component
 
-    // Site list checkboxes
-    document.getElementById('siteList').addEventListener('change', async (e) => {
-        if (e.target && e.target.type === 'checkbox') {
-            const checked = e.target.checked;
-            const domain = e.target.dataset.site;
-            const hasPermission = e.target.dataset.hasPermission === "true";
-            
-            let origins = [];
-            try {
-                origins = JSON.parse(e.target.dataset.origins || "[]");
-            } catch (err) {
-                console.error("Error parsing origins dataset:", err);
-            }
-
-            if (checked && origins.length > 0) {
-                if (hasPermission) {
-                    try {
-                        await controller.setSiteEnabled(true, domain);
-                        showStatus(`Sivuston ${domain} asetus tallennettu!`);
-                    } catch (error) {
-                        showStatus('Virhe tallennettaessa sivuston asetusta', true);
-                        e.target.checked = false;
-                    }
-                } else {
-                    console.log(`Requesting permission for ${domain}`);
-                    try {
-                        const granted = await browser().permissions.request({ origins });
-                        if (granted) {
-                            await controller.setSiteEnabled(true, domain);
-                            e.target.dataset.hasPermission = "true";
-                            showStatus(`Sivuston ${domain} asetus tallennettu!`);
-                        } else {
-                            e.target.checked = false;
-                            console.warn(`Permission denied for ${domain}`);
-                        }
-                    } catch (error) {
-                        showStatus('Virhe pyydettäessä lupaa', true);
-                        console.error('Error requesting permission:', error);
-                        e.target.checked = false;
-                    }
-                }
-            } else {
-                try {
-                    await controller.setSiteEnabled(false, domain);
-                    showStatus(`Sivuston ${domain} asetus tallennettu!`);
-                } catch (error) {
-                    showStatus('Virhe tallennettaessa sivuston asetusta', true);
-                    e.target.checked = true;
-                }
-            }
-        }
+    // Site list toggled events
+    document.getElementById('siteList').addEventListener('site-toggled', (e) => {
+        const { success, message } = e.detail;
+        showStatus(message, !success);
     });
 
     // Environment selection
     document.querySelectorAll('input[name="environment"]').forEach(radio => {
-        radio.addEventListener('change', (e) => {
+        radio.addEventListener('change', async (e) => {
+            const val = e.target.value;
             document.querySelectorAll('.env-option').forEach(opt => opt.classList.remove('selected'));
             e.target.closest('.env-option').classList.add('selected');
-            toggleDebugSettings(e.target.value);
+            toggleDebugSettings(val);
+            try {
+                await controller.setEnvironment(val);
+                showStatus('Ympäristö tallennettu!');
+            } catch (error) {
+                console.error('Error saving environment:', error);
+                showStatus('Virhe ympäristön tallentamisessa', true);
+            }
         });
     });
     
@@ -384,124 +221,48 @@ async function setupEventListeners() {
             registerEmail();
         }
     });
+    // Debug visuals toggle is handled by the visual-highlight-setting component.
+    // Listen to custom setting-saved events dispatched from components.
+    document.addEventListener('setting-saved', (e) => {
+        const { success, message } = e.detail;
+        showStatus(message, !success);
+    });
 
-    // Save button
-    document.getElementById('saveBtn').addEventListener('click', saveSettings);
-    
-    // Reset button
-    document.getElementById('resetBtn').addEventListener('click', resetSettings);
+    // Refresh interval is handled by the database-status-setting component
 
-    // Manual database update button
-    const manualUpdateBtn = document.getElementById('manualUpdateBtn');
-    if (manualUpdateBtn) {
-        manualUpdateBtn.addEventListener('click', async () => {
-            manualUpdateBtn.disabled = true;
-            const originalText = manualUpdateBtn.textContent;
-            manualUpdateBtn.textContent = 'Päivitetään...';
-            
-            try {
-                const response = await browser().runtime.sendMessage({ action: "updateDatabase" });
-                if (response && response.success) {
-                    showStatus('Tietokanta päivitetty onnistuneesti!');
-                    await refreshDatabaseStatus();
-                } else {
-                    showStatus('Tietokannan päivitys epäonnistui: ' + (response?.error || 'Tuntematon virhe'), true);
+    // Save development URLs button
+    const saveDevUrlsBtn = document.getElementById('saveDevUrlsBtn');
+    if (saveDevUrlsBtn) {
+        saveDevUrlsBtn.addEventListener('click', async () => {
+            const devUrlsTextarea = document.getElementById('devTitleDataUrls');
+            if (devUrlsTextarea) {
+                const urls = devUrlsTextarea.value
+                    .split('\n')
+                    .map(u => u.trim())
+                    .filter(u => u.length > 0);
+                
+                // Validate URLs
+                for (const url of urls) {
+                    try {
+                        new URL(url);
+                    } catch (e) {
+                        showStatus(`Virheellinen kehitys-URL: ${url}`, true);
+                        return;
+                    }
                 }
-            } catch (error) {
-                console.error('Error updating database:', error);
-                showStatus('Tietokannan päivitys epäonnistui', true);
-            } finally {
-                manualUpdateBtn.disabled = false;
-                manualUpdateBtn.textContent = originalText;
-            }
-        });
-    }
-}
-
-
-
-async function saveSettings() {
-    try {
-        const extensionEnabled = document.getElementById('extensionEnabled').checked;
-        const aiSlopEnabled = document.getElementById('markAiSlop').checked;
-        const clickbaitLevel = parseInt(document.getElementById('clickbaitLevel').value);
-        const environment = document.querySelector('input[name="environment"]:checked')?.value || 'free';
-        const refreshIntervalMinutes = parseInt(document.getElementById('refreshInterval').value);
-        const debugVisualsEnabled = document.getElementById('debugVisuals').checked;
-        
-        // Collect site overrides correctly matching the userSiteOverrides structure: { [domain]: { enabled: boolean } }
-        const syncData = await browser().storage.sync.get(["userSiteOverrides", "modifiers"]);
-        const siteOverrides = syncData.userSiteOverrides || {};
-        const syncModifiers = syncData.modifiers || {};
-        syncModifiers.aiSlop = aiSlopEnabled;
-        document.querySelectorAll('#siteList input[type="checkbox"]').forEach(checkbox => {
-            const domain = checkbox.dataset.site;
-            siteOverrides[domain] = siteOverrides[domain] || {};
-            siteOverrides[domain].enabled = checkbox.checked;
-        });
-        
-        // Save userPreferences safely merging other fields like environmentConfigs
-        const data = await browser().storage.local.get("userPreferences");
-        const userPreferences = data.userPreferences || {};
-        userPreferences.enabled = extensionEnabled;
-        userPreferences.clickbaitLevel = clickbaitLevel;
-        userPreferences.environment = environment;
-        userPreferences.refreshIntervalMinutes = refreshIntervalMinutes;
-        userPreferences.debugVisualsEnabled = debugVisualsEnabled;
-
-        // Save titleDataUrls for development environment
-        const devUrlsTextarea = document.getElementById('devTitleDataUrls');
-        if (devUrlsTextarea) {
-            const urls = devUrlsTextarea.value
-                .split('\n')
-                .map(u => u.trim())
-                .filter(u => u.length > 0);
-            
-            // Validate URLs
-            for (const url of urls) {
+                
                 try {
-                    new URL(url);
-                } catch (e) {
-                    showStatus(`Virheellinen kehitys-URL: ${url}`, true);
-                    return;
+                    await controller.setDevTitleDataUrls(urls);
+                    showStatus('Kehitys-URL:t tallennettu!');
+                } catch (error) {
+                    console.error('Error saving dev URLs:', error);
+                    showStatus('Virhe tallennettaessa kehitys-URL:eja', true);
                 }
             }
-            
-            if (!userPreferences.environmentConfigs) {
-                userPreferences.environmentConfigs = {};
-            }
-            if (!userPreferences.environmentConfigs.development) {
-                userPreferences.environmentConfigs.development = {};
-            }
-            userPreferences.environmentConfigs.development.titleDataUrls = urls;
-        }
-
-        await browser().storage.local.set({ userPreferences });
-        await browser().storage.sync.set({ 
-            userSiteOverrides: siteOverrides,
-            modifiers: syncModifiers
         });
-        
-        showStatus('Asetukset tallennettu!');
-    } catch (error) {
-        console.error('Error saving settings:', error);
-        showStatus('Virhe asetusten tallentamisessa', true);
     }
-}
 
-
-async function resetSettings() {
-    if (confirm('Haluatko varmasti palauttaa kaikki asetukset oletusarvoihin?')) {
-        try {
-            await browser().storage.local.remove('userPreferences');
-            await browser().storage.sync.remove('userSiteOverrides');
-            await loadSettings();
-            showStatus('Asetukset palautettu!');
-        } catch (error) {
-            console.error('Error resetting settings:', error);
-            showStatus('Virhe asetusten palauttamisessa', true);
-        }
-    }
+    // Manual database update button is handled by the database-status-setting component
 }
 
 // Keep options page synchronized with settings changes from other parts of the extension (e.g. popup)

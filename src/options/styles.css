@@ -1,11 +1,30 @@
+:root {
+    --color-bg-body: whitesmoke;
+    --color-text-primary: #222;
+    --color-text-secondary: #555;
+
+    /* Toggle button variables */
+    --toggle-bg-off: #ccc;
+    --toggle-bg-on: #53b9ff;
+
+    /* Feedback items variables */
+    --feedback-bg: #fafafa;
+    --feedback-bg-hover: #f0f7ff;
+    --feedback-border: #ddd;
+    --feedback-border-hover: #b3d7ff;
+    --feedback-text-orig: #555;
+    --feedback-text-conv: #111;
+    --feedback-input-border: #ccc;
+}
+
 body {
     width: 320px;
     height: 400px;
     font-family: Arial, sans-serif;
-    color: #222;
+    color: var(--color-text-primary);
     padding: 10px;
     margin: 0;
-    background: whitesmoke;
+    background: var(--color-bg-body);
 
     display: flex;
     flex-direction: column;
@@ -78,7 +97,13 @@ body {
     align-items: center;
 }
 
-#power div:nth-child(2) .push-button {
+power-button {
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+}
+
+power-button label.push-button {
     user-select: none;
     font-size: 350%;
     padding: 0;
@@ -88,13 +113,9 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 50px;
-    height: 50px;
+    width: 100%;
+    height: 100%;
     min-width: 0;
-}
-
-#open-options {
-    border: none;
 }
 
 /* Content details */
@@ -111,15 +132,14 @@ body {
     width: 16em;
 }
 
-/* Navi details */
-
-#navi .push-button {
+/* Compact button helper (used by Web Components and navi) */
+.push-button.compact-button {
     user-select: none;
     padding: 0;
 
     /* Make the buttons circles */
     border-radius: 100%;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 30px;
@@ -214,7 +234,7 @@ input:checked+.push-button:hover {
     appearance: none;
     width: 40px;
     height: 20px;
-    background: #ccc;
+    background: var(--toggle-bg-off);
     border: none;
     border-radius: 10px;
     position: relative;
@@ -224,7 +244,7 @@ input:checked+.push-button:hover {
 }
 
 .toggle:checked {
-    background: #53b9ff;
+    background: var(--toggle-bg-on);
 }
 
 .toggle::before {
@@ -345,9 +365,9 @@ tbody > tr:nth-of-type(even) > td {
     flex-direction: column;
     gap: 6px;
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--feedback-border);
     border-radius: 6px;
-    background: #fafafa;
+    background: var(--feedback-bg);
     width: 100%;
     box-sizing: border-box;
     margin-bottom: 8px;
@@ -356,30 +376,30 @@ tbody > tr:nth-of-type(even) > td {
 }
 
 .feedback-item:hover {
-    background: #f0f7ff;
-    border-color: #b3d7ff;
+    background: var(--feedback-bg-hover);
+    border-color: var(--feedback-border-hover);
 }
 
 
 .feedback-orig {
     font-size: 0.85em;
-    color: #555;
+    color: var(--feedback-text-orig);
     text-align: left;
 }
 
 .feedback-orig-label {
-    color: #555;
+    color: var(--feedback-text-orig);
 }
 
 .feedback-conv {
     font-size: 0.9em;
     font-weight: bold;
-    color: #111;
+    color: var(--feedback-text-conv);
     text-align: left;
 }
 
 .feedback-conv-label {
-    color: #222;
+    color: var(--color-text-primary);
 }
 
 .feedback-buttons-container {
@@ -411,7 +431,7 @@ tbody > tr:nth-of-type(even) > td {
     height: 28px;
     padding: 4px;
     border-radius: 4px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--feedback-input-border);
     font-family: Arial, sans-serif;
     font-size: 0.85em;
 }
@@ -429,14 +449,35 @@ tbody > tr:nth-of-type(even) > td {
 
 .feedback-form-row .feedback-submit-btn {
     padding: 4px 8px;
-    min-width: 50px;
+    min-height: 50px;
     font-size: 0.75em;
     margin: 0;
 }
 
 .feedback-item-divider {
     border: 0;
-    border-top: 1px solid #ddd;
+    border-top: 1px solid var(--feedback-border);
     margin: 6px 0;
     width: 100%;
 }
+
+/* Shared Web Component Styles */
+.compact-setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 0;
+    width: 100%;
+}
+
+.setting-info-card {
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.text-muted-small {
+    font-size: 0.85em;
+    color: var(--color-text-secondary);
+}
+

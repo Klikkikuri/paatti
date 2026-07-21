@@ -210,6 +210,32 @@ const model = (() => {
                 await browser().storage.local.set({ userPreferences });
             },
 
+            setVisualHighlightEnabled: async (value) => {
+                await browser().storage.local.set({ visualHighlightEnabled: value });
+            },
+
+            setRefreshIntervalMinutes: async (value) => {
+                log(`Setting refresh interval minutes to ${value}`);
+                const data = await browser().storage.local.get("userPreferences");
+                const userPreferences = data.userPreferences || {};
+                userPreferences.refreshIntervalMinutes = value;
+                await browser().storage.local.set({ userPreferences });
+            },
+
+            setDevTitleDataUrls: async (urls) => {
+                log(`Setting development title data URLs:`, urls);
+                const data = await browser().storage.local.get("userPreferences");
+                const userPreferences = data.userPreferences || {};
+                if (!userPreferences.environmentConfigs) {
+                    userPreferences.environmentConfigs = {};
+                }
+                if (!userPreferences.environmentConfigs.development) {
+                    userPreferences.environmentConfigs.development = {};
+                }
+                userPreferences.environmentConfigs.development.titleDataUrls = urls;
+                await browser().storage.local.set({ userPreferences });
+            },
+
             setClickbaitLevel: async (value) => {
                 log(`Setting clickbait level to ${value}`);
                 const data = await browser().storage.local.get("userPreferences");
@@ -318,6 +344,23 @@ const model = (() => {
             isDebugVisualsEnabled: async () => {
                 const config = await getConfig();
                 return config["debugVisualsEnabled"];
+            },
+
+            getVisualHighlightEnabled: async () => {
+                const data = await browser().storage.local.get("visualHighlightEnabled");
+                if (data.hasOwnProperty("visualHighlightEnabled")) {
+                    return !!data.visualHighlightEnabled;
+                }
+                const config = await getConfig();
+                return !!config.debugVisualsEnabled;
+            },
+
+            getDatabaseStatus: async () => {
+                const data = await browser().storage.local.get(["lastDatabaseUpdate", "databaseGenerationDate"]);
+                return {
+                    lastDatabaseUpdate: data.lastDatabaseUpdate || null,
+                    databaseGenerationDate: data.databaseGenerationDate || null
+                };
             },
 
             getClickbaitLevel: async () => {

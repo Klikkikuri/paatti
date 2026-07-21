@@ -5,9 +5,19 @@ import { model, modelEvents } from "../model.js";
 import { controller } from "../controller.js";
 import { getConfig } from "../config.js";
 import { isSiteEnabled, displayProductInfo, getClickbaitLevelInfo } from "./utils.js";
+import "./components/site-toggle.js";
+import "./components/visual-highlight-setting.js";
+import "./components/master-switch-setting.js";
+import "./components/database-status-setting.js";
+import "./components/clickbait-level-horizontal.js";
+import "./components/feedback-item.js";
+import "./components/compact-button.js";
+import "./components/power-button.js";
 
 const log = getLogger("view");
 
+// Track the JSON of the last rendered conversions list to avoid unnecessary DOM rebuilding on scroll.
+let lastConversionsJson = null;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Helper procedures and definitions.
@@ -195,67 +205,25 @@ const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlS
 
     // Add the supported sites' listing to UI.
     for (const [host, site] of Object.entries(config.siteConfigs)) {
-        const input = document.createElement("input");
-        input.classList.add("toggle");
-        input.classList.add("conversion-switch");
-        input.id = getSitesEnabledItemId(host);
-        input.dataset.hostname = host;
-        input.dataset.origins = JSON.stringify(site.origins || [`https://${host}/*`]);
-        input.dataset.hasPermission = String(sitesPermissions?.[host] || false);
-        input.type = "checkbox";
-        input.addEventListener("click", view.handleClickConversionSwitch);
-        const label = document.createElement("label");
-        label.for = input.id;
-        label.textContent = site.name;
-        const item = document.createElement("li");
-        item.appendChild(label);
-        item.appendChild(input);
-        sitesEnabledList.appendChild(item);
+        const siteToggle = document.createElement("site-toggle-setting");
+        siteToggle.setAttribute("domain", host);
+        siteToggle.setAttribute("name", site.name || host);
+        siteToggle.setAttribute("origins", JSON.stringify(site.origins || [`https://${host}/*`]));
+        siteToggle.setAttribute("layout", "compact");
+        sitesEnabledList.appendChild(siteToggle);
     }
 
 
     // Visualize per site switches as "readonly" as per main switch state.
     _setSettingsviewCheckboxesReadonly(isConversionEnabled);
 
-    // Set the per site switches enabled as per their switch state.
-    for (const [hostname, isEnabled] of Object.entries(sitesEnabled)) {
-        const siteSwitch = document.getElementById(getSitesEnabledItemId(hostname));
-        if (siteSwitch === null) {
-            throw `Conversion switch element not found for hostname '${hostname}'`;
-        }
-        siteSwitch.checked = isEnabled;
-    }
-
     if (isDevelopmentEnv) {
         document.querySelectorAll(".devmode").forEach((x) => x.classList.remove("hidden"));
         document.querySelector("#logo img").classList.add("hidden");
 
-        // Set devmode debug visuals checkbox state
-        const debugVisualsCheckbox = document.getElementById("devmode-setDebugVisuals");
-        if (debugVisualsCheckbox) {
-            debugVisualsCheckbox.checked = !!visualHighlightEnabled;
-        }
+        // devmode-setDebugVisuals checked state is managed by the visual-highlight-setting component
 
-        // Set devmode title data url selection options and active value
-        const titleDataUrlSelect = document.getElementById("devmode-setTitleDataUrl");
-        if (titleDataUrlSelect) {
-            titleDataUrlSelect.innerHTML = "";
-            const envUrls = config.environmentConfigs?.development?.titleDataUrls || [];
-            for (const url of envUrls) {
-                const opt = document.createElement("option");
-                opt.value = url;
-                try {
-                    const parsed = new URL(url);
-                    opt.textContent = parsed.hostname + parsed.pathname;
-                } catch(e) {
-                    opt.textContent = url;
-                }
-                titleDataUrlSelect.appendChild(opt);
-            }
-            if (titleDataUrlSelected && titleDataUrlSelected.length > 0) {
-                titleDataUrlSelect.value = titleDataUrlSelected[0];
-            }
-        }
+
     } else {
         document.querySelectorAll(".devmode").forEach((x) => x.classList.add("hidden"));
         document.querySelector("#logo img").classList.remove("hidden");
@@ -275,33 +243,7 @@ const handleClickMainSwitch = async (e) => {
     await controller.setEnabled(e.target.checked);
 };
 
-const handleClickConversionSwitch = async (e) => {
-    const checked = e.target.checked;
-    const hostname = e.target.dataset.hostname;
-    const hasPermission = e.target.dataset.hasPermission === "true";
-    
-    let origins = [];
-    try {
-        origins = JSON.parse(e.target.dataset.origins || "[]");
-    } catch (err) {
-        log("Error parsing origins dataset:", err);
-    }
 
-    if (checked && origins.length > 0) {
-        if (hasPermission) {
-            // Already has permissions, just update settings
-            await controller.setSiteEnabled(true, hostname);
-        } else {
-            // Request permissions synchronously (gesture is active) and close the popup immediately so it doesn't cover the prompt
-            log("Requesting optional permissions for:", origins);
-            browser().permissions.request({ origins });
-            window.close();
-        }
-    } else {
-        // If disabling, update settings but do NOT drop the permission (keep it granted)
-        await controller.setSiteEnabled(false, hostname);
-    }
-};
 
 /**
  * Show this and hide other of the views.
@@ -316,6 +258,18 @@ const showView = (viewName) => {
     }
     // Show the selected view.
     document.querySelector(_viewSelectors[viewName]["content"]).classList.remove("hidden");
+
+    // Update active tab indicator.
+    const indicator = document.getElementById("active-tab-indicator");
+    if (indicator) {
+        let labelKey = "";
+        if (viewName === "main") labelKey = "navigationMainLabel";
+        else if (viewName === "stats") labelKey = "navigationStatsLabel";
+        else if (viewName === "feedback") labelKey = "navigationFeedbackLabel";
+        else if (viewName === "settings") labelKey = "navigationSettingsLabel";
+        
+        indicator.textContent = labelKey ? browser().i18n.getMessage(labelKey) : "";
+    }
 };
 
 let initialViewSelected = false;
@@ -332,10 +286,7 @@ const refresh = async () => {
     const isDevelopmentEnv = await model.read.isDevelopmentEnv();
     const testTitleDataUrl = await model.read.getTestTitleDataUrl();
     const config = await getConfig();
-    const storageData = await browser().storage.local.get("visualHighlightEnabled");
-    const visualHighlightEnabled = storageData.hasOwnProperty("visualHighlightEnabled")
-        ? !!storageData.visualHighlightEnabled
-        : config.debugVisualsEnabled;
+    const visualHighlightEnabled = await model.read.getVisualHighlightEnabled();
 
     const sitesPermissions = {};
     for (const host of Object.keys(config.siteConfigs)) {
@@ -346,95 +297,30 @@ const refresh = async () => {
 
     const matchingDomain = await model.read.getMatchingSiteDomain(pageHostname);
     const isCurrentSiteEnabled = matchingDomain ? await isSiteEnabled(matchingDomain) : false;
-    const isSiteSupported = matchingDomain !== null;
-    const powerCheckbox = document.getElementById("site-enabled");
-    if (powerCheckbox) {
-        powerCheckbox.checked = isCurrentSiteEnabled;
-        powerCheckbox.disabled = !isSiteSupported;
-        powerCheckbox.dataset.hostname = matchingDomain || pageHostname;
-        const origins = matchingDomain ? config.siteConfigs[matchingDomain]?.origins : [];
-        powerCheckbox.dataset.origins = JSON.stringify(origins || [`https://${pageHostname}/*`]);
-        const hasPowerPermission = matchingDomain ? (sitesPermissions[matchingDomain] || false) : false;
-        powerCheckbox.dataset.hasPermission = String(hasPowerPermission);
-    }
-
-    const powerLabel = document.querySelector("label[for=site-enabled]");
-    if (powerLabel) {
-        if (!isSiteSupported) {
-            powerLabel.style.opacity = "0.5";
-            powerLabel.style.cursor = "not-allowed";
-        } else {
-            powerLabel.style.opacity = "1.0";
-            powerLabel.style.cursor = "pointer";
-        }
-    }
 
     // Update settings view master switch
     const settingsviewStatusTitle = document.getElementById("settingsview-status-title");
     if (settingsviewStatusTitle) {
         settingsviewStatusTitle.textContent = browser().i18n.getMessage("settingsviewStatusTitle");
     }
-    const settingsviewMasterSwitchLabel = document.getElementById("settingsview-master-switch-label");
-    if (settingsviewMasterSwitchLabel) {
-        settingsviewMasterSwitchLabel.textContent = browser().i18n.getMessage("settingsviewMasterSwitchLabel");
-    }
-    const settingsviewExtensionEnabled = document.getElementById("settingsview-extension-enabled");
-    if (settingsviewExtensionEnabled) {
-        settingsviewExtensionEnabled.checked = isConversionEnabled;
-    }
+    // settingsview-extension-enabled state and label are managed by the master-switch-setting component
 
     // Update settings view clickbait level section
     const settingsviewClickbaitLevelTitle = document.getElementById("settingsview-clickbait-level-title");
     if (settingsviewClickbaitLevelTitle) {
         settingsviewClickbaitLevelTitle.textContent = browser().i18n.getMessage("settingsviewClickbaitLevelTitle");
     }
-    const clickbaitLevel = await model.read.getClickbaitLevel();
-    const clickbaitLevelInput = document.getElementById("settingsview-clickbait-level");
-    if (clickbaitLevelInput) {
-        clickbaitLevelInput.value = clickbaitLevel;
-        const levelInfo = getClickbaitLevelInfo(clickbaitLevel);
-        const clickbaitLevelLabel = document.getElementById("settingsview-clickbait-level-label");
-        if (clickbaitLevelLabel) {
-            clickbaitLevelLabel.textContent = levelInfo.title;
-        }
-        const clickbaitLevelDesc = document.getElementById("settingsview-clickbait-level-description");
-        if (clickbaitLevelDesc) {
-            clickbaitLevelDesc.textContent = levelInfo.description;
-        }
-    }
+    // settingsview-clickbait-level is managed by the clickbait-level-horizontal component
 
     // Load database status
-    const dbStatus = await browser().storage.local.get(["lastDatabaseUpdate", "databaseGenerationDate"]);
+    const dbStatus = await model.read.getDatabaseStatus();
     const lastDatabaseUpdate = dbStatus.lastDatabaseUpdate;
     const databaseGenerationDate = dbStatus.databaseGenerationDate;
     const dbTitleEl = document.getElementById("settingsview-database-status-title");
     if (dbTitleEl) {
         dbTitleEl.textContent = browser().i18n.getMessage("settingsviewDatabaseStatusTitle");
     }
-    const dbLastUpdatedEl = document.getElementById("database-last-updated");
-    if (dbLastUpdatedEl) {
-        if (lastDatabaseUpdate) {
-            const date = new Date(lastDatabaseUpdate);
-            const dateString = date.toLocaleString();
-            dbLastUpdatedEl.textContent = browser().i18n.getMessage("databaseLastUpdated", [dateString]);
-        } else {
-            dbLastUpdatedEl.textContent = browser().i18n.getMessage("databaseNeverUpdated");
-        }
-    }
-    const dbGenDateEl = document.getElementById("database-generation-date");
-    if (dbGenDateEl) {
-        if (databaseGenerationDate) {
-            const date = new Date(databaseGenerationDate);
-            const dateString = date.toLocaleString();
-            dbGenDateEl.textContent = browser().i18n.getMessage("databaseGenerationDate", [dateString]);
-        } else {
-            dbGenDateEl.textContent = browser().i18n.getMessage("databaseGenerationNever");
-        }
-    }
-    const dbUpdateBtn = document.getElementById("update-database-btn");
-    if (dbUpdateBtn && !dbUpdateBtn.disabled) {
-        dbUpdateBtn.textContent = browser().i18n.getMessage("databaseUpdateBtn");
-    }
+    // database-last-updated, database-generation-date, and update-database-btn states are managed by the database-status-setting component
 
     _refreshSettingsView({
         isConversionEnabled,
@@ -456,10 +342,6 @@ const refresh = async () => {
     displayProductInfo();
 
     // Load conversions list in feedback view
-    const feedbackHeader = document.getElementById("feedbackview-header");
-    if (feedbackHeader) {
-        feedbackHeader.textContent = browser().i18n.getMessage("feedbackviewRateTitleHeader");
-    }
 
     const noConversionsEl = document.getElementById("feedbackview-no-conversions");
     const conversionsListEl = document.getElementById("feedbackview-conversions-list");
@@ -478,228 +360,90 @@ const refresh = async () => {
     }
 
     if (conversionsListEl) {
-        conversionsListEl.innerHTML = "";
-        if (!conversions || conversions.length === 0) {
-            if (noConversionsEl) {
-                noConversionsEl.textContent = browser().i18n.getMessage("feedbackviewNoConversions");
-                noConversionsEl.classList.remove("hidden");
-            }
-        } else {
-            if (noConversionsEl) {
-                noConversionsEl.classList.add("hidden");
-            }
-            const template = document.getElementById("feedback-item-template");
-            for (const item of conversions) {
-                const clone = template.content.cloneNode(true);
+        const conversionsJson = JSON.stringify(conversions || []);
+        
+        // Rebuild list only if the data has actually changed to reduce DOM updates and prevent jumping.
+        if (conversionsJson !== lastConversionsJson) {
+            lastConversionsJson = conversionsJson;
 
-                const origLabelEl = clone.querySelector(".feedback-orig-label");
-                const origTextEl = clone.querySelector(".feedback-orig-text");
-                let origLabel = browser().i18n.getMessage("feedbackviewRateTitleOriginalTitleLabel");
-                if (item.isMainPage) {
-                    origLabel += " (" + browser().i18n.getMessage("feedbackviewCurrentPageLabel") + ")";
+            // Check if the expando was open before clearing and rebuilding.
+            const expandoContentEl = conversionsListEl.querySelector(".expando-content");
+            const expandoWasOpen = expandoContentEl && !expandoContentEl.classList.contains("hidden");
+
+            conversionsListEl.innerHTML = "";
+            const activeConversions = (conversions || []).filter(item => !item.isUnderThreshold);
+            const underThresholdConversions = (conversions || []).filter(item => item.isUnderThreshold);
+
+            if (activeConversions.length === 0) {
+                if (noConversionsEl) {
+                    noConversionsEl.textContent = browser().i18n.getMessage("feedbackviewNoConversions");
+                    noConversionsEl.classList.remove("hidden");
                 }
-                origLabelEl.textContent = origLabel;
-                origTextEl.textContent = item.originalTitle;
+            } else {
+                if (noConversionsEl) {
+                    noConversionsEl.classList.add("hidden");
+                }
+                for (const item of activeConversions) {
+                    const feedbackEl = document.createElement("feedback-item");
+                    feedbackEl.item = item;
+                    feedbackEl.activeTab = tab;
+                    conversionsListEl.appendChild(feedbackEl);
+                }
+            }
 
-                const convLabelEl = clone.querySelector(".feedback-conv-label");
-                const convTextEl = clone.querySelector(".feedback-conv-text");
-                convLabelEl.textContent = browser().i18n.getMessage("feedbackviewRateTitleConvertedTitleLabel");
-                convTextEl.textContent = item.convertedTitle;
+            // If there are under-threshold items, add an expando at the bottom
+            if (underThresholdConversions.length > 0) {
+                const expandoContainer = document.createElement("div");
+                expandoContainer.className = "expando-container";
+                expandoContainer.style.width = "100%";
+                expandoContainer.style.marginTop = "15px";
 
-                const buttonsDiv = clone.querySelector(".feedback-buttons-container");
-                const formDiv = clone.querySelector(".feedback-form-container");
-                const feedbackInput = clone.querySelector(".feedback-input");
-                
-                const goodBtn = clone.querySelector(".feedback-good-btn");
-                const badBtn = clone.querySelector(".feedback-bad-btn");
-                const submitBtn = clone.querySelector(".feedback-submit-btn");
+                const expandoBtnText = browser().i18n.getMessage("feedbackviewShowBelowThresholdBtn", [underThresholdConversions.length]) || `Näytä klikkikynnyksen alittavat otsikot (${underThresholdConversions.length})`;
 
-                feedbackInput.placeholder = browser().i18n.getMessage("feedbackviewReportCommentPlaceholder");
-                goodBtn.textContent = "👍 " + browser().i18n.getMessage("feedbackviewRateTitleConversionIsGood");
-                badBtn.textContent = "👎 " + browser().i18n.getMessage("feedbackviewRateTitleConversionIsBad");
-                submitBtn.textContent = browser().i18n.getMessage("feedbackviewReportSubmitBtn");
+                // Render the expando with its previous open/closed state.
+                expandoContainer.innerHTML = `
+                    <button class="push-button expando-btn" style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: ${expandoWasOpen ? "#e2e8f0" : "#f8fafc"}; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85em; font-weight: 600; color: #475569; cursor: pointer; transition: background 0.15s ease;">
+                        <span>🔍 ${expandoBtnText}</span>
+                        <span class="expando-arrow" style="font-size: 0.85em; transition: transform 0.2s ease; ${expandoWasOpen ? "transform: rotate(180deg);" : ""}">▼</span>
+                    </button>
+                    <div class="expando-content ${expandoWasOpen ? "" : "hidden"}" style="margin-top: 10px; display: flex; flex-direction: column; gap: 12px; width: 100%;">
+                    </div>
+                `;
 
-                const submitFeedback = async (type, comment = "") => {
-                    let feedbackServerUrl = "https://api.klikkikuri.fi/v1/feedback";
-                    try {
-                        const config = await getConfig();
-                        if (config && config.feedbackServerUrl) {
-                            feedbackServerUrl = config.feedbackServerUrl;
-                        }
-                    } catch (err) {
-                        log("Error loading config for feedback server URL:", err);
-                    }
+                const expandoBtn = expandoContainer.querySelector(".expando-btn");
+                const expandoContent = expandoContainer.querySelector(".expando-content");
+                const expandoArrow = expandoContainer.querySelector(".expando-arrow");
 
-                    const dbStatus = await browser().storage.local.get("lastDatabaseUpdate");
-                    const databaseUpdated = dbStatus.lastDatabaseUpdate ? new Date(dbStatus.lastDatabaseUpdate).toISOString() : "Unknown";
-                    const commentVal = comment.trim() || "-";
-
-                    const pageUrl = tab?.url || "";
-                    const urlSign = item.urlSign || "";
-                    const originalTitle = item.originalTitle || "";
-                    const convertedTitle = item.convertedTitle || "";
-                    const clickbaitLevel = (item.clickbaitLevel !== undefined && item.clickbaitLevel !== null) ? String(item.clickbaitLevel) : "";
-
-                    // Client-side validation: all fields are required
-                    if (!pageUrl || !urlSign || !originalTitle || !convertedTitle || clickbaitLevel === "" || !type || !commentVal || !databaseUpdated) {
-                        log("Validation failed: missing required feedback fields", {
-                            pageUrl,
-                            urlSign,
-                            originalTitle,
-                            convertedTitle,
-                            clickbaitLevel,
-                            type,
-                            commentVal,
-                            databaseUpdated
-                        });
-                        return false;
-                    }
-
-                    const isGoogleForm = feedbackServerUrl.includes("docs.google.com/forms");
-
-                    try {
-                        if (isGoogleForm) {
-                            let postUrl = feedbackServerUrl;
-                            if (postUrl.endsWith("/viewform")) {
-                                postUrl = postUrl.replace("/viewform", "/formResponse");
-                            } else if (!postUrl.endsWith("/formResponse")) {
-                                if (postUrl.endsWith("/")) {
-                                    postUrl += "formResponse";
-                                } else {
-                                    postUrl += "/formResponse";
-                                }
-                            }
-
-                            const formData = new URLSearchParams();
-                            formData.append("entry.1944615860", pageUrl);
-                            formData.append("entry.1369854914", urlSign);
-                            formData.append("entry.917360051", originalTitle);
-                            formData.append("entry.1935829065", convertedTitle);
-                            formData.append("entry.1807257025", clickbaitLevel);
-                            formData.append("entry.167673994", type);
-                            formData.append("entry.78795748", commentVal);
-                            formData.append("entry.364993842", databaseUpdated);
-
-                            await fetch(postUrl, {
-                                method: "POST",
-                                mode: "no-cors",
-                                headers: {
-                                    "Content-Type": "application/x-www-form-urlencoded"
-                                },
-                                body: formData.toString()
-                            });
-                        } else {
-                            const payload = {
-                                timestamp: new Date().toISOString(),
-                                pageUrl: pageUrl,
-                                urlSign: urlSign,
-                                originalTitle: originalTitle,
-                                convertedTitle: convertedTitle,
-                                clickbaitLevel: item.clickbaitLevel,
-                                feedbackType: type,
-                                comment: comment,
-                                databaseUpdated: databaseUpdated
-                            };
-
-                            await fetch(feedbackServerUrl, {
-                                method: "POST",
-                                mode: "no-cors",
-                                headers: {
-                                    "Content-Type": "text/plain"
-                                },
-                                body: JSON.stringify(payload)
-                            });
-                        }
-                        return true;
-                    } catch (err) {
-                        log("Failed to submit feedback:", err);
-                        return false;
-                    }
-                };
-
-                const setFeedbackStatus = (text, color, isBold) => {
-                    buttonsDiv.textContent = "";
-                    const span = document.createElement("span");
-                    span.style.color = color;
-                    span.style.fontSize = "0.85em";
-                    if (isBold) {
-                        span.style.fontWeight = "bold";
-                    }
-                    span.textContent = text;
-                    buttonsDiv.appendChild(span);
-                };
-
-                goodBtn.addEventListener("click", async () => {
-                    setFeedbackStatus("...", "#666", false);
-                    const success = await submitFeedback("good_conversion");
-                    if (success) {
-                        setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportSuccess"), "green", true);
-                    } else {
-                        setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportFailure"), "#e14942", true);
-                    }
-                });
-
-                const cancelFlow = () => {
-                    formDiv.classList.add("hidden");
-                    buttonsDiv.style.display = "flex";
-                    feedbackInput.value = "";
-                };
-
-                const triggerSubmit = async () => {
-                    feedbackInput.disabled = true;
-                    submitBtn.disabled = true;
-                    submitBtn.textContent = "...";
-
-                    const success = await submitFeedback("bad_conversion", feedbackInput.value);
-
-                    formDiv.classList.add("hidden");
-                    buttonsDiv.style.display = "flex";
-                    if (success) {
-                        setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportSuccess"), "green", true);
-                    } else {
-                        setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportFailure"), "#e14942", true);
-                    }
-                };
-
-                badBtn.addEventListener("click", () => {
-                    buttonsDiv.style.display = "none";
-                    formDiv.classList.remove("hidden");
-                    feedbackInput.focus();
-                });
-
-                feedbackInput.addEventListener("keydown", async (e) => {
-                    if (e.key === "Enter") {
-                        e.preventDefault();
-                        await triggerSubmit();
-                    } else if (e.key === "Escape") {
-                        e.preventDefault();
-                        cancelFlow();
-                    }
-                });
-
-                submitBtn.addEventListener("click", triggerSubmit);
-
-                const feedbackItemEl = clone.querySelector(".feedback-item");
-                if (feedbackItemEl && item.highlightId) {
-                    feedbackItemEl.addEventListener("mouseenter", () => {
-                        if (tab) {
-                            browser().tabs.sendMessage(tab.id, {
-                                command: "highlightElement",
-                                highlightId: item.highlightId
-                            }).catch((err) => log("Failed to send highlight message:", err));
-                        }
-                    });
-                    feedbackItemEl.addEventListener("mouseleave", () => {
-                        if (tab) {
-                            browser().tabs.sendMessage(tab.id, {
-                                command: "unhighlightElement",
-                                highlightId: item.highlightId
-                            }).catch((err) => log("Failed to send unhighlight message:", err));
-                        }
-                    });
+                // Populate under-threshold items inside the expando content
+                for (const item of underThresholdConversions) {
+                    const feedbackEl = document.createElement("feedback-item");
+                    feedbackEl.item = item;
+                    feedbackEl.activeTab = tab;
+                    expandoContent.appendChild(feedbackEl);
                 }
 
-                conversionsListEl.appendChild(clone);
+                expandoBtn.addEventListener("click", () => {
+                    const isHidden = expandoContent.classList.contains("hidden");
+                    if (isHidden) {
+                        expandoContent.classList.remove("hidden");
+                        expandoArrow.style.transform = "rotate(180deg)";
+                        expandoBtn.style.background = "#e2e8f0";
+
+                        // Smooth scroll to the first item of the expanded list
+                        const firstItem = expandoContent.querySelector("feedback-item");
+                        if (firstItem) {
+                            setTimeout(() => {
+                                firstItem.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                            }, 50);
+                        }
+                    } else {
+                        expandoContent.classList.add("hidden");
+                        expandoArrow.style.transform = "rotate(0deg)";
+                        expandoBtn.style.background = "#f8fafc";
+                    }
+                });
+
+                conversionsListEl.appendChild(expandoContainer);
             }
         }
     }
@@ -732,14 +476,12 @@ const refresh = async () => {
     if (devmodeDumpLinkHashBtn) {
         devmodeDumpLinkHashBtn.textContent = browser().i18n.getMessage("devmodeDumpLinkHashBtn");
     }
-    const devmodeSetDebugVisualsLabel = document.getElementById("devmode-setDebugVisuals-label");
-    if (devmodeSetDebugVisualsLabel) {
-        devmodeSetDebugVisualsLabel.textContent = browser().i18n.getMessage("devmodeSetDebugVisualsLabel");
+    const openOptionsBtn = document.getElementById("open-options-btn");
+    if (openOptionsBtn) {
+        openOptionsBtn.textContent = browser().i18n.getMessage("preferencesViewMoreSettingsBtn");
     }
-    const devmodeSetTitleDataUrlLabel = document.getElementById("devmode-setTitleDataUrl-label");
-    if (devmodeSetTitleDataUrlLabel) {
-        devmodeSetTitleDataUrlLabel.textContent = browser().i18n.getMessage("devmodeSetTitleDataUrlLabel");
-    }
+    // Label text is managed by the visual-highlight-setting component
+
 
     if (!initialViewSelected) {
         initialViewSelected = true;
@@ -749,6 +491,8 @@ const refresh = async () => {
             if (naviFeedback) {
                 naviFeedback.checked = true;
             }
+        } else {
+            view.showView("main");
         }
     }
 };
@@ -758,29 +502,7 @@ const refresh = async () => {
  * page's statistics.
  * @param {*} e 
  */
-const handleUpdateDatabaseClick = async (e) => {
-    const btn = document.getElementById("update-database-btn");
-    if (!btn) return;
-    btn.disabled = true;
-    btn.textContent = browser().i18n.getMessage("databaseUpdateBtnUpdating");
-    
-    try {
-        const response = await browser().runtime.sendMessage({ action: "updateDatabase" });
-        if (response && response.success) {
-            btn.textContent = browser().i18n.getMessage("databaseUpdateSuccess");
-        } else {
-            btn.textContent = browser().i18n.getMessage("databaseUpdateFailed");
-        }
-    } catch (err) {
-        log("Error updating database:", err);
-        btn.textContent = browser().i18n.getMessage("databaseUpdateFailed");
-    } finally {
-        setTimeout(async () => {
-            btn.disabled = false;
-            btn.textContent = browser().i18n.getMessage("databaseUpdateBtn");
-        }, 1500);
-    }
-};
+// handleUpdateDatabaseClick is now encapsulated in the database-status-setting component
 
 const handleDomContentLoaded = async (e) => {
     log("Setting up UI");
@@ -807,32 +529,21 @@ const handleDomContentLoaded = async (e) => {
     document.querySelector(".open-home")
         .addEventListener("click", () => view.showView("main"));
 
-    ///////////////////////////////////////////////////////////////////////////////
-    // Register main of/off switch.
-    document.getElementById("site-enabled")
-        .addEventListener("click", view.handleClickConversionSwitch);
-    document.getElementById("settingsview-extension-enabled")
-        .addEventListener("click", view.handleClickMainSwitch);
-    const clickbaitSlider = document.getElementById("settingsview-clickbait-level");
-    if (clickbaitSlider) {
-        clickbaitSlider.addEventListener("input", (e) => {
-            const level = parseInt(e.target.value);
-            const levelInfo = getClickbaitLevelInfo(level);
-            const label = document.getElementById("settingsview-clickbait-level-label");
-            if (label) label.textContent = levelInfo.title;
-            const desc = document.getElementById("settingsview-clickbait-level-description");
-            if (desc) desc.textContent = levelInfo.description;
-        });
-        clickbaitSlider.addEventListener("change", async (e) => {
-            const level = parseInt(e.target.value);
-            await controller.setClickbaitLevel(level);
-        });
-    }
+    // settingsview-extension-enabled click listener is managed by the master-switch-setting component
+    // settingsview-clickbait-level inputs and label states are managed by the clickbait-level-horizontal component
     document.getElementById("open-options")
         .addEventListener("click", () => {
             browser().runtime.openOptionsPage();
             window.close();
         });
+
+    const openOptionsBtnEl = document.getElementById("open-options-btn");
+    if (openOptionsBtnEl) {
+        openOptionsBtnEl.addEventListener("click", () => {
+            browser().runtime.openOptionsPage();
+            window.close();
+        });
+    }
 
     const requestSiteBtn = document.getElementById("request-site-btn");
     if (requestSiteBtn) {
@@ -843,11 +554,7 @@ const handleDomContentLoaded = async (e) => {
         });
     }
 
-    // Register database update button click handler
-    const dbUpdateBtn = document.getElementById("update-database-btn");
-    if (dbUpdateBtn) {
-        dbUpdateBtn.addEventListener("click", handleUpdateDatabaseClick);
-    }
+    // Manual database update click handler is managed by the database-status-setting component
 
     ///////////////////////////////////////////////////////////////////////////////
     // Register devmode controls.
@@ -861,18 +568,8 @@ const handleDomContentLoaded = async (e) => {
     if (dumpLinkHashBtn) {
         dumpLinkHashBtn.addEventListener("click", __devmodeCopyLinkSignatures);
     }
-    const setDebugVisualsCheckbox = document.getElementById("devmode-setDebugVisuals");
-    if (setDebugVisualsCheckbox) {
-        setDebugVisualsCheckbox.addEventListener("change", async (e) => {
-            await browser().storage.local.set({ visualHighlightEnabled: e.target.checked });
-        });
-    }
-    const setTitleDataUrlSelect = document.getElementById("devmode-setTitleDataUrl");
-    if (setTitleDataUrlSelect) {
-        setTitleDataUrlSelect.addEventListener("change", async (e) => {
-            await controller.devmode.setTitleDataUrl(e.target.value);
-        });
-    }
+    // devmode-setDebugVisuals change listener is managed by the visual-highlight-setting component
+
 
     await refresh();
 
@@ -941,7 +638,6 @@ const view = {
     showView: showView,
     handleClickMainSwitch: handleClickMainSwitch,
 
-    handleClickConversionSwitch: handleClickConversionSwitch,
     refresh: refresh,
 };
 
@@ -964,7 +660,9 @@ browser().storage.local.onChanged.addListener(view.refresh);
 // Listen for page scroll events sent from the content script and refresh the popup content.
 browser().runtime.onMessage.addListener((message) => {
     if (message.action === "pageScrolled") {
-        const activeFeedbackForm = document.querySelector(".feedback-form-container:not(.hidden)");
+        // Prevent refreshing if the user has an active feedback typing form open.
+        // We query for .feedback-input-container since that is used by feedback-item components.
+        const activeFeedbackForm = document.querySelector(".feedback-input-container:not(.hidden)");
         if (!activeFeedbackForm) {
             view.refresh();
         }

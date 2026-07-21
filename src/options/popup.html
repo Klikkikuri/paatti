@@ -11,20 +11,18 @@
 
     <!-- POWER -->
     <div id="power">
-        <h2 id="site-host"></h2>
+        <div style="display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 2px;">
+            <h2 id="site-host" style="margin: 0; line-height: 1.2; text-align: left;"></h2>
+            <div id="active-tab-indicator" class="text-muted-small" style="font-weight: bold; opacity: 0.8; text-transform: uppercase; font-size: 0.7em; letter-spacing: 0.05em; text-align: left;"></div>
+        </div>
         <div>
-            <button id="open-options" class="push-button">
-                <img class="icon" src="images/icon_gear.svg" height="20" alt="Settings icon">
-            </button>
-            <input class="conversion-switch hidden" id="site-enabled" type="checkbox" checked>
-            <label class="push-button" for="site-enabled">&#x23FB;</label>
+            <compact-button id="open-options" icon="images/icon_gear.svg" alt="Settings icon"></compact-button>
+            <power-button></power-button>
         </div>
     </div>
 
     <!-- CONTENT -->
     <div class="content main-content">
-        <h2 id="homeview-header"></h2>
-        <hr>
         <div id="homeview-content" style="display: flex; flex-direction: column; gap: 15px; width: 100%; text-align: center; justify-content: center; align-items: center; height: 100%;">
             <p id="homeview-status-text" style="font-weight: bold; font-size: 1.1em; margin: 0;"></p>
             <div id="gauge-container" class="hidden" style="margin: 15px 0; display: flex; flex-direction: column; align-items: center;">
@@ -93,58 +91,21 @@
     </div>
 
     <div class="content feedbackview hidden">
-        <h2 id="feedbackview-header" class="feedbackview-header"></h2>
-        <hr>
         <div id="feedbackview-conversions-container" style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
             <p id="feedbackview-no-conversions" style="text-align: center; color: #666; font-style: italic;" class="hidden"></p>
             <ul id="feedbackview-conversions-list" style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; width: 100%;"></ul>
         </div>
 
-        <template id="feedback-item-template">
-            <li class="feedback-item">
-                <div class="feedback-orig">
-                    <strong class="feedback-orig-label"></strong>
-                    <span class="feedback-orig-text"></span>
-                </div>
-                <div class="feedback-conv">
-                    <strong class="feedback-conv-label"></strong>
-                    <span class="feedback-conv-text"></span>
-                </div>
-                
-                <hr class="feedback-item-divider">
-
-                <div class="feedback-buttons-container">
-                    <button class="push-button feedback-good-btn"></button>
-                    <button class="push-button feedback-bad-btn"></button>
-                </div>
-                
-                <div class="feedback-form-container hidden">
-                    <div class="feedback-form-row">
-                        <input type="text" class="feedback-input">
-                        <button class="push-button feedback-submit-btn"></button>
-                    </div>
-                </div>
-            </li>
-        </template>
     </div>
 
     <div class="content settingsview hidden">
         <h2 id="settingsview-status-title" class="settingsview-header"></h2>
         <hr>
-        <div style="margin-top: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
-            <label for="settingsview-extension-enabled" id="settingsview-master-switch-label" style="font-weight: bold; cursor: pointer;"></label>
-            <input class="toggle" id="settingsview-extension-enabled" type="checkbox">
-        </div>
+        <master-switch-setting layout="compact"></master-switch-setting>
 
         <h2 id="settingsview-clickbait-level-title" class="settingsview-header"></h2>
         <hr>
-        <div style="margin-top: 10px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 6px; width: 100%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                <label for="settingsview-clickbait-level" id="settingsview-clickbait-level-label" style="font-weight: bold; cursor: pointer;"></label>
-                <input id="settingsview-clickbait-level" type="range" min="0" max="4" step="1" value="2" style="width: 45%; height: auto; appearance: auto; background: none; box-shadow: none; cursor: pointer;">
-            </div>
-            <span id="settingsview-clickbait-level-description" style="font-size: 0.85em; color: #666; text-align: left;"></span>
-        </div>
+        <clickbait-level-horizontal></clickbait-level-horizontal>
 
         <h2 id="settingsview-sites-enabled-title" class="settingsview-header"></h2>
         <hr>
@@ -153,12 +114,12 @@
 
         <h2 id="settingsview-database-status-title" class="settingsview-header"></h2>
         <hr>
-        <div style="margin-top: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
-            <div style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
-                <p id="database-last-updated" style="font-size: 0.85em; color: #666; margin: 0;"></p>
-                <p id="database-generation-date" style="font-size: 0.85em; color: #666; margin: 0;"></p>
-            </div>
-            <button id="update-database-btn" class="push-button" style="margin: 0; padding: 6px 12px; min-height: 32px; font-size: 0.9em;"></button>
+        <database-status-setting layout="compact"></database-status-setting>
+
+        <!-- More settings button -->
+        <hr>
+        <div style="margin-top: 15px; text-align: center; width: 100%;">
+            <button id="open-options-btn" class="push-button" style="width: 100%; padding: 8px 16px; font-size: 0.9em; min-height: 36px;"></button>
         </div>
 
         <div class="devmode hidden" style="margin-top: 15px;">
@@ -169,10 +130,7 @@
                     <span id="devmode-dumpLinkHash-label" style="font-weight: bold;"></span>
                     <button id="devmode-dumpLinkHash" class="push-button" style="margin: 0; padding: 6px 12px; min-height: 32px; font-size: 0.9em;"></button>
                 </li>
-                <li style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                    <label for="devmode-setDebugVisuals" id="devmode-setDebugVisuals-label" style="font-weight: bold; cursor: pointer;"></label>
-                    <input class="toggle" id="devmode-setDebugVisuals" type="checkbox">
-                </li>
+                <visual-highlight-setting layout="compact"></visual-highlight-setting>
             </ul>
         </div>
     </div>
@@ -181,28 +139,28 @@
     <div id="navi">
         <div>
             <input id="navi-main" class="open-home hidden" type="radio" name="navi" checked>
-            <label for="navi-main" class="push-button">
+            <label for="navi-main" class="push-button compact-button">
                 <img class="icon" src="images/icon_home.svg" height="15" alt="Home icon">
             </label>
         </div>
 
         <div>
             <input id="navi-feedback" class="open-feedbackview hidden" type="radio" name="navi">
-            <label for="navi-feedback" class="push-button">
+            <label for="navi-feedback" class="push-button compact-button">
                 <img class="icon" src="images/icon_comment.svg" height="15" alt="Comment icon">
             </label>
         </div>
 
         <div>
             <input id="navi-stats" class="open-statsview hidden" type="radio" name="navi">
-            <label for="navi-stats" class="push-button">
+            <label for="navi-stats" class="push-button compact-button">
                 <img class="icon" src="images/icon_chart.svg" height="15" alt="Stats icon">
             </label>
         </div>
 
         <div>
             <input id="navi-settings" class="open-settingsview hidden" type="radio" name="navi">
-            <label for="navi-settings" class="push-button">
+            <label for="navi-settings" class="push-button compact-button">
                 <img class="icon" src="images/icon_slider.svg" height="15" alt="Slider icon">
             </label>
         </div>
