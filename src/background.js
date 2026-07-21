@@ -77,6 +77,7 @@ async function scheduleAlarm(minutes) {
 browser().storage.onChanged.addListener(async (changes, area) => {
     const isPreferencesChanged = area === 'local' && changes.userPreferences;
     const isOverridesChanged = area === 'sync' && changes.userSiteOverrides;
+    const isModifiersChanged = area === 'sync' && changes.modifiers;
 
     if (isPreferencesChanged || isOverridesChanged) {
         log("Config changed, updating dynamic content scripts...");
@@ -103,6 +104,18 @@ browser().storage.onChanged.addListener(async (changes, area) => {
                 // ignore error if tab doesn't have listener
                 log("Tab message send failed (likely no listener):", err);
             }
+        }
+    }
+
+    if (isModifiersChanged) {
+        log("Modifiers changed, notifying active tab");
+        try {
+            const tabs = await browser().tabs.query({ active: true, currentWindow: true });
+            if (tabs[0] && tabs[0].id) {
+                await browser().tabs.sendMessage(tabs[0].id, { command: "convertClickbaits" });
+            }
+        } catch (err) {
+            log("Tab message send failed (likely no listener):", err);
         }
     }
 });
