@@ -9,6 +9,7 @@ import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
 import "./components/master-switch-setting.js";
 import "./components/database-status-setting.js";
+import "./components/clickbait-level-horizontal.js";
 
 const log = getLogger("view");
 
@@ -340,20 +341,7 @@ const refresh = async () => {
     if (settingsviewClickbaitLevelTitle) {
         settingsviewClickbaitLevelTitle.textContent = browser().i18n.getMessage("settingsviewClickbaitLevelTitle");
     }
-    const clickbaitLevel = await model.read.getClickbaitLevel();
-    const clickbaitLevelInput = document.getElementById("settingsview-clickbait-level");
-    if (clickbaitLevelInput) {
-        clickbaitLevelInput.value = clickbaitLevel;
-        const levelInfo = getClickbaitLevelInfo(clickbaitLevel);
-        const clickbaitLevelLabel = document.getElementById("settingsview-clickbait-level-label");
-        if (clickbaitLevelLabel) {
-            clickbaitLevelLabel.textContent = levelInfo.title;
-        }
-        const clickbaitLevelDesc = document.getElementById("settingsview-clickbait-level-description");
-        if (clickbaitLevelDesc) {
-            clickbaitLevelDesc.textContent = levelInfo.description;
-        }
-    }
+    // settingsview-clickbait-level is managed by the clickbait-level-horizontal component
 
     // Load database status
     const dbStatus = await model.read.getDatabaseStatus();
@@ -713,21 +701,7 @@ const handleDomContentLoaded = async (e) => {
     document.getElementById("site-enabled")
         .addEventListener("click", view.handleClickConversionSwitch);
     // settingsview-extension-enabled click listener is managed by the master-switch-setting component
-    const clickbaitSlider = document.getElementById("settingsview-clickbait-level");
-    if (clickbaitSlider) {
-        clickbaitSlider.addEventListener("input", (e) => {
-            const level = parseInt(e.target.value);
-            const levelInfo = getClickbaitLevelInfo(level);
-            const label = document.getElementById("settingsview-clickbait-level-label");
-            if (label) label.textContent = levelInfo.title;
-            const desc = document.getElementById("settingsview-clickbait-level-description");
-            if (desc) desc.textContent = levelInfo.description;
-        });
-        clickbaitSlider.addEventListener("change", async (e) => {
-            const level = parseInt(e.target.value);
-            await controller.setClickbaitLevel(level);
-        });
-    }
+    // settingsview-clickbait-level inputs and label states are managed by the clickbait-level-horizontal component
     document.getElementById("open-options")
         .addEventListener("click", () => {
             browser().runtime.openOptionsPage();

@@ -8,6 +8,7 @@ import './components/visual-highlight-setting.js';
 import './components/master-switch-setting.js';
 import './components/title-modifier-setting.js';
 import './components/database-status-setting.js';
+import './components/clickbait-level-vertical.js';
 
 // Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {
@@ -39,8 +40,7 @@ async function loadSettings() {
 
         // Modifier toggle state is managed by the title-modifier-setting component
 
-        // Clickbait level
-        document.getElementById('clickbaitLevel').value = config.clickbaitLevel !== undefined ? config.clickbaitLevel : 2;
+        // Clickbait level is managed by the clickbait-level-vertical component
         
         // Load saved email for paid environment
         let savedEmail = '';
@@ -187,32 +187,8 @@ async function setupEventListeners() {
 
     // Extension enabled toggle is managed by the master-switch-setting component
 
-    // Clickbait level slider
-    const clickbaitSlider = document.getElementById('clickbaitLevel');
-    if (clickbaitSlider) {
-        clickbaitSlider.addEventListener('change', async () => {
-            const value = parseInt(clickbaitSlider.value);
-            if (!isNaN(value)) {
-                await controller.setClickbaitLevel(value);
-                showStatus('Asetus tallennettu!');
-            }
-        });
-    }
-
+    // Clickbait level slider and labels are managed by the clickbait-level-vertical component
     // AI Slop toggle is managed by the title-modifier-setting component
-    
-    // Make slider labels clickable
-    document.querySelectorAll('.slider-labels label').forEach(label => {
-        label.addEventListener('click', async (e) => {
-            e.preventDefault(); // Prevent browser default focusing to avoid double events
-            const value = parseInt(label.dataset.value);
-            if (!isNaN(value) && clickbaitSlider) {
-                clickbaitSlider.value = value;
-                await controller.setClickbaitLevel(value);
-                showStatus('Asetus tallennettu!');
-            }
-        });
-    });
 
     // Site list toggled events
     document.getElementById('siteList').addEventListener('site-toggled', (e) => {

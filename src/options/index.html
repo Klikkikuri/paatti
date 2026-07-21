@@ -684,35 +684,7 @@
             <fieldset>
                 <legend>🎯 Klikkiotsikoiden taso</legend>
                 <p class="section-description">Määritä, kuinka klikkikynnystä nostetaan</p>
-                <div class="slider-container">
-                    <div class="slider-wrapper">
-                        <div class="slider-gauge">
-                            <input type="range" id="clickbaitLevel" min="0" max="4" step="1" value="2" orient="vertical">
-                        </div>
-                        <div class="slider-labels">
-                            <label for="clickbaitLevel" data-value="4">
-                                <span class="label-title">Vain äärimmäiset</span>
-                                <span class="label-description">Käsitellään vain harhaanjohtavat otsikot</span>
-                            </label>
-                            <label for="clickbaitLevel" data-value="3">
-                                <span class="label-title">Voimakkaasti klikkimäiset</span>
-                                <span class="label-description">Käsitellään erittäin sensaatiohakuiset otsikot</span>
-                            </label>
-                            <label for="clickbaitLevel" data-value="2">
-                                <span class="label-title">Kohtalaisesti klikkimäiset</span>
-                                <span class="label-description">Käsitellään kohtuullisen sensaatiohakuiset otsikot</span>
-                            </label>
-                            <label for="clickbaitLevel" data-value="1">
-                                <span class="label-title">Lievästi klikkimäiset</span>
-                                <span class="label-description">Käsitellään myös hieman houkuttelevat otsikot</span>
-                            </label>
-                            <label for="clickbaitLevel" data-value="0">
-                                <span class="label-title">Kaikki otsikot</span>
-                                <span class="label-description">Käsitellään kaikki otsikot, myös neutraalit</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
+                <clickbait-level-vertical></clickbait-level-vertical>
             </fieldset>
 
             <!-- Site Configuration -->
