@@ -19,6 +19,7 @@ let hrefSign;
     const { getLogger, debounce } = await import(browser.runtime.getURL("src/utils.js"));
 
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
+    const { applyModifiers } = await import(browser.runtime.getURL("src/modifiers.js"));
 
     const log = getLogger("content_script");
 
@@ -266,10 +267,11 @@ let hrefSign;
                 const hasConvertedTitle = !!rahtiEntry.title;
                 const shouldConvert = hasConvertedTitle && await model.read.shouldConvert(rahtiEntry.clickbaitiness);
 
+                let titleText = "";
                 if (isSiteEnabled && shouldConvert) {
                     what = "converted";
                     why = rahtiEntry.clickbaitiness;
-                    how = (titleElem.textContent = rahtiEntry.title);
+                    titleText = rahtiEntry.title;
 
                     container.dataset.klikkikuriStatus = klikkikuriStatus.CONVERTED;
                     container.dataset.klikkikuriReason = `Converted (Clickbaitiness level: ${why})`;
@@ -281,11 +283,16 @@ let hrefSign;
                         : !hasConvertedTitle
                         ? `No converted title in dataset`
                         : `Clickbaitiness level for '${rahtiEntry.clickbaitiness}' is below threshold`;
-                    how = (titleElem.textContent = titleElem.dataset.klikkikuriOriginalTitle);
+                    titleText = titleElem.dataset.klikkikuriOriginalTitle;
 
                     container.dataset.klikkikuriStatus = isPaywalled ? klikkikuriStatus.PAYWALLED : klikkikuriStatus.ORIGINAL;
                     container.dataset.klikkikuriReason = why;
                 }
+
+                // Apply registered title modifiers (e.g. AI marking)
+                titleText = await applyModifiers(titleText, rahtiEntry);
+
+                how = (titleElem.textContent = titleText);
             } catch (err) {
                 what = "error";
                 why = err.message || String(err);
