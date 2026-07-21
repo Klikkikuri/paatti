@@ -2,10 +2,12 @@ import { browser } from '../../utils.js';
 import { controller } from '../../controller.js';
 import { isSiteEnabled } from '../utils.js';
 import { getConfig } from '../../config.js';
+import './toggle-button.js';
 
 /**
  * Custom element representing a site-specific toggle setting.
  * Supports "detailed" (with icons and domains) and "compact" layouts.
+ * Composes the generic <toggle-button> custom element.
  */
 class SiteToggleSetting extends HTMLElement {
     constructor() {
@@ -43,7 +45,7 @@ class SiteToggleSetting extends HTMLElement {
 
             this.innerHTML = `
                 <label for="toggle-${domain}">${name}</label>
-                <input class="toggle conversion-switch" id="toggle-${domain}" type="checkbox">
+                <toggle-button type="toggle" id="toggle-${domain}"></toggle-button>
             `;
         } else {
             // Detailed layout for the options page
@@ -63,32 +65,33 @@ class SiteToggleSetting extends HTMLElement {
                         </div>
                     </div>
                 </div>
-                <label class="toggle-switch">
-                    <input type="checkbox" id="toggle-${domain}">
-                    <span class="toggle-slider"></span>
-                </label>
+                <toggle-button id="toggle-${domain}"></toggle-button>
             `;
         }
 
-        const checkbox = this.querySelector('input[type="checkbox"]');
-        
-        // Set datasets for event-handling compatibility
-        checkbox.dataset.site = domain;
-        checkbox.dataset.origins = JSON.stringify(origins);
+        const toggleBtn = this.querySelector('toggle-button');
 
         // Fetch state asynchronously
-        this.loadState(checkbox, domain, origins, layout);
+        this.loadState(toggleBtn, domain, origins, layout);
     }
 
     /**
      * Asynchronously loads status and registers change listeners.
      */
-    async loadState(checkbox, domain, origins, layout) {
+    async loadState(toggleBtn, domain, origins, layout) {
         const isEnabled = await isSiteEnabled(domain);
         const hasPermission = origins.length > 0 ? await browser().permissions.contains({ origins }) : false;
 
-        checkbox.checked = isEnabled;
-        checkbox.dataset.hasPermission = String(hasPermission);
+        toggleBtn.checked = isEnabled;
+        toggleBtn.dataset.hasPermission = String(hasPermission);
+
+        // Populate dataset on the inner checkbox for backward compatibility (e.g. read-only class selection)
+        const innerCheckbox = toggleBtn.querySelector('input');
+        if (innerCheckbox) {
+            innerCheckbox.dataset.site = domain;
+            innerCheckbox.dataset.origins = JSON.stringify(origins);
+            innerCheckbox.dataset.hasPermission = String(hasPermission);
+        }
 
         // Fetch site-specific metadata for policy URL
         try {
@@ -105,9 +108,9 @@ class SiteToggleSetting extends HTMLElement {
             console.error('Failed to load site toggle metadata:', err);
         }
 
-        checkbox.addEventListener('change', async () => {
-            const checked = checkbox.checked;
-            const currentHasPermission = checkbox.dataset.hasPermission === 'true';
+        toggleBtn.addEventListener('toggle-change', async (e) => {
+            const checked = e.detail.checked;
+            const currentHasPermission = toggleBtn.dataset.hasPermission === 'true';
 
             if (checked) {
                 if (currentHasPermission) {
@@ -118,7 +121,7 @@ class SiteToggleSetting extends HTMLElement {
                             detail: { domain, enabled: true, success: true, message: `Sivuston ${domain} asetus tallennettu!` }
                         }));
                     } catch (error) {
-                        checkbox.checked = false;
+                        toggleBtn.checked = false;
                         this.dispatchEvent(new CustomEvent('site-toggled', {
                             bubbles: true,
                             detail: { domain, enabled: false, success: false, message: 'Virhe tallennettaessa sivuston asetusta' }
@@ -129,7 +132,8 @@ class SiteToggleSetting extends HTMLElement {
                         const granted = await browser().permissions.request({ origins });
                         if (granted) {
                             await controller.setSiteEnabled(true, domain);
-                            checkbox.dataset.hasPermission = 'true';
+                            toggleBtn.dataset.hasPermission = 'true';
+                            if (innerCheckbox) innerCheckbox.dataset.hasPermission = 'true';
                             
                             this.dispatchEvent(new CustomEvent('site-toggled', {
                                 bubbles: true,
@@ -137,18 +141,17 @@ class SiteToggleSetting extends HTMLElement {
                             }));
 
                             if (layout === 'compact') {
-                                // Close popup immediately so it doesn't overlap the Chrome permission prompt
                                 window.close();
                             }
                         } else {
-                            checkbox.checked = false;
+                            toggleBtn.checked = false;
                             this.dispatchEvent(new CustomEvent('site-toggled', {
                                 bubbles: true,
                                 detail: { domain, enabled: false, success: false, message: 'Lupaa ei myönnetty' }
                             }));
                         }
                     } catch (error) {
-                        checkbox.checked = false;
+                        toggleBtn.checked = false;
                         this.dispatchEvent(new CustomEvent('site-toggled', {
                             bubbles: true,
                             detail: { domain, enabled: false, success: false, message: 'Virhe pyydettäessä lupaa' }
@@ -163,7 +166,7 @@ class SiteToggleSetting extends HTMLElement {
                         detail: { domain, enabled: false, success: true, message: `Sivuston ${domain} asetus tallennettu!` }
                     }));
                 } catch (error) {
-                    checkbox.checked = true;
+                    toggleBtn.checked = true;
                     this.dispatchEvent(new CustomEvent('site-toggled', {
                         bubbles: true,
                         detail: { domain, enabled: true, success: false, message: 'Virhe tallennettaessa sivuston asetusta' }

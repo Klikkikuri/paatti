@@ -4,6 +4,7 @@ import { displayProductInfo } from './utils.js';
 import { model } from '../model.js';
 import { controller } from '../controller.js';
 import './components/site-toggle.js';
+import './components/visual-highlight-setting.js';
 
 // Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {
@@ -36,8 +37,7 @@ async function loadSettings() {
             refreshIntervalEl.value = config.refreshIntervalMinutes || 20;
         }
         
-        // Debug visuals
-        document.getElementById('debugVisuals').checked = config.debugVisualsEnabled || false;
+        // Debug visuals is managed by the visual-highlight-setting component
 
         // Load modifier toggle state
         document.getElementById('markAiSlop').checked = config.modifiers?.aiSlop || false;
@@ -317,22 +317,12 @@ async function setupEventListeners() {
             registerEmail();
         }
     });
-
-    // Debug visuals toggle
-    const debugVisualsToggle = document.getElementById('debugVisuals');
-    if (debugVisualsToggle) {
-        debugVisualsToggle.addEventListener('change', async () => {
-            const checked = debugVisualsToggle.checked;
-            try {
-                await controller.setDebugVisualsEnabled(checked);
-                showStatus('Asetus tallennettu!');
-            } catch (error) {
-                console.error('Error saving debug visuals:', error);
-                showStatus('Virhe asetuksen tallentamisessa', true);
-                debugVisualsToggle.checked = !checked;
-            }
-        });
-    }
+    // Debug visuals toggle is handled by the visual-highlight-setting component.
+    // Listen to custom setting-saved events dispatched from components.
+    document.addEventListener('setting-saved', (e) => {
+        const { success, message } = e.detail;
+        showStatus(message, !success);
+    });
 
     // Refresh interval
     const refreshIntervalInput = document.getElementById('refreshInterval');

@@ -6,6 +6,7 @@ import { controller } from "../controller.js";
 import { getConfig } from "../config.js";
 import { isSiteEnabled, displayProductInfo, getClickbaitLevelInfo } from "./utils.js";
 import "./components/site-toggle.js";
+import "./components/visual-highlight-setting.js";
 
 const log = getLogger("view");
 
@@ -212,11 +213,7 @@ const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlS
         document.querySelectorAll(".devmode").forEach((x) => x.classList.remove("hidden"));
         document.querySelector("#logo img").classList.add("hidden");
 
-        // Set devmode debug visuals checkbox state
-        const debugVisualsCheckbox = document.getElementById("devmode-setDebugVisuals");
-        if (debugVisualsCheckbox) {
-            debugVisualsCheckbox.checked = !!visualHighlightEnabled;
-        }
+        // devmode-setDebugVisuals checked state is managed by the visual-highlight-setting component
 
 
     } else {
@@ -692,10 +689,7 @@ const refresh = async () => {
     if (devmodeDumpLinkHashBtn) {
         devmodeDumpLinkHashBtn.textContent = browser().i18n.getMessage("devmodeDumpLinkHashBtn");
     }
-    const devmodeSetDebugVisualsLabel = document.getElementById("devmode-setDebugVisuals-label");
-    if (devmodeSetDebugVisualsLabel) {
-        devmodeSetDebugVisualsLabel.textContent = browser().i18n.getMessage("devmodeSetDebugVisualsLabel");
-    }
+    // Label text is managed by the visual-highlight-setting component
 
 
     if (!initialViewSelected) {
@@ -818,12 +812,7 @@ const handleDomContentLoaded = async (e) => {
     if (dumpLinkHashBtn) {
         dumpLinkHashBtn.addEventListener("click", __devmodeCopyLinkSignatures);
     }
-    const setDebugVisualsCheckbox = document.getElementById("devmode-setDebugVisuals");
-    if (setDebugVisualsCheckbox) {
-        setDebugVisualsCheckbox.addEventListener("change", async (e) => {
-            await controller.setVisualHighlightEnabled(e.target.checked);
-        });
-    }
+    // devmode-setDebugVisuals change listener is managed by the visual-highlight-setting component
 
 
     await refresh();
