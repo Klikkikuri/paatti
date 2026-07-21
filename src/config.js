@@ -294,8 +294,8 @@ const DEFAULT_CONFIG = {
             "debugVisualsEnabled": true,
             "refreshIntervalMinutes": 1,
             "titleDataUrls": [
-                "http://localhost:3000/data.json",
-                "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"
+                "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json",
+                "http://localhost:3000/data.json"
             ],
             // "feedbackServerUrl": "http://localhost:3000/api/v1/feedback",
         },
