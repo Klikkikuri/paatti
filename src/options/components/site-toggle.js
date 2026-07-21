@@ -120,68 +120,87 @@ class SiteToggleSetting extends HTMLElement {
             const checked = e.detail.checked;
             const currentHasPermission = toggleBtn.dataset.hasPermission === 'true';
 
-            if (checked) {
-                if (currentHasPermission) {
-                    try {
-                        await controller.setSiteEnabled(true, domain);
+            await handleSiteToggleHelper(
+                checked,
+                domain,
+                origins,
+                currentHasPermission,
+                layout === 'compact',
+                {
+                    onSuccess: (enabled, message) => {
                         this.dispatchEvent(new CustomEvent('site-toggled', {
                             bubbles: true,
-                            detail: { domain, enabled: true, success: true, message: `Sivuston ${domain} asetus tallennettu!` }
+                            detail: { domain, enabled, success: true, message }
                         }));
-                    } catch (error) {
-                        toggleBtn.checked = false;
+                    },
+                    onFailure: (revertState, message) => {
+                        toggleBtn.checked = revertState;
                         this.dispatchEvent(new CustomEvent('site-toggled', {
                             bubbles: true,
-                            detail: { domain, enabled: false, success: false, message: 'Virhe tallennettaessa sivuston asetusta' }
+                            detail: { domain, enabled: revertState, success: false, message }
                         }));
+                    },
+                    onPermissionGranted: () => {
+                        toggleBtn.dataset.hasPermission = 'true';
+                        if (innerCheckbox) innerCheckbox.dataset.hasPermission = 'true';
                     }
-                } else {
-                    try {
-                        const granted = await browser().permissions.request({ origins });
-                        if (granted) {
-                            await controller.setSiteEnabled(true, domain);
-                            toggleBtn.dataset.hasPermission = 'true';
-                            if (innerCheckbox) innerCheckbox.dataset.hasPermission = 'true';
-                            
-                            this.dispatchEvent(new CustomEvent('site-toggled', {
-                                bubbles: true,
-                                detail: { domain, enabled: true, success: true, message: `Sivuston ${domain} asetus tallennettu!` }
-                            }));
+                }
+            );
+        });
+    }
+}
 
-                            if (layout === 'compact') {
-                                window.close();
-                            }
-                        } else {
-                            toggleBtn.checked = false;
-                            this.dispatchEvent(new CustomEvent('site-toggled', {
-                                bubbles: true,
-                                detail: { domain, enabled: false, success: false, message: 'Lupaa ei myönnetty' }
-                            }));
-                        }
-                    } catch (error) {
-                        toggleBtn.checked = false;
-                        this.dispatchEvent(new CustomEvent('site-toggled', {
-                            bubbles: true,
-                            detail: { domain, enabled: false, success: false, message: 'Virhe pyydettäessä lupaa' }
-                        }));
-                    }
+/**
+ * Shared helper to handle toggling site enabled state and permissions request.
+ * @param {boolean} checked - The target toggle state.
+ * @param {string} domain - The site domain.
+ * @param {string[]} origins - Optional permission origins.
+ * @param {boolean} currentHasPermission - Whether permission is currently granted.
+ * @param {boolean} closeOnPermissionRequest - Whether to immediately close the window on permission request.
+ * @param {object} callbacks - Callback actions for success, failure, and permission grants.
+ * @param {function} callbacks.onSuccess - Callback on successful toggle.
+ * @param {function} callbacks.onFailure - Callback on failed toggle.
+ * @param {function} callbacks.onPermissionGranted - Callback when permission is granted.
+ */
+export async function handleSiteToggleHelper(checked, domain, origins, currentHasPermission, closeOnPermissionRequest, callbacks) {
+    if (checked) {
+        if (currentHasPermission) {
+            try {
+                await controller.setSiteEnabled(true, domain);
+                callbacks.onSuccess(true, `Sivuston ${domain} asetus tallennettu!`);
+            } catch (error) {
+                callbacks.onFailure(false, 'Virhe tallennettaessa sivuston asetusta');
+            }
+        } else {
+            if (closeOnPermissionRequest) {
+                try {
+                    browser().permissions.request({ origins });
+                    window.close();
+                } catch (error) {
+                    callbacks.onFailure(false, 'Virhe pyydettäessä lupaa');
                 }
             } else {
                 try {
-                    await controller.setSiteEnabled(false, domain);
-                    this.dispatchEvent(new CustomEvent('site-toggled', {
-                        bubbles: true,
-                        detail: { domain, enabled: false, success: true, message: `Sivuston ${domain} asetus tallennettu!` }
-                    }));
+                    const granted = await browser().permissions.request({ origins });
+                    if (granted) {
+                        await controller.setSiteEnabled(true, domain);
+                        callbacks.onPermissionGranted();
+                        callbacks.onSuccess(true, `Sivuston ${domain} asetus tallennettu!`);
+                    } else {
+                        callbacks.onFailure(false, 'Lupaa ei myönnetty');
+                    }
                 } catch (error) {
-                    toggleBtn.checked = true;
-                    this.dispatchEvent(new CustomEvent('site-toggled', {
-                        bubbles: true,
-                        detail: { domain, enabled: true, success: false, message: 'Virhe tallennettaessa sivuston asetusta' }
-                    }));
+                    callbacks.onFailure(false, 'Virhe pyydettäessä lupaa');
                 }
             }
-        });
+        }
+    } else {
+        try {
+            await controller.setSiteEnabled(false, domain);
+            callbacks.onSuccess(false, `Sivuston ${domain} asetus tallennettu!`);
+        } catch (error) {
+            callbacks.onFailure(true, 'Virhe tallennettaessa sivuston asetusta');
+        }
     }
 }
 

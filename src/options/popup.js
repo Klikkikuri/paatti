@@ -12,6 +12,7 @@ import "./components/database-status-setting.js";
 import "./components/clickbait-level-horizontal.js";
 import "./components/feedback-item.js";
 import "./components/compact-button.js";
+import "./components/power-button.js";
 
 const log = getLogger("view");
 
@@ -242,33 +243,7 @@ const handleClickMainSwitch = async (e) => {
     await controller.setEnabled(e.target.checked);
 };
 
-const handleClickConversionSwitch = async (e) => {
-    const checked = e.target.checked;
-    const hostname = e.target.dataset.hostname;
-    const hasPermission = e.target.dataset.hasPermission === "true";
-    
-    let origins = [];
-    try {
-        origins = JSON.parse(e.target.dataset.origins || "[]");
-    } catch (err) {
-        log("Error parsing origins dataset:", err);
-    }
 
-    if (checked && origins.length > 0) {
-        if (hasPermission) {
-            // Already has permissions, just update settings
-            await controller.setSiteEnabled(true, hostname);
-        } else {
-            // Request permissions synchronously (gesture is active) and close the popup immediately so it doesn't cover the prompt
-            log("Requesting optional permissions for:", origins);
-            browser().permissions.request({ origins });
-            window.close();
-        }
-    } else {
-        // If disabling, update settings but do NOT drop the permission (keep it granted)
-        await controller.setSiteEnabled(false, hostname);
-    }
-};
 
 /**
  * Show this and hide other of the views.
@@ -322,28 +297,6 @@ const refresh = async () => {
 
     const matchingDomain = await model.read.getMatchingSiteDomain(pageHostname);
     const isCurrentSiteEnabled = matchingDomain ? await isSiteEnabled(matchingDomain) : false;
-    const isSiteSupported = matchingDomain !== null;
-    const powerCheckbox = document.getElementById("site-enabled");
-    if (powerCheckbox) {
-        powerCheckbox.checked = isCurrentSiteEnabled;
-        powerCheckbox.disabled = !isSiteSupported;
-        powerCheckbox.dataset.hostname = matchingDomain || pageHostname;
-        const origins = matchingDomain ? config.siteConfigs[matchingDomain]?.origins : [];
-        powerCheckbox.dataset.origins = JSON.stringify(origins || [`https://${pageHostname}/*`]);
-        const hasPowerPermission = matchingDomain ? (sitesPermissions[matchingDomain] || false) : false;
-        powerCheckbox.dataset.hasPermission = String(hasPowerPermission);
-    }
-
-    const powerLabel = document.querySelector("label[for=site-enabled]");
-    if (powerLabel) {
-        if (!isSiteSupported) {
-            powerLabel.style.opacity = "0.5";
-            powerLabel.style.cursor = "not-allowed";
-        } else {
-            powerLabel.style.opacity = "1.0";
-            powerLabel.style.cursor = "pointer";
-        }
-    }
 
     // Update settings view master switch
     const settingsviewStatusTitle = document.getElementById("settingsview-status-title");
@@ -574,10 +527,6 @@ const handleDomContentLoaded = async (e) => {
     document.querySelector(".open-home")
         .addEventListener("click", () => view.showView("main"));
 
-    ///////////////////////////////////////////////////////////////////////////////
-    // Register main of/off switch.
-    document.getElementById("site-enabled")
-        .addEventListener("click", view.handleClickConversionSwitch);
     // settingsview-extension-enabled click listener is managed by the master-switch-setting component
     // settingsview-clickbait-level inputs and label states are managed by the clickbait-level-horizontal component
     document.getElementById("open-options")
@@ -687,7 +636,6 @@ const view = {
     showView: showView,
     handleClickMainSwitch: handleClickMainSwitch,
 
-    handleClickConversionSwitch: handleClickConversionSwitch,
     refresh: refresh,
 };
 
