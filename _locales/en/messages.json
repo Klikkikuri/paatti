@@ -116,6 +116,10 @@
     "message": "✗ Failed to send report.",
     "description": "Failure message after reporting conversion"
   },
+  "feedbackviewShowBelowThresholdBtn": {
+    "message": "Show headlines below threshold ($1)",
+    "description": "Button to expand list showing headlines below clickbait threshold"
+  },
 
   "settingsviewSitesEnabledTitle": {
     "message": "News sites to process",

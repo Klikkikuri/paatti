@@ -431,18 +431,31 @@ let hrefSign;
             case "getConversions": {
                 (async () => {
                     const onlyVisible = message.onlyVisible;
-                    const containers = Array.from(document.querySelectorAll("[data-klikkikuri-status='converted']"));
+                    const containers = Array.from(document.querySelectorAll("[data-klikkikuri-status='converted'], [data-klikkikuri-status='original']"));
                     const results = [];
                     const seen = new Map();
                     let counter = 0;
                     for (const container of containers) {
+                        const status = container.dataset.klikkikuriStatus;
+                        const titleElem = container.querySelector("[data-klikkikuri-original-title]") || container;
+                        const convertedTitle = titleElem.dataset.klikkikuriConvertedTitle || "";
+
+                        // Only include "original" status elements if they actually have a conversion in the dataset
+                        if (status === "original" && !convertedTitle) {
+                            continue;
+                        }
+
+                        // For under-threshold items, we only want ones in the viewport (visible)
+                        if (status === "original" && !isElementVisibleInViewport(container)) {
+                            continue;
+                        }
+
                         if (onlyVisible && !isElementVisibleInViewport(container)) {
                             continue;
                         }
-                        const titleElem = container.querySelector("[data-klikkikuri-original-title]") || container;
+
                         const urlSign = container.dataset.klikkikuriUrlSign || "";
                         const originalTitle = titleElem.dataset.klikkikuriOriginalTitle || titleElem.textContent || "";
-                        const convertedTitle = titleElem.dataset.klikkikuriConvertedTitle || "";
                         const clickbaitLevel = titleElem.dataset.klikkikuriClickbaitLevel || "";
 
                         const key = urlSign || originalTitle;
@@ -459,7 +472,8 @@ let hrefSign;
                                 urlSign,
                                 originalTitle,
                                 convertedTitle,
-                                clickbaitLevel
+                                clickbaitLevel,
+                                isUnderThreshold: (status === "original")
                             });
                         }
                     }

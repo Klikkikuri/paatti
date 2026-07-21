@@ -116,6 +116,10 @@
     "message": "✗ Lähetys epäonnistui.",
     "description": "Failure message after reporting conversion"
   },
+  "feedbackviewShowBelowThresholdBtn": {
+    "message": "Näytä klikkikynnyksen alittavat otsikot ($1)",
+    "description": "Button to expand list showing headlines below clickbait threshold"
+  },
 
   "settingsviewSitesEnabledTitle": {
     "message": "Käsiteltävät uutissivustot",
