@@ -36,7 +36,7 @@ class VisualHighlightSetting extends HTMLElement {
         } else {
             this.innerHTML = `
                 <div class="setting-group">
-                    <div class="setting-label" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8f9fa; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+                    <div class="setting-label">
                         <div class="label-text" style="flex: 1; margin-right: 15px; text-align: left;">
                             <strong style="display: block; margin-bottom: 5px; color: #333;">Debug-visualisoinnit</strong>
                             <span style="font-size: 0.9em; color: #666;">Näytä visuaaliset debug-merkit käsitellyistä elementeistä</span>

@@ -71,6 +71,18 @@ class SiteToggleSetting extends HTMLElement {
 
         const toggleBtn = this.querySelector('toggle-button');
 
+        // Allow clicking anywhere on the row to toggle (excluding detail buttons or switch itself)
+        if (layout !== 'compact') {
+            this.addEventListener('click', (e) => {
+                if (e.target.closest('toggle-button') || e.target.closest('.detail-button')) return;
+                toggleBtn.checked = !toggleBtn.checked;
+                toggleBtn.dispatchEvent(new CustomEvent('toggle-change', {
+                    bubbles: true,
+                    detail: { checked: toggleBtn.checked }
+                }));
+            });
+        }
+
         // Fetch state asynchronously
         this.loadState(toggleBtn, domain, origins, layout);
     }
@@ -102,7 +114,7 @@ class SiteToggleSetting extends HTMLElement {
             const detailsContainer = this.querySelector('.site-details-container');
             if (detailsContainer && layout !== 'compact' && policyUrl) {
                 const linkText = browser().i18n.getMessage('sitePolicyLinkText') || 'Julkaisijan periaatteet';
-                detailsContainer.innerHTML = `<a href="${policyUrl}" target="_blank" class="policy-button" style="display: inline-flex; align-items: center; justify-content: center; font-size: 0.75em; color: #667eea; border: 1.2px solid #667eea; border-radius: 4px; padding: 2px 8px; text-decoration: none; font-weight: bold; line-height: 1.2; transition: all 0.2s; background: transparent; cursor: pointer;" onmouseover="this.style.background='#667eea'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='#667eea';">${linkText} ↗</a>`;
+                detailsContainer.innerHTML = `<a href="${policyUrl}" target="_blank" class="detail-button">${linkText} ↗</a>`;
             }
         } catch (err) {
             console.error('Failed to load site toggle metadata:', err);
