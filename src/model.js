@@ -15,7 +15,8 @@ const klikkikuriStatus = Object.freeze({
     CONVERTED: "converted",
     ORIGINAL: "original",
     SKIPPED: "skipped",
-    ERROR: "error"
+    ERROR: "error",
+    PAYWALLED: "paywalled"
 });
 
 /**
@@ -265,6 +266,14 @@ const model = (() => {
                 await browser().storage.local.set({ userPreferences });
             },
 
+            setModifierEnabled: async (name, value) => {
+                log(`Setting modifier '${name}' to ${value} in sync storage`);
+                const syncData = await browser().storage.sync.get("modifiers");
+                const modifiers = syncData.modifiers || {};
+                modifiers[name] = value;
+                await browser().storage.sync.set({ modifiers });
+            },
+
         },
 
         read: {
@@ -395,6 +404,11 @@ const model = (() => {
                 const email = config.environmentConfigs[env]?.email || "";
                 log(`Retrieved email for environment '${env}': '${email}'`);
                 return email;
+            },
+
+            getMarkAiSlop: async () => {
+                const config = await getConfig();
+                return !!config.modifiers?.aiSlop;
             }
         },
     };

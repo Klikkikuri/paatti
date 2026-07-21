@@ -5,11 +5,30 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+let changeListener = null;
+let localGetCalls = 0;
+let syncGetCalls = 0;
+
 // Mock browser API globally before importing config.js
 globalThis.chrome = {
   storage: {
-    local: { get: async () => ({}) },
-    sync: { get: async () => ({}) }
+    local: {
+      get: async () => {
+        localGetCalls++;
+        return {};
+      }
+    },
+    sync: {
+      get: async () => {
+        syncGetCalls++;
+        return {};
+      }
+    },
+    onChanged: {
+      addListener: (fn) => {
+        changeListener = fn;
+      }
+    }
   }
 };
 
@@ -74,6 +93,54 @@ async function runTests() {
       } else {
         console.log(`✅ Origin "${origin}" is in web_accessible_resources matches.`);
       }
+    }
+  }
+
+  console.log('\n--- Cache and Invalidation Check ---');
+
+  // Verify that the initial call to getConfig at the start of runTests counted as 1 call
+  if (localGetCalls !== 1 || syncGetCalls !== 1) {
+    console.error(`❌ Error: Expected 1 initial storage read, got local: ${localGetCalls}, sync: ${syncGetCalls}`);
+    failed = true;
+  } else {
+    console.log('✅ Initial getConfig call successfully queried storage.');
+  }
+
+  // First check: get the cached reference (which should be returned since it was cached initially)
+  const conf1 = await getConfig();
+
+  // Second call: should still return cached value and NOT trigger storage reads
+  const conf2 = await getConfig();
+  if (localGetCalls !== 1 || syncGetCalls !== 1) {
+    console.error(`❌ Error: Expected storage reads to remain 1 (cached), got local: ${localGetCalls}, sync: ${syncGetCalls}`);
+    failed = true;
+  } else {
+    console.log('✅ Subsequent getConfig calls successfully read from memory cache.');
+  }
+
+  // Verify they returned identical objects (same reference)
+  if (conf1 !== conf2) {
+    console.error('❌ Error: getConfig calls did not return identical config references.');
+    failed = true;
+  } else {
+    console.log('✅ Cached configs refer to the same object.');
+  }
+
+  // Simulate storage change event to invalidate cache
+  if (typeof changeListener !== 'function') {
+    console.error('❌ Error: onChanged listener was not registered.');
+    failed = true;
+  } else {
+    console.log('✅ onChanged listener is registered.');
+    changeListener({}, 'local');
+
+    // Third call after change listener should query storage again
+    const conf3 = await getConfig();
+    if (localGetCalls !== 2 || syncGetCalls !== 2) {
+      console.error(`❌ Error: Expected 2 storage reads after invalidation, got local: ${localGetCalls}, sync: ${syncGetCalls}`);
+      failed = true;
+    } else {
+      console.log('✅ getConfig after storage change successfully re-read from storage.');
     }
   }
 

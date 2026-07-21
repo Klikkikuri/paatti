@@ -56,6 +56,16 @@ const controller = {
         await model.write.setClickbaitLevel(value);
     },
 
+    /**
+     * Set a title modifier enabled or disabled.
+     * @param {string} name - The modifier name (e.g. 'aiSlop').
+     * @param {boolean} value - True if enabled, false otherwise.
+     */
+    setModifierEnabled: async (name, value) => {
+        log(`Setting modifier '${name}' to ${value}`);
+        await model.write.setModifierEnabled(name, value);
+    },
+
     dispatchConversion: _dispatchConversion,
 
     updateStatistics: async ({ hostname, siteStats, links }) => {

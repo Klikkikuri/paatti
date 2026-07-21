@@ -5,6 +5,8 @@
 // Use this to access this source file in the browser debugger.
 //debugger;
 
+const LABEL_PAYWALLED = "com.github.klikkikuri/paywalled=true";
+
 let hrefSign;
 
 // Main.
@@ -17,6 +19,7 @@ let hrefSign;
     const { getLogger, debounce } = await import(browser.runtime.getURL("src/utils.js"));
 
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
+    const { applyModifiers } = await import(browser.runtime.getURL("src/modifiers.js"));
 
     const log = getLogger("content_script");
 
@@ -247,28 +250,49 @@ let hrefSign;
                 if (!titleElem.dataset.klikkikuriOriginalTitle) {
                     titleElem.dataset.klikkikuriOriginalTitle = titleElem.textContent;
                 }
-                titleElem.dataset.klikkikuriConvertedTitle = rahtiEntry.title;
+
+                if (rahtiEntry.title) {
+                    titleElem.dataset.klikkikuriConvertedTitle = rahtiEntry.title;
+                } else {
+                    delete titleElem.dataset.klikkikuriConvertedTitle;
+                }
+
+                if (rahtiEntry.labels && rahtiEntry.labels.length > 0) {
+                    container.dataset.klikkikuriLabels = rahtiEntry.labels.join(",");
+                } else {
+                    delete container.dataset.klikkikuriLabels;
+                }
 
                 const isSiteEnabled = await model.read.isEnabled(newsSite);
-                const shouldConvert = await model.read.shouldConvert(rahtiEntry.clickbaitiness);
+                const hasConvertedTitle = !!rahtiEntry.title;
+                const shouldConvert = hasConvertedTitle && await model.read.shouldConvert(rahtiEntry.clickbaitiness);
 
+                let titleText = "";
                 if (isSiteEnabled && shouldConvert) {
                     what = "converted";
                     why = rahtiEntry.clickbaitiness;
-                    how = (titleElem.textContent = rahtiEntry.title);
+                    titleText = rahtiEntry.title;
 
                     container.dataset.klikkikuriStatus = klikkikuriStatus.CONVERTED;
                     container.dataset.klikkikuriReason = `Converted (Clickbaitiness level: ${why})`;
                 } else {
-                    what = "original";
+                    const isPaywalled = !hasConvertedTitle && rahtiEntry.labels && rahtiEntry.labels.includes(LABEL_PAYWALLED);
+                    what = isPaywalled ? "paywalled" : "original";
                     why = !isSiteEnabled 
                         ? `Conversion not enabled for site '${newsSite}'` 
+                        : !hasConvertedTitle
+                        ? `No converted title in dataset`
                         : `Clickbaitiness level for '${rahtiEntry.clickbaitiness}' is below threshold`;
-                    how = (titleElem.textContent = titleElem.dataset.klikkikuriOriginalTitle);
+                    titleText = titleElem.dataset.klikkikuriOriginalTitle;
 
-                    container.dataset.klikkikuriStatus = klikkikuriStatus.ORIGINAL;
+                    container.dataset.klikkikuriStatus = isPaywalled ? klikkikuriStatus.PAYWALLED : klikkikuriStatus.ORIGINAL;
                     container.dataset.klikkikuriReason = why;
                 }
+
+                // Apply registered title modifiers (e.g. AI marking)
+                titleText = await applyModifiers(titleText, rahtiEntry);
+
+                how = (titleElem.textContent = titleText);
             } catch (err) {
                 what = "error";
                 why = err.message || String(err);

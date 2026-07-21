@@ -35,6 +35,9 @@ async function loadSettings() {
         // Debug visuals
         document.getElementById('debugVisuals').checked = config.debugVisualsEnabled || false;
 
+        // Load modifier toggle state
+        document.getElementById('markAiSlop').checked = config.modifiers?.aiSlop || false;
+
         // Clickbait level
         document.getElementById('clickbaitLevel').value = config.clickbaitLevel !== undefined ? config.clickbaitLevel : 2;
         
@@ -265,6 +268,24 @@ async function setupEventListeners() {
             }
         });
     }
+
+    // AI Slop toggle
+    const markAiSlopToggle = document.getElementById('markAiSlop');
+    if (markAiSlopToggle) {
+        markAiSlopToggle.addEventListener('change', async () => {
+            const checked = markAiSlopToggle.checked;
+            try {
+                // Save modifier immediately on toggle change
+                await controller.setModifierEnabled('aiSlop', checked);
+                showStatus('Asetus tallennettu!');
+            } catch (error) {
+                console.error('Error saving AI slop setting:', error);
+                showStatus('Virhe asetuksen tallentamisessa', true);
+                // Revert checkbox state on error
+                markAiSlopToggle.checked = !checked;
+            }
+        });
+    }
     
     // Make slider labels clickable
     document.querySelectorAll('.slider-labels label').forEach(label => {
@@ -402,14 +423,17 @@ async function setupEventListeners() {
 async function saveSettings() {
     try {
         const extensionEnabled = document.getElementById('extensionEnabled').checked;
+        const aiSlopEnabled = document.getElementById('markAiSlop').checked;
         const clickbaitLevel = parseInt(document.getElementById('clickbaitLevel').value);
         const environment = document.querySelector('input[name="environment"]:checked')?.value || 'free';
         const refreshIntervalMinutes = parseInt(document.getElementById('refreshInterval').value);
         const debugVisualsEnabled = document.getElementById('debugVisuals').checked;
         
         // Collect site overrides correctly matching the userSiteOverrides structure: { [domain]: { enabled: boolean } }
-        const syncData = await browser().storage.sync.get("userSiteOverrides");
+        const syncData = await browser().storage.sync.get(["userSiteOverrides", "modifiers"]);
         const siteOverrides = syncData.userSiteOverrides || {};
+        const syncModifiers = syncData.modifiers || {};
+        syncModifiers.aiSlop = aiSlopEnabled;
         document.querySelectorAll('#siteList input[type="checkbox"]').forEach(checkbox => {
             const domain = checkbox.dataset.site;
             siteOverrides[domain] = siteOverrides[domain] || {};
@@ -453,7 +477,10 @@ async function saveSettings() {
         }
 
         await browser().storage.local.set({ userPreferences });
-        await browser().storage.sync.set({ userSiteOverrides: siteOverrides });
+        await browser().storage.sync.set({ 
+            userSiteOverrides: siteOverrides,
+            modifiers: syncModifiers
+        });
         
         showStatus('Asetukset tallennettu!');
     } catch (error) {

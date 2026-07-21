@@ -15,6 +15,9 @@ const DEFAULT_CONFIG = {
     // CONFIG: Configure extension to start enabled here.
     "enabled": true,
     "environment": "free",
+    "modifiers": {
+        "aiSlop": true
+    },
 
     // CONFIG: Configure per-site settings here.
     "siteConfigs": {
@@ -294,8 +297,8 @@ const DEFAULT_CONFIG = {
             "debugVisualsEnabled": true,
             "refreshIntervalMinutes": 1,
             "titleDataUrls": [
-                "http://localhost:3000/data.json",
-                "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"
+                "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json",
+                "http://localhost:3000/data.json"
             ],
             // "feedbackServerUrl": "http://localhost:3000/api/v1/feedback",
         },
@@ -303,59 +306,101 @@ const DEFAULT_CONFIG = {
     "statistics": {},
 };
 
+let cachedConfig = null;
+let pendingConfigPromise = null;
+let isListenerRegistered = false;
+
+function ensureListenerRegistered() {
+    if (isListenerRegistered) return;
+    isListenerRegistered = true;
+    const browserStorage = browser()?.storage;
+    if (browserStorage && browserStorage.onChanged) {
+        browserStorage.onChanged.addListener((changes, areaName) => {
+            log("Storage changed in area:", areaName, ". Invalidating config cache.");
+            cachedConfig = null;
+            pendingConfigPromise = null;
+        });
+    }
+}
+
 /**
  * Gets the merged configuration for the current environment.
  */
 async function getConfig() {
-    const [localData, syncData] = await Promise.all([
-        browser().storage.local.get("userPreferences"),
-        browser().storage.sync.get("userSiteOverrides")
-    ]);
-
-    const userPreferences = localData.userPreferences || {};
-    const syncOverrides = syncData.userSiteOverrides || {}; // Structure: { "yle.fi": false }
-
-    const activeEnv = userPreferences.environment || DEFAULT_CONFIG.environment || "free";
-
-    // Merge environment configs to avoid overwriting defaults
-    const mergedEnvConfigs = {};
-    const environments = ["free", "paid", "development"];
-    for (const env of environments) {
-        mergedEnvConfigs[env] = {
-            ...DEFAULT_CONFIG.environmentConfigs[env],
-            ...(userPreferences.environmentConfigs?.[env] || {})
-        };
+    ensureListenerRegistered();
+    if (cachedConfig) {
+        return cachedConfig;
+    }
+    if (pendingConfigPromise) {
+        return pendingConfigPromise;
     }
 
-    const envData = mergedEnvConfigs[activeEnv];
+    const currentPromise = (async () => {
+        const [localData, syncData] = await Promise.all([
+            browser().storage.local.get("userPreferences"),
+            browser().storage.sync.get(["userSiteOverrides", "modifiers"])
+        ]);
 
-    const mergedSiteConfigs = { ...DEFAULT_CONFIG.siteConfigs };
-    for (const [domain, siteConfig] of Object.entries(mergedSiteConfigs)) {
-        // Merge siteConfigs with sync overrides
-        if (syncOverrides.hasOwnProperty(domain)) {
-            const overrides = syncOverrides[domain]
-            log("Applying sync override for", domain, "to", overrides);
-            mergedSiteConfigs[domain] = {
-                ...siteConfig,
-                ...overrides
+        const userPreferences = localData.userPreferences || {};
+        const syncOverrides = syncData.userSiteOverrides || {}; // Structure: { "yle.fi": false }
+        const syncModifiers = syncData.modifiers || {};
+
+        const activeEnv = userPreferences.environment || DEFAULT_CONFIG.environment || "free";
+
+        // Merge environment configs to avoid overwriting defaults
+        const mergedEnvConfigs = {};
+        const environments = ["free", "paid", "development"];
+        for (const env of environments) {
+            mergedEnvConfigs[env] = {
+                ...DEFAULT_CONFIG.environmentConfigs[env],
+                ...(userPreferences.environmentConfigs?.[env] || {})
             };
         }
 
-        // If origins are not set, add a default pattern
-        if (!siteConfig.origins) {
-            siteConfig.origins = [`https://${domain}/*`];
-        }
-    }
+        const envData = mergedEnvConfigs[activeEnv];
 
-    // Return the merged final config
-    return {
-        ...DEFAULT_CONFIG,
-        ...userPreferences, // Overwrite defaults with user choices (e.g., "enabled": false)
-        environmentConfigs: mergedEnvConfigs,
-        siteConfigs: mergedSiteConfigs, // Use properly merged site configs
-        activeEnv: activeEnv,
-        ...envData    // Flatten environment data (e.g., titleDataUrl) into the top level
-    };
+        const mergedSiteConfigs = { ...DEFAULT_CONFIG.siteConfigs };
+        for (const [domain, siteConfig] of Object.entries(mergedSiteConfigs)) {
+            // Merge siteConfigs with sync overrides
+            if (syncOverrides.hasOwnProperty(domain)) {
+                const overrides = syncOverrides[domain]
+                log("Applying sync override for", domain, "to", overrides);
+                mergedSiteConfigs[domain] = {
+                    ...siteConfig,
+                    ...overrides
+                };
+            }
+
+            // If origins are not set, add a default pattern
+            if (!siteConfig.origins) {
+                siteConfig.origins = [`https://${domain}/*`];
+            }
+        }
+
+        const finalConfig = {
+            ...DEFAULT_CONFIG,
+            ...userPreferences, // Overwrite defaults with user choices (e.g., "enabled": false)
+            modifiers: {
+                ...DEFAULT_CONFIG.modifiers,
+                ...syncModifiers
+            },
+            environmentConfigs: mergedEnvConfigs,
+            siteConfigs: mergedSiteConfigs, // Use properly merged site configs
+            activeEnv: activeEnv,
+            ...envData    // Flatten environment data (e.g., titleDataUrl) into the top level
+        };
+
+        // Cache the result only if the cache wasn't invalidated during the async call
+        if (pendingConfigPromise === currentPromise) {
+            cachedConfig = finalConfig;
+            pendingConfigPromise = null;
+        }
+
+        return finalConfig;
+    })();
+
+    pendingConfigPromise = currentPromise;
+    return pendingConfigPromise;
 }
 
 export { getConfig };
