@@ -7,6 +7,7 @@ import { getConfig } from "../config.js";
 import { isSiteEnabled, displayProductInfo, getClickbaitLevelInfo } from "./utils.js";
 import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
+import "./components/master-switch-setting.js";
 
 const log = getLogger("view");
 
@@ -331,14 +332,7 @@ const refresh = async () => {
     if (settingsviewStatusTitle) {
         settingsviewStatusTitle.textContent = browser().i18n.getMessage("settingsviewStatusTitle");
     }
-    const settingsviewMasterSwitchLabel = document.getElementById("settingsview-master-switch-label");
-    if (settingsviewMasterSwitchLabel) {
-        settingsviewMasterSwitchLabel.textContent = browser().i18n.getMessage("settingsviewMasterSwitchLabel");
-    }
-    const settingsviewExtensionEnabled = document.getElementById("settingsview-extension-enabled");
-    if (settingsviewExtensionEnabled) {
-        settingsviewExtensionEnabled.checked = isConversionEnabled;
-    }
+    // settingsview-extension-enabled state and label are managed by the master-switch-setting component
 
     // Update settings view clickbait level section
     const settingsviewClickbaitLevelTitle = document.getElementById("settingsview-clickbait-level-title");
@@ -762,8 +756,7 @@ const handleDomContentLoaded = async (e) => {
     // Register main of/off switch.
     document.getElementById("site-enabled")
         .addEventListener("click", view.handleClickConversionSwitch);
-    document.getElementById("settingsview-extension-enabled")
-        .addEventListener("click", view.handleClickMainSwitch);
+    // settingsview-extension-enabled click listener is managed by the master-switch-setting component
     const clickbaitSlider = document.getElementById("settingsview-clickbait-level");
     if (clickbaitSlider) {
         clickbaitSlider.addEventListener("input", (e) => {

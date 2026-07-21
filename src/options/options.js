@@ -5,6 +5,7 @@ import { model } from '../model.js';
 import { controller } from '../controller.js';
 import './components/site-toggle.js';
 import './components/visual-highlight-setting.js';
+import './components/master-switch-setting.js';
 
 // Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {
@@ -17,8 +18,7 @@ async function loadSettings() {
     try {
         const config = await getConfig();
         
-        // Extension enabled
-        document.getElementById('extensionEnabled').checked = config.enabled || false;
+        // Extension enabled state is managed by the master-switch-setting component
 
         // Environment
         const envRadio = document.querySelector(`input[value="${config.activeEnv || 'free'}"]`);
@@ -213,21 +213,7 @@ async function registerEmail() {
 
 async function setupEventListeners() {
 
-    // Extension enabled toggle
-    const extensionToggle = document.getElementById('extensionEnabled');
-    if (extensionToggle) {
-        extensionToggle.addEventListener('change', async () => {
-            const checked = extensionToggle.checked;
-            try {
-                await controller.setEnabled(checked);
-                showStatus('Laajennuksen tila tallennettu!');
-            } catch (error) {
-                console.error('Error saving enabled state:', error);
-                showStatus('Virhe laajennuksen tilan tallentamisessa', true);
-                extensionToggle.checked = !checked;
-            }
-        });
-    }
+    // Extension enabled toggle is managed by the master-switch-setting component
 
     // Clickbait level slider
     const clickbaitSlider = document.getElementById('clickbaitLevel');
