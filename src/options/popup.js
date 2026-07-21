@@ -404,8 +404,9 @@ const refresh = async () => {
     }
 
     // Load database status
-    const dbStatus = await browser().storage.local.get("lastDatabaseUpdate");
+    const dbStatus = await browser().storage.local.get(["lastDatabaseUpdate", "databaseGenerationDate"]);
     const lastDatabaseUpdate = dbStatus.lastDatabaseUpdate;
+    const databaseGenerationDate = dbStatus.databaseGenerationDate;
     const dbTitleEl = document.getElementById("settingsview-database-status-title");
     if (dbTitleEl) {
         dbTitleEl.textContent = browser().i18n.getMessage("settingsviewDatabaseStatusTitle");
@@ -418,6 +419,16 @@ const refresh = async () => {
             dbLastUpdatedEl.textContent = browser().i18n.getMessage("databaseLastUpdated", [dateString]);
         } else {
             dbLastUpdatedEl.textContent = browser().i18n.getMessage("databaseNeverUpdated");
+        }
+    }
+    const dbGenDateEl = document.getElementById("database-generation-date");
+    if (dbGenDateEl) {
+        if (databaseGenerationDate) {
+            const date = new Date(databaseGenerationDate);
+            const dateString = date.toLocaleString();
+            dbGenDateEl.textContent = browser().i18n.getMessage("databaseGenerationDate", [dateString]);
+        } else {
+            dbGenDateEl.textContent = browser().i18n.getMessage("databaseGenerationNever");
         }
     }
     const dbUpdateBtn = document.getElementById("update-database-btn");

@@ -147,7 +147,7 @@ web-ext run --devtools [--chromium-binary /usr/bin/chromium] -t chromium [--url 
 - `alarms`: The alarms API is used to periodically schedule background fetches for the latest headline correction database. This ensures the user has up-to-date corrections while allowing the background service worker to sleep, saving system resources.
 - `storage`: The storage API is used to cache the downloaded headline correction list locally to reduce network requests and improve page load performance. It is also used to save the user's personal settings, such as their preferred clickbait severity threshold and per-site enable/disable preferences.
 - `tabs`: The tabs API is required to detect when a user navigates to a supported news website or when a page dynamically updates its content (e.g., Single Page Applications), so the extension knows exactly when to trigger the headline replacement script.
-- `scripting`: The scripting API is used to inject the headline-replacement logic (content scripts) directly into the news website's active tab so that the DOM elements containing clickbait titles can be safely modified.
+- `scripting`: The scripting API is used to dynamically register and unregister the content scripts and styles on supported sites based on the user's preferences. This allows the extension to keep its initial required `host_permissions` footprint minimal, requesting optional host permissions and registering injection rules dynamically __only__ when the user explicitly enables support for a specific news site in the preferences.
 
 ## Development
 

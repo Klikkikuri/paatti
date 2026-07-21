@@ -11,6 +11,14 @@ const log = getLogger("background");
 const DEFAULT_ENVIRONMENT = "free";
 const PULL_ALARM_NAME = "periodic-data-pull";
 
+
+/**
+ * Re-registers the dynamic content script based on current configuration.
+ *
+ * Collects enabled site origins from config, unregisters any previously
+ * registered script, and registers it again only when there are enabled
+ * origins.
+ */
 async function updateDynamicContentScripts() {
     try {
         const config = await getConfig();
@@ -32,6 +40,9 @@ async function updateDynamicContentScripts() {
 
         if (enabledOrigins.length > 0) {
             log("Registering content scripts for origins:", enabledOrigins);
+            // For rewiews grep: chrome.scripting.registerContentScripts()
+            // For rewiews grep: browser.scripting.registerContentScripts()
+
             await browser().scripting.registerContentScripts([{
                 id: "paatti-content-script",
                 js: [
@@ -50,6 +61,7 @@ async function updateDynamicContentScripts() {
         log("Error updating dynamic content scripts:", err);
     }
 }
+
 
 async function scheduleAlarm(minutes) {
     await browser().alarms.clear(PULL_ALARM_NAME);
@@ -115,7 +127,7 @@ browser().runtime.onInstalled.addListener(async () => {
     } catch (error) {
         log("Error setting default environment on install:", error);
     }
-
+    // Run an initial Rahti data fetch on install so the extension has data immediately.
     // Initial fetch of Rahti data
     try {
         await fetchRahtiData();
