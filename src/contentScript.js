@@ -59,13 +59,9 @@ let hrefSign;
 
     const updateVisualHighlightClass = async () => {
         try {
-            const data = await browser.storage.local.get("visualHighlightEnabled");
             const documentElement = document.documentElement;
             if (documentElement) {
-                const debugVisuals = await model.read.isDebugVisualsEnabled();
-                const enabled = data.hasOwnProperty("visualHighlightEnabled")
-                    ? !!data.visualHighlightEnabled
-                    : debugVisuals;
+                const enabled = await model.read.getVisualHighlightEnabled();
                 if (enabled || isPopupOpen) {
                     documentElement.classList.add("klikkikuri-visual-hilight");
                 } else {

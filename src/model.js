@@ -210,6 +210,10 @@ const model = (() => {
                 await browser().storage.local.set({ userPreferences });
             },
 
+            setVisualHighlightEnabled: async (value) => {
+                await browser().storage.local.set({ visualHighlightEnabled: value });
+            },
+
             setRefreshIntervalMinutes: async (value) => {
                 log(`Setting refresh interval minutes to ${value}`);
                 const data = await browser().storage.local.get("userPreferences");
@@ -340,6 +344,23 @@ const model = (() => {
             isDebugVisualsEnabled: async () => {
                 const config = await getConfig();
                 return config["debugVisualsEnabled"];
+            },
+
+            getVisualHighlightEnabled: async () => {
+                const data = await browser().storage.local.get("visualHighlightEnabled");
+                if (data.hasOwnProperty("visualHighlightEnabled")) {
+                    return !!data.visualHighlightEnabled;
+                }
+                const config = await getConfig();
+                return !!config.debugVisualsEnabled;
+            },
+
+            getDatabaseStatus: async () => {
+                const data = await browser().storage.local.get(["lastDatabaseUpdate", "databaseGenerationDate"]);
+                return {
+                    lastDatabaseUpdate: data.lastDatabaseUpdate || null,
+                    databaseGenerationDate: data.databaseGenerationDate || null
+                };
             },
 
             getClickbaitLevel: async () => {

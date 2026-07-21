@@ -236,26 +236,7 @@ const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlS
             debugVisualsCheckbox.checked = !!visualHighlightEnabled;
         }
 
-        // Set devmode title data url selection options and active value
-        const titleDataUrlSelect = document.getElementById("devmode-setTitleDataUrl");
-        if (titleDataUrlSelect) {
-            titleDataUrlSelect.innerHTML = "";
-            const envUrls = config.environmentConfigs?.development?.titleDataUrls || [];
-            for (const url of envUrls) {
-                const opt = document.createElement("option");
-                opt.value = url;
-                try {
-                    const parsed = new URL(url);
-                    opt.textContent = parsed.hostname + parsed.pathname;
-                } catch(e) {
-                    opt.textContent = url;
-                }
-                titleDataUrlSelect.appendChild(opt);
-            }
-            if (titleDataUrlSelected && titleDataUrlSelected.length > 0) {
-                titleDataUrlSelect.value = titleDataUrlSelected[0];
-            }
-        }
+
     } else {
         document.querySelectorAll(".devmode").forEach((x) => x.classList.add("hidden"));
         document.querySelector("#logo img").classList.remove("hidden");
@@ -332,10 +313,7 @@ const refresh = async () => {
     const isDevelopmentEnv = await model.read.isDevelopmentEnv();
     const testTitleDataUrl = await model.read.getTestTitleDataUrl();
     const config = await getConfig();
-    const storageData = await browser().storage.local.get("visualHighlightEnabled");
-    const visualHighlightEnabled = storageData.hasOwnProperty("visualHighlightEnabled")
-        ? !!storageData.visualHighlightEnabled
-        : config.debugVisualsEnabled;
+    const visualHighlightEnabled = await model.read.getVisualHighlightEnabled();
 
     const sitesPermissions = {};
     for (const host of Object.keys(config.siteConfigs)) {
@@ -404,7 +382,7 @@ const refresh = async () => {
     }
 
     // Load database status
-    const dbStatus = await browser().storage.local.get(["lastDatabaseUpdate", "databaseGenerationDate"]);
+    const dbStatus = await model.read.getDatabaseStatus();
     const lastDatabaseUpdate = dbStatus.lastDatabaseUpdate;
     const databaseGenerationDate = dbStatus.databaseGenerationDate;
     const dbTitleEl = document.getElementById("settingsview-database-status-title");
@@ -530,7 +508,7 @@ const refresh = async () => {
                         log("Error loading config for feedback server URL:", err);
                     }
 
-                    const dbStatus = await browser().storage.local.get("lastDatabaseUpdate");
+                    const dbStatus = await model.read.getDatabaseStatus();
                     const databaseUpdated = dbStatus.lastDatabaseUpdate ? new Date(dbStatus.lastDatabaseUpdate).toISOString() : "Unknown";
                     const commentVal = comment.trim() || "-";
 
@@ -736,10 +714,7 @@ const refresh = async () => {
     if (devmodeSetDebugVisualsLabel) {
         devmodeSetDebugVisualsLabel.textContent = browser().i18n.getMessage("devmodeSetDebugVisualsLabel");
     }
-    const devmodeSetTitleDataUrlLabel = document.getElementById("devmode-setTitleDataUrl-label");
-    if (devmodeSetTitleDataUrlLabel) {
-        devmodeSetTitleDataUrlLabel.textContent = browser().i18n.getMessage("devmodeSetTitleDataUrlLabel");
-    }
+
 
     if (!initialViewSelected) {
         initialViewSelected = true;
@@ -864,15 +839,10 @@ const handleDomContentLoaded = async (e) => {
     const setDebugVisualsCheckbox = document.getElementById("devmode-setDebugVisuals");
     if (setDebugVisualsCheckbox) {
         setDebugVisualsCheckbox.addEventListener("change", async (e) => {
-            await browser().storage.local.set({ visualHighlightEnabled: e.target.checked });
+            await controller.setVisualHighlightEnabled(e.target.checked);
         });
     }
-    const setTitleDataUrlSelect = document.getElementById("devmode-setTitleDataUrl");
-    if (setTitleDataUrlSelect) {
-        setTitleDataUrlSelect.addEventListener("change", async (e) => {
-            await controller.devmode.setTitleDataUrl(e.target.value);
-        });
-    }
+
 
     await refresh();
 

@@ -61,6 +61,11 @@ const controller = {
         await model.write.setDebugVisualsEnabled(value);
     },
 
+    setVisualHighlightEnabled: async (value) => {
+        log(`Setting visual highlight to ${value}`);
+        await model.write.setVisualHighlightEnabled(value);
+    },
+
     setRefreshIntervalMinutes: async (value) => {
         log(`Setting refresh interval minutes to ${value}`);
         await model.write.setRefreshIntervalMinutes(value);

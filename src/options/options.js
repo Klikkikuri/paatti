@@ -30,7 +30,10 @@ async function loadSettings() {
         toggleDebugSettings(config.activeEnv || 'free');
         
         // Refresh interval
-        document.getElementById('refreshInterval').value = config.refreshIntervalMinutes || 20;
+        const refreshIntervalEl = document.getElementById('refreshInterval');
+        if (refreshIntervalEl && document.activeElement !== refreshIntervalEl) {
+            refreshIntervalEl.value = config.refreshIntervalMinutes || 20;
+        }
         
         // Debug visuals
         document.getElementById('debugVisuals').checked = config.debugVisualsEnabled || false;
@@ -50,7 +53,9 @@ async function loadSettings() {
             savedEmail = '';
         }
         const emailInput = document.getElementById('invitationEmail');
-        emailInput.value = savedEmail;
+        if (emailInput && document.activeElement !== emailInput) {
+            emailInput.value = savedEmail;
+        }
 
         // Load saved titleDataUrls for development environment
         let devUrls = [];
@@ -60,7 +65,7 @@ async function loadSettings() {
             devUrls = [];
         }
         const devUrlsTextarea = document.getElementById('devTitleDataUrls');
-        if (devUrlsTextarea) {
+        if (devUrlsTextarea && document.activeElement !== devUrlsTextarea) {
             devUrlsTextarea.value = devUrls.join('\n');
         }
 
@@ -77,7 +82,7 @@ async function loadSettings() {
 
 async function refreshDatabaseStatus() {
     try {
-        const data = await browser().storage.local.get(["lastDatabaseUpdate", "databaseGenerationDate"]);
+        const data = await model.read.getDatabaseStatus();
         const dbLastUpdatedText = document.getElementById("dbLastUpdatedText");
         if (dbLastUpdatedText) {
             if (data.lastDatabaseUpdate) {
@@ -257,6 +262,22 @@ async function registerEmail() {
 
 async function setupEventListeners() {
 
+    // Extension enabled toggle
+    const extensionToggle = document.getElementById('extensionEnabled');
+    if (extensionToggle) {
+        extensionToggle.addEventListener('change', async () => {
+            const checked = extensionToggle.checked;
+            try {
+                await controller.setEnabled(checked);
+                showStatus('Laajennuksen tila tallennettu!');
+            } catch (error) {
+                console.error('Error saving enabled state:', error);
+                showStatus('Virhe laajennuksen tilan tallentamisessa', true);
+                extensionToggle.checked = !checked;
+            }
+        });
+    }
+
     // Clickbait level slider
     const clickbaitSlider = document.getElementById('clickbaitLevel');
     if (clickbaitSlider) {
@@ -355,10 +376,18 @@ async function setupEventListeners() {
 
     // Environment selection
     document.querySelectorAll('input[name="environment"]').forEach(radio => {
-        radio.addEventListener('change', (e) => {
+        radio.addEventListener('change', async (e) => {
+            const val = e.target.value;
             document.querySelectorAll('.env-option').forEach(opt => opt.classList.remove('selected'));
             e.target.closest('.env-option').classList.add('selected');
-            toggleDebugSettings(e.target.value);
+            toggleDebugSettings(val);
+            try {
+                await controller.setEnvironment(val);
+                showStatus('Ympäristö tallennettu!');
+            } catch (error) {
+                console.error('Error saving environment:', error);
+                showStatus('Virhe ympäristön tallentamisessa', true);
+            }
         });
     });
     
@@ -385,11 +414,72 @@ async function setupEventListeners() {
         }
     });
 
-    // Save button
-    document.getElementById('saveBtn').addEventListener('click', saveSettings);
-    
-    // Reset button
-    document.getElementById('resetBtn').addEventListener('click', resetSettings);
+    // Debug visuals toggle
+    const debugVisualsToggle = document.getElementById('debugVisuals');
+    if (debugVisualsToggle) {
+        debugVisualsToggle.addEventListener('change', async () => {
+            const checked = debugVisualsToggle.checked;
+            try {
+                await controller.setDebugVisualsEnabled(checked);
+                showStatus('Asetus tallennettu!');
+            } catch (error) {
+                console.error('Error saving debug visuals:', error);
+                showStatus('Virhe asetuksen tallentamisessa', true);
+                debugVisualsToggle.checked = !checked;
+            }
+        });
+    }
+
+    // Refresh interval
+    const refreshIntervalInput = document.getElementById('refreshInterval');
+    if (refreshIntervalInput) {
+        refreshIntervalInput.addEventListener('change', async () => {
+            const value = parseInt(refreshIntervalInput.value);
+            if (!isNaN(value) && value >= 1) {
+                try {
+                    await controller.setRefreshIntervalMinutes(value);
+                    showStatus('Päivitysväli tallennettu!');
+                } catch (error) {
+                    console.error('Error saving refresh interval:', error);
+                    showStatus('Virhe tallennettaessa päivitysväliä', true);
+                }
+            } else {
+                showStatus('Virheellinen päivitysväli!', true);
+            }
+        });
+    }
+
+    // Save development URLs button
+    const saveDevUrlsBtn = document.getElementById('saveDevUrlsBtn');
+    if (saveDevUrlsBtn) {
+        saveDevUrlsBtn.addEventListener('click', async () => {
+            const devUrlsTextarea = document.getElementById('devTitleDataUrls');
+            if (devUrlsTextarea) {
+                const urls = devUrlsTextarea.value
+                    .split('\n')
+                    .map(u => u.trim())
+                    .filter(u => u.length > 0);
+                
+                // Validate URLs
+                for (const url of urls) {
+                    try {
+                        new URL(url);
+                    } catch (e) {
+                        showStatus(`Virheellinen kehitys-URL: ${url}`, true);
+                        return;
+                    }
+                }
+                
+                try {
+                    await controller.setDevTitleDataUrls(urls);
+                    showStatus('Kehitys-URL:t tallennettu!');
+                } catch (error) {
+                    console.error('Error saving dev URLs:', error);
+                    showStatus('Virhe tallennettaessa kehitys-URL:eja', true);
+                }
+            }
+        });
+    }
 
     // Manual database update button
     const manualUpdateBtn = document.getElementById('manualUpdateBtn');
@@ -415,92 +505,6 @@ async function setupEventListeners() {
                 manualUpdateBtn.textContent = originalText;
             }
         });
-    }
-}
-
-
-
-async function saveSettings() {
-    try {
-        const extensionEnabled = document.getElementById('extensionEnabled').checked;
-        const aiSlopEnabled = document.getElementById('markAiSlop').checked;
-        const clickbaitLevel = parseInt(document.getElementById('clickbaitLevel').value);
-        const environment = document.querySelector('input[name="environment"]:checked')?.value || 'free';
-        const refreshIntervalMinutes = parseInt(document.getElementById('refreshInterval').value);
-        const debugVisualsEnabled = document.getElementById('debugVisuals').checked;
-        
-        // Collect site overrides correctly matching the userSiteOverrides structure: { [domain]: { enabled: boolean } }
-        const syncData = await browser().storage.sync.get(["userSiteOverrides", "modifiers"]);
-        const siteOverrides = syncData.userSiteOverrides || {};
-        const syncModifiers = syncData.modifiers || {};
-        syncModifiers.aiSlop = aiSlopEnabled;
-        document.querySelectorAll('#siteList input[type="checkbox"]').forEach(checkbox => {
-            const domain = checkbox.dataset.site;
-            siteOverrides[domain] = siteOverrides[domain] || {};
-            siteOverrides[domain].enabled = checkbox.checked;
-        });
-        
-        // Save userPreferences safely merging other fields like environmentConfigs
-        const data = await browser().storage.local.get("userPreferences");
-        const userPreferences = data.userPreferences || {};
-        userPreferences.enabled = extensionEnabled;
-        userPreferences.clickbaitLevel = clickbaitLevel;
-        userPreferences.environment = environment;
-        userPreferences.refreshIntervalMinutes = refreshIntervalMinutes;
-        userPreferences.debugVisualsEnabled = debugVisualsEnabled;
-
-        // Save titleDataUrls for development environment
-        const devUrlsTextarea = document.getElementById('devTitleDataUrls');
-        if (devUrlsTextarea) {
-            const urls = devUrlsTextarea.value
-                .split('\n')
-                .map(u => u.trim())
-                .filter(u => u.length > 0);
-            
-            // Validate URLs
-            for (const url of urls) {
-                try {
-                    new URL(url);
-                } catch (e) {
-                    showStatus(`Virheellinen kehitys-URL: ${url}`, true);
-                    return;
-                }
-            }
-            
-            if (!userPreferences.environmentConfigs) {
-                userPreferences.environmentConfigs = {};
-            }
-            if (!userPreferences.environmentConfigs.development) {
-                userPreferences.environmentConfigs.development = {};
-            }
-            userPreferences.environmentConfigs.development.titleDataUrls = urls;
-        }
-
-        await browser().storage.local.set({ userPreferences });
-        await browser().storage.sync.set({ 
-            userSiteOverrides: siteOverrides,
-            modifiers: syncModifiers
-        });
-        
-        showStatus('Asetukset tallennettu!');
-    } catch (error) {
-        console.error('Error saving settings:', error);
-        showStatus('Virhe asetusten tallentamisessa', true);
-    }
-}
-
-
-async function resetSettings() {
-    if (confirm('Haluatko varmasti palauttaa kaikki asetukset oletusarvoihin?')) {
-        try {
-            await browser().storage.local.remove('userPreferences');
-            await browser().storage.sync.remove('userSiteOverrides');
-            await loadSettings();
-            showStatus('Asetukset palautettu!');
-        } catch (error) {
-            console.error('Error resetting settings:', error);
-            showStatus('Virhe asetusten palauttamisessa', true);
-        }
     }
 }
 
