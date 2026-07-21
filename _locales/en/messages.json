@@ -293,5 +293,9 @@
   "clickbaitLevel4Desc": {
     "message": "Process only misleading headlines",
     "description": "Description for clickbait level 4 (Extremely Clickbaity)"
+  },
+  "sitePolicyLinkText": {
+    "message": "Publisher's policy",
+    "description": "Short link text for publisher's policy button"
   }
 }

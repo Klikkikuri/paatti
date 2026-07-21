@@ -5,6 +5,7 @@ import { model, modelEvents } from "../model.js";
 import { controller } from "../controller.js";
 import { getConfig } from "../config.js";
 import { isSiteEnabled, displayProductInfo, getClickbaitLevelInfo } from "./utils.js";
+import "./components/site-toggle.js";
 
 const log = getLogger("view");
 
@@ -195,36 +196,17 @@ const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlS
 
     // Add the supported sites' listing to UI.
     for (const [host, site] of Object.entries(config.siteConfigs)) {
-        const input = document.createElement("input");
-        input.classList.add("toggle");
-        input.classList.add("conversion-switch");
-        input.id = getSitesEnabledItemId(host);
-        input.dataset.hostname = host;
-        input.dataset.origins = JSON.stringify(site.origins || [`https://${host}/*`]);
-        input.dataset.hasPermission = String(sitesPermissions?.[host] || false);
-        input.type = "checkbox";
-        input.addEventListener("click", view.handleClickConversionSwitch);
-        const label = document.createElement("label");
-        label.for = input.id;
-        label.textContent = site.name;
-        const item = document.createElement("li");
-        item.appendChild(label);
-        item.appendChild(input);
-        sitesEnabledList.appendChild(item);
+        const siteToggle = document.createElement("site-toggle-setting");
+        siteToggle.setAttribute("domain", host);
+        siteToggle.setAttribute("name", site.name || host);
+        siteToggle.setAttribute("origins", JSON.stringify(site.origins || [`https://${host}/*`]));
+        siteToggle.setAttribute("layout", "compact");
+        sitesEnabledList.appendChild(siteToggle);
     }
 
 
     // Visualize per site switches as "readonly" as per main switch state.
     _setSettingsviewCheckboxesReadonly(isConversionEnabled);
-
-    // Set the per site switches enabled as per their switch state.
-    for (const [hostname, isEnabled] of Object.entries(sitesEnabled)) {
-        const siteSwitch = document.getElementById(getSitesEnabledItemId(hostname));
-        if (siteSwitch === null) {
-            throw `Conversion switch element not found for hostname '${hostname}'`;
-        }
-        siteSwitch.checked = isEnabled;
-    }
 
     if (isDevelopmentEnv) {
         document.querySelectorAll(".devmode").forEach((x) => x.classList.remove("hidden"));

@@ -1,8 +1,9 @@
 import { getConfig } from '../config.js';
 import { browser } from '../utils.js';
-import { isSiteEnabled, displayProductInfo } from './utils.js';
+import { displayProductInfo } from './utils.js';
 import { model } from '../model.js';
 import { controller } from '../controller.js';
+import './components/site-toggle.js';
 
 // Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {
@@ -123,62 +124,12 @@ async function renderSiteList(siteConfigs) {
     siteList.innerHTML = '';
     
     for (const [domain, config] of Object.entries(siteConfigs)) {
-        const siteItem = document.createElement('div');
-        siteItem.className = 'site-item';
-
-        const enabled = await isSiteEnabled(domain);
-        console.log(`Rendering site ${domain} with enabled: ${enabled}`);
-
-        const faviconUrl = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
-
-        const siteInfo = document.createElement('div');
-        siteInfo.className = 'site-info';
-
-        const faviconImg = document.createElement('img');
-        faviconImg.src = faviconUrl;
-        faviconImg.alt = '';
-        faviconImg.width = 24;
-        faviconImg.height = 24;
-        faviconImg.className = 'site-favicon';
-        siteInfo.appendChild(faviconImg);
-
-        const textContainer = document.createElement('div');
-
-        const siteName = document.createElement('div');
-        siteName.className = 'site-name';
-        siteName.textContent = config.name || domain;
-        textContainer.appendChild(siteName);
-
-        const siteDomain = document.createElement('div');
-        siteDomain.className = 'site-domain';
-        siteDomain.textContent = domain;
-        textContainer.appendChild(siteDomain);
-
-        siteInfo.appendChild(textContainer);
-        siteItem.appendChild(siteInfo);
-
-        const toggleSwitch = document.createElement('label');
-        toggleSwitch.className = 'toggle-switch';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = `site-${domain}`;
-        checkbox.dataset.site = domain;
-        checkbox.checked = enabled;
-
-        const origins = config.origins || [`https://${domain}/*`];
-        checkbox.dataset.origins = JSON.stringify(origins);
-        const hasPermission = origins.length > 0 ? await browser().permissions.contains({ origins }) : false;
-        checkbox.dataset.hasPermission = String(hasPermission);
-
-        toggleSwitch.appendChild(checkbox);
-
-        const toggleSlider = document.createElement('span');
-        toggleSlider.className = 'toggle-slider';
-        toggleSwitch.appendChild(toggleSlider);
-
-        siteItem.appendChild(toggleSwitch);
-        siteList.appendChild(siteItem);
+        const siteToggle = document.createElement('site-toggle-setting');
+        siteToggle.setAttribute('domain', domain);
+        siteToggle.setAttribute('name', config.name || domain);
+        siteToggle.setAttribute('origins', JSON.stringify(config.origins || [`https://${domain}/*`]));
+        
+        siteList.appendChild(siteToggle);
     }
 }
 
@@ -321,57 +272,10 @@ async function setupEventListeners() {
         });
     });
 
-    // Site list checkboxes
-    document.getElementById('siteList').addEventListener('change', async (e) => {
-        if (e.target && e.target.type === 'checkbox') {
-            const checked = e.target.checked;
-            const domain = e.target.dataset.site;
-            const hasPermission = e.target.dataset.hasPermission === "true";
-            
-            let origins = [];
-            try {
-                origins = JSON.parse(e.target.dataset.origins || "[]");
-            } catch (err) {
-                console.error("Error parsing origins dataset:", err);
-            }
-
-            if (checked && origins.length > 0) {
-                if (hasPermission) {
-                    try {
-                        await controller.setSiteEnabled(true, domain);
-                        showStatus(`Sivuston ${domain} asetus tallennettu!`);
-                    } catch (error) {
-                        showStatus('Virhe tallennettaessa sivuston asetusta', true);
-                        e.target.checked = false;
-                    }
-                } else {
-                    console.log(`Requesting permission for ${domain}`);
-                    try {
-                        const granted = await browser().permissions.request({ origins });
-                        if (granted) {
-                            await controller.setSiteEnabled(true, domain);
-                            e.target.dataset.hasPermission = "true";
-                            showStatus(`Sivuston ${domain} asetus tallennettu!`);
-                        } else {
-                            e.target.checked = false;
-                            console.warn(`Permission denied for ${domain}`);
-                        }
-                    } catch (error) {
-                        showStatus('Virhe pyydettäessä lupaa', true);
-                        console.error('Error requesting permission:', error);
-                        e.target.checked = false;
-                    }
-                }
-            } else {
-                try {
-                    await controller.setSiteEnabled(false, domain);
-                    showStatus(`Sivuston ${domain} asetus tallennettu!`);
-                } catch (error) {
-                    showStatus('Virhe tallennettaessa sivuston asetusta', true);
-                    e.target.checked = true;
-                }
-            }
-        }
+    // Site list toggled events
+    document.getElementById('siteList').addEventListener('site-toggled', (e) => {
+        const { success, message } = e.detail;
+        showStatus(message, !success);
     });
 
     // Environment selection

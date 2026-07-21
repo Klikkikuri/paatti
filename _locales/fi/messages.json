@@ -292,5 +292,9 @@
   "clickbaitLevel4Desc": {
     "message": "Käsitellään vain harhaanjohtavat otsikot",
     "description": "Kuvaus klikkitason raja-arvolle 4 (Extremely Clickbaity)"
+  },
+  "sitePolicyLinkText": {
+    "message": "Julkaisijan periaatteet",
+    "description": "Short link text for publisher's policy button"
   }
 }
