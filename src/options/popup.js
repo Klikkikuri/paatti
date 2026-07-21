@@ -374,10 +374,6 @@ const refresh = async () => {
     displayProductInfo();
 
     // Load conversions list in feedback view
-    const feedbackHeader = document.getElementById("feedbackview-header");
-    if (feedbackHeader) {
-        feedbackHeader.textContent = browser().i18n.getMessage("feedbackviewRateTitleHeader");
-    }
 
     const noConversionsEl = document.getElementById("feedbackview-no-conversions");
     const conversionsListEl = document.getElementById("feedbackview-conversions-list");
