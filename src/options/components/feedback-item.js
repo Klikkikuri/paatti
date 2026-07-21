@@ -251,21 +251,6 @@ class FeedbackItem extends HTMLElement {
                     opacity: 0.95;
                 }
 
-                .current-page-badge {
-                    display: inline-flex;
-                    align-items: center;
-                    padding: 2px 8px;
-                    border-radius: 12px;
-                    font-size: 0.65em;
-                    font-weight: 800;
-                    text-transform: uppercase;
-                    background: #e0e7ff;
-                    color: #4f46e5;
-                    border: 1px solid #c7d2fe;
-                    letter-spacing: 0.05em;
-                    line-height: 1;
-                }
-
                 .clickbait-level-badge {
                     display: inline-flex;
                     align-items: center;
@@ -280,13 +265,18 @@ class FeedbackItem extends HTMLElement {
             </style>
             
             <li class="feedback-card">
+                ${this._item.isMainPage ? `
+                    <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 8px;">
+                        <span class="current-page-tag" style="font-size: 0.72em; color: #6366f1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px;">
+                            📌 ${browser().i18n.getMessage("feedbackviewCurrentPageLabel") || "nykyinen sivu"}
+                        </span>
+                    </div>
+                ` : ''}
+
                 <div class="feedback-row original">
-                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                        <div style="display: flex; align-items: center; gap: 6px;">
-                            <span class="feedback-label">${origLabel}</span>
-                            <span class="clickbait-level-badge" style="background: ${badge.bg}; color: ${badge.color}; border: 1px solid ${badge.border};">${badge.text}</span>
-                        </div>
-                        ${this._item.isMainPage ? `<span class="current-page-badge">${browser().i18n.getMessage("feedbackviewCurrentPageLabel") || "nykyinen sivu"}</span>` : ''}
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                        <span class="feedback-label">${origLabel}</span>
+                        <span class="clickbait-level-badge" style="background: ${badge.bg}; color: ${badge.color}; border: 1px solid ${badge.border};">${badge.text}</span>
                     </div>
                     <span class="feedback-text">${this._item.originalTitle}</span>
                 </div>
