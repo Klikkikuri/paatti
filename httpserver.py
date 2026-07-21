@@ -21,6 +21,17 @@ MERI_INSTANCE = BASE_DIR.parent / "meri" / "instance" / "rahti" / "data.json"
 PRODUCTION_URL = "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"
 
 class Handler(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'If-None-Match, If-Modified-Since, Cache-Control')
+        self.send_header('Access-Control-Expose-Headers', 'ETag, Last-Modified')
+        super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.end_headers()
+
     def do_GET(self):
         url_path = self.path.split('?')[0]
         if url_path == '/data.json':
@@ -50,7 +61,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
                 self.send_header('Cache-Control', 'no-cache')
                 self.send_header('Last-Modified', last_modified)
                 self.send_header('ETag', etag)
