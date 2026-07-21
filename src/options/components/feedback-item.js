@@ -46,10 +46,65 @@ class FeedbackItem extends HTMLElement {
         }
     }
 
+    getClickbaitBadgeInfo(level) {
+        const lang = (browser().i18n.getUILanguage() || 'fi').split('-')[0];
+        const isFi = lang === 'fi';
+        
+        switch (level) {
+            case "Not Clickbait at all":
+            case 0:
+            case "0":
+                return {
+                    text: isFi ? "Neutraali" : "Neutral",
+                    bg: "#f1f5f9",
+                    color: "#475569",
+                    border: "#cbd5e1"
+                };
+            case "Slightly Clickbaity":
+            case 1:
+            case "1":
+                return {
+                    text: isFi ? "Lievä" : "Low",
+                    bg: "#ecfdf5",
+                    color: "#065f46",
+                    border: "#a7f3d0"
+                };
+            case "Moderately Clickbaity":
+            case 2:
+            case "2":
+                return {
+                    text: isFi ? "Kohtalainen" : "Medium",
+                    bg: "#fef9c3",
+                    color: "#713f12",
+                    border: "#fef08a"
+                };
+            case "Very Clickbaity":
+            case 3:
+            case "3":
+                return {
+                    text: isFi ? "Voimakas" : "High",
+                    bg: "#ffedd5",
+                    color: "#9a3412",
+                    border: "#fed7aa"
+                };
+            case "Extremely Clickbaity":
+            case 4:
+            case "4":
+            default:
+                return {
+                    text: isFi ? "Äärimmäinen" : "Extreme",
+                    bg: "#fee2e2",
+                    color: "#991b1b",
+                    border: "#fecaca"
+                };
+        }
+    }
+
     render() {
         if (!this._item) return;
 
         const origLabel = browser().i18n.getMessage("feedbackviewRateTitleOriginalTitleLabel") || "Alkuperäinen";
+        const badge = this.getClickbaitBadgeInfo(this._item.clickbaitLevel || 0);
 
         const convLabel = browser().i18n.getMessage("feedbackviewRateTitleConvertedTitleLabel") || "Klikkiotsikko korjattu";
         const placeholderText = browser().i18n.getMessage("feedbackviewReportCommentPlaceholder") || "Mitä otsikossa pitäisi lukea?";
@@ -210,12 +265,27 @@ class FeedbackItem extends HTMLElement {
                     letter-spacing: 0.05em;
                     line-height: 1;
                 }
+
+                .clickbait-level-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    padding: 1px 6px;
+                    border-radius: 6px;
+                    font-size: 0.6em;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                    letter-spacing: 0.04em;
+                    line-height: 1;
+                }
             </style>
             
             <li class="feedback-card">
                 <div class="feedback-row original">
                     <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                        <span class="feedback-label">${origLabel}</span>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span class="feedback-label">${origLabel}</span>
+                            <span class="clickbait-level-badge" style="background: ${badge.bg}; color: ${badge.color}; border: 1px solid ${badge.border};">${badge.text}</span>
+                        </div>
                         ${this._item.isMainPage ? `<span class="current-page-badge">${browser().i18n.getMessage("feedbackviewCurrentPageLabel") || "nykyinen sivu"}</span>` : ''}
                     </div>
                     <span class="feedback-text">${this._item.originalTitle}</span>
