@@ -175,6 +175,10 @@
     "message": "Asetukset",
     "description": "Label of the navigation menu settings view button"
   },
+  "preferencesViewMoreSettingsBtn": {
+    "message": "Lisää asetuksia...",
+    "description": "Label of the button in preferences view that opens options page"
+  },
 
   "devmodeHiddenButtonTitle": {
     "message": "Asetuksia nörteille",

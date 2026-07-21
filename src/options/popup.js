@@ -508,6 +508,10 @@ const refresh = async () => {
     if (devmodeDumpLinkHashBtn) {
         devmodeDumpLinkHashBtn.textContent = browser().i18n.getMessage("devmodeDumpLinkHashBtn");
     }
+    const openOptionsBtn = document.getElementById("open-options-btn");
+    if (openOptionsBtn) {
+        openOptionsBtn.textContent = browser().i18n.getMessage("preferencesViewMoreSettingsBtn");
+    }
     // Label text is managed by the visual-highlight-setting component
 
 
@@ -566,6 +570,14 @@ const handleDomContentLoaded = async (e) => {
             browser().runtime.openOptionsPage();
             window.close();
         });
+
+    const openOptionsBtnEl = document.getElementById("open-options-btn");
+    if (openOptionsBtnEl) {
+        openOptionsBtnEl.addEventListener("click", () => {
+            browser().runtime.openOptionsPage();
+            window.close();
+        });
+    }
 
     const requestSiteBtn = document.getElementById("request-site-btn");
     if (requestSiteBtn) {
