@@ -93,6 +93,12 @@ browser().storage.onChanged.addListener(async (changes, area) => {
             log(`Effective refresh interval is now ${intervalMinutes} minutes.`);
             await scheduleAlarm(intervalMinutes);
         }
+        if (newVal.environment !== oldVal.environment) {
+            log("Environment changed, triggering fresh database fetch...");
+            fetchRahtiData({ force: true }).catch((err) => {
+                log("Failed to fetch Rahti data on environment change:", err);
+            });
+        }
         if (newVal.clickbaitLevel !== oldVal.clickbaitLevel || newVal.enabled !== oldVal.enabled) {
             log("Clickbait level or extension status changed, notifying active tab");
             try {

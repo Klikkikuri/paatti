@@ -56,6 +56,21 @@ const controller = {
         await model.write.setClickbaitLevel(value);
     },
 
+    setDebugVisualsEnabled: async (value) => {
+        log(`Setting debug visuals to ${value}`);
+        await model.write.setDebugVisualsEnabled(value);
+    },
+
+    setRefreshIntervalMinutes: async (value) => {
+        log(`Setting refresh interval minutes to ${value}`);
+        await model.write.setRefreshIntervalMinutes(value);
+    },
+
+    setDevTitleDataUrls: async (urls) => {
+        log(`Setting development title data URLs:`, urls);
+        await model.write.setDevTitleDataUrls(urls);
+    },
+
     /**
      * Set a title modifier enabled or disabled.
      * @param {string} name - The modifier name (e.g. 'aiSlop').
