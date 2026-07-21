@@ -23,6 +23,7 @@ const DEFAULT_CONFIG = {
     "siteConfigs": {
         "www.iltalehti.fi": {
             "name": "Iltalehti",
+            "policyUrl": "https://www.iltalehti.fi/info/iltalehdesta",
             "origins": ["https://*.iltalehti.fi/*"],
             "enabled": true,
             "rules": [
@@ -75,6 +76,7 @@ const DEFAULT_CONFIG = {
             "name": "Helsingin Sanomat",
             "enabled": true,
             "origins": ["https://*.hs.fi/*"],
+            "policyUrl": "https://www.hs.fi/info/art-2000006390609.html",
             "rules": [
                 {
                     // Sidebar content: "Luetuimmat", "Uusimmat"
@@ -105,6 +107,7 @@ const DEFAULT_CONFIG = {
         "yle.fi": {
             "name": "Yle",
             "enabled": true,
+            "policyUrl": "https://yle.fi/a/3-11405388",
             "rules": [
                 { // "Tuoreimmat" section on front page
                     "container": "aside li",
@@ -158,6 +161,7 @@ const DEFAULT_CONFIG = {
         "www.mtvuutiset.fi": {
             "name": "MTV Uutiset",
             "enabled": true,
+            "policyUrl": "https://www.mtvuutiset.fi/artikkeli/mtv-uutisten-periaatteet-tekoalyn-hyodyntamisessa/9305164",
             // MTV uutiset uses react
             "rules": [
                 {
