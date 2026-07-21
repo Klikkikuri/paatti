@@ -8,6 +8,7 @@ import { isSiteEnabled, displayProductInfo, getClickbaitLevelInfo } from "./util
 import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
 import "./components/master-switch-setting.js";
+import "./components/database-status-setting.js";
 
 const log = getLogger("view");
 
@@ -362,30 +363,7 @@ const refresh = async () => {
     if (dbTitleEl) {
         dbTitleEl.textContent = browser().i18n.getMessage("settingsviewDatabaseStatusTitle");
     }
-    const dbLastUpdatedEl = document.getElementById("database-last-updated");
-    if (dbLastUpdatedEl) {
-        if (lastDatabaseUpdate) {
-            const date = new Date(lastDatabaseUpdate);
-            const dateString = date.toLocaleString();
-            dbLastUpdatedEl.textContent = browser().i18n.getMessage("databaseLastUpdated", [dateString]);
-        } else {
-            dbLastUpdatedEl.textContent = browser().i18n.getMessage("databaseNeverUpdated");
-        }
-    }
-    const dbGenDateEl = document.getElementById("database-generation-date");
-    if (dbGenDateEl) {
-        if (databaseGenerationDate) {
-            const date = new Date(databaseGenerationDate);
-            const dateString = date.toLocaleString();
-            dbGenDateEl.textContent = browser().i18n.getMessage("databaseGenerationDate", [dateString]);
-        } else {
-            dbGenDateEl.textContent = browser().i18n.getMessage("databaseGenerationNever");
-        }
-    }
-    const dbUpdateBtn = document.getElementById("update-database-btn");
-    if (dbUpdateBtn && !dbUpdateBtn.disabled) {
-        dbUpdateBtn.textContent = browser().i18n.getMessage("databaseUpdateBtn");
-    }
+    // database-last-updated, database-generation-date, and update-database-btn states are managed by the database-status-setting component
 
     _refreshSettingsView({
         isConversionEnabled,
@@ -703,29 +681,7 @@ const refresh = async () => {
  * page's statistics.
  * @param {*} e 
  */
-const handleUpdateDatabaseClick = async (e) => {
-    const btn = document.getElementById("update-database-btn");
-    if (!btn) return;
-    btn.disabled = true;
-    btn.textContent = browser().i18n.getMessage("databaseUpdateBtnUpdating");
-    
-    try {
-        const response = await browser().runtime.sendMessage({ action: "updateDatabase" });
-        if (response && response.success) {
-            btn.textContent = browser().i18n.getMessage("databaseUpdateSuccess");
-        } else {
-            btn.textContent = browser().i18n.getMessage("databaseUpdateFailed");
-        }
-    } catch (err) {
-        log("Error updating database:", err);
-        btn.textContent = browser().i18n.getMessage("databaseUpdateFailed");
-    } finally {
-        setTimeout(async () => {
-            btn.disabled = false;
-            btn.textContent = browser().i18n.getMessage("databaseUpdateBtn");
-        }, 1500);
-    }
-};
+// handleUpdateDatabaseClick is now encapsulated in the database-status-setting component
 
 const handleDomContentLoaded = async (e) => {
     log("Setting up UI");
@@ -787,11 +743,7 @@ const handleDomContentLoaded = async (e) => {
         });
     }
 
-    // Register database update button click handler
-    const dbUpdateBtn = document.getElementById("update-database-btn");
-    if (dbUpdateBtn) {
-        dbUpdateBtn.addEventListener("click", handleUpdateDatabaseClick);
-    }
+    // Manual database update click handler is managed by the database-status-setting component
 
     ///////////////////////////////////////////////////////////////////////////////
     // Register devmode controls.

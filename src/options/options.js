@@ -7,6 +7,7 @@ import './components/site-toggle.js';
 import './components/visual-highlight-setting.js';
 import './components/master-switch-setting.js';
 import './components/title-modifier-setting.js';
+import './components/database-status-setting.js';
 
 // Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {
@@ -32,11 +33,7 @@ async function loadSettings() {
         // Show/hide debug settings based on environment
         toggleDebugSettings(config.activeEnv || 'free');
         
-        // Refresh interval
-        const refreshIntervalEl = document.getElementById('refreshInterval');
-        if (refreshIntervalEl && document.activeElement !== refreshIntervalEl) {
-            refreshIntervalEl.value = config.refreshIntervalMinutes || 20;
-        }
+        // Refresh interval is managed by the database-status-setting component
         
         // Debug visuals is managed by the visual-highlight-setting component
 
@@ -73,39 +70,14 @@ async function loadSettings() {
         // Site configurations
         renderSiteList(config.siteConfigs || {});
 
-        // Load database status
-        await refreshDatabaseStatus();
+        // Database status is managed by the database-status-setting component
     } catch (error) {
         console.error('Error loading settings:', error);
         showStatus('Virhe asetusten lataamisessa', true);
     }
 }
 
-async function refreshDatabaseStatus() {
-    try {
-        const data = await model.read.getDatabaseStatus();
-        const dbLastUpdatedText = document.getElementById("dbLastUpdatedText");
-        if (dbLastUpdatedText) {
-            if (data.lastDatabaseUpdate) {
-                const date = new Date(data.lastDatabaseUpdate);
-                dbLastUpdatedText.textContent = date.toLocaleString("fi-FI");
-            } else {
-                dbLastUpdatedText.textContent = "Ei koskaan";
-            }
-        }
-        const dbGenerationDateText = document.getElementById("dbGenerationDateText");
-        if (dbGenerationDateText) {
-            if (data.databaseGenerationDate) {
-                const date = new Date(data.databaseGenerationDate);
-                dbGenerationDateText.textContent = date.toLocaleString("fi-FI");
-            } else {
-                dbGenerationDateText.textContent = "Tuntematon";
-            }
-        }
-    } catch (error) {
-        console.error("Error loading database status:", error);
-    }
-}
+// refreshDatabaseStatus is now encapsulated in the database-status-setting component
 
 
 function showStatus(message, isError = false) {
@@ -294,24 +266,7 @@ async function setupEventListeners() {
         showStatus(message, !success);
     });
 
-    // Refresh interval
-    const refreshIntervalInput = document.getElementById('refreshInterval');
-    if (refreshIntervalInput) {
-        refreshIntervalInput.addEventListener('change', async () => {
-            const value = parseInt(refreshIntervalInput.value);
-            if (!isNaN(value) && value >= 1) {
-                try {
-                    await controller.setRefreshIntervalMinutes(value);
-                    showStatus('Päivitysväli tallennettu!');
-                } catch (error) {
-                    console.error('Error saving refresh interval:', error);
-                    showStatus('Virhe tallennettaessa päivitysväliä', true);
-                }
-            } else {
-                showStatus('Virheellinen päivitysväli!', true);
-            }
-        });
-    }
+    // Refresh interval is handled by the database-status-setting component
 
     // Save development URLs button
     const saveDevUrlsBtn = document.getElementById('saveDevUrlsBtn');
@@ -345,31 +300,7 @@ async function setupEventListeners() {
         });
     }
 
-    // Manual database update button
-    const manualUpdateBtn = document.getElementById('manualUpdateBtn');
-    if (manualUpdateBtn) {
-        manualUpdateBtn.addEventListener('click', async () => {
-            manualUpdateBtn.disabled = true;
-            const originalText = manualUpdateBtn.textContent;
-            manualUpdateBtn.textContent = 'Päivitetään...';
-            
-            try {
-                const response = await browser().runtime.sendMessage({ action: "updateDatabase" });
-                if (response && response.success) {
-                    showStatus('Tietokanta päivitetty onnistuneesti!');
-                    await refreshDatabaseStatus();
-                } else {
-                    showStatus('Tietokannan päivitys epäonnistui: ' + (response?.error || 'Tuntematon virhe'), true);
-                }
-            } catch (error) {
-                console.error('Error updating database:', error);
-                showStatus('Tietokannan päivitys epäonnistui', true);
-            } finally {
-                manualUpdateBtn.disabled = false;
-                manualUpdateBtn.textContent = originalText;
-            }
-        });
-    }
+    // Manual database update button is handled by the database-status-setting component
 }
 
 // Keep options page synchronized with settings changes from other parts of the extension (e.g. popup)
