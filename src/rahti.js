@@ -60,7 +60,7 @@ function validRahtiData(data) {
     // If the major version of the fetched data is different from the supported major version,
     // we consider the data incompatible and throw an error.
     if (incoming.major !== supported.major) {
-        throw `The title data format is not compatible: major version of data is ${incoming.major} when expected ${supported.major}. Update Paatti or use some other compatible title data source in order to fix.`;
+        throw new Error(`The title data format is not compatible: major version of data is ${incoming.major} when expected ${supported.major}. Update Paatti or use some other compatible title data source in order to fix.`);
     }
 
     return true;
