@@ -15,6 +15,8 @@ import "./components/compact-button.js";
 
 const log = getLogger("view");
 
+// Track the JSON of the last rendered conversions list to avoid unnecessary DOM rebuilding on scroll.
+let lastConversionsJson = null;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Helper procedures and definitions.
@@ -405,79 +407,91 @@ const refresh = async () => {
     }
 
     if (conversionsListEl) {
-        conversionsListEl.innerHTML = "";
-        const activeConversions = (conversions || []).filter(item => !item.isUnderThreshold);
-        const underThresholdConversions = (conversions || []).filter(item => item.isUnderThreshold);
+        const conversionsJson = JSON.stringify(conversions || []);
+        
+        // Rebuild list only if the data has actually changed to reduce DOM updates and prevent jumping.
+        if (conversionsJson !== lastConversionsJson) {
+            lastConversionsJson = conversionsJson;
 
-        if (activeConversions.length === 0) {
-            if (noConversionsEl) {
-                noConversionsEl.textContent = browser().i18n.getMessage("feedbackviewNoConversions");
-                noConversionsEl.classList.remove("hidden");
-            }
-        } else {
-            if (noConversionsEl) {
-                noConversionsEl.classList.add("hidden");
-            }
-            for (const item of activeConversions) {
-                const feedbackEl = document.createElement("feedback-item");
-                feedbackEl.item = item;
-                feedbackEl.activeTab = tab;
-                conversionsListEl.appendChild(feedbackEl);
-            }
-        }
+            // Check if the expando was open before clearing and rebuilding.
+            const expandoContentEl = conversionsListEl.querySelector(".expando-content");
+            const expandoWasOpen = expandoContentEl && !expandoContentEl.classList.contains("hidden");
 
-        // If there are under-threshold items, add an expando at the bottom
-        if (underThresholdConversions.length > 0) {
-            const expandoContainer = document.createElement("div");
-            expandoContainer.className = "expando-container";
-            expandoContainer.style.width = "100%";
-            expandoContainer.style.marginTop = "15px";
+            conversionsListEl.innerHTML = "";
+            const activeConversions = (conversions || []).filter(item => !item.isUnderThreshold);
+            const underThresholdConversions = (conversions || []).filter(item => item.isUnderThreshold);
 
-            const expandoBtnText = browser().i18n.getMessage("feedbackviewShowBelowThresholdBtn", [underThresholdConversions.length]) || `Näytä klikkikynnyksen alittavat otsikot (${underThresholdConversions.length})`;
-
-            expandoContainer.innerHTML = `
-                <button class="push-button expando-btn" style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85em; font-weight: 600; color: #475569; cursor: pointer; transition: background 0.15s ease;">
-                    <span>🔍 ${expandoBtnText}</span>
-                    <span class="expando-arrow" style="font-size: 0.85em; transition: transform 0.2s ease;">▼</span>
-                </button>
-                <div class="expando-content hidden" style="margin-top: 10px; display: flex; flex-direction: column; gap: 12px; width: 100%;">
-                </div>
-            `;
-
-            const expandoBtn = expandoContainer.querySelector(".expando-btn");
-            const expandoContent = expandoContainer.querySelector(".expando-content");
-            const expandoArrow = expandoContainer.querySelector(".expando-arrow");
-
-            // Populate under-threshold items inside the expando content
-            for (const item of underThresholdConversions) {
-                const feedbackEl = document.createElement("feedback-item");
-                feedbackEl.item = item;
-                feedbackEl.activeTab = tab;
-                expandoContent.appendChild(feedbackEl);
-            }
-
-            expandoBtn.addEventListener("click", () => {
-                const isHidden = expandoContent.classList.contains("hidden");
-                if (isHidden) {
-                    expandoContent.classList.remove("hidden");
-                    expandoArrow.style.transform = "rotate(180deg)";
-                    expandoBtn.style.background = "#e2e8f0";
-
-                    // Smooth scroll to the first item of the expanded list
-                    const firstItem = expandoContent.querySelector("feedback-item");
-                    if (firstItem) {
-                        setTimeout(() => {
-                            firstItem.scrollIntoView({ behavior: "smooth", block: "nearest" });
-                        }, 50);
-                    }
-                } else {
-                    expandoContent.classList.add("hidden");
-                    expandoArrow.style.transform = "rotate(0deg)";
-                    expandoBtn.style.background = "#f8fafc";
+            if (activeConversions.length === 0) {
+                if (noConversionsEl) {
+                    noConversionsEl.textContent = browser().i18n.getMessage("feedbackviewNoConversions");
+                    noConversionsEl.classList.remove("hidden");
                 }
-            });
+            } else {
+                if (noConversionsEl) {
+                    noConversionsEl.classList.add("hidden");
+                }
+                for (const item of activeConversions) {
+                    const feedbackEl = document.createElement("feedback-item");
+                    feedbackEl.item = item;
+                    feedbackEl.activeTab = tab;
+                    conversionsListEl.appendChild(feedbackEl);
+                }
+            }
 
-            conversionsListEl.appendChild(expandoContainer);
+            // If there are under-threshold items, add an expando at the bottom
+            if (underThresholdConversions.length > 0) {
+                const expandoContainer = document.createElement("div");
+                expandoContainer.className = "expando-container";
+                expandoContainer.style.width = "100%";
+                expandoContainer.style.marginTop = "15px";
+
+                const expandoBtnText = browser().i18n.getMessage("feedbackviewShowBelowThresholdBtn", [underThresholdConversions.length]) || `Näytä klikkikynnyksen alittavat otsikot (${underThresholdConversions.length})`;
+
+                // Render the expando with its previous open/closed state.
+                expandoContainer.innerHTML = `
+                    <button class="push-button expando-btn" style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: ${expandoWasOpen ? "#e2e8f0" : "#f8fafc"}; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85em; font-weight: 600; color: #475569; cursor: pointer; transition: background 0.15s ease;">
+                        <span>🔍 ${expandoBtnText}</span>
+                        <span class="expando-arrow" style="font-size: 0.85em; transition: transform 0.2s ease; ${expandoWasOpen ? "transform: rotate(180deg);" : ""}">▼</span>
+                    </button>
+                    <div class="expando-content ${expandoWasOpen ? "" : "hidden"}" style="margin-top: 10px; display: flex; flex-direction: column; gap: 12px; width: 100%;">
+                    </div>
+                `;
+
+                const expandoBtn = expandoContainer.querySelector(".expando-btn");
+                const expandoContent = expandoContainer.querySelector(".expando-content");
+                const expandoArrow = expandoContainer.querySelector(".expando-arrow");
+
+                // Populate under-threshold items inside the expando content
+                for (const item of underThresholdConversions) {
+                    const feedbackEl = document.createElement("feedback-item");
+                    feedbackEl.item = item;
+                    feedbackEl.activeTab = tab;
+                    expandoContent.appendChild(feedbackEl);
+                }
+
+                expandoBtn.addEventListener("click", () => {
+                    const isHidden = expandoContent.classList.contains("hidden");
+                    if (isHidden) {
+                        expandoContent.classList.remove("hidden");
+                        expandoArrow.style.transform = "rotate(180deg)";
+                        expandoBtn.style.background = "#e2e8f0";
+
+                        // Smooth scroll to the first item of the expanded list
+                        const firstItem = expandoContent.querySelector("feedback-item");
+                        if (firstItem) {
+                            setTimeout(() => {
+                                firstItem.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                            }, 50);
+                        }
+                    } else {
+                        expandoContent.classList.add("hidden");
+                        expandoArrow.style.transform = "rotate(0deg)";
+                        expandoBtn.style.background = "#f8fafc";
+                    }
+                });
+
+                conversionsListEl.appendChild(expandoContainer);
+            }
         }
     }
 
@@ -696,7 +710,9 @@ browser().storage.local.onChanged.addListener(view.refresh);
 // Listen for page scroll events sent from the content script and refresh the popup content.
 browser().runtime.onMessage.addListener((message) => {
     if (message.action === "pageScrolled") {
-        const activeFeedbackForm = document.querySelector(".feedback-form-container:not(.hidden)");
+        // Prevent refreshing if the user has an active feedback typing form open.
+        // We query for .feedback-input-container since that is used by feedback-item components.
+        const activeFeedbackForm = document.querySelector(".feedback-input-container:not(.hidden)");
         if (!activeFeedbackForm) {
             view.refresh();
         }
