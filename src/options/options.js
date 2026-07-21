@@ -74,7 +74,7 @@ async function loadSettings() {
 
 async function refreshDatabaseStatus() {
     try {
-        const data = await browser().storage.local.get("lastDatabaseUpdate");
+        const data = await browser().storage.local.get(["lastDatabaseUpdate", "databaseGenerationDate"]);
         const dbLastUpdatedText = document.getElementById("dbLastUpdatedText");
         if (dbLastUpdatedText) {
             if (data.lastDatabaseUpdate) {
@@ -82,6 +82,15 @@ async function refreshDatabaseStatus() {
                 dbLastUpdatedText.textContent = date.toLocaleString("fi-FI");
             } else {
                 dbLastUpdatedText.textContent = "Ei koskaan";
+            }
+        }
+        const dbGenerationDateText = document.getElementById("dbGenerationDateText");
+        if (dbGenerationDateText) {
+            if (data.databaseGenerationDate) {
+                const date = new Date(data.databaseGenerationDate);
+                dbGenerationDateText.textContent = date.toLocaleString("fi-FI");
+            } else {
+                dbGenerationDateText.textContent = "Tuntematon";
             }
         }
     } catch (error) {

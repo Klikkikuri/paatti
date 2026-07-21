@@ -206,7 +206,7 @@
     "description": "Title of the settings view database status section"
   },
   "databaseLastUpdated": {
-    "message": "Päivitetty: $TIME$",
+    "message": "Haettu: $TIME$",
     "description": "Text showing when the database was last updated",
     "placeholders": {
       "time": {
@@ -216,8 +216,22 @@
     }
   },
   "databaseNeverUpdated": {
-    "message": "Päivitetty: Ei koskaan",
+    "message": "Haettu: Ei koskaan",
     "description": "Text showing when the database has never been updated"
+  },
+  "databaseGenerationDate": {
+    "message": "Luontiaika: $TIME$",
+    "description": "Text showing when the database was generated on the server",
+    "placeholders": {
+      "time": {
+        "content": "$1",
+        "example": "09.07.2026 15:00:00"
+      }
+    }
+  },
+  "databaseGenerationNever": {
+    "message": "Luontiaika: Tuntematon",
+    "description": "Text showing when the database generation date is unknown"
   },
   "databaseUpdateBtn": {
     "message": "Päivitä tietokanta",

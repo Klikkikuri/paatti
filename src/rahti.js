@@ -124,11 +124,25 @@ async function fetchRahtiData(options = {}) {
             log(`Removed ${keysToRemove.length} old entries that are no longer in the dataset.`);
         }
         
+        let latestUpdated = null;
+        for (const r of successfulResults) {
+            const updated = r.data && r.data.updated;
+            if (updated) {
+                if (!latestUpdated || new Date(updated) > new Date(latestUpdated)) {
+                    latestUpdated = updated;
+                }
+            }
+        }
+
         log(`Successfully fetched and stored Rahti data from ${successfulResults.length}/${urls.length} URL(s).`);
         try {
-            await browser().storage.local.set({ lastDatabaseUpdate: Date.now() });
+            const storageItems = { lastDatabaseUpdate: Date.now() };
+            if (latestUpdated) {
+                storageItems.databaseGenerationDate = latestUpdated;
+            }
+            await browser().storage.local.set(storageItems);
         } catch (e) {
-            log("Failed to save database update timestamp:", e);
+            log("Failed to save database update timestamps:", e);
         }
         return true;
     } else {
