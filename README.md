@@ -226,8 +226,6 @@ classDiagram
         +events
         +read
         +write
-        +setEnabled(value)
-        +setStatistics(value)
     }
     class Config {
         +enabled
@@ -239,6 +237,12 @@ classDiagram
     class Controller {
         +setEnabled(value)
         +setSiteEnabled(value)
+        +setClickbaitLevel(value)
+        +setModifierEnabled(name, value)
+        +setDebugVisualsEnabled(value)
+        +setVisualHighlightEnabled(value)
+        +setRefreshIntervalMinutes(value)
+        +setDevTitleDataUrls(urls)
         +dispatchConversion()
         +updateStatistics()
     }
