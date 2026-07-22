@@ -141,6 +141,8 @@ async function registerEmail() {
         const response = await fetch(action, {
             method: 'POST',
             mode: 'no-cors',
+            referrerPolicy: 'no-referrer',
+            credentials: 'omit',
             body: formData
         });
         

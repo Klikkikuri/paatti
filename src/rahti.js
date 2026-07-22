@@ -75,7 +75,10 @@ function validRahtiData(data) {
  * @returns {Promise<Object>} An object indicating fetch success, status code, etag, lastModified, and parsed data.
  */
 async function fetchSingleUrl(url, urlHeaders, force = false) {
-    const fetchOpts = {};
+    const fetchOpts = {
+        referrerPolicy: "no-referrer",
+        credentials: "omit"
+    };
     if (force) {
         fetchOpts.cache = "no-cache";
     }

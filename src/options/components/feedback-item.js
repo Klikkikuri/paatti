@@ -406,6 +406,8 @@ class FeedbackItem extends HTMLElement {
                     await fetch(postUrl, {
                         method: "POST",
                         mode: "no-cors",
+                        referrerPolicy: "no-referrer",
+                        credentials: "omit",
                         headers: {
                             "Content-Type": "application/x-www-form-urlencoded"
                         },
@@ -427,6 +429,8 @@ class FeedbackItem extends HTMLElement {
                     await fetch(feedbackServerUrl, {
                         method: "POST",
                         mode: "no-cors",
+                        referrerPolicy: "no-referrer",
+                        credentials: "omit",
                         headers: {
                             "Content-Type": "text/plain"
                         },
