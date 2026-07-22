@@ -1,4 +1,4 @@
-import { browser, getLogger } from '../../utils.js';
+import { browser, getLogger, sanitizeUrlForFeedback } from '../../utils.js';
 import { getConfig } from '../../config.js';
 import { model } from '../../model.js';
 
@@ -358,7 +358,8 @@ class FeedbackItem extends HTMLElement {
             const databaseUpdated = dbStatus.lastDatabaseUpdate ? new Date(dbStatus.lastDatabaseUpdate).toISOString() : "Unknown";
             const commentVal = comment.trim() || "-";
 
-            const pageUrl = this._tab?.url || "";
+            const rawPageUrl = this._tab?.url || "";
+            const pageUrl = sanitizeUrlForFeedback(rawPageUrl);
             const urlSign = this._item.urlSign || "";
             const originalTitle = this._item.originalTitle || "";
             const convertedTitle = this._item.convertedTitle || "";

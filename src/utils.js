@@ -78,4 +78,51 @@ const parseSemVer = (versionString) => {
     return { major, minor, patch };
 };
 
-export { getLogger, browser, getCurrentTabHostname, debounce, parseSemVer };
+/**
+ * Common tracking query parameter keys grouped by type.
+ */
+const TRACKING_KEYS = [
+    // campaign
+    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id", "utm_source_platform",
+    // click_id
+    "fbclid", "gclid", "gclsrc", "dclid", "msclkid", "twclid", "yclid",
+    // referral
+    "ref", "ref_src", "ref_url",
+    // session
+    "sid", "session_id", "sessionid", "phpsessid", "jsessionid", "aspsessionid",
+    // social & email
+    "mc_eid", "igshid", "mkt_tok"
+];
+
+/**
+ * Sanitizes a page URL for feedback submission by stripping common tracking query parameters
+ * (e.g., utm_*, fbclid, gclid, ref, session tokens).
+ *
+ * @param {string} urlStr - The URL string to sanitize.
+ * @returns {string} The sanitized URL string, or the original string if parsing fails.
+ */
+const sanitizeUrlForFeedback = (urlStr) => {
+    if (!urlStr || typeof urlStr !== "string") {
+        return urlStr || "";
+    }
+
+    try {
+        const parsed = new URL(urlStr);
+
+        const trackingKeys = [];
+        for (const key of parsed.searchParams.keys()) {
+            const lowerKey = key.toLowerCase();
+            if (lowerKey.startsWith("utm_") || TRACKING_KEYS.includes(lowerKey)) {
+                trackingKeys.push(key);
+            }
+        }
+
+        trackingKeys.forEach(key => parsed.searchParams.delete(key));
+
+        return parsed.toString();
+    } catch {
+        return urlStr;
+    }
+};
+
+export { getLogger, browser, getCurrentTabHostname, debounce, parseSemVer, sanitizeUrlForFeedback };
