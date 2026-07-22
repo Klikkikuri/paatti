@@ -24,7 +24,7 @@ const DEFAULT_CONFIG = {
         "www.iltalehti.fi": {
             "name": "Iltalehti",
             "policyUrl": "https://www.iltalehti.fi/info/iltalehdesta",
-            "origins": ["https://*.iltalehti.fi/*"],
+            "origins": ["https://www.iltalehti.fi/*"],
             "enabled": true,
             "rules": [
                 {
@@ -75,7 +75,7 @@ const DEFAULT_CONFIG = {
         "www.hs.fi": {
             "name": "Helsingin Sanomat",
             "enabled": true,
-            "origins": ["https://*.hs.fi/*"],
+            "origins": ["https://www.hs.fi/*"],
             "policyUrl": "https://www.hs.fi/info/art-2000006390609.html",
             "rules": [
                 {

@@ -25,7 +25,7 @@
       "19": "icons/klikkikuri-19.png",
       "38": "icons/klikkikuri-38.png"
     },
-    "default_title": "Paatti",
+    "default_title": "Klikkikuri Paatti",
     "default_popup": "src/options/popup.html",
     "default_area": "navbar"
   },
@@ -47,8 +47,8 @@
         "build/js.wasm"
       ],
       "matches": [
-        "https://*.iltalehti.fi/*",
-        "https://*.hs.fi/*",
+        "https://www.iltalehti.fi/*",
+        "https://www.hs.fi/*",
         "https://yle.fi/*",
         "https://www.mtvuutiset.fi/*",
         "https://aksa.fi/*",
@@ -65,9 +65,9 @@
     "type": "module"
   },
   "host_permissions": [
-    "https://raw.githubusercontent.com/*",
-    "https://*.iltalehti.fi/*",
-    "https://*.hs.fi/*",
+    "https://raw.githubusercontent.com/Klikkikuri/rahti",
+    "https://www.iltalehti.fi/*",
+    "https://www.hs.fi/*",
     "https://yle.fi/*",
     "https://www.mtvuutiset.fi/*",
     "https://aksa.fi/*"
