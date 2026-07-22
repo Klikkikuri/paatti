@@ -28,6 +28,7 @@ Sail smoothly through the clickbait-infested web using this browser extension.
       - [Step 5: Switch Extension Environment \& Grant Permissions](#step-5-switch-extension-environment--grant-permissions)
     - [Generating a Release](#generating-a-release)
   - [Architecture](#architecture)
+  - [Privacy Policy](#privacy-policy)
   - [License](#license)
 
 
@@ -316,9 +317,15 @@ classDiagram
     OptionsUI *-- Model : Reads config & stats
 ```
 
+## Privacy Policy
+
+For information about data handling and user privacy, please refer to our [Privacy Policy](docs/PRIVACY_POLICY.md).
+
+
 ## License
 
 This project is licensed under the European Union Public Licence v1.2 (EUPL-1.2).
 
 - English version: [LICENSE.md](LICENSE.md)
 - Finnish version (Suomenkielinen versio): [LISENSSI.md](LISENSSI.md)
+
