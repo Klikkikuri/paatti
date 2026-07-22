@@ -81,7 +81,7 @@ const parseSemVer = (versionString) => {
 /**
  * Common tracking query parameter keys grouped by type.
  */
-const TRACKING_KEYS = [
+const TRACKING_KEYS = new Set([
     // campaign
     "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id", "utm_source_platform",
     // click_id
@@ -92,7 +92,7 @@ const TRACKING_KEYS = [
     "sid", "session_id", "sessionid", "phpsessid", "jsessionid", "aspsessionid",
     // social & email
     "mc_eid", "igshid", "mkt_tok"
-];
+]);
 
 /**
  * Sanitizes a page URL for feedback submission by stripping common tracking query parameters
@@ -112,7 +112,7 @@ const sanitizeUrlForFeedback = (urlStr) => {
         const trackingKeys = [];
         for (const key of parsed.searchParams.keys()) {
             const lowerKey = key.toLowerCase();
-            if (lowerKey.startsWith("utm_") || TRACKING_KEYS.includes(lowerKey)) {
+            if (lowerKey.startsWith("utm_") || TRACKING_KEYS.has(lowerKey)) {
                 trackingKeys.push(key);
             }
         }
