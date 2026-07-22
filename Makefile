@@ -6,7 +6,7 @@ BUILD_TEST_DATA := $(TEST_DATA_BUILD_DIR)/data.json
 BUILD_SOURCE_DIST := $(BUILD_DIR)/source-code.zip
 BUILD_EXTENSION := $(BUILD_DIR)/klikkikuri-paatti.zip
 DIST_DIR := $(BUILD_DIR)/dist
-EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md
+EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md docs/PRIVACY_POLICY.md
 WASM_ASSETS := js.wasm wasm_exec.js
 
 
