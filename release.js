@@ -1,4 +1,15 @@
 #!/usr/bin/env node
+/**
+ * Release script for the Klikkikuri Paatti extension.
+ * 
+ * This script automates the release process by performing the following steps:
+ * 1. Verifies that the current git branch is "main".
+ * 2. Checks that the git working directory is clean (no uncommitted changes).
+ * 3. Reads the current version from manifest.json.
+ * 4. Determines the target version for the release, either from command line argument or by auto-incrementing the patch version.
+ * 5. Updates manifest.json and updates.json with the new version.
+ * 6. Commits the changes and creates a git tag for the new version.
+ */
 
 const fs = require('fs');
 const path = require('path');
@@ -57,6 +68,12 @@ function run() {
   const currentVersion = manifest.version;
   if (!currentVersion) {
     console.error('Error: manifest.json does not contain a "version" property.');
+    process.exit(1);
+  }
+
+  const geckoMinVersion = manifest.browser_specific_settings?.gecko?.strict_min_version;
+  if (!geckoMinVersion) {
+    console.error('Error: manifest.json does not contain "browser_specific_settings.gecko.strict_min_version".');
     process.exit(1);
   }
 
@@ -135,7 +152,7 @@ function run() {
       process.exit(1);
     }
 
-    const addonId = 'klikkikuri@protonmail.com';
+    const addonId = manifest.browser_specific_settings?.gecko?.id || 'klikkikuri@protonmail.com';
     if (updates.addons && updates.addons[addonId]) {
       const addonUpdates = updates.addons[addonId].updates;
       const alreadyExists = addonUpdates.some(u => u.version === targetVersion);
@@ -145,7 +162,7 @@ function run() {
           update_link: `https://github.com/Klikkikuri/paatti/releases/download/v${targetVersion}/klikkikuri-paatti-${targetVersion}.xpi`,
           applications: {
             gecko: {
-              strict_min_version: '152.0'
+              strict_min_version: geckoMinVersion
             }
           }
         });
