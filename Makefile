@@ -66,5 +66,6 @@ release:
 
 test:
 	node tests/config.test.mjs
+	node tests/utils.test.mjs
 
 .PHONY: build init package source-dist test-data clean build-suola-local build-suola release dist test
