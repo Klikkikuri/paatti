@@ -77,6 +77,7 @@ clean:
 	rm -f $(BUILD_DIR)/klikkikuri-*.xpi
 	rm -f $(BUILD_DIR)/klikkikuri-paatti-*.xpi
 	rm -rf "$(BUILD_DIR)"
+	@if [ -f suola/Makefile ]; then $(MAKE) -C suola clean; fi
 	rm -rf suola/build
 
 release:
