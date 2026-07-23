@@ -73,7 +73,7 @@ jobs:
 
       - name: "🏗️ Build Extension Package"
         run: |
-          make build DOCKER=false
+          make build USE_RELEASE_ARTIFACTS=1
 
       - name: "📦 Package Source Code for Review"
         run: |

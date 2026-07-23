@@ -1,4 +1,4 @@
-DOCKER := docker
+DOCKER ?= docker
 BUILD_DIR := $(shell pwd)/build
 TEST_DATA_BUILD_DIR := $(BUILD_DIR)/test_data
 TEST_DATA_SIGNATURES := $(TEST_DATA_BUILD_DIR)/signatures.txt
@@ -10,13 +10,20 @@ EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md docs
 WASM_ASSETS := js.wasm wasm_exec.js
 
 
-build: init build-suola package
+build: build-suola package
 
 init:
 	git submodule init
 	git submodule update
 
+ensure-suola:
+	@if [ ! -f suola/Makefile ]; then \
+		echo "suola submodule not found. Initializing suola submodule..."; \
+		$(MAKE) init; \
+	fi
+
 build-suola:
+ifneq ($(USE_RELEASE_ARTIFACTS),)
 	# Check if suola submodule is clean and exact-tagged
 	@if [ -d suola ] && (cd suola && git diff-index --quiet HEAD -- && git describe --tags --exact-match >/dev/null 2>&1); then \
 		SUOLA_TAG=$$(cd suola && git describe --tags --exact-match); \
@@ -25,19 +32,29 @@ build-suola:
 		rm -f $(BUILD_DIR)/js.wasm $(BUILD_DIR)/wasm_exec.js; \
 		curl -L -f -o $(BUILD_DIR)/js.wasm "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/js.wasm" && \
 		curl -L -f -o $(BUILD_DIR)/wasm_exec.js "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/wasm_exec.js" || \
-		{ echo "Failed to download pre-built artifacts. Falling back to docker build..."; $(MAKE) build-suola-local; }; \
+		{ echo "Failed to download pre-built artifacts. Falling back to local build..."; $(MAKE) build-suola-local; }; \
 	else \
-		echo "suola submodule is modified or untagged. Building suola artifacts locally using docker..."; \
+		echo "suola submodule is modified or untagged. Building suola artifacts locally..."; \
 		$(MAKE) build-suola-local; \
 	fi
+else
+	$(MAKE) build-suola-local
+endif
 
-build-suola-local:
+build-suola-local: ensure-suola
+ifeq ($(DOCKER),false)
+	$(MAKE) -C suola js
+	mkdir -p $(BUILD_DIR)
+	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
+	cp suola/build/wasm_exec.js $(BUILD_DIR)/wasm_exec.js
+else
 	mkdir -p suola/build
 	$(DOCKER) build --target wasm-builder -t buildsuola suola/
 	$(DOCKER) run --mount type=bind,src=$(shell pwd)/suola/build/,dst=/app/build buildsuola
 	mkdir -p $(BUILD_DIR)
 	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
 	cp suola/build/wasm_exec.js $(BUILD_DIR)/wasm_exec.js
+endif
 
 dist: build-suola
 	mkdir -p $(DIST_DIR)/build
@@ -60,6 +77,7 @@ clean:
 	rm -f $(BUILD_DIR)/klikkikuri-*.xpi
 	rm -f $(BUILD_DIR)/klikkikuri-paatti-*.xpi
 	rm -rf "$(BUILD_DIR)"
+	rm -rf suola/build
 
 release:
 	node release.js $(VERSION)
@@ -68,4 +86,4 @@ test:
 	node tests/config.test.mjs
 	node tests/utils.test.mjs
 
-.PHONY: build init package source-dist test-data clean build-suola-local build-suola release dist test
+.PHONY: build init ensure-suola package source-dist test-data clean build-suola-local build-suola release dist test
