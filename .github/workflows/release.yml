@@ -75,6 +75,12 @@ jobs:
         run: |
           make build USE_RELEASE_ARTIFACTS=1
 
+      - name: "🛡️ Verify Suola Artifact Attestation"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh attestation verify build/js.wasm --owner Klikkikuri --repo suola
+
       - name: "📦 Package Source Code for Review"
         run: |
           make source-dist
