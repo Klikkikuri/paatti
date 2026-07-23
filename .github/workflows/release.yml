@@ -80,6 +80,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh attestation verify build/js.wasm --owner Klikkikuri --repo suola
+          gh attestation verify build/wasm_exec.js --owner Klikkikuri --repo suola
 
       - name: "📦 Package Source Code for Review"
         run: |
