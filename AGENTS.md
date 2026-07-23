@@ -1,8 +1,0 @@
-- Keep code clean, modular and DRY. Refactor code to avoid duplication and improve maintainability.
-- Use responsibility-driven design to separate concerns and encapsulate functionality.
-- Document functions and modules with JSDoc style comments.
-- Use inline code comments to explain complex logic, non-obvious decisions, and intention.
-- Avoid obvious and overly verbose comments that do not add value.
-- If unclear how to proceed, ASK the user. Provide options and explain trade-offs. Do not make assumptions about user intent.
-- If you notice user made changes, don't overwrite them. Instead, ask the user if they want to keep their changes if they are contrary to the generated code.
-- Unless it adds a significant amount of complexity or is necessary for performance, keep the code generalizable.
