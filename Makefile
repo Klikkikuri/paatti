@@ -13,13 +13,24 @@ WASM_ASSETS := js.wasm wasm_exec.js
 build: ensure-suola build-suola package
 
 init:
-	git submodule init
-	git submodule update
+	git submodule init --init --recursive
 
+# Ensure suola submodule is initialized and up to date with superproject commit pointer.
+# If in a Git repo: initializes suola if missing, and fails if checked out commit differs from superproject pointer.
+# If not in a Git repo: verifies suola directory exists.
 ensure-suola:
-	@if [ ! -f suola/Makefile ]; then \
-		echo "suola submodule not found. Initializing suola submodule..."; \
-		$(MAKE) init; \
+	@if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+		if [ ! -f suola/Makefile ]; then \
+			echo "suola submodule not found. Initializing suola submodule..."; \
+			$(MAKE) init; \
+		fi; \
+		if git submodule status suola | grep -q '^[+]'; then \
+			echo "Warning: suola submodule commit does not match superproject pointer."; \
+			echo "Run 'git submodule update'"; \
+		fi; \
+	elif [ ! -f suola/Makefile ]; then \
+		echo "Error: suola directory missing or incomplete in non-git tree."; \
+		exit 1; \
 	fi
 
 build-suola:
