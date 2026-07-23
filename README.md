@@ -117,7 +117,7 @@ To install the pre-packaged browser extension:
 
 Fetch and build dependencies and package for distribution with `make`.
 
-When `make build` is executed, it first checks if the `suola` submodule is initialized, fetching it automatically if missing. It then compiles `suola` into WebAssembly binaries (`js.wasm`** and `wasm_exec.js`) locally using Docker (or host Go when `DOCKER=false`). Alternatively, passing `USE_RELEASE_ARTIFACTS=1` downloads pre-built WebAssembly release assets directly from GitHub. Finally, all extension assets (`src/`, `icons/`, `_locales/`, `manifest.json`) and the WebAssembly binaries are staged into `build/dist/` and packaged into `build/klikkikuri-paatti.zip`.
+When `make build` is executed, it first checks if the `suola` submodule is initialized, fetching it automatically if missing. It then compiles `suola` into WebAssembly binaries (`js.wasm` and `wasm_exec.js`) locally using Docker (or host Go when `DOCKER=false`). Alternatively, passing `USE_RELEASE_ARTIFACTS=1` downloads pre-built WebAssembly release assets directly from GitHub. Finally, all extension assets (`src/`, `icons/`, `_locales/`, `manifest.json`) and the WebAssembly binaries are staged into `build/dist/` and packaged into `build/klikkikuri-paatti.zip`.
 
 ```sh
 make build
