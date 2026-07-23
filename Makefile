@@ -24,18 +24,19 @@ ensure-suola:
 
 build-suola:
 ifneq ($(USE_RELEASE_ARTIFACTS),)
-	# Check if suola submodule is clean and exact-tagged
-	@if [ -d suola ] && (cd suola && git diff-index --quiet HEAD -- && git describe --tags --exact-match >/dev/null 2>&1); then \
+	# Fetch pre-built artifacts from GitHub releases for tagged suola submodule
+	@if [ -d suola ] && (cd suola && git describe --tags --exact-match >/dev/null 2>&1); then \
 		SUOLA_TAG=$$(cd suola && git describe --tags --exact-match); \
-		echo "suola submodule is clean and tagged at $$SUOLA_TAG. Fetching pre-built artifacts from GitHub releases..."; \
+		echo "suola submodule is tagged at $$SUOLA_TAG. Fetching pre-built artifacts from GitHub releases..."; \
 		mkdir -p $(BUILD_DIR); \
 		rm -f $(BUILD_DIR)/js.wasm $(BUILD_DIR)/wasm_exec.js; \
 		curl -L -f -o $(BUILD_DIR)/js.wasm "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/js.wasm" && \
-		curl -L -f -o $(BUILD_DIR)/wasm_exec.js "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/wasm_exec.js" || \
-		{ echo "Failed to download pre-built artifacts. Falling back to local build..."; $(MAKE) build-suola-local; }; \
+		curl -L -f -o $(BUILD_DIR)/wasm_exec.js "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/wasm_exec.js" && \
+		( curl -L -f -s -o $(BUILD_DIR)/sha256sums.txt "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/sha256sums.txt" && \
+		  echo "Verifying downloaded checksums..." && (cd $(BUILD_DIR) && sha256sum --check --ignore-missing sha256sums.txt) || true ) && \
+		node -e "const fs = require('fs'); const bytes = fs.readFileSync('$(BUILD_DIR)/js.wasm'); if (!WebAssembly.validate(bytes)) { console.error('Error: Invalid WebAssembly binary'); process.exit(1); }"; \
 	else \
-		echo "suola submodule is modified or untagged. Building suola artifacts locally..."; \
-		$(MAKE) build-suola-local; \
+		echo "Error: suola submodule is not tagged or found. Cannot fetch release artifacts." && exit 1; \
 	fi
 else
 	$(MAKE) build-suola-local
