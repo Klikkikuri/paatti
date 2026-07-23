@@ -1,4 +1,4 @@
-DOCKER := docker
+DOCKER ?= docker
 BUILD_DIR := $(shell pwd)/build
 TEST_DATA_BUILD_DIR := $(BUILD_DIR)/test_data
 TEST_DATA_SIGNATURES := $(TEST_DATA_BUILD_DIR)/signatures.txt
@@ -6,38 +6,64 @@ BUILD_TEST_DATA := $(TEST_DATA_BUILD_DIR)/data.json
 BUILD_SOURCE_DIST := $(BUILD_DIR)/source-code.zip
 BUILD_EXTENSION := $(BUILD_DIR)/klikkikuri-paatti.zip
 DIST_DIR := $(BUILD_DIR)/dist
-EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md
+EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md docs/PRIVACY_POLICY.md
 WASM_ASSETS := js.wasm wasm_exec.js
 
 
-build: init build-suola package
+build: ensure-suola build-suola package
 
 init:
-	git submodule init
-	git submodule update
+	git submodule init --init --recursive
+
+# Ensure suola submodule is initialized and up to date with superproject commit pointer.
+# If in a Git repo: initializes suola if missing, and fails if checked out commit differs from superproject pointer.
+# If not in a Git repo: verifies suola directory exists.
+ensure-suola:
+	@if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+		if [ ! -f suola/Makefile ]; then \
+			echo "suola submodule not found. Initializing suola submodule..."; \
+			$(MAKE) init; \
+		fi; \
+		if git submodule status suola | grep -q '^[+]'; then \
+			echo "Warning: suola submodule commit does not match superproject pointer."; \
+			echo "Run 'git submodule update'"; \
+		fi; \
+	elif [ ! -f suola/Makefile ]; then \
+		echo "Error: suola directory missing or incomplete in non-git tree."; \
+		exit 1; \
+	fi
 
 build-suola:
-	# Check if suola submodule is clean and exact-tagged
-	@if [ -d suola ] && (cd suola && git diff-index --quiet HEAD -- && git describe --tags --exact-match >/dev/null 2>&1); then \
+ifneq ($(USE_RELEASE_ARTIFACTS),)
+	# Fetch pre-built artifacts from GitHub releases for tagged suola submodule
+	@if [ -d suola ] && (cd suola && git describe --tags --exact-match >/dev/null 2>&1); then \
 		SUOLA_TAG=$$(cd suola && git describe --tags --exact-match); \
-		echo "suola submodule is clean and tagged at $$SUOLA_TAG. Fetching pre-built artifacts from GitHub releases..."; \
+		echo "suola submodule is tagged at $$SUOLA_TAG. Fetching pre-built artifacts from GitHub releases..."; \
 		mkdir -p $(BUILD_DIR); \
 		rm -f $(BUILD_DIR)/js.wasm $(BUILD_DIR)/wasm_exec.js; \
 		curl -L -f -o $(BUILD_DIR)/js.wasm "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/js.wasm" && \
-		curl -L -f -o $(BUILD_DIR)/wasm_exec.js "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/wasm_exec.js" || \
-		{ echo "Failed to download pre-built artifacts. Falling back to docker build..."; $(MAKE) build-suola-local; }; \
+		curl -L -f -o $(BUILD_DIR)/wasm_exec.js "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/wasm_exec.js"; \
 	else \
-		echo "suola submodule is modified or untagged. Building suola artifacts locally using docker..."; \
-		$(MAKE) build-suola-local; \
+		echo "Error: suola submodule is not tagged or found. Cannot fetch release artifacts." && exit 1; \
 	fi
+else
+	$(MAKE) build-suola-local
+endif
 
-build-suola-local:
+build-suola-local: ensure-suola
+ifeq ($(DOCKER),false)
+	$(MAKE) -C suola js
+	mkdir -p $(BUILD_DIR)
+	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
+	cp suola/build/wasm_exec.js $(BUILD_DIR)/wasm_exec.js
+else
 	mkdir -p suola/build
 	$(DOCKER) build --target wasm-builder -t buildsuola suola/
 	$(DOCKER) run --mount type=bind,src=$(shell pwd)/suola/build/,dst=/app/build buildsuola
 	mkdir -p $(BUILD_DIR)
 	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
 	cp suola/build/wasm_exec.js $(BUILD_DIR)/wasm_exec.js
+endif
 
 dist: build-suola
 	mkdir -p $(DIST_DIR)/build
@@ -60,6 +86,8 @@ clean:
 	rm -f $(BUILD_DIR)/klikkikuri-*.xpi
 	rm -f $(BUILD_DIR)/klikkikuri-paatti-*.xpi
 	rm -rf "$(BUILD_DIR)"
+	@if [ -f suola/Makefile ]; then $(MAKE) -C suola clean; fi
+	rm -rf suola/build
 
 release:
 	node release.js $(VERSION)
@@ -68,4 +96,4 @@ test:
 	node tests/config.test.mjs
 	node tests/utils.test.mjs
 
-.PHONY: build init package source-dist test-data clean build-suola-local build-suola release dist test
+.PHONY: build init ensure-suola package source-dist test-data clean build-suola-local build-suola release dist test

@@ -13,6 +13,7 @@ Sail smoothly through the clickbait-infested web using this browser extension.
     - [Installing the pre-packaged browser extension](#installing-the-pre-packaged-browser-extension)
     - [Building from Source](#building-from-source)
       - [Requirements](#requirements)
+      - [Build Flags \& Options](#build-flags--options)
       - [Configuration](#configuration)
     - [Temporary Development Loading](#temporary-development-loading)
       - [For Firefox (Manual)](#for-firefox-manual)
@@ -108,12 +109,34 @@ To install the pre-packaged browser extension:
 
 - `make`
 - `bash`
-- Python 3
-- Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2)
-- Access to Klikkikuri GitHub repositories:
-    - [`suola`](https://github.com/Klikkikuri/suola)
+- (optional) Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2)
+- (optional, for testing) Python 3
+- `suola` submodule (automatically initialized by `make` if missing)
+  - [`suola`](https://github.com/Klikkikuri/suola)
+  - Go 1.25+ (for local compilation without Docker)
 
 Fetch and build dependencies and package for distribution with `make`.
+
+When `make build` is executed, it first checks if the `suola` submodule is initialized, fetching it automatically if missing. It then compiles `suola` into WebAssembly binaries (`js.wasm` and `wasm_exec.js`) locally using Docker (or host Go when `DOCKER=false`). Alternatively, passing `USE_RELEASE_ARTIFACTS=1` downloads pre-built WebAssembly release assets directly from GitHub. Finally, all extension assets (`src/`, `icons/`, `_locales/`, `manifest.json`) and the WebAssembly binaries are staged into `build/dist/` and packaged into `build/klikkikuri-paatti.zip`.
+
+```sh
+make build
+```
+
+#### Build Flags & Options
+
+- **Local compilation using Go without Docker**:
+  ```sh
+  make build DOCKER=false
+  ```
+- **Use Podman instead of Docker**:
+  ```sh
+  make build DOCKER=podman
+  ```
+- **Use pre-built release artifacts** (downloads release binaries from GitHub):
+  ```sh
+  make build USE_RELEASE_ARTIFACTS=1
+  ```
 
 #### Configuration
 

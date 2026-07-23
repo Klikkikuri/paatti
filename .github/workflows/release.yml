@@ -73,7 +73,14 @@ jobs:
 
       - name: "🏗️ Build Extension Package"
         run: |
-          make build DOCKER=false
+          make build USE_RELEASE_ARTIFACTS=1
+
+      - name: "🛡️ Verify Suola Artifact Attestation"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh attestation verify build/js.wasm --owner Klikkikuri --repo suola
+          gh attestation verify build/wasm_exec.js --owner Klikkikuri --repo suola
 
       - name: "📦 Package Source Code for Review"
         run: |
