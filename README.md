@@ -10,7 +10,7 @@ Sail smoothly through the clickbait-infested web using this browser extension.
     - [Feedback and correction interface](#feedback-and-correction-interface)
     - [Normal operation](#normal-operation)
   - [Installing](#installing)
-    - [Installing the pre-packaged browser extension](#installing-the-pre-packaged-browser-extension)
+    - [Installing the pre-packaged browser extension](#installing-the-pre-build-browser-extension)
     - [Building from Source](#building-from-source)
       - [Requirements](#requirements)
       - [Build Flags \& Options](#build-flags--options)
