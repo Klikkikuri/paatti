@@ -280,4 +280,52 @@ async function fetchRahtiData(options = {}) {
     return true;
 }
 
-export { fetchRahtiData, rahtiStorage };
+/**
+ * Wrapper around fetchRahtiData that provides retry capabilities for automatic background updates.
+ * 
+ * If a fetch attempt fails (e.g. temporary network offline state when machine wakes up from sleep),
+ * it waits for a delay and retries up to maxRetries times.
+ * Manual user updates should call fetchRahtiData directly to avoid unwanted background retries.
+ * 
+ * @param {Object} [options={}] - Options passed to fetchRahtiData.
+ * @param {Object} [retryConfig={}] - Configuration for retry attempts.
+ * @param {number} [retryConfig.maxRetries=3] - Maximum retry attempts.
+ * @param {number} [retryConfig.initialDelayMs=10000] - Initial delay in milliseconds before first retry (10s).
+ * @param {number} [retryConfig.backoffFactor=2] - Delay multiplier for subsequent retries.
+ * @returns {Promise<boolean>} True if retrieval/update succeeded, false if all attempts failed.
+ */
+async function fetchRahtiDataWithRetry(options = {}, retryConfig = {}) {
+    const maxRetries = retryConfig.maxRetries ?? 3;
+    const initialDelayMs = retryConfig.initialDelayMs ?? 10000;
+    const backoffFactor = retryConfig.backoffFactor ?? 2;
+
+    let attempt = 0;
+    let delay = initialDelayMs;
+
+    while (attempt <= maxRetries) {
+        attempt++;
+        try {
+            const success = await fetchRahtiData(options);
+            if (success) {
+                if (attempt > 1) {
+                    log(`Rahti data fetch succeeded on retry attempt ${attempt}.`);
+                }
+                return true;
+            }
+        } catch (err) {
+            log(`Error during Rahti data fetch attempt ${attempt}/${maxRetries + 1}:`, err.message || err);
+        }
+
+        if (attempt <= maxRetries) {
+            log(`Rahti data fetch attempt ${attempt} failed. Retrying in ${delay / 1000} seconds...`);
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            delay *= backoffFactor;
+        }
+    }
+
+    log(`All ${maxRetries + 1} Rahti data fetch attempts failed.`);
+    return false;
+}
+
+export { fetchRahtiData, fetchRahtiDataWithRetry, rahtiStorage };
+
