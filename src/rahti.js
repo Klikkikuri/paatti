@@ -170,7 +170,16 @@ async function saveUpdateMetadata(latestUpdated, rahtiHeaders, successfulResults
  * @param {boolean} [options.force=false] - If true, bypasses the browser and conditional cache checks.
  * @returns {Promise<boolean>} True if retrieval/update succeeded (or verified unmodified), false otherwise.
  */
-async function fetchRahtiData(options = {}) {
+let activeFetchPromise = null;
+
+/**
+ * Core execution of Rahti data fetch.
+ * 
+ * @param {Object} [options={}] - Options configuration.
+ * @param {boolean} [options.force=false] - If true, bypasses conditional caching.
+ * @returns {Promise<boolean>} True if retrieval/update succeeded, false otherwise.
+ */
+async function _executeFetchRahtiData(options = {}) {
     log("Starting fetch of Rahti data...");
     const config = await getConfig();
 
@@ -196,7 +205,7 @@ async function fetchRahtiData(options = {}) {
     log(`Fetching Rahti data from ${urls.length} URL(s) in parallel...`);
     const fetchPromises = urls.map(url => fetchSingleUrl(url, rahtiHeaders[url], options.force));
     const results = await Promise.all(fetchPromises);
- 
+
     const successfulResults = results.filter(r => r.success);
     const failedResults = results.filter(r => !r.success);
     log(`Fetched ${successfulResults.length} successful and ${failedResults.length} failed results.`);
@@ -281,11 +290,46 @@ async function fetchRahtiData(options = {}) {
 }
 
 /**
+ * Asynchronously fetches Rahti title data.
+ * 
+ * Prevents race conditions by locking in-flight requests. If a fetch is already running,
+ * non-forced callers join the existing in-flight promise.
+ * 
+ * @param {Object} [options={}] - Options configuration.
+ * @param {boolean} [options.force=false] - If true, bypasses conditional caching.
+ * @returns {Promise<boolean>} True if retrieval/update succeeded, false otherwise.
+ */
+async function fetchRahtiData(options = {}) {
+    if (activeFetchPromise) {
+        if (!options.force) {
+            log("Fetch already in progress. Joining active in-flight fetch...");
+            return activeFetchPromise;
+        }
+        log("Fetch already in progress, but force=true requested. Awaiting active fetch before forcing fresh fetch...");
+        try {
+            await activeFetchPromise;
+        } catch (err) {
+            // Ignore error from previous fetch when executing forced fetch
+        }
+    }
+
+    activeFetchPromise = (async () => {
+        try {
+            return await _executeFetchRahtiData(options);
+        } finally {
+            activeFetchPromise = null;
+        }
+    })();
+
+    return activeFetchPromise;
+}
+
+/**
  * Wrapper around fetchRahtiData that provides retry capabilities for automatic background updates.
  * 
  * If a fetch attempt fails (e.g. temporary network offline state when machine wakes up from sleep),
- * it waits for a delay and retries up to maxRetries times.
- * Manual user updates should call fetchRahtiData directly to avoid unwanted background retries.
+ * it waits for a delay and retries up to maxRetries times. Aborts early if a manual or concurrent
+ * fetch updates the database while sleeping between retry attempts.
  * 
  * @param {Object} [options={}] - Options passed to fetchRahtiData.
  * @param {Object} [retryConfig={}] - Configuration for retry attempts.
@@ -319,6 +363,21 @@ async function fetchRahtiDataWithRetry(options = {}, retryConfig = {}) {
         if (attempt <= maxRetries) {
             log(`Rahti data fetch attempt ${attempt} failed. Retrying in ${delay / 1000} seconds...`);
             await new Promise((resolve) => setTimeout(resolve, delay));
+
+            // Check if database was updated in the background (e.g., by a manual user click) during delay
+            try {
+                const stored = await browser().storage.local.get("lastDatabaseUpdate");
+                if (stored.lastDatabaseUpdate) {
+                    const ageMs = Date.now() - stored.lastDatabaseUpdate;
+                    if (ageMs < 60000) {
+                        log("Database was updated concurrently during retry delay. Aborting remaining retries.");
+                        return true;
+                    }
+                }
+            } catch (err) {
+                // Ignore storage read error during retry check
+            }
+
             delay *= backoffFactor;
         }
     }
@@ -326,6 +385,7 @@ async function fetchRahtiDataWithRetry(options = {}, retryConfig = {}) {
     log(`All ${maxRetries + 1} Rahti data fetch attempts failed.`);
     return false;
 }
+
 
 export { fetchRahtiData, fetchRahtiDataWithRetry, rahtiStorage };
 
