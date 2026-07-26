@@ -86,22 +86,21 @@ Extension in normal action, staying out of the way unless specifically invoked b
 
 ## Installing
 
-### Installing the pre-packaged browser extension
+### Installing the pre-build browser extension
 
-To install the pre-packaged browser extension:
+Klikkikuri Paatti browser extension is also available in [🛍️ Google Chrome Webstore](https://chromewebstore.google.com/detail/klikkikuri-paatti/jalegaigmgljhnaakmbbaajooffgcbgc?hl=en) and in [🦊 Mozilla Firefox Add-on](https://addons.mozilla.org/fi-FI/firefox/addon/klikkikuri/). Unless you're interested on developing or using more bleeding edge version, you should prefer those.
 
-1. **Download the Release**: Go to the [Klikkikuri Paatti Releases](https://github.com/Klikkikuri/paatti/releases) page on GitHub and download the latest `klikkikuri` `.xpi` file.
-2. **Open Firefox Add-ons**: Navigate to `about:addons` in the Firefox address bar (or open the Menu and select **Add-ons and Themes**).
-3. **Install from File**:
+To install the pre-packaged browser extension in Firefox from github releases
+
+1. **Download the Release**: Go to the [Klikkikuri Paatti Releases](https://github.com/Klikkikuri/paatti/releases) page on GitHub and download the latest `klikkikuri-paatti` `.xpi` file.
+3. **Open Firefox Add-ons**: Navigate to `about:addons` in the Firefox address bar (or open the Menu and select **Add-ons and Themes**).
+4. **Install from File**:
    - Click the gear icon (⚙️) next to "Manage Your Add-ons" at the top-right.
    - Select **Install Add-on From File...** from the dropdown menu.
    - Choose the downloaded `klikkikuri` `.xpi` file.
    - Confirm the installation when prompted.
 
-> [!NOTE]
-> Firefox requires extensions to be digitally signed for permanent installation.
-> - **Official Releases**: The `.xpi` files uploaded to the GitHub Releases page are automatically signed during build execution and can be installed directly.
-> - **Local/Custom Builds**: If you build the extension locally or use an unsigned package, you must load it temporarily via `about:debugging` or use Firefox Developer Edition/Nightly/ESR with `xpinstall.signatures.required` set to `false`.
+Due to how Google Chrome has walled-garden approach to chrome extensions, there might be – or not – `.crx` versions available for chrome.
 
 ### Building from Source
 
