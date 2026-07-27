@@ -2,7 +2,7 @@
 
 import { browser, getLogger } from "./utils.js";
 import { getConfig } from "./config.js";
-import { fetchRahtiData } from "./rahti.js";
+import { fetchRahtiData, fetchRahtiDataWithRetry } from "./rahti.js";
 import { controller } from "./controller.js";
 import "./../build/wasm_exec.js";
 
@@ -95,7 +95,7 @@ browser().storage.onChanged.addListener(async (changes, area) => {
         }
         if (newVal.environment !== oldVal.environment) {
             log("Environment changed, triggering fresh database fetch...");
-            fetchRahtiData({ force: true }).catch((err) => {
+            fetchRahtiDataWithRetry({ force: true }).catch((err) => {
                 log("Failed to fetch Rahti data on environment change:", err);
             });
         }
@@ -149,7 +149,7 @@ browser().runtime.onInstalled.addListener(async () => {
     // Run an initial Rahti data fetch on install so the extension has data immediately.
     // Initial fetch of Rahti data
     try {
-        await fetchRahtiData();
+        await fetchRahtiDataWithRetry();
     } catch (err) {
         log("Failed to perform initial fetch of Rahti data on install:", err);
     }
@@ -166,7 +166,7 @@ browser().runtime.onInstalled.addListener(async () => {
 browser().alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === PULL_ALARM_NAME) {
         log("Alarm triggered: fetching Rahti data.");
-        fetchRahtiData().catch((err) => {
+        fetchRahtiDataWithRetry().catch((err) => {
             log("Failed to fetch Rahti data on alarm:", err);
         });
     }
@@ -197,6 +197,7 @@ async function initSuola() {
 browser().runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "updateDatabase") {
         log("Manual database update requested.");
+        // Manual updates invoke fetchRahtiData directly without retry logic
         fetchRahtiData({ force: true })
             .then((success) => {
                 if (success) {
@@ -242,20 +243,67 @@ updateDynamicContentScripts().catch((err) => {
     log("Failed to run initial script update:", err);
 });
 
-// Ensure periodic alarm is scheduled on startup if missing
-browser().alarms.get(PULL_ALARM_NAME).then(async (alarm) => {
-    if (!alarm) {
+/**
+ * Checks whether the stored database timestamp is missing or older than the refresh interval.
+ *
+ * @returns {Promise<boolean>} True if database is missing or stale.
+ */
+async function isDatabaseStale() {
+    try {
+        const config = await getConfig();
+        const intervalMinutes = config.refreshIntervalMinutes || 30;
+        const result = await browser().storage.local.get("lastDatabaseUpdate");
+        if (!result.lastDatabaseUpdate) {
+            return true;
+        }
+        const ageMs = Date.now() - result.lastDatabaseUpdate;
+        return ageMs >= intervalMinutes * 60 * 1000;
+    } catch (err) {
+        log("Failed checking database staleness:", err);
+        return false;
+    }
+}
+
+// Handle browser startup event to ensure database freshness
+if (browser().runtime && browser().runtime.onStartup) {
+    browser().runtime.onStartup.addListener(async () => {
+        log("Browser startup detected.");
         try {
             const config = await getConfig();
             const intervalMinutes = config.refreshIntervalMinutes || 30;
             await scheduleAlarm(intervalMinutes);
+            if (await isDatabaseStale()) {
+                log("Database is stale on browser startup, triggering background fetch with retry...");
+                fetchRahtiDataWithRetry().catch((err) => {
+                    log("Failed to fetch Rahti data on browser startup:", err);
+                });
+            }
         } catch (err) {
-            log("Failed to schedule alarm on startup:", err);
+            log("Startup check failed:", err);
         }
+    });
+}
+
+// Ensure periodic alarm is scheduled and database is checked on background script load
+(async () => {
+    try {
+        const alarm = await browser().alarms.get(PULL_ALARM_NAME);
+        const config = await getConfig();
+        const intervalMinutes = config.refreshIntervalMinutes || 30;
+        if (!alarm) {
+            await scheduleAlarm(intervalMinutes);
+        }
+        if (await isDatabaseStale()) {
+            log("Database is stale on script evaluation, triggering background fetch with retry...");
+            fetchRahtiDataWithRetry().catch((err) => {
+                log("Failed to fetch Rahti data on background script evaluation:", err);
+            });
+        }
+    } catch (err) {
+        log("Failed checking alarm and database status on script evaluation:", err);
     }
-}).catch((err) => {
-    log("Failed to check alarm status on startup:", err);
-});
+})();
+
 
 // Listen to browser permission additions to synchronize model state
 browser().permissions.onAdded.addListener(async (permissions) => {

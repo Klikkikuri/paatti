@@ -44,6 +44,9 @@
         "src/config.js",
         "src/storage.js",
         "src/rahti.js",
+        "src/rahti/schema.js",
+        "src/rahti/fetcher.js",
+        "src/rahti/sync.js",
         "src/modifiers.js",
         "build/js.wasm"
       ],

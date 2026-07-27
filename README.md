@@ -272,9 +272,18 @@ classDiagram
         +dispatchConversion()
         +updateStatistics()
     }
+    class RahtiModule {
+        +fetchRahtiData(options)
+        +fetchRahtiDataWithRetry(options, retryConfig)
+        +fetcher (HTTP & 304 resolution)
+        +schema (SemVer & keying)
+        +sync (Storage & metadata)
+    }
     class BackgroundScript {
         +updateDynamicContentScripts()
         +fetchRahtiData()
+        +fetchRahtiDataWithRetry()
+        +isDatabaseStale()
         +alarms
         +initSuola()
         +hashUrls(urls)
@@ -321,7 +330,9 @@ classDiagram
     
     BackgroundScript --> Config : Reads enabled origins
     BackgroundScript --> Storage : Stores fetched data
-    BackgroundScript ..> TitleDataServer : Fetch updates
+    BackgroundScript --> RahtiModule : Requests database fetches
+    RahtiModule ..> TitleDataServer : Fetch updates
+
     
     ContentScript --> Storage : Reads cached conversions
     ContentScript --> Modifiers : Applies active transformations
