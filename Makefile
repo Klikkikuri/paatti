@@ -95,5 +95,6 @@ release:
 test:
 	node tests/config.test.mjs
 	node tests/utils.test.mjs
+	node tests/rahti.test.mjs
 
 .PHONY: build init ensure-suola package source-dist test-data clean build-suola-local build-suola release dist test
