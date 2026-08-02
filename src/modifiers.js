@@ -13,7 +13,7 @@ const titleModifiers = [
         isEnabled: async () => await model.read.getMarkAiSlop(),
         modify: (title, entry) => {
             if (entry.labels && entry.labels.includes(LABEL_AI_SLOP)) {
-                return `🤖 ${title}`;
+                return `✨ ${title}`;
             }
             return title;
         }

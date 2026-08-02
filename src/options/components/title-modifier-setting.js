@@ -55,11 +55,11 @@ class TitleModifierSetting extends HTMLElement {
             this.replaceChildren(detailedTemplate.content.cloneNode(true));
 
             let title = 'Tekoälymerkintä (AI)';
-            let description = 'Lisää robotti-ilmaisimen 🤖 otsikoihin, jotka on tunnistettu automaattisesti luoduksi tekoälysisällöksi';
+            let description = 'Lisää ✨ ilmaisimen otsikoihin, jotka on tunnistettu automaattisesti luoduksi tekoälysisällöksi';
 
             if (modifier === 'aiSlop') {
-                title = '🤖 Tekoälymerkintä (AI)';
-                description = 'Lisää robotti-ilmaisimen 🤖 otsikoihin, jotka on tunnistettu automaattisesti luoduksi tekoälysisällöksi';
+                title = '✨ Tekoälymerkintä (AI)';
+                description = 'Lisää ✨ ilmaisimen otsikoihin, jotka on tunnistettu automaattisesti luoduksi tekoälysisällöksi';
             }
 
             const titleEl = this.querySelector('.title-text');
