@@ -1,4 +1,4 @@
-import { parseSemVer, sanitizeUrlForFeedback } from '../src/utils.js';
+import { parseSemVer, sanitizeUrlForFeedback, canAppendSpan } from '../src/utils.js';
 
 /**
  * Runs test cases for utility functions in src/utils.js.
@@ -70,6 +70,40 @@ function runUtilsTests() {
         const passed = JSON.stringify(result) === JSON.stringify(tc.expected);
         if (!passed) {
             console.error(`❌ Test failed: "${tc.name}"\n  Expected: ${JSON.stringify(tc.expected)}\n  Got:      ${JSON.stringify(result)}`);
+            failed = true;
+        } else {
+            console.log(`✅ Passed: "${tc.name}"`);
+        }
+    }
+
+    console.log('\n--- canAppendSpan Tests ---');
+    const canAppendSpanCases = [
+        {
+            name: 'Returns true for valid HTML element with replaceChildren',
+            input: { nodeType: 1, tagName: 'H2', namespaceURI: 'http://www.w3.org/1999/xhtml', replaceChildren: () => {} },
+            expected: true
+        },
+        {
+            name: 'Returns false for SVG element',
+            input: { nodeType: 1, tagName: 'text', namespaceURI: 'http://www.w3.org/2000/svg', replaceChildren: () => {} },
+            expected: false
+        },
+        {
+            name: 'Returns false for INPUT element',
+            input: { nodeType: 1, tagName: 'INPUT', namespaceURI: 'http://www.w3.org/1999/xhtml', replaceChildren: () => {} },
+            expected: false
+        },
+        {
+            name: 'Returns false for null or non-element node',
+            input: { nodeType: 3, tagName: '#text' },
+            expected: false
+        }
+    ];
+
+    for (const tc of canAppendSpanCases) {
+        const result = canAppendSpan(tc.input);
+        if (result !== tc.expected) {
+            console.error(`❌ Test failed: "${tc.name}"\n  Expected: ${tc.expected}\n  Got:      ${result}`);
             failed = true;
         } else {
             console.log(`✅ Passed: "${tc.name}"`);

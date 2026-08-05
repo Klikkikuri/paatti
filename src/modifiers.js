@@ -1,6 +1,7 @@
 "use strict";
 
 import { model } from "./model.js";
+import { browser } from "./utils.js";
 
 const LABEL_AI_SLOP = "com.github.klikkikuri/ai-slop=true";
 
@@ -13,9 +14,14 @@ const titleModifiers = [
         isEnabled: async () => await model.read.getMarkAiSlop(),
         modify: (title, entry) => {
             if (entry.labels && entry.labels.includes(LABEL_AI_SLOP)) {
-                return `[✨] ${title}`;
+                const tooltip = browser()?.i18n?.getMessage("modifierAiSlopTooltip") || "Sisältö on pääosin luotu tai käännetty tekoälyllä.";
+                return {
+                    text: title,
+                    badgeText: "✨ ",
+                    tooltip: tooltip
+                };
             }
-            return title;
+            return { text: title };
         }
     }
 ];
@@ -24,20 +30,35 @@ const titleModifiers = [
  * Applies all active modifiers sequentially to the given title text.
  * @param {string} titleText - The title text to modify
  * @param {Object} rahtiEntry - The dataset entry
- * @returns {Promise<string>} The final modified title text
+ * @returns {Promise<{text: string, badges: Array<{badgeText: string, tooltip?: string, className?: string}>}>} The modified title text and badges
  */
 async function applyModifiers(titleText, rahtiEntry) {
-    let result = titleText;
+    let currentText = titleText;
+    const badges = [];
+
     for (const modifier of titleModifiers) {
         try {
             if (await modifier.isEnabled()) {
-                result = modifier.modify(result, rahtiEntry);
+                const res = modifier.modify(currentText, rahtiEntry);
+                if (typeof res === "string") {
+                    currentText = res;
+                } else if (res && typeof res === "object") {
+                    if (res.text !== undefined) currentText = res.text;
+                    if (res.badgeText) {
+                        badges.push({
+                            badgeText: res.badgeText,
+                            tooltip: res.tooltip,
+                            className: res.className || "klikkikuri-ai-badge"
+                        });
+                    }
+                }
             }
         } catch (err) {
             console.error(`Error executing title modifier '${modifier.name}':`, err);
         }
     }
-    return result;
+    return { text: currentText, badges };
 }
 
 export { applyModifiers, titleModifiers };
+

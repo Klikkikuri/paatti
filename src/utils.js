@@ -125,4 +125,25 @@ const sanitizeUrlForFeedback = (urlStr) => {
     }
 };
 
-export { getLogger, browser, getCurrentTabHostname, debounce, parseSemVer, sanitizeUrlForFeedback };
+/**
+ * Detects whether a DOM element can safely accept HTML <span> child elements.
+ *
+ * @param {Element|Node} elem - The target DOM element.
+ * @returns {boolean} True if HTML <span> child nodes can be appended, false if plain text must be used.
+ */
+const canAppendSpan = (elem) => {
+    if (!elem || elem.nodeType !== 1) return false;
+
+    // Reject non-HTML namespaces (e.g., SVG elements)
+    if (elem.namespaceURI && elem.namespaceURI === "http://www.w3.org/2000/svg") return false;
+
+    // Reject text-only/form elements
+    const tagName = elem.tagName ? elem.tagName.toUpperCase() : "";
+    const textOnlyTags = new Set(["INPUT", "TEXTAREA", "OPTION", "TITLE", "STYLE", "SCRIPT", "SELECT"]);
+    if (textOnlyTags.has(tagName)) return false;
+
+    return typeof elem.replaceChildren === "function";
+};
+
+export { getLogger, browser, getCurrentTabHostname, debounce, parseSemVer, sanitizeUrlForFeedback, canAppendSpan };
+

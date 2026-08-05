@@ -102,6 +102,25 @@ html.klikkikuri-visual-hilight *[data-klikkikuri-status].klikkikuri-hover-highli
     }
 }
 
+/**
+ * AI Content indicator badge styling (muted by default, highlighted on hover)
+ */
+.klikkikuri-ai-badge {
+    display: inline-block;
+    margin-right: 0.25em;
+    cursor: help;
+    opacity: 0.6;
+    filter: grayscale(30%);
+    transition: opacity 0.2s ease-in-out, filter 0.2s ease-in-out;
+}
+
+.klikkikuri-ai-badge:hover {
+    opacity: 1;
+    filter: grayscale(0%);
+}
+
+
+
 
 
 

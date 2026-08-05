@@ -317,5 +317,9 @@
   "modifierAiSlopLabel": {
     "message": "AI content marker",
     "description": "Compact label for AI content marker setting"
+  },
+  "modifierAiSlopTooltip": {
+    "message": "Content is primarily created or translated using AI.",
+    "description": "Tooltip text for AI content marker"
   }
 }

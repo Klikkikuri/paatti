@@ -16,7 +16,7 @@ let hrefSign;
     const browser = (typeof chrome !== "undefined" ? chrome : globalThis.browser);
     const { model: model, modelEvents: modelEvents, klikkikuriStatus: klikkikuriStatus } = await import(browser.runtime.getURL("src/model.js"));
     const { controller } = await import(browser.runtime.getURL("src/controller.js"));
-    const { getLogger, debounce } = await import(browser.runtime.getURL("src/utils.js"));
+    const { getLogger, debounce, canAppendSpan } = await import(browser.runtime.getURL("src/utils.js"));
 
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
     const { applyModifiers } = await import(browser.runtime.getURL("src/modifiers.js"));
@@ -286,9 +286,39 @@ let hrefSign;
                 }
 
                 // Apply registered title modifiers (e.g. AI marking)
-                titleText = await applyModifiers(titleText, rahtiEntry);
+                const modifierResult = await applyModifiers(titleText, rahtiEntry);
+                let modifiedTitle = titleText;
+                let badges = [];
 
-                how = (titleElem.textContent = titleText);
+                if (typeof modifierResult === "string") {
+                    modifiedTitle = modifierResult;
+                } else if (modifierResult && typeof modifierResult === "object") {
+                    modifiedTitle = modifierResult.text ?? titleText;
+                    badges = modifierResult.badges || [];
+                }
+
+                if (badges.length > 0) {
+                    if (canAppendSpan(titleElem)) {
+                        const children = [];
+                        for (const b of badges) {
+                            const badgeSpan = document.createElement("span");
+                            badgeSpan.className = b.className || "klikkikuri-ai-badge";
+                            badgeSpan.textContent = b.badgeText;
+                            if (b.tooltip) {
+                                badgeSpan.setAttribute("title", b.tooltip);
+                            }
+                            children.push(badgeSpan);
+                        }
+                        children.push(document.createTextNode(modifiedTitle));
+                        titleElem.replaceChildren(...children);
+                        how = titleElem.textContent;
+                    } else {
+                        const badgePrefix = badges.map((b) => b.badgeText).join("");
+                        how = (titleElem.textContent = badgePrefix + modifiedTitle);
+                    }
+                } else {
+                    how = (titleElem.textContent = modifiedTitle);
+                }
             } catch (err) {
                 what = "error";
                 why = err.message || String(err);
