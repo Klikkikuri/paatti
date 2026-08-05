@@ -304,5 +304,17 @@
   "sitePolicyLinkText": {
     "message": "Julkaisijan periaatteet",
     "description": "Short link text for publisher's policy button"
+  },
+  "modifierAiSlopTitle": {
+    "message": "✨ Tekoälymerkintä (AI)",
+    "description": "Otsikko tekoälymerkinnän valinnalle"
+  },
+  "modifierAiSlopDesc": {
+    "message": "Lisää ✨-ilmaisimen otsikoihin, joiden sisältö on pääosin luotu tai käännetty tekoälyllä.",
+    "description": "Kuvaus tekoälymerkinnän valinnalle"
+  },
+  "modifierAiSlopLabel": {
+    "message": "Tekoälymerkintä",
+    "description": "Kompakti etiketti tekoälymerkinnän valinnalle"
   }
 }

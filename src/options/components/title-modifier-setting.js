@@ -46,7 +46,7 @@ class TitleModifierSetting extends HTMLElement {
 
             let labelText = 'Merkitse tekoälysisältö';
             if (modifier === 'aiSlop') {
-                labelText = 'Tekoälymerkintä';
+                labelText = browser().i18n.getMessage('modifierAiSlopLabel') || 'Tekoälymerkintä';
             }
 
             const labelEl = this.querySelector('.label-text');
@@ -55,11 +55,11 @@ class TitleModifierSetting extends HTMLElement {
             this.replaceChildren(detailedTemplate.content.cloneNode(true));
 
             let title = 'Tekoälymerkintä (AI)';
-            let description = 'Lisää ✨ ilmaisimen otsikoihin, jotka on tunnistettu automaattisesti luoduksi tekoälysisällöksi';
+            let description = 'Lisää ✨-ilmaisimen otsikoihin, joiden sisältö on pääosin luotu tai käännetty tekoälyllä.';
 
             if (modifier === 'aiSlop') {
-                title = '✨ Tekoälymerkintä (AI)';
-                description = 'Lisää ✨ ilmaisimen otsikoihin, jotka on tunnistettu automaattisesti luoduksi tekoälysisällöksi';
+                title = browser().i18n.getMessage('modifierAiSlopTitle') || '✨ Tekoälymerkintä (AI)';
+                description = browser().i18n.getMessage('modifierAiSlopDesc') || 'Lisää ✨-ilmaisimen otsikoihin, joiden sisältö on pääosin luotu tai käännetty tekoälyllä.';
             }
 
             const titleEl = this.querySelector('.title-text');
