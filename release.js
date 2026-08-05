@@ -18,6 +18,10 @@ const { execSync } = require('child_process');
 const manifestPath = path.resolve(__dirname, 'manifest.json');
 const updatesPath = path.resolve(__dirname, 'updates.json');
 
+/**
+ * Checks whether the git working directory is clean (no uncommitted changes).
+ * @returns {boolean} True if working directory is clean.
+ */
 function getGitCleanStatus() {
   try {
     execSync('git diff-index --quiet HEAD --');
@@ -27,11 +31,28 @@ function getGitCleanStatus() {
   }
 }
 
+/**
+ * Gets the current active git branch name.
+ * @returns {string|null} Current branch name, or null on error.
+ */
 function getCurrentBranch() {
   try {
     return execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
   } catch (err) {
     return null;
+  }
+}
+
+/**
+ * Checks whether the git index contains staged changes.
+ * @returns {boolean} True if staged changes exist.
+ */
+function hasStagedChanges() {
+  try {
+    execSync('git diff --cached --quiet');
+    return false;
+  } catch (err) {
+    return true;
   }
 }
 
@@ -181,9 +202,14 @@ function run() {
   // 6. Git commit and tag
   try {
     execSync('git add manifest.json updates.json', { stdio: 'inherit' });
-    execSync(`git commit -m "chore: release v${targetVersion}"`, { stdio: 'inherit' });
+    if (hasStagedChanges()) {
+      execSync(`git commit -m "chore: release v${targetVersion}"`, { stdio: 'inherit' });
+      console.log(`✓ Committed release v${targetVersion}.`);
+    } else {
+      console.log('No file changes to commit for manifest.json or updates.json.');
+    }
     execSync(`git tag -a "v${targetVersion}" -m "Release v${targetVersion}"`, { stdio: 'inherit' });
-    console.log(`✓ Committed and tagged v${targetVersion} successfully.`);
+    console.log(`✓ Tagged v${targetVersion} successfully.`);
     console.log(`\nNext steps:\n  git push origin HEAD --follow-tags`);
   } catch (err) {
     console.error(`Error during git operations: ${err.message}`);
