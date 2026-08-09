@@ -376,8 +376,8 @@ async function getConfig() {
             }
 
             // If origins are not set, add a default pattern
-            if (!siteConfig.origins) {
-                siteConfig.origins = [`https://${domain}/*`];
+            if (!mergedSiteConfigs[domain].origins) {
+                mergedSiteConfigs[domain].origins = [`https://${domain}/*`];
             }
         }
 

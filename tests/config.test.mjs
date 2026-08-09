@@ -9,6 +9,8 @@ let changeListener = null;
 let localGetCalls = 0;
 let syncGetCalls = 0;
 
+let mockSyncData = {};
+
 // Mock browser API globally before importing config.js
 globalThis.chrome = {
   storage: {
@@ -21,7 +23,7 @@ globalThis.chrome = {
     sync: {
       get: async () => {
         syncGetCalls++;
-        return {};
+        return mockSyncData;
       }
     },
     onChanged: {
@@ -142,6 +144,33 @@ async function runTests() {
     } else {
       console.log('✅ getConfig after storage change successfully re-read from storage.');
     }
+  }
+
+  console.log('\n--- Sync Overrides Check ---');
+  // Trigger cache invalidation so we read from storage again
+  if (typeof changeListener === 'function') {
+    changeListener({}, 'sync');
+  }
+  
+  mockSyncData = {
+    userSiteOverrides: {
+      "yle.fi": { enabled: false }
+    }
+  };
+
+  const overriddenConfig = await getConfig();
+  if (overriddenConfig.siteConfigs["yle.fi"].enabled !== false) {
+    console.error('❌ Error: Sync override was not applied to yle.fi.');
+    failed = true;
+  } else {
+    console.log('✅ Sync override was successfully applied to yle.fi.');
+  }
+
+  if (!overriddenConfig.siteConfigs["yle.fi"].origins) {
+    console.error('❌ Error: Origins were missing from overridden config for yle.fi.');
+    failed = true;
+  } else {
+    console.log('✅ Origins correctly populated for overridden config for yle.fi.');
   }
 
   if (failed) {
