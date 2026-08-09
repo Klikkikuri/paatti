@@ -321,5 +321,13 @@
   "modifierAiSlopTooltip": {
     "message": "Content exhibits characteristics typical of AI-generated or AI-translated material.",
     "description": "Tooltip text for AI content marker"
+  },
+  "settingSavedSuccess": {
+    "message": "Setting saved!",
+    "description": "Notification message shown when a setting is saved successfully"
+  },
+  "settingSavedError": {
+    "message": "Error saving setting",
+    "description": "Notification message shown when saving a setting fails"
   }
 }

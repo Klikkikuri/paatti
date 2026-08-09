@@ -320,5 +320,13 @@
   "modifierAiSlopTooltip": {
     "message": "Sisällössä on havaittu tekoälyllä luodulle tai käännetylle tekstille tyypillisiä piirteitä.",
     "description": "Tooltip-teksti tekoälymerkinnälle"
+  },
+  "settingSavedSuccess": {
+    "message": "Asetus tallennettu!",
+    "description": "Notification message shown when a setting is saved successfully"
+  },
+  "settingSavedError": {
+    "message": "Virhe asetuksen tallentamisessa",
+    "description": "Notification message shown when saving a setting fails"
   }
 }

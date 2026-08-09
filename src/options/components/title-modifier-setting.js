@@ -138,7 +138,12 @@ class TitleModifierSetting extends HTMLElement {
                 if (layout !== 'compact') {
                     this.dispatchEvent(new CustomEvent('setting-saved', {
                         bubbles: true,
-                        detail: { key: `modifier-${modifier}`, value: checked, success: true, message: 'Asetus tallennettu!' }
+                        detail: {
+                            key: `modifier-${modifier}`,
+                            value: checked,
+                            success: true,
+                            message: browser().i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
+                        }
                     }));
                 }
             } catch (err) {
@@ -147,7 +152,12 @@ class TitleModifierSetting extends HTMLElement {
                 if (layout !== 'compact') {
                     this.dispatchEvent(new CustomEvent('setting-saved', {
                         bubbles: true,
-                        detail: { key: `modifier-${modifier}`, value: !checked, success: false, message: 'Virhe asetuksen tallentamisessa' }
+                        detail: {
+                            key: `modifier-${modifier}`,
+                            value: !checked,
+                            success: false,
+                            message: browser().i18n.getMessage('settingSavedError') || 'Error saving setting'
+                        }
                     }));
                 }
             }
