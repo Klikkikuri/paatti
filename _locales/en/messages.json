@@ -321,5 +321,9 @@
   "modifierAiSlopTooltip": {
     "message": "Content is primarily created or translated using AI.",
     "description": "Tooltip text for AI content marker"
+  },
+  "powerButtonAriaLabel": {
+    "message": "Toggle extension for current site",
+    "description": "Aria label for the power button that toggles the extension on/off for the current site"
   }
 }

@@ -7,7 +7,7 @@ import { handleSiteToggleHelper } from './site-toggle.js';
 
 const template = document.createElement('template');
 template.innerHTML = `
-    <input class="conversion-switch hidden" id="site-enabled" type="checkbox">
+    <input class="conversion-switch visually-hidden" id="site-enabled" type="checkbox" aria-label="Toggle extension for current site">
     <label class="push-button" for="site-enabled">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 60%; height: 60%;">
             <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
@@ -39,8 +39,6 @@ export class PowerButton extends HTMLElement {
         this.initialized = true;
 
         this.style.display = 'inline-block';
-        this.style.width = '50px';
-        this.style.height = '50px';
 
         this.render();
         this.loadState();
@@ -64,6 +62,11 @@ export class PowerButton extends HTMLElement {
      */
     render() {
         this.replaceChildren(template.content.cloneNode(true));
+        
+        const checkbox = this.querySelector('input');
+        if (checkbox) {
+            checkbox.setAttribute('aria-label', browser().i18n.getMessage("powerButtonAriaLabel") || "Toggle extension for current site");
+        }
     }
 
     /**
