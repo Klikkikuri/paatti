@@ -21,6 +21,17 @@ let hrefSign;
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
     const { applyModifiers } = await import(browser.runtime.getURL("src/modifiers.js"));
 
+    // Inject Web Component into page's main world context
+    try {
+        const scriptElem = document.createElement("script");
+        scriptElem.type = "module";
+        scriptElem.src = browser.runtime.getURL("src/components/klikkikuri-ai-badge.js");
+        (document.head || document.documentElement).appendChild(scriptElem);
+    } catch (e) {
+        // Fallback for isolated environment
+        await import(browser.runtime.getURL("src/components/klikkikuri-ai-badge.js"));
+    }
+
     const log = getLogger("content_script");
 
     hrefSign = async (url) => {
@@ -301,13 +312,19 @@ let hrefSign;
                     if (canAppendSpan(titleElem)) {
                         const children = [];
                         for (const b of badges) {
-                            const badgeSpan = document.createElement("span");
-                            badgeSpan.className = b.className || "klikkikuri-ai-badge";
-                            badgeSpan.textContent = b.badgeText;
-                            if (b.tooltip) {
-                                badgeSpan.setAttribute("title", b.tooltip);
+                            const badgeElem = document.createElement(b.tagName || "span");
+                            badgeElem.className = b.className || "klikkikuri-badge";
+                            if (b.badgeText) {
+                                badgeElem.setAttribute("label", b.badgeText);
                             }
-                            children.push(badgeSpan);
+                            if (b.tooltip) {
+                                badgeElem.setAttribute("tooltip", b.tooltip);
+                                badgeElem.setAttribute("title", b.tooltip);
+                            }
+                            if (b.tagName !== "klikkikuri-ai-badge" && b.badgeText) {
+                                badgeElem.textContent = b.badgeText;
+                            }
+                            children.push(badgeElem);
                         }
                         children.push(document.createTextNode(modifiedTitle));
                         titleElem.replaceChildren(...children);

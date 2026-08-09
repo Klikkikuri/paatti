@@ -15,9 +15,11 @@ const titleModifiers = [
         modify: (title, entry) => {
             if (entry.labels && entry.labels.includes(LABEL_AI_SLOP)) {
                 const tooltip = browser()?.i18n?.getMessage("modifierAiSlopTooltip") || "Sisältö on pääosin luotu tai käännetty tekoälyllä.";
+                const label = browser()?.i18n?.getMessage("modifierAiSlopLabel") || "AI";
                 return {
                     text: title,
-                    badgeText: "✨ ",
+                    tagName: "klikkikuri-ai-badge",
+                    badgeText: label,
                     tooltip: tooltip
                 };
             }
@@ -44,11 +46,12 @@ async function applyModifiers(titleText, rahtiEntry) {
                     currentText = res;
                 } else if (res && typeof res === "object") {
                     if (res.text !== undefined) currentText = res.text;
-                    if (res.badgeText) {
+                    if (res.badgeText || res.tagName) {
                         badges.push({
+                            tagName: res.tagName || "span",
                             badgeText: res.badgeText,
                             tooltip: res.tooltip,
-                            className: res.className || "klikkikuri-ai-badge"
+                            className: res.className || "klikkikuri-badge"
                         });
                     }
                 }
