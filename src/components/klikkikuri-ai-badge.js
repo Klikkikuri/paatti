@@ -50,13 +50,17 @@ template.innerHTML = `
     }
 }
 </style>
-<svg class="ai-icon" role="img" viewBox="0 0 24 24" width="18" height="18" aria-label="Tekoälymerkintä">
+<svg class="ai-icon" role="img" viewBox="0 0 24 24" width="18" height="18">
     <circle class="ai-icon-bg" cx="12" cy="12" r="11" />
     <text class="ai-icon-text" x="12" y="15.5" text-anchor="middle">AI</text>
 </svg>
 `;
 
 export class KlikkikuriAiBadge extends HTMLElement {
+    static get observedAttributes() {
+        return ["label", "tooltip"];
+    }
+
     constructor() {
         super();
         if (!this.shadowRoot) {
@@ -67,6 +71,34 @@ export class KlikkikuriAiBadge extends HTMLElement {
 
     connectedCallback() {
         this.style.setProperty("display", "inline-flex", "important");
+        this._updateLabels();
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (oldValue !== newValue) {
+            this._updateLabels();
+        }
+    }
+
+    _updateLabels() {
+        const svg = this.shadowRoot.querySelector("svg");
+        if (!svg) return;
+
+        const label = this.getAttribute("label") || this.getAttribute("tooltip") || "AI content";
+        const tooltip = this.getAttribute("tooltip") || label;
+
+        svg.setAttribute("aria-label", label);
+
+        let titleElement = svg.querySelector("title");
+        if (tooltip) {
+            if (!titleElement) {
+                titleElement = document.createElementNS("http://www.w3.org/2000/svg", "title");
+                svg.prepend(titleElement);
+            }
+            titleElement.textContent = tooltip;
+        } else if (titleElement) {
+            titleElement.remove();
+        }
     }
 }
 
