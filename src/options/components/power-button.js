@@ -63,9 +63,16 @@ export class PowerButton extends HTMLElement {
     render() {
         this.replaceChildren(template.content.cloneNode(true));
         
+        const localizedLabel = browser().i18n.getMessage("powerButtonAriaLabel") || "Toggle extension for current site";
+        
         const checkbox = this.querySelector('input');
         if (checkbox) {
-            checkbox.setAttribute('aria-label', browser().i18n.getMessage("powerButtonAriaLabel") || "Toggle extension for current site");
+            checkbox.setAttribute('aria-label', localizedLabel);
+        }
+        
+        const label = this.querySelector('label');
+        if (label) {
+            label.setAttribute('title', localizedLabel);
         }
     }
 
