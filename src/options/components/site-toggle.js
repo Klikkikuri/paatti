@@ -11,15 +11,62 @@ compactTemplate.innerHTML = `
 
 const detailedTemplate = document.createElement('template');
 detailedTemplate.innerHTML = `
-    <div class="site-main-section" style="display: flex; flex-direction: column; flex: 1; margin-right: 20px; align-items: flex-start;">
-        <div class="site-info" style="display: flex; align-items: center; gap: 12px; width: 100%;">
+    <style>
+        .site-main-section {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            margin-right: 15px;
+            min-width: 0;
+        }
+        .site-details {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+            flex: 1;
+        }
+        .site-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            min-width: 0;
+        }
+        .site-favicon {
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        .site-name {
+            font-weight: bold;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .site-domain {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .site-details-container {
+            line-height: 1.2;
+            margin-top: 2px;
+        }
+        site-toggle-setting toggle-button {
+            flex-shrink: 0;
+        }
+    </style>
+    <div class="site-main-section">
+        <div class="site-info">
             <img alt="" width="24" height="24" class="site-favicon">
-            <div>
-                <div class="site-name" style="font-weight: bold; color: #333;"></div>
-                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; line-height: 1.2;">
-                    <span class="site-domain text-muted-small" style="line-height: 1.2;"></span>
-                    <span class="site-details-container" style="display: inline-flex; align-items: center; line-height: 1.2;"></span>
-                </div>
+            <div class="site-details">
+                <div class="site-name"></div>
+                <div class="site-domain"></div>
+                <div class="site-details-container"></div>
             </div>
         </div>
     </div>

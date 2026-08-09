@@ -252,6 +252,7 @@
             align-items: center;
             cursor: pointer;
             transition: all 0.2s;
+            min-width: 0;
         }
 
         .site-item:hover {
@@ -616,15 +617,16 @@
                 padding: 15px;
                 margin-bottom: 25px;
             }
-            .site-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
+            legend {
+                font-size: 1.3rem;
+                padding: 0 10px;
+                margin-left: 0;
+                max-width: 100%;
+                white-space: normal;
+                line-height: 1.4;
             }
             .detail-button {
-                align-self: stretch;
-                text-align: center;
-                padding: 10px;
+                padding: 6px 12px;
             }
         }
     </style>
