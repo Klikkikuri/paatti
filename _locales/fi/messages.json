@@ -306,11 +306,11 @@
     "description": "Short link text for publisher's policy button"
   },
   "modifierAiSlopTitle": {
-    "message": "✨ Tekoälymerkintä (AI)",
+    "message": "Tekoälymerkintä (AI)",
     "description": "Otsikko tekoälymerkinnän valinnalle"
   },
   "modifierAiSlopDesc": {
-    "message": "Lisää ✨-ilmaisimen otsikoihin, joiden sisältö on pääosin luotu tai käännetty tekoälyllä.",
+    "message": "Lisää ilmaisimen otsikoihin sisällölle, jossa on havaittu tekoälyllä luodulle tai käännetylle tekstille tyypillisiä piirteitä.",
     "description": "Kuvaus tekoälymerkinnän valinnalle"
   },
   "modifierAiSlopLabel": {
@@ -318,7 +318,7 @@
     "description": "Kompakti etiketti tekoälymerkinnän valinnalle"
   },
   "modifierAiSlopTooltip": {
-    "message": "Sisältö on pääosin luotu tai käännetty tekoälyllä.",
+    "message": "Sisällössä on havaittu tekoälyllä luodulle tai käännetylle tekstille tyypillisiä piirteitä.",
     "description": "Tooltip-teksti tekoälymerkinnälle"
   }
 }
