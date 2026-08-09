@@ -32,7 +32,7 @@ const titleModifiers = [
  * Applies all active modifiers sequentially to the given title text.
  * @param {string} titleText - The title text to modify
  * @param {Object} rahtiEntry - The dataset entry
- * @returns {Promise<{text: string, badges: Array<{badgeText: string, tooltip?: string, className?: string}>}>} The modified title text and badges
+ * @returns {Promise<{text: string, badges: Array<{tagName: string, badgeText?: string, tooltip?: string, className?: string}>}>} The modified title text and badges
  */
 async function applyModifiers(titleText, rahtiEntry) {
     let currentText = titleText;
