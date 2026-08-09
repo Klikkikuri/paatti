@@ -329,5 +329,10 @@
   "settingSavedError": {
     "message": "Error saving setting",
     "description": "Notification message shown when saving a setting fails"
+  },
+  "powerButtonAriaLabel": {
+    "message": "Toggle extension for current site",
+    "description": "Aria label for the power button that toggles the extension on/off for the current site"
   }
+}
 }

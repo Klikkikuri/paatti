@@ -328,5 +328,10 @@
   "settingSavedError": {
     "message": "Virhe asetuksen tallentamisessa",
     "description": "Notification message shown when saving a setting fails"
+  },
+  "powerButtonAriaLabel": {
+    "message": "Vaihda laajennuksen tilaa nykyiselle sivustolle",
+    "description": "Aria label for the power button that toggles the extension on/off for the current site"
   }
+}
 }

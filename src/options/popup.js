@@ -590,15 +590,6 @@ const handleDomContentLoaded = async (e) => {
 
 
     await refresh();
-
-    // Set view height to the dimensions found when opened the popup so that the
-    // view does not jump around when navigating but keeps (I hope) the view
-    // responsive in different windows.
-    // FIXME: If height is not "max" at start (like an error message makes the
-    // vertical length shorter than the length in normal state), the following
-    // normal state gets a vertical scrollbar. Maybe take max of current and run
-    // this again on refreshes?
-    document.querySelector("body").style.height = `${document.querySelector("body").clientHeight + 38}px`;
 };
 
 const __devmodeEnable = async () => {
