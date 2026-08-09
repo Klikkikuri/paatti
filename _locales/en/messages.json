@@ -307,23 +307,32 @@
     "description": "Short link text for publisher's policy button"
   },
   "modifierAiSlopTitle": {
-    "message": "✨ AI Content Marker",
+    "message": "AI Content Marker",
     "description": "Title for AI content marker setting"
   },
   "modifierAiSlopDesc": {
-    "message": "Adds ✨ indicator to headlines when the content is primarily created or translated using AI.",
+    "message": "Displays an indicator on headlines for content exhibiting characteristics typical of AI-generated or AI-translated material.",
     "description": "Description for AI content marker setting"
   },
   "modifierAiSlopLabel": {
-    "message": "AI content marker",
+    "message": "Mark AI-generated content",
     "description": "Compact label for AI content marker setting"
   },
   "modifierAiSlopTooltip": {
-    "message": "Content is primarily created or translated using AI.",
+    "message": "Content exhibits characteristics typical of AI-generated or AI-translated material.",
     "description": "Tooltip text for AI content marker"
+  },
+  "settingSavedSuccess": {
+    "message": "Setting saved!",
+    "description": "Notification message shown when a setting is saved successfully"
+  },
+  "settingSavedError": {
+    "message": "Error saving setting",
+    "description": "Notification message shown when saving a setting fails"
   },
   "powerButtonAriaLabel": {
     "message": "Toggle extension for current site",
     "description": "Aria label for the power button that toggles the extension on/off for the current site"
   }
+}
 }

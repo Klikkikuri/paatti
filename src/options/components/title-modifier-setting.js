@@ -2,6 +2,7 @@ import { browser } from '../../utils.js';
 import { controller } from '../../controller.js';
 import { getConfig } from '../../config.js';
 import './toggle-button.js';
+import '../../components/klikkikuri-ai-badge.js';
 
 const compactTemplate = document.createElement('template');
 compactTemplate.innerHTML = `
@@ -44,9 +45,9 @@ class TitleModifierSetting extends HTMLElement {
             this.classList.add('compact-setting-row');
             this.replaceChildren(compactTemplate.content.cloneNode(true));
 
-            let labelText = 'Merkitse tekoälysisältö';
+            let labelText = 'Mark AI generated content';
             if (modifier === 'aiSlop') {
-                labelText = browser().i18n.getMessage('modifierAiSlopLabel') || 'Tekoälymerkintä';
+                labelText = browser().i18n.getMessage('modifierAiSlopLabel') || 'Mark AI generated content';
             }
 
             const labelEl = this.querySelector('.label-text');
@@ -54,17 +55,24 @@ class TitleModifierSetting extends HTMLElement {
         } else {
             this.replaceChildren(detailedTemplate.content.cloneNode(true));
 
-            let title = 'Tekoälymerkintä (AI)';
-            let description = 'Lisää ✨-ilmaisimen otsikoihin, joiden sisältö on pääosin luotu tai käännetty tekoälyllä.';
+            let title = 'AI Content Marker';
+            let description = 'Adds AI indicator to headlines when the content is primarily created or translated using AI.';
 
             if (modifier === 'aiSlop') {
-                title = browser().i18n.getMessage('modifierAiSlopTitle') || '✨ Tekoälymerkintä (AI)';
-                description = browser().i18n.getMessage('modifierAiSlopDesc') || 'Lisää ✨-ilmaisimen otsikoihin, joiden sisältö on pääosin luotu tai käännetty tekoälyllä.';
+                title = browser().i18n.getMessage('modifierAiSlopTitle') || 'AI Content Marker';
+                description = browser().i18n.getMessage('modifierAiSlopDesc') || 'Adds AI indicator to headlines when the content is primarily created or translated using AI.';
             }
 
             const titleEl = this.querySelector('.title-text');
             const descEl = this.querySelector('.description-text');
-            if (titleEl) titleEl.textContent = title;
+            if (titleEl) {
+                titleEl.textContent = title + ' ';
+                if (modifier === 'aiSlop') {
+                    const badgeElem = document.createElement('klikkikuri-ai-badge');
+                    badgeElem.style.marginLeft = '0.25em';
+                    titleEl.appendChild(badgeElem);
+                }
+            }
             if (descEl) descEl.textContent = description;
         }
 
@@ -130,7 +138,12 @@ class TitleModifierSetting extends HTMLElement {
                 if (layout !== 'compact') {
                     this.dispatchEvent(new CustomEvent('setting-saved', {
                         bubbles: true,
-                        detail: { key: `modifier-${modifier}`, value: checked, success: true, message: 'Asetus tallennettu!' }
+                        detail: {
+                            key: `modifier-${modifier}`,
+                            value: checked,
+                            success: true,
+                            message: browser().i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
+                        }
                     }));
                 }
             } catch (err) {
@@ -139,7 +152,12 @@ class TitleModifierSetting extends HTMLElement {
                 if (layout !== 'compact') {
                     this.dispatchEvent(new CustomEvent('setting-saved', {
                         bubbles: true,
-                        detail: { key: `modifier-${modifier}`, value: !checked, success: false, message: 'Virhe asetuksen tallentamisessa' }
+                        detail: {
+                            key: `modifier-${modifier}`,
+                            value: !checked,
+                            success: false,
+                            message: browser().i18n.getMessage('settingSavedError') || 'Error saving setting'
+                        }
                     }));
                 }
             }
