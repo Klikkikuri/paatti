@@ -5,7 +5,7 @@ let mockModifiers = {
     video: true
 };
 
-let changeListener = null;
+let changeListeners = [];
 
 // Global browser API mock for testing
 globalThis.chrome = {
@@ -19,8 +19,9 @@ globalThis.chrome = {
             }
         },
         onChanged: {
+            // Store all listeners so multiple modules can subscribe without clobbering each other
             addListener: (fn) => {
-                changeListener = fn;
+                changeListeners.push(fn);
             }
         }
     },
@@ -45,9 +46,7 @@ const { applyModifiers } = await import('../src/modifiers.js');
 
 function setModifiers(newModifiers) {
     mockModifiers = { ...newModifiers };
-    if (changeListener) {
-        changeListener({}, "sync");
-    }
+    changeListeners.forEach(fn => fn({}, "sync"));
 }
 
 async function runTests() {
