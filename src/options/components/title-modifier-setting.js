@@ -3,6 +3,7 @@ import { controller } from '../../controller.js';
 import { getConfig } from '../../config.js';
 import './toggle-button.js';
 import '../../components/klikkikuri-ai-badge.js';
+import '../../components/klikkikuri-video-badge.js';
 
 const compactTemplate = document.createElement('template');
 compactTemplate.innerHTML = `
@@ -24,7 +25,7 @@ detailedTemplate.innerHTML = `
 `;
 
 /**
- * Custom element managing title modifier options (e.g. Tekoälymerkintä / AI Slop).
+ * Custom element managing title modifier options (e.g. Tekoälymerkintä / AI Slop, Videomerkintä / Video).
  * Supports layout="compact" (popup setting) and layout="detailed" (options page).
  */
 class TitleModifierSetting extends HTMLElement {
@@ -48,6 +49,8 @@ class TitleModifierSetting extends HTMLElement {
             let labelText = 'Mark AI generated content';
             if (modifier === 'aiSlop') {
                 labelText = browser().i18n.getMessage('modifierAiSlopLabel') || 'Mark AI generated content';
+            } else if (modifier === 'video') {
+                labelText = browser().i18n.getMessage('modifierVideoLabel') || 'Mark video content';
             }
 
             const labelEl = this.querySelector('.label-text');
@@ -61,6 +64,9 @@ class TitleModifierSetting extends HTMLElement {
             if (modifier === 'aiSlop') {
                 title = browser().i18n.getMessage('modifierAiSlopTitle') || 'AI Content Marker';
                 description = browser().i18n.getMessage('modifierAiSlopDesc') || 'Adds AI indicator to headlines when the content is primarily created or translated using AI.';
+            } else if (modifier === 'video') {
+                title = browser().i18n.getMessage('modifierVideoTitle') || 'Video Content Marker';
+                description = browser().i18n.getMessage('modifierVideoDesc') || 'Shows a video icon next to headlines when the link is mostly video rather than a written article.';
             }
 
             const titleEl = this.querySelector('.title-text');
@@ -69,6 +75,10 @@ class TitleModifierSetting extends HTMLElement {
                 titleEl.textContent = title + ' ';
                 if (modifier === 'aiSlop') {
                     const badgeElem = document.createElement('klikkikuri-ai-badge');
+                    badgeElem.style.marginLeft = '0.25em';
+                    titleEl.appendChild(badgeElem);
+                } else if (modifier === 'video') {
+                    const badgeElem = document.createElement('klikkikuri-video-badge');
                     badgeElem.style.marginLeft = '0.25em';
                     titleEl.appendChild(badgeElem);
                 }

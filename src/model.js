@@ -452,6 +452,15 @@ const model = (() => {
             getMarkAiSlop: async () => {
                 const config = await getConfig();
                 return !!config.modifiers?.aiSlop;
+            },
+
+            /**
+             * Whether the video content modifier is enabled in user settings.
+             * @returns {Promise<boolean>}
+             */
+            getMarkVideo: async () => {
+                const config = await getConfig();
+                return !!config.modifiers?.video;
             }
         },
     };

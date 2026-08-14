@@ -4,6 +4,7 @@ import { model } from "./model.js";
 import { browser } from "./utils.js";
 
 const LABEL_AI_SLOP = "com.github.klikkikuri/ai-slop=true";
+const LABEL_VIDEO = "com.github.klikkikuri/type=video";
 
 /**
  * List of registered title modifiers that run sequentially on news titles.
@@ -19,6 +20,28 @@ const titleModifiers = [
                 return {
                     text: title,
                     tagName: "klikkikuri-ai-badge",
+                    badgeText: label,
+                    tooltip: tooltip
+                };
+            }
+            return { text: title };
+        }
+    },
+    {
+        name: "video",
+        isEnabled: async () => await model.read.getMarkVideo(),
+        /**
+         * Adds a video badge to the title if the entry is labelled as primarily video content.
+         * @param {string} title
+         * @param {Object} entry - The rahti data entry
+         */
+        modify: (title, entry) => {
+            if (entry.labels && entry.labels.includes(LABEL_VIDEO)) {
+                const tooltip = browser()?.i18n?.getMessage("modifierVideoTooltip") || "This link is mostly video rather than a written article.";
+                const label = browser()?.i18n?.getMessage("modifierVideoLabel") || "Video";
+                return {
+                    text: title,
+                    tagName: "klikkikuri-video-badge",
                     badgeText: label,
                     tooltip: tooltip
                 };
@@ -46,12 +69,11 @@ async function applyModifiers(titleText, rahtiEntry) {
                     currentText = res;
                 } else if (res && typeof res === "object") {
                     if (res.text !== undefined) currentText = res.text;
-                    if (res.badgeText || res.tagName) {
+                    if (res.tagName) {
                         badges.push({
-                            tagName: res.tagName || "span",
+                            tagName: res.tagName,
                             badgeText: res.badgeText,
-                            tooltip: res.tooltip,
-                            className: res.className || "klikkikuri-badge"
+                            tooltip: res.tooltip
                         });
                     }
                 }

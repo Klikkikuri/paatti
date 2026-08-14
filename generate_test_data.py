@@ -11,7 +11,8 @@ ARTICLE_LABELS = {
     ("com.github.klikkikuri/article-type=article", 50),
     ("com.github.klikkikuri/paywalled=true", 30),
     ("com.github.klikkikuri/sponsored=true", 5),
-    ("com.github.klikkikuri/ai-slop=true", 5)
+    ("com.github.klikkikuri/ai-slop=true", 5),
+    ("com.github.klikkikuri/type=video", 10),
 }
 
 if __name__ == "__main__":

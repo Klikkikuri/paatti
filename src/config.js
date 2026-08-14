@@ -16,7 +16,8 @@ const DEFAULT_CONFIG = {
     "enabled": true,
     "environment": "free",
     "modifiers": {
-        "aiSlop": true
+        "aiSlop": true,
+        "video": false
     },
 
     // CONFIG: Configure per-site settings here.
