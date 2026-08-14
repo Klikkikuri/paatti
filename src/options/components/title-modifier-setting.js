@@ -26,7 +26,7 @@ detailedTemplate.innerHTML = `
 
 /**
  * Per-modifier metadata used to populate labels, descriptions, and badge previews.
- * Add a new entry here when registering a new modifier — no other changes needed in this file.
+ * When registering a new modifier, add an entry here and ensure the corresponding badge Web Component is imported/registered (so `badgeTag` is defined).
  *
  * @type {Record<string, {labelKey: string, labelFallback: string, titleKey: string, titleFallback: string, descKey: string, descFallback: string, badgeTag: string}>}
  */
