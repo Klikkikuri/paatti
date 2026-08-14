@@ -1,11 +1,12 @@
 "use strict";
 
+import { createBadgeClass } from "./badge-base.js";
+
 /**
  * Custom Web Component for EU-styled AI content badges.
  * Displays the official EU AI circle badge icon (solid circle with bold 'AI' cutout/fill).
  */
-const template = document.createElement("template");
-template.innerHTML = `
+const templateHtml = `
 <style>
 :host {
     display: inline-flex !important;
@@ -56,51 +57,7 @@ template.innerHTML = `
 </svg>
 `;
 
-export class KlikkikuriAiBadge extends HTMLElement {
-    static get observedAttributes() {
-        return ["label", "tooltip"];
-    }
-
-    constructor() {
-        super();
-        if (!this.shadowRoot) {
-            this.attachShadow({ mode: "open" });
-            this.shadowRoot.appendChild(template.content.cloneNode(true));
-        }
-    }
-
-    connectedCallback() {
-        this.style.setProperty("display", "inline-flex", "important");
-        this._updateLabels();
-    }
-
-    attributeChangedCallback(name, oldValue, newValue) {
-        if (oldValue !== newValue) {
-            this._updateLabels();
-        }
-    }
-
-    _updateLabels() {
-        const svg = this.shadowRoot.querySelector("svg");
-        if (!svg) return;
-
-        const label = this.getAttribute("label") || this.getAttribute("tooltip") || "AI content";
-        const tooltip = this.getAttribute("tooltip") || label;
-
-        svg.setAttribute("aria-label", label);
-
-        let titleElement = svg.querySelector("title");
-        if (tooltip) {
-            if (!titleElement) {
-                titleElement = document.createElementNS("http://www.w3.org/2000/svg", "title");
-                svg.prepend(titleElement);
-            }
-            titleElement.textContent = tooltip;
-        } else if (titleElement) {
-            titleElement.remove();
-        }
-    }
-}
+export class KlikkikuriAiBadge extends createBadgeClass(templateHtml, "AI content") {}
 
 if (typeof window !== "undefined" && window.customElements && !window.customElements.get("klikkikuri-ai-badge")) {
     window.customElements.define("klikkikuri-ai-badge", KlikkikuriAiBadge);
