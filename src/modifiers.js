@@ -13,6 +13,11 @@ const titleModifiers = [
     {
         name: "ai-slop",
         isEnabled: async () => await model.read.getMarkAiSlop(),
+        /**
+         * Adds an AI badge to the title if the entry is labelled as AI-generated content.
+         * @param {string} title
+         * @param {Object} entry - The rahti data entry
+         */
         modify: (title, entry) => {
             if (entry.labels && entry.labels.includes(LABEL_AI_SLOP)) {
                 const tooltip = browser()?.i18n?.getMessage("modifierAiSlopTooltip") || "Sisältö on pääosin luotu tai käännetty tekoälyllä.";
