@@ -25,6 +25,33 @@ detailedTemplate.innerHTML = `
 `;
 
 /**
+ * Per-modifier metadata used to populate labels, descriptions, and badge previews.
+ * Add a new entry here when registering a new modifier — no other changes needed in this file.
+ *
+ * @type {Record<string, {labelKey: string, labelFallback: string, titleKey: string, titleFallback: string, descKey: string, descFallback: string, badgeTag: string}>}
+ */
+const MODIFIER_META = {
+    aiSlop: {
+        labelKey:      'modifierAiSlopLabel',
+        labelFallback: 'Mark AI generated content',
+        titleKey:      'modifierAiSlopTitle',
+        titleFallback: 'AI Content Marker',
+        descKey:       'modifierAiSlopDesc',
+        descFallback:  'Adds AI indicator to headlines when the content is primarily created or translated using AI.',
+        badgeTag:      'klikkikuri-ai-badge',
+    },
+    video: {
+        labelKey:      'modifierVideoLabel',
+        labelFallback: 'Mark video content',
+        titleKey:      'modifierVideoTitle',
+        titleFallback: 'Video Content Marker',
+        descKey:       'modifierVideoDesc',
+        descFallback:  'Shows a video icon next to headlines when the link is mostly video rather than a written article.',
+        badgeTag:      'klikkikuri-video-badge',
+    },
+};
+
+/**
  * Custom element managing title modifier options (e.g. Tekoälymerkintä / AI Slop, Videomerkintä / Video).
  * Supports layout="compact" (popup setting) and layout="detailed" (options page).
  */
@@ -41,44 +68,34 @@ class TitleModifierSetting extends HTMLElement {
 
         const modifier = this.getAttribute('modifier') || 'aiSlop';
         const layout = this.getAttribute('layout') || 'detailed';
+        const meta = MODIFIER_META[modifier];
 
         if (layout === 'compact') {
             this.classList.add('compact-setting-row');
             this.replaceChildren(compactTemplate.content.cloneNode(true));
 
-            let labelText = 'Mark AI generated content';
-            if (modifier === 'aiSlop') {
-                labelText = browser().i18n.getMessage('modifierAiSlopLabel') || 'Mark AI generated content';
-            } else if (modifier === 'video') {
-                labelText = browser().i18n.getMessage('modifierVideoLabel') || 'Mark video content';
-            }
+            const labelText = meta
+                ? (browser().i18n.getMessage(meta.labelKey) || meta.labelFallback)
+                : modifier;
 
             const labelEl = this.querySelector('.label-text');
             if (labelEl) labelEl.textContent = labelText;
         } else {
             this.replaceChildren(detailedTemplate.content.cloneNode(true));
 
-            let title = 'AI Content Marker';
-            let description = 'Adds AI indicator to headlines when the content is primarily created or translated using AI.';
-
-            if (modifier === 'aiSlop') {
-                title = browser().i18n.getMessage('modifierAiSlopTitle') || 'AI Content Marker';
-                description = browser().i18n.getMessage('modifierAiSlopDesc') || 'Adds AI indicator to headlines when the content is primarily created or translated using AI.';
-            } else if (modifier === 'video') {
-                title = browser().i18n.getMessage('modifierVideoTitle') || 'Video Content Marker';
-                description = browser().i18n.getMessage('modifierVideoDesc') || 'Shows a video icon next to headlines when the link is mostly video rather than a written article.';
-            }
+            const title = meta
+                ? (browser().i18n.getMessage(meta.titleKey) || meta.titleFallback)
+                : modifier;
+            const description = meta
+                ? (browser().i18n.getMessage(meta.descKey) || meta.descFallback)
+                : '';
 
             const titleEl = this.querySelector('.title-text');
             const descEl = this.querySelector('.description-text');
             if (titleEl) {
                 titleEl.textContent = title + ' ';
-                if (modifier === 'aiSlop') {
-                    const badgeElem = document.createElement('klikkikuri-ai-badge');
-                    badgeElem.style.marginLeft = '0.25em';
-                    titleEl.appendChild(badgeElem);
-                } else if (modifier === 'video') {
-                    const badgeElem = document.createElement('klikkikuri-video-badge');
+                if (meta?.badgeTag) {
+                    const badgeElem = document.createElement(meta.badgeTag);
                     badgeElem.style.marginLeft = '0.25em';
                     titleEl.appendChild(badgeElem);
                 }
