@@ -106,6 +106,7 @@ html.klikkikuri-visual-hilight *[data-klikkikuri-status].klikkikuri-hover-highli
  * General badge container layout styling
  */
 klikkikuri-ai-badge,
+klikkikuri-video-badge,
 .klikkikuri-badge {
     display: inline-flex;
     vertical-align: middle;

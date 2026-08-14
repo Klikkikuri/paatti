@@ -16,7 +16,8 @@ const DEFAULT_CONFIG = {
     "enabled": true,
     "environment": "free",
     "modifiers": {
-        "aiSlop": true
+        "aiSlop": true,
+        "video": false
     },
 
     // CONFIG: Configure per-site settings here.
@@ -300,6 +301,9 @@ const DEFAULT_CONFIG = {
             ...DEFAULT_ENV,
             "debugVisualsEnabled": true,
             "refreshIntervalMinutes": 1,
+            "modifiers": {
+                "video": true
+            },
             "titleDataUrls": [
                 "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json",
                 "http://localhost:3000/data.json"
@@ -384,14 +388,15 @@ async function getConfig() {
         const finalConfig = {
             ...DEFAULT_CONFIG,
             ...userPreferences, // Overwrite defaults with user choices (e.g., "enabled": false)
+            ...envData,         // Flatten environment data (e.g., titleDataUrl) into the top level
             modifiers: {
                 ...DEFAULT_CONFIG.modifiers,
+                ...(envData?.modifiers || {}),
                 ...syncModifiers
             },
             environmentConfigs: mergedEnvConfigs,
             siteConfigs: mergedSiteConfigs, // Use properly merged site configs
-            activeEnv: activeEnv,
-            ...envData    // Flatten environment data (e.g., titleDataUrl) into the top level
+            activeEnv: activeEnv
         };
 
         // Cache the result only if the cache wasn't invalidated during the async call

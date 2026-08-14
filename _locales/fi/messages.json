@@ -321,6 +321,22 @@
     "message": "Sisällössä on havaittu tekoälyllä luodulle tai käännetylle tekstille tyypillisiä piirteitä.",
     "description": "Tooltip-teksti tekoälymerkinnälle"
   },
+  "modifierVideoTitle": {
+    "message": "Videomerkintä",
+    "description": "Otsikko videomerkinnän valinnalle"
+  },
+  "modifierVideoDesc": {
+    "message": "Näyttää videokuvakkeen otsikon vieressä, kun juttu on pääosin video eikä luettava artikkeli.",
+    "description": "Kuvaus videomerkinnän valinnalle"
+  },
+  "modifierVideoLabel": {
+    "message": "Videomerkintä",
+    "description": "Kompakti etiketti videomerkinnän valinnalle"
+  },
+  "modifierVideoTooltip": {
+    "message": "Juttu on pääosin video eikä luettava artikkeli.",
+    "description": "Tooltip-teksti videomerkinnälle"
+  },
   "settingSavedSuccess": {
     "message": "Asetus tallennettu!",
     "description": "Notification message shown when a setting is saved successfully"

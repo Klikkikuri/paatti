@@ -21,15 +21,21 @@ let hrefSign;
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
     const { applyModifiers } = await import(browser.runtime.getURL("src/modifiers.js"));
 
-    // Inject Web Component into page's main world context
-    try {
-        const scriptElem = document.createElement("script");
-        scriptElem.type = "module";
-        scriptElem.src = browser.runtime.getURL("src/components/klikkikuri-ai-badge.js");
-        (document.head || document.documentElement).appendChild(scriptElem);
-    } catch (e) {
-        // Fallback for isolated environment
-        await import(browser.runtime.getURL("src/components/klikkikuri-ai-badge.js"));
+    // Inject Web Components into page's main world context
+    const badgeComponents = [
+        "src/components/klikkikuri-ai-badge.js",
+        "src/components/klikkikuri-video-badge.js"
+    ];
+    for (const componentPath of badgeComponents) {
+        try {
+            const scriptElem = document.createElement("script");
+            scriptElem.type = "module";
+            scriptElem.src = browser.runtime.getURL(componentPath);
+            (document.head || document.documentElement).appendChild(scriptElem);
+        } catch (e) {
+            // Fallback for isolated environment
+            await import(browser.runtime.getURL(componentPath));
+        }
     }
 
     const log = getLogger("content_script");
@@ -312,17 +318,14 @@ let hrefSign;
                     if (canAppendSpan(titleElem)) {
                         const children = [];
                         for (const b of badges) {
-                            const badgeElem = document.createElement(b.tagName || "span");
-                            badgeElem.className = b.className || "klikkikuri-badge";
+                            if (!b.tagName) continue;
+                            const badgeElem = document.createElement(b.tagName);
                             if (b.badgeText) {
                                 badgeElem.setAttribute("label", b.badgeText);
                             }
                             if (b.tooltip) {
                                 badgeElem.setAttribute("tooltip", b.tooltip);
                                 badgeElem.setAttribute("title", b.tooltip);
-                            }
-                            if (b.tagName !== "klikkikuri-ai-badge" && b.badgeText) {
-                                badgeElem.textContent = b.badgeText;
                             }
                             children.push(badgeElem);
                         }

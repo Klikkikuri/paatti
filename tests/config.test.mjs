@@ -9,6 +9,7 @@ let changeListener = null;
 let localGetCalls = 0;
 let syncGetCalls = 0;
 
+let mockLocalData = {};
 let mockSyncData = {};
 
 // Mock browser API globally before importing config.js
@@ -17,7 +18,7 @@ globalThis.chrome = {
     local: {
       get: async () => {
         localGetCalls++;
-        return {};
+        return mockLocalData;
       }
     },
     sync: {
@@ -171,6 +172,49 @@ async function runTests() {
     failed = true;
   } else {
     console.log('✅ Origins correctly populated for overridden config for yle.fi.');
+  }
+
+  console.log('\n--- Environment Modifiers Check ---');
+  // 1. Free environment default (no overrides): video should be false, aiSlop should be true
+  mockLocalData = { userPreferences: { environment: 'free' } };
+  mockSyncData = {};
+  if (typeof changeListener === 'function') {
+    changeListener({}, 'local');
+  }
+  const freeConfig = await getConfig();
+  if (freeConfig.modifiers?.video !== false || freeConfig.modifiers?.aiSlop !== true) {
+    console.error(`❌ Error: Expected free environment modifiers { aiSlop: true, video: false }, got:`, freeConfig.modifiers);
+    failed = true;
+  } else {
+    console.log('✅ Free environment defaults video modifier to false.');
+  }
+
+  // 2. Development environment default: video should be true by default
+  mockLocalData = { userPreferences: { environment: 'development' } };
+  mockSyncData = {};
+  if (typeof changeListener === 'function') {
+    changeListener({}, 'local');
+  }
+  const devConfig = await getConfig();
+  if (devConfig.modifiers?.video !== true || devConfig.modifiers?.aiSlop !== true) {
+    console.error(`❌ Error: Expected development environment modifiers { aiSlop: true, video: true }, got:`, devConfig.modifiers);
+    failed = true;
+  } else {
+    console.log('✅ Development environment defaults video modifier to true.');
+  }
+
+  // 3. User sync override should override development default
+  mockLocalData = { userPreferences: { environment: 'development' } };
+  mockSyncData = { modifiers: { video: false } };
+  if (typeof changeListener === 'function') {
+    changeListener({}, 'sync');
+  }
+  const devOverrideConfig = await getConfig();
+  if (devOverrideConfig.modifiers?.video !== false) {
+    console.error(`❌ Error: Expected user sync override to take precedence over dev default, got:`, devOverrideConfig.modifiers);
+    failed = true;
+  } else {
+    console.log('✅ User sync override takes precedence over development default.');
   }
 
   if (failed) {

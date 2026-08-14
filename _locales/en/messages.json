@@ -322,6 +322,22 @@
     "message": "Content exhibits characteristics typical of AI-generated or AI-translated material.",
     "description": "Tooltip text for AI content marker"
   },
+  "modifierVideoTitle": {
+    "message": "Video Content Marker",
+    "description": "Title for video content marker setting"
+  },
+  "modifierVideoDesc": {
+    "message": "Shows a video icon next to headlines when the link is mostly video rather than a written article.",
+    "description": "Description for video content marker setting"
+  },
+  "modifierVideoLabel": {
+    "message": "Mark video content",
+    "description": "Compact label for video content marker setting"
+  },
+  "modifierVideoTooltip": {
+    "message": "This link is mostly video rather than a written article.",
+    "description": "Tooltip text for video content marker"
+  },
   "settingSavedSuccess": {
     "message": "Setting saved!",
     "description": "Notification message shown when a setting is saved successfully"

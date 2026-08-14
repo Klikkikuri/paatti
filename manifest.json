@@ -47,7 +47,9 @@
         "src/rahti/fetcher.js",
         "src/rahti/sync.js",
         "src/modifiers.js",
+        "src/components/badge-base.js",
         "src/components/klikkikuri-ai-badge.js",
+        "src/components/klikkikuri-video-badge.js",
         "build/js.wasm"
       ],
       "matches": [
