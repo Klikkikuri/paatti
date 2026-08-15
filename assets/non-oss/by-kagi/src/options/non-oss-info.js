@@ -7,4 +7,4 @@
  */
 export const NON_OSS_CREDIT_HTML =
     'AI smell icon is used with permission, designed by ' +
-    '<a href="https://kagi.com/" target="_blank">Kagi Inc.</a>';
+    '<a href="https://kagi.com/" target="_blank" rel="noopener noreferrer">Kagi Inc.</a>';
