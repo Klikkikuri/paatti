@@ -40,6 +40,7 @@ Sail smoothly through the clickbait-infested web using this browser extension.
 - Uses the Go-compiled WebAssembly module [`suola`](https://github.com/Klikkikuri/suola) to normalize and hash (SHA-256) URLs locally. Because replaced **headlines are looked up from a cached local database**, your **browsing history is never transmitted** to external servers.
 - You can request support for additional sites by submitting a GitHub issue.
 - Monitors page updates using a **debounced DOM `MutationObserver`** to instantly process and replace new headlines as the user scrolls or navigates.
+- Fully supports **Firefox for Android**.
 - Integrates a **feature-rich popup interface** containing:
   - A visual **clickbait density gauge** showing the overall clickbait percentage of the current page.
   - Headline statistics grouped by **severity levels** (from "Not Clickbait at all" to "Extremely Clickbaity").
@@ -63,6 +64,7 @@ Sail smoothly through the clickbait-infested web using this browser extension.
   - *Yle* (`yle.fi`)
   - *MTV Uutiset* (`mtvuutiset.fi`)
   - *Äänekosken Kaupunkisanomat* (`aksa.fi`)
+  - *Ampparit* (`ampparit.com`)
 
 ## Screenshots
 
@@ -238,7 +240,7 @@ The project uses a semi-automated, tag-driven release process:
 ## Architecture
 ```mermaid
 ---
-title: Architecture v0.0.6
+title: Architecture v0.0.8
 ---
 classDiagram
     direction TB
@@ -299,6 +301,12 @@ classDiagram
         +convertClickbaits()
         +getConversions()
     }
+    class StatsModule {
+        +buildPageSnapshot()
+        +computeGaugeValue()
+        +mergeStats()
+        +createSessionTracker()
+    }
     class Modifiers {
         +titleModifiers
         +applyModifiers(titleText, rahtiEntry)
@@ -345,6 +353,9 @@ classDiagram
     ContentScript --> BackgroundScript : Requests batch URL hashing
     BackgroundScript --> SuolaWasm : Instantiates & runs Go Wasm
     ContentScript --> Controller : Updates active page stats
+    ContentScript --> StatsModule : Computes session delta & snapshot
+    Controller --> StatsModule : Merges cumulative stats
+    Popup --> StatsModule : Computes gauge values
     
     Popup *-- Controller : Dispatches user preferences
     Popup *-- Model : Reads config & stats
@@ -368,5 +379,6 @@ This project is licensed under the European Union Public Licence v1.2 (EUPL-1.2)
 - Finnish version (Suomenkielinen versio): [LISENSSI.md](LISENSSI.md)
 
 ### Non-OSS Assets
+These assets in [`assets/non-oss/`](./assets/non-oss/) are not covered by the EUPL-1.2 license and are excluded from default builds unless explicitly opted into via `NON_OSS=1`.
 
-Assets located in [`assets/non-oss/by-kagi/`](./assets/non-oss/by-kagi/) (specifically the AI smell icon) are designed by and copyright of [Kagi Inc.](https://kagi.com/) and used with permission (see [`assets/non-oss/by-kagi/PERMISSION.txt`](./assets/non-oss/by-kagi/PERMISSION.txt)). These assets are not covered by the EUPL-1.2 license and are excluded from default builds unless explicitly opted into via `NON_OSS=1`.
+- AI smell icon in [`assets/non-oss/by-kagi/`](./assets/non-oss/by-kagi/)is designed by and copyright of [Kagi Inc.](https://kagi.com/) and used with permission (see [`assets/non-oss/by-kagi/PERMISSION.txt`](./assets/non-oss/by-kagi/PERMISSION.txt)).
