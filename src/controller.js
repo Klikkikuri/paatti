@@ -88,8 +88,12 @@ const controller = {
 
     dispatchConversion: _dispatchConversion,
 
-    updateStatistics: async ({ hostname, siteStats, links }) => {
-        model.write.setStatistics(siteStats, { hostname });
+    /**
+     * Persist a page stats delta for a specific siteConfig domain.
+     * @param {{ domain: string, delta: import('./stats.js').PageSnapshot }} params
+     */
+    updateStatistics: async ({ domain, delta }) => {
+        await model.write.addStatistics(delta, { domain });
     },
 
     devmode: {

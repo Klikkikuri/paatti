@@ -1,9 +1,10 @@
 "use strict";
 
 import { getLogger, browser, getCurrentTabHostname } from "../utils.js";
-import { model, modelEvents } from "../model.js";
+import { model, modelEvents, Clickbaitiness } from "../model.js";
 import { controller } from "../controller.js";
 import { getConfig } from "../config.js";
+import { computeGaugeValue } from "../stats.js";
 import { isSiteEnabled, displayProductInfo, getClickbaitLevelInfo, localizeDocument } from "./utils.js";
 import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
@@ -66,12 +67,17 @@ const _setSettingsviewCheckboxesReadonly = (isConversionEnabled) => {
     }
 };
 
-const _refreshContentView = ({ site, data, isSiteEnabled }) => {
+// Cached page stats pushed live from the content script.
+let cachedPageStats = null;
+
+const levelToI18nKey = (level) => `clickbaitinessLabel_${level.replaceAll(" ", "_")}`;
+
+const _refreshHomeView = ({ site, pageStats, isSiteEnabled }) => {
     const siteHeaderElem = document.getElementById("site-host");
     // Reset possible error state.
     siteHeaderElem.classList.remove("error");
 
-    const statsTableData = (data || {}).groupedByClickbaitiness || {};
+    const statsTableData = (pageStats || {}).groupedByClickbaitiness || {};
     let statusTextKey = "";
 
     const requestSiteBtn = document.getElementById("request-site-btn");
@@ -95,13 +101,18 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
             siteHeaderElem.classList.add("error");
             siteHeaderElem.textContent = browser().i18n.getMessage("siteTitleProcessingDisabled");
             statusTextKey = "homeviewStatusDisabled";
-        } else if (Object.keys(data || {}).length === 0) {
-            siteHeaderElem.classList.add("error");
-            siteHeaderElem.textContent = browser().i18n.getMessage("statsErrorUserFixInstructions");
-            statusTextKey = "statsErrorUserFixInstructions";
+        } else if (pageStats === null) {
+            // Live page stats not yet received from content script (push model is async).
+            // Show site hostname in a neutral state — data will arrive via port message shortly.
+            siteHeaderElem.textContent = site;
+            statusTextKey = "";
+        } else if (Object.keys(statsTableData).length === 0) {
+            // Page was processed but no matching clickbait elements were found.
+            siteHeaderElem.textContent = site;
+            statusTextKey = "";
         } else {
-            // Display that this site is supported and processed.
-            document.getElementById("site-host").textContent = site;
+            // Page was processed and has clickbait data — show hostname and gauge.
+            siteHeaderElem.textContent = site;
             statusTextKey = "";
         }
     }
@@ -113,31 +124,12 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
     }
 
     const gaugeContainer = document.getElementById("gauge-container");
-    if (isSiteEnabled === undefined || !isSiteEnabled || Object.keys(data || {}).length === 0) {
+    if (isSiteEnabled === undefined || !isSiteEnabled || Object.keys(statsTableData).length === 0) {
         if (gaugeContainer) gaugeContainer.classList.add("hidden");
     } else {
         if (gaugeContainer) gaugeContainer.classList.remove("hidden");
 
-        const levelValues = {
-            "Not Clickbait at all": 0,
-            "Slightly Clickbaity": 1,
-            "Moderately Clickbaity": 2,
-            "Very Clickbaity": 3,
-            "Extremely Clickbaity": 4
-        };
-
-        let totalCount = 0;
-        let totalValue = 0;
-        for (const [key, count] of Object.entries(statsTableData)) {
-            const val = levelValues[key];
-            if (val !== undefined) {
-                totalCount += count;
-                totalValue += count * val;
-            }
-        }
-
-        const averageValue = totalCount > 0 ? (totalValue / totalCount) : 0;
-        const percentage = Math.round((averageValue / 4) * 100);
+        const { percentage, labelI18nKey } = computeGaugeValue(statsTableData);
 
         // Update gauge meter fill
         const gaugeFill = document.getElementById("gauge-fill");
@@ -153,50 +145,72 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
             gaugeText.textContent = `${percentage}%`;
         }
 
-        // Determine descriptive label
-        let labelI18nKey = "";
-        if (averageValue < 0.5) {
-            labelI18nKey = "clickbaitinessLabel_Not_Clickbait_at_all";
-        } else if (averageValue < 1.5) {
-            labelI18nKey = "clickbaitinessLabel_Slightly_Clickbaity";
-        } else if (averageValue < 2.5) {
-            labelI18nKey = "clickbaitinessLabel_Moderately_Clickbaity";
-        } else if (averageValue < 3.5) {
-            labelI18nKey = "clickbaitinessLabel_Very_Clickbaity";
-        } else {
-            labelI18nKey = "clickbaitinessLabel_Extremely_Clickbaity";
-        }
-
+        // Update gauge label
         const gaugeLabel = document.getElementById("gauge-label");
-        if (gaugeLabel) {
+        if (gaugeLabel && labelI18nKey) {
             gaugeLabel.textContent = browser().i18n.getMessage(labelI18nKey);
         }
     }
 
-    // Display total amount of found titles on this page.
-    const table = document.getElementById("statistics-grouped-by-clickbaitiness");
-    table.querySelector("tfoot td").textContent = Object.values(statsTableData).reduce((acc, x) => acc + x, 0);
+    // Populate live page statistics list under gauge (skip levels with count === 0)
+    const pageStatsList = document.getElementById("homeview-page-stats-list");
+    if (pageStatsList) {
+        pageStatsList.innerHTML = "";
+        for (const level of [...Clickbaitiness.LEVELS].reverse()) {
+            const count = statsTableData[level] || 0;
+            if (count > 0) {
+                const li = document.createElement("li");
+                li.style.display = "flex";
+                li.style.justifyContent = "space-between";
+                li.style.width = "100%";
+                li.style.padding = "2px 8px";
+                li.style.color = "#475569";
+                li.style.fontWeight = "500";
 
-    // The static HTML table has the row elements sorted by clickbaitiness level.
-    const clickbaitinessTableRows = table.querySelector("tbody").children;
+                const labelSpan = document.createElement("span");
+                labelSpan.textContent = browser().i18n.getMessage(levelToI18nKey(level));
 
-    for (const row of clickbaitinessTableRows) {
-        const levelI8nKey = row.id.replaceAll("-", "_");
-        const levelKey = levelI8nKey.split("clickbaitinessLabel_")[1].replaceAll("_", " ");
-        row.querySelector("th").textContent = browser().i18n.getMessage(levelI8nKey);
-        row.querySelector("td").textContent = statsTableData[levelKey] || 0;
+                const countSpan = document.createElement("span");
+                countSpan.textContent = String(count);
+                countSpan.style.fontWeight = "bold";
+
+                li.appendChild(labelSpan);
+                li.appendChild(countSpan);
+                pageStatsList.appendChild(li);
+            }
+        }
     }
+};
 
-    document.getElementById("statsview-header").textContent =
-        browser().i18n.getMessage("statsviewHeader");
-    const statisticsGroupedByClickbaitinessTableHeaders =
-        document.querySelectorAll("#statistics-grouped-by-clickbaitiness thead th");
-    statisticsGroupedByClickbaitinessTableHeaders[0].textContent =
-        browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelClickbaitiness");
-    statisticsGroupedByClickbaitinessTableHeaders[1].textContent =
-        browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelAmount");
-    document.querySelector("#statistics-grouped-by-clickbaitiness tfoot th").textContent =
-        browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelTotal");
+const _refreshStatsView = ({ cumulativeStats }) => {
+    const statsTableData = (cumulativeStats || {}).groupedByClickbaitiness || {};
+
+    // Display total amount of found titles for this site.
+    const table = document.getElementById("statistics-grouped-by-clickbaitiness");
+    if (table) {
+        table.querySelector("tfoot td").textContent = Object.values(statsTableData).reduce((acc, x) => acc + x, 0);
+
+        // The static HTML table has the row elements sorted by clickbaitiness level.
+        const clickbaitinessTableRows = table.querySelector("tbody").children;
+
+        for (const row of clickbaitinessTableRows) {
+            const levelI8nKey = row.id.replaceAll("-", "_");
+            const levelKey = levelI8nKey.split("clickbaitinessLabel_")[1].replaceAll("_", " ");
+            row.querySelector("th").textContent = browser().i18n.getMessage(levelI8nKey);
+            row.querySelector("td").textContent = statsTableData[levelKey] || 0;
+        }
+
+        document.getElementById("statsview-header").textContent =
+            browser().i18n.getMessage("statsviewHeader");
+        const statisticsGroupedByClickbaitinessTableHeaders =
+            document.querySelectorAll("#statistics-grouped-by-clickbaitiness thead th");
+        statisticsGroupedByClickbaitinessTableHeaders[0].textContent =
+            browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelClickbaitiness");
+        statisticsGroupedByClickbaitinessTableHeaders[1].textContent =
+            browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelAmount");
+        document.querySelector("#statistics-grouped-by-clickbaitiness tfoot th").textContent =
+            browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelTotal");
+    }
 };
 
 const _refreshSettingsView = ({ isConversionEnabled, isDevelopmentEnv, config }) => {
@@ -276,11 +290,11 @@ let initialViewSelected = false;
 const refresh = async () => {
     const isConversionEnabled = await model.read.isEnabled();
     const pageHostname = await getCurrentTabHostname();
-    const pageStatistics = await model.read.getStatistics(pageHostname);
+    const matchingDomain = await model.read.getMatchingSiteDomain(pageHostname);
+    const cumulativeStats = matchingDomain ? await model.read.getStatistics(matchingDomain) : null;
     const isDevelopmentEnv = await model.read.isDevelopmentEnv();
     const config = await getConfig();
 
-    const matchingDomain = await model.read.getMatchingSiteDomain(pageHostname);
     const isCurrentSiteEnabled = matchingDomain ? await isSiteEnabled(matchingDomain) : false;
 
     // Update settings view master switch
@@ -309,10 +323,13 @@ const refresh = async () => {
         isDevelopmentEnv,
         config,
     });
-    _refreshContentView({
+    _refreshHomeView({
         site: pageHostname,
-        data: pageStatistics,
+        pageStats: cachedPageStats,
         isSiteEnabled: matchingDomain ? isCurrentSiteEnabled : undefined,
+    });
+    _refreshStatsView({
+        cumulativeStats,
     });
 
     // Load product name and version from manifest
@@ -499,6 +516,20 @@ const handleDomContentLoaded = async (e) => {
     if (tab) {
         try {
             window.contentPort = browser().tabs.connect(tab.id, { name: "paatti-popup-direct" });
+            window.contentPort.onMessage.addListener(async (msg) => {
+                if (msg && msg.action === "pageStatsUpdated") {
+                    log("Received live pageStats from content script:", msg.pageStats);
+                    cachedPageStats = msg.pageStats;
+                    const pageHostname = await getCurrentTabHostname();
+                    const matchingDomain = await model.read.getMatchingSiteDomain(pageHostname);
+                    const isCurrentSiteEnabled = matchingDomain ? await isSiteEnabled(matchingDomain) : false;
+                    _refreshHomeView({
+                        site: pageHostname,
+                        pageStats: cachedPageStats,
+                        isSiteEnabled: matchingDomain ? isCurrentSiteEnabled : undefined,
+                    });
+                }
+            });
         } catch (err) {
             log("Content script not ready to receive connection:", err);
         }

@@ -244,14 +244,38 @@ const model = (() => {
                 await browser().storage.local.set({ userPreferences });
             },
 
-            setStatistics: async (value, { hostname }) => {
-                log(`Storing stats for ${hostname}`);
+            /**
+             * Accumulate a page snapshot delta into persisted cumulative statistics.
+             * Also increments the global conversion count at statistics._global.
+             *
+             * @param {{ groupedByClickbaitiness: Object.<string,number>, convertedCount: number }} delta
+             * @param {{ domain: string }} options - Target site domain key.
+             */
+            addStatistics: async (delta, { domain }) => {
+                log(`Adding stats delta for domain '${domain}'`);
                 const data = await browser().storage.local.get("statistics");
                 const statistics = data.statistics || {};
-                statistics[hostname] = value;
-                await browser().storage.local.set({ statistics });
 
-                log(`Stored stats for ${hostname}:`, statistics[hostname]);
+                // Merge incoming clickbaitiness counts into the domain's cumulative totals.
+                const existing = statistics[domain] || {};
+                const merged = { groupedByClickbaitiness: { ...(existing.groupedByClickbaitiness || {}) } };
+                for (const [level, count] of Object.entries(delta.groupedByClickbaitiness || {})) {
+                    if (typeof count === "number") {
+                        merged.groupedByClickbaitiness[level] =
+                            (merged.groupedByClickbaitiness[level] || 0) + count;
+                    }
+                }
+                statistics[domain] = merged;
+
+                // Increment global running tally of converted titles
+                if (!statistics._global) {
+                    statistics._global = { totalConversions: 0 };
+                }
+                statistics._global.totalConversions =
+                    (statistics._global.totalConversions || 0) + (delta.convertedCount || 0);
+
+                await browser().storage.local.set({ statistics });
+                log(`Stored cumulative stats for '${domain}':`, statistics[domain]);
 
                 events.dispatchEvent(modelEvents.statisticsChange);
             },
@@ -425,6 +449,12 @@ const model = (() => {
                 log(`The statistics in store for '${hostname}':`, hostnameStatistics);
 
                 return hostnameStatistics;
+            },
+
+            getGlobalStatistics: async () => {
+                const data = await browser().storage.local.get("statistics");
+                const statistics = data.statistics || {};
+                return statistics._global || { totalConversions: 0 };
             },
 
             getLinkTitleQuerySelectors: async (hostname) => {

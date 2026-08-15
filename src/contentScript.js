@@ -20,6 +20,7 @@ let hrefSign;
 
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
     const { applyModifiers } = await import(browser.runtime.getURL("src/modifiers.js"));
+    const { buildPageSnapshot, createSessionTracker } = await import(browser.runtime.getURL("src/stats.js"));
 
     // Inject Web Components into page's main world context
     const badgeComponents = [
@@ -125,20 +126,39 @@ let hrefSign;
 
     const rahti = await rahtiStorage;
     const newsSite = window.location.hostname;
+    const matchingDomain = await model.read.getMatchingSiteDomain(newsSite);
+    const sessionTracker = createSessionTracker();
+
+    let lastPageSnapshot = null;
+    let activePort = null;
 
     ////////////////////////////////////////////////////////////////////////////
     // Initialization.
 
-    // Listen for popup direct connection to manage visibility styling and highlighting
+    // Listen for popup direct connection to manage visibility styling, highlighting, and live stats push
     browser.runtime.onConnect.addListener((port) => {
         if (port.name === "paatti-popup-direct") {
             log("Popup connection established, adding visible class.");
+            activePort = port;
             document.body.classList.add("paatti-popup-visible");
             isPopupOpen = true;
             updateVisualHighlightClass();
 
+            // Push current snapshot if one has already been computed
+            if (lastPageSnapshot) {
+                try {
+                    port.postMessage({
+                        action: "pageStatsUpdated",
+                        pageStats: lastPageSnapshot
+                    });
+                } catch (e) {
+                    log("Failed to post initial pageStats to popup port:", e);
+                }
+            }
+
             port.onDisconnect.addListener(() => {
                 log("Popup connection closed, removing visible class.");
+                activePort = null;
                 document.body.classList.remove("paatti-popup-visible");
                 isPopupOpen = false;
                 updateVisualHighlightClass();
@@ -258,14 +278,15 @@ let hrefSign;
             let why = "";
             let how = "";
             let clickbaitiness = null;
+            let urlSign = null;
 
             try {
-                const urlSign = urlHashes[href];
+                urlSign = urlHashes[href];
                 if (!urlSign) {
                     why = `Failed to generate signature for URL '${href}'`;
                     container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
                     container.dataset.klikkikuriReason = why;
-                    return { what, why, how, clickbaitiness };
+                    return { what, why, how, clickbaitiness, urlSign: null };
                 }
                 container.dataset.klikkikuriUrlSign = urlSign;
 
@@ -370,7 +391,14 @@ let hrefSign;
             }
 
             // Return classifications for gathering stats.
-            return { what, why, how, clickbaitiness };
+            return {
+                what,
+                why,
+                how,
+                clickbaitiness,
+                urlSign,
+                originalTitle: titleElem?.dataset?.klikkikuriOriginalTitle
+            };
         });
 
         // Safely collect results without crashing the entire flow if a promise rejects
@@ -396,21 +424,33 @@ let hrefSign;
             { converted: 0, original: 0, skipped: 0, error: errors.length }
         );
 
-        await controller.updateStatistics({
-            hostname: newsSite,
-            siteStats: {
-                groupedByClickbaitiness: reasons
-                    .map((x) => x.clickbaitiness)
-                    .filter((x) => x !== null && x !== undefined)
-                    .reduce((acc, x) => {
-                        if (acc[x] === undefined) {
-                            acc[x] = 0;
-                        }
-                        acc[x] += 1;
-                        return acc;
-                    }, {}),
-            },
-        });
+        // Build live page snapshot from all reasons currently on page
+        const pageSnapshot = buildPageSnapshot(reasons);
+        lastPageSnapshot = pageSnapshot;
+
+        // Push live page snapshot to popup if direct port connection is active
+        if (activePort) {
+            try {
+                activePort.postMessage({
+                    action: "pageStatsUpdated",
+                    pageStats: pageSnapshot
+                });
+            } catch (e) {
+                log("Failed to push pageStats to popup port:", e);
+            }
+        }
+
+        // Persist newly discovered items into cumulative statistics for matching siteConfig domain
+        if (matchingDomain) {
+            const unseenReasons = sessionTracker.getDelta(reasons);
+            const delta = buildPageSnapshot(unseenReasons);
+            if (delta.convertedCount > 0 || Object.keys(delta.groupedByClickbaitiness).length > 0) {
+                await controller.updateStatistics({
+                    domain: matchingDomain,
+                    delta
+                });
+            }
+        }
 
         log(`Finished conversion procedure on '${newsSite}' in ${duration.toFixed(2)}ms. Stats:`, stats);
 
