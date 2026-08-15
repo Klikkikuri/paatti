@@ -208,6 +208,96 @@ const _createTotalStatRow = (totalCount) => {
 };
 
 /**
+ * Attaches pointer-based drag behaviour to the threshold divider element.
+ * @param {HTMLElement} dividerEl
+ * @param {Object} options
+ * @param {() => { el: HTMLElement, levelIndex: number }[]} options.getVisibleRows
+ * @param {(level: number) => void} options.onDrop
+ */
+const _attachThresholdDrag = (dividerEl, { getVisibleRows, onDrop }) => {
+    let startY = 0;
+    let didDrag = false;
+    let currentTargetLevel = null;
+
+    const onPointerMove = (e) => {
+        const dy = Math.abs(e.clientY - startY);
+        if (dy > 4) {
+            didDrag = true;
+        }
+
+        const rows = getVisibleRows();
+        currentTargetLevel = null;
+        
+        let targetIndex = rows.length;
+        for (let i = 0; i < rows.length; i++) {
+            const rect = rows[i].el.getBoundingClientRect();
+            if (e.clientY < rect.top + rect.height / 2) {
+                targetIndex = i;
+                break;
+            }
+        }
+        
+        for (const { el } of rows) {
+            el.classList.remove("drop-target-above", "drop-target-bottom");
+        }
+        dividerEl.classList.remove("drop-not-allowed");
+
+        if (didDrag && rows.length > 0) {
+            if (targetIndex < rows.length) {
+                // Drop above row at targetIndex
+                rows[targetIndex].el.classList.add("drop-target-above");
+                currentTargetLevel = rows[targetIndex].levelIndex;
+                
+                if (targetIndex > 0) {
+                    rows[targetIndex - 1].el.classList.add("drop-target-bottom");
+                }
+            } else {
+                // Dragged below the last visible row
+                const lastRow = rows[rows.length - 1];
+                if (lastRow.levelIndex < 4) {
+                    // Valid drop target in a sparse list (e.g. last item is level 2 -> threshold becomes 3)
+                    lastRow.el.classList.add("drop-target-bottom");
+                    currentTargetLevel = lastRow.levelIndex + 1;
+                } else {
+                    // Last item is Level 4 (Extreme) -> cannot drag below max threshold
+                    currentTargetLevel = null;
+                    dividerEl.classList.add("drop-not-allowed");
+                }
+            }
+        }
+    };
+
+    const onPointerUp = (e) => {
+        dividerEl.releasePointerCapture(e.pointerId);
+        dividerEl.removeEventListener("pointermove", onPointerMove);
+        dividerEl.removeEventListener("pointerup", onPointerUp);
+        dividerEl.removeEventListener("pointercancel", onPointerUp);
+        dividerEl.classList.remove("is-dragging", "drop-not-allowed");
+
+        const rows = getVisibleRows();
+        for (const { el } of rows) {
+            el.classList.remove("drop-target-above", "drop-target-bottom");
+        }
+
+        if (didDrag && currentTargetLevel !== null) {
+            onDrop(currentTargetLevel);
+        }
+    };
+
+    dividerEl.addEventListener("pointerdown", (e) => {
+        if (e.button !== 0 && e.pointerType === "mouse") return;
+        startY = e.clientY;
+        didDrag = false;
+        currentTargetLevel = null;
+        dividerEl.setPointerCapture(e.pointerId);
+        dividerEl.classList.add("is-dragging");
+        dividerEl.addEventListener("pointermove", onPointerMove);
+        dividerEl.addEventListener("pointerup", onPointerUp);
+        dividerEl.addEventListener("pointercancel", onPointerUp);
+    });
+};
+
+/**
  * Create a threshold divider element with hook emoji.
  * @returns {HTMLDivElement}
  */
@@ -218,6 +308,7 @@ const _createThresholdDivider = () => {
     const label = document.createElement("span");
     label.className = "stats-threshold-divider-label";
     label.textContent = `🪝 ${browser().i18n.getMessage("statsThresholdDividerLabel")}`;
+    divider.setAttribute("title", browser().i18n.getMessage("statsThresholdDividerLabel") || "");
 
     divider.appendChild(label);
     return divider;
@@ -312,20 +403,38 @@ const _refreshHomeView = ({ site, pageStats, isSiteEnabled, clickbaitLevelThresh
             return (statsTableData[level] || 0) > 0;
         });
 
+        const hasExtremeLast = visibleLevels.length > 0 &&
+            visibleLevels[visibleLevels.length - 1] === Clickbaitiness.LEVEL_EXTREME;
+        pageStatsList.classList.toggle("no-bottom-padding", hasExtremeLast);
+
         if (visibleLevels.length > 0 && typeof clickbaitLevelThreshold === "number") {
             let dividerInserted = false;
+            const rowElements = [];
+
+            const divider = _createThresholdDivider();
+            _attachThresholdDrag(divider, {
+                getVisibleRows: () => rowElements,
+                onDrop: async (newLevel) => {
+                    await controller.setClickbaitLevel(newLevel);
+                    if (typeof refresh === "function") {
+                        await refresh();
+                    }
+                }
+            });
 
             for (const level of visibleLevels) {
                 const levelIndex = Clickbaitiness.stringToNumber(level);
                 if (!dividerInserted && levelIndex >= clickbaitLevelThreshold) {
-                    pageStatsList.appendChild(_createThresholdDivider());
+                    pageStatsList.appendChild(divider);
                     dividerInserted = true;
                 }
-                pageStatsList.appendChild(_createStatRow(level, statsTableData[level], { clickbaitLevelThreshold }));
+                const rowEl = _createStatRow(level, statsTableData[level], { clickbaitLevelThreshold });
+                rowElements.push({ el: rowEl, levelIndex });
+                pageStatsList.appendChild(rowEl);
             }
 
             if (!dividerInserted && clickbaitLevelThreshold <= 4) {
-                pageStatsList.appendChild(_createThresholdDivider());
+                pageStatsList.appendChild(divider);
             }
         } else {
             for (const level of visibleLevels) {
