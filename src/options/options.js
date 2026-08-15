@@ -303,23 +303,23 @@ async function renderAbout() {
     // Environment
     setAboutField('about-env', config.activeEnv || 'free');
 
-    // Clickbait level
-    const clickbaitLevel = config.clickbaitLevel !== undefined ? config.clickbaitLevel : 2;
-    setAboutField('about-clickbait-level', `${clickbaitLevel}`);
+    // Browser — native APIs
+    setAboutField('about-browser', await getBrowserInfo());
 
     // OS — prefer userAgentData (Chromium), fall back to navigator.platform
     const platform = navigator.userAgentData?.platform || navigator.platform || '—';
     const arch = navigator.userAgentData?.architecture || '';
     setAboutField('about-os', arch ? `${platform} ${arch}` : platform);
 
-    // Browser — native APIs
-    setAboutField('about-browser', await getBrowserInfo());
-
     // Last DB fetch
     setAboutField('about-db-update', formatIsoWithTimezone(status.lastDatabaseUpdate));
 
     // DB generation date
     setAboutField('about-db-gen', formatIsoWithTimezone(status.databaseGenerationDate));
+
+    // Clickbait level
+    const clickbaitLevel = config.clickbaitLevel !== undefined ? config.clickbaitLevel : 2;
+    setAboutField('about-clickbait-level', `${clickbaitLevel}`);
 
     // Active modifiers — list names of enabled modifiers
     const modifiers = config.modifiers || {};

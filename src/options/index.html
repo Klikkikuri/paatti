@@ -263,6 +263,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            gap: 6px;
             font-size: 0.9rem;
             color: #667eea;
             border: 1.2px solid #667eea;
@@ -650,7 +651,7 @@
                 color: #667eea;
                 text-decoration: none;
 
-                &:hover {
+                &:hover:not(.detail-button) {
                     text-decoration: underline;
                 }
             }
@@ -661,15 +662,15 @@
             }
 
             .store-links {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
                 list-style: none;
                 padding-left: 0;
-                line-height: 1.8;
+                margin-bottom: 20px;
 
                 li {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    margin-bottom: 6px;
+                    display: inline-flex;
 
                     img {
                         border-radius: 2px;
@@ -686,13 +687,17 @@
                 font-size: 0.9em;
                 color: #555;
                 font-family: monospace;
+                line-height: 1.6;
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 6px 10px;
 
-                p {
-                    margin-bottom: 6px;
+                dt {
+                    font-weight: normal;
+                }
 
-                    &:last-child {
-                        margin-bottom: 0;
-                    }
+                dd {
+                    margin-inline-start: 0;
                 }
             }
         }
@@ -806,16 +811,22 @@
                 <p>Klikkikuri Paatti is available:</p>
                 <ul class="store-links">
                     <li>
-                        <img src="https://icons.duckduckgo.com/ip3/chromewebstore.google.com.ico" width="16" height="16" alt="Chrome Web Store">
-                        <a href="https://chromewebstore.google.com/detail/klikkikuri-paatti/jalegaigmgljhnaakmbbaajooffgcbgc" target="_blank">in the Chrome Web Store</a>
+                        <a href="https://addons.mozilla.org/fi/firefox/addon/klikkikuri" target="_blank" class="detail-button">
+                            <img src="https://icons.duckduckgo.com/ip3/addons.mozilla.org.ico" width="16" height="16" alt="Firefox Add-ons">
+                            Firefox Add-ons ↗
+                        </a>
                     </li>
                     <li>
-                        <img src="https://icons.duckduckgo.com/ip3/addons.mozilla.org.ico" width="16" height="16" alt="Mozilla Add-ons">
-                        <a href="https://addons.mozilla.org/fi/firefox/addon/klikkikuri" target="_blank">in the Mozilla Add-ons directory</a>
+                        <a href="https://chromewebstore.google.com/detail/klikkikuri-paatti/jalegaigmgljhnaakmbbaajooffgcbgc" target="_blank" class="detail-button">
+                            <img src="https://icons.duckduckgo.com/ip3/chromewebstore.google.com.ico" width="16" height="16" alt="Chrome Web Store">
+                            Chrome Web Store ↗
+                        </a>
                     </li>
                     <li>
-                        <img src="https://icons.duckduckgo.com/ip3/github.com.ico" width="16" height="16" alt="GitHub">
-                        <a href="https://github.com/Klikkikuri/paatti" target="_blank">Klikkikuri Paatti on GitHub</a>
+                        <a href="https://github.com/Klikkikuri/paatti" target="_blank" class="detail-button">
+                            <img src="https://icons.duckduckgo.com/ip3/github.com.ico" width="16" height="16" alt="GitHub">
+                            GitHub ↗
+                        </a>
                     </li>
                 </ul>
 
@@ -832,17 +843,26 @@
                 </ul>
 
                 <h4>Paatti info</h4>
-                <div id="about-info">
-                    <p>Paatti version: <code id="about-version">—</code></p>
-                    <p>Environment: <code id="about-env">—</code></p>
-                    <p>Clickbait level: <code id="about-clickbait-level">—</code></p>
-                    <p>Operating system: <code id="about-os">—</code></p>
-                    <p>Browser: <code id="about-browser">—</code></p>
-                    <p>Last database update: <code id="about-db-update">—</code></p>
-                    <p>Database generation date: <code id="about-db-gen">—</code></p>
-                    <p>Active modifiers: <code id="about-modifiers">—</code></p>
-                    <p>Active sites: <code id="about-sites">—</code></p>
-                </div>
+                <dl id="about-info">
+                    <dt>Paatti version:</dt>
+                    <dd><code id="about-version">—</code></dd>
+                    <dt>Environment:</dt>
+                    <dd><code id="about-env">—</code></dd>
+                    <dt>Browser:</dt>
+                    <dd><code id="about-browser">—</code></dd>
+                    <dt>Operating system:</dt>
+                    <dd><code id="about-os">—</code></dd>
+                    <dt>Last database update:</dt>
+                    <dd><code id="about-db-update">—</code></dd>
+                    <dt>Database generation date:</dt>
+                    <dd><code id="about-db-gen">—</code></dd>
+                    <dt>Clickbait level:</dt>
+                    <dd><code id="about-clickbait-level">—</code></dd>
+                    <dt>Active modifiers:</dt>
+                    <dd><code id="about-modifiers">—</code></dd>
+                    <dt>Active sites:</dt>
+                    <dd><code id="about-sites">—</code></dd>
+                </dl>
 
                 <h3>Licenses and credits</h3>
                 <p>
