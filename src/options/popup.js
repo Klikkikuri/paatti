@@ -1,6 +1,6 @@
 "use strict";
 
-import { getLogger, browser, getCurrentTabHostname } from "../utils.js";
+import { getLogger, browser, getActiveTab, getCurrentTabHostname } from "../utils.js";
 import { model, modelEvents, Clickbaitiness } from "../model.js";
 import { controller } from "../controller.js";
 import { getConfig } from "../config.js";
@@ -593,7 +593,7 @@ const refresh = async () => {
     const conversionsListEl = document.getElementById("feedbackview-conversions-list");
 
     let conversions = [];
-    const [tab] = await browser().tabs.query({ active: true, currentWindow: true });
+    const tab = await getActiveTab();
     if (tab) {
         try {
             conversions = await browser().tabs.sendMessage(tab.id, { 
@@ -764,7 +764,7 @@ const handleDomContentLoaded = async (e) => {
 
     // Connect directly to the content script in the active tab.
     // The connection automatically signals visibility, and disconnection signals closure.
-    const [tab] = await browser().tabs.query({ active: true, currentWindow: true });
+    const tab = await getActiveTab();
     if (tab) {
         try {
             window.contentPort = browser().tabs.connect(tab.id, { name: "paatti-popup-direct" });

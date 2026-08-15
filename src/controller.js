@@ -1,6 +1,6 @@
 "use strict";
 
-import { getLogger, browser, getCurrentTabHostname } from "./utils.js";
+import { getLogger, browser, getActiveTab, getCurrentTabHostname } from "./utils.js";
 import { model, modelEvents } from "./model.js";
 
 import { getConfig } from "./config.js";
@@ -9,12 +9,15 @@ const log = getLogger("controller");
 
 const _dispatchConversion = async () => {
     log("Dispatching conversion...");
-    // Get the active tab.
-    const tabs = browser().tabs;
-    const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
-    await tabs.sendMessage(activeTabId, { command: "convertClickbaits" });
-
-    log("Conversion dispatch performed.");
+    try {
+        const activeTab = await getActiveTab();
+        if (activeTab && activeTab.id) {
+            await browser().tabs.sendMessage(activeTab.id, { command: "convertClickbaits" });
+            log("Conversion dispatch performed.");
+        }
+    } catch (err) {
+        log("Conversion dispatch failed:", err);
+    }
 };
 
 const _setSiteEnabled = async (isEnabled, hostname) => {

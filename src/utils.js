@@ -41,12 +41,46 @@ const getLogger = (name) => {
     return console.log.bind(console, `[Loki ⛵ ${name}]:`);
 };
 
-const getCurrentTabHostname = async () => {
-    const thisTabInfo = (await browser().tabs
-        .query({ active: true, currentWindow: true }))[0];
-    const thisTabUrl = new URL(thisTabInfo.url);
+/**
+ * Safely queries and returns the currently active tab across desktop and mobile browsers.
+ *
+ * Tries `currentWindow: true` first, falling back to a general `{ active: true }` query
+ * to reliably handle mobile environments such as Firefox for Android.
+ *
+ * @returns {Promise<browser.tabs.Tab|null>} The active tab object or null.
+ */
+const getActiveTab = async () => {
+    try {
+        const tabs = await browser().tabs.query({ active: true, currentWindow: true });
+        if (tabs && tabs.length > 0 && tabs[0]) return tabs[0];
+    } catch (e) {
+        // Fallback to active query below
+    }
+    try {
+        const tabs = await browser().tabs.query({ active: true });
+        if (tabs && tabs.length > 0 && tabs[0]) return tabs[0];
+    } catch (e) {
+        // Ignore
+    }
+    return null;
+};
 
-    return thisTabUrl.hostname;
+/**
+ * Retrieves the hostname of the currently active browser tab.
+ *
+ * @returns {Promise<string|null>} The hostname or null if unable to determine.
+ */
+const getCurrentTabHostname = async () => {
+    try {
+        const tab = await getActiveTab();
+        if (!tab || !tab.url) {
+            return null;
+        }
+        const thisTabUrl = new URL(tab.url);
+        return thisTabUrl.hostname;
+    } catch (e) {
+        return null;
+    }
 };
 
 const debounce = (func, wait) => {
@@ -145,5 +179,5 @@ const canAppendSpan = (elem) => {
     return typeof elem.replaceChildren === "function";
 };
 
-export { getLogger, browser, getCurrentTabHostname, debounce, parseSemVer, sanitizeUrlForFeedback, canAppendSpan };
+export { getLogger, browser, getActiveTab, getCurrentTabHostname, debounce, parseSemVer, sanitizeUrlForFeedback, canAppendSpan };
 

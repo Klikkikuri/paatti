@@ -1,9 +1,9 @@
-import { parseSemVer, sanitizeUrlForFeedback, canAppendSpan } from '../src/utils.js';
+import { parseSemVer, sanitizeUrlForFeedback, canAppendSpan, getActiveTab, getCurrentTabHostname } from '../src/utils.js';
 
 /**
  * Runs test cases for utility functions in src/utils.js.
  */
-function runUtilsTests() {
+async function runUtilsTests() {
     console.log('Running utils verification tests...');
     let failed = false;
 
@@ -110,6 +110,95 @@ function runUtilsTests() {
         }
     }
 
+    console.log('\n--- getActiveTab & getCurrentTabHostname Tests ---');
+    // Test desktop environment (currentWindow works)
+    globalThis.browser = {
+        tabs: {
+            query: async (queryInfo) => {
+                if (queryInfo.currentWindow) {
+                    return [{ id: 1, url: 'https://www.hs.fi/kotimaa/art-12345.html' }];
+                }
+                return [{ id: 2, url: 'https://other.fi' }];
+            }
+        }
+    };
+
+    let tab = await getActiveTab();
+    if (!tab || tab.id !== 1) {
+        console.error('❌ Failed desktop getActiveTab test:', tab);
+        failed = true;
+    } else {
+        console.log('✅ Passed: getActiveTab retrieves tab via currentWindow query');
+    }
+
+    let hostname = await getCurrentTabHostname();
+    if (hostname !== 'www.hs.fi') {
+        console.error('❌ Failed desktop getCurrentTabHostname test:', hostname);
+        failed = true;
+    } else {
+        console.log('✅ Passed: getCurrentTabHostname extracts hostname from active tab');
+    }
+
+    // Test mobile/Android environment (currentWindow returns empty array, active query succeeds)
+    globalThis.browser = {
+        tabs: {
+            query: async (queryInfo) => {
+                if (queryInfo.currentWindow) {
+                    return [];
+                }
+                if (queryInfo.active) {
+                    return [{ id: 42, url: 'https://yle.fi/uutiset/18-1234' }];
+                }
+                return [];
+            }
+        }
+    };
+
+    tab = await getActiveTab();
+    if (!tab || tab.id !== 42) {
+        console.error('❌ Failed mobile getActiveTab fallback test:', tab);
+        failed = true;
+    } else {
+        console.log('✅ Passed: getActiveTab falls back to active query when currentWindow is empty (Firefox Android)');
+    }
+
+    hostname = await getCurrentTabHostname();
+    if (hostname !== 'yle.fi') {
+        console.error('❌ Failed mobile getCurrentTabHostname fallback test:', hostname);
+        failed = true;
+    } else {
+        console.log('✅ Passed: getCurrentTabHostname works with fallback query');
+    }
+
+    // Test tab without url or invalid url
+    globalThis.browser = {
+        tabs: {
+            query: async () => [{ id: 99 }]
+        }
+    };
+    hostname = await getCurrentTabHostname();
+    if (hostname !== null) {
+        console.error('❌ Expected null hostname for tab without URL, got:', hostname);
+        failed = true;
+    } else {
+        console.log('✅ Passed: getCurrentTabHostname gracefully returns null when tab lacks URL');
+    }
+
+    // Test query error / no tabs
+    globalThis.browser = {
+        tabs: {
+            query: async () => []
+        }
+    };
+    tab = await getActiveTab();
+    hostname = await getCurrentTabHostname();
+    if (tab !== null || hostname !== null) {
+        console.error('❌ Expected null for tab and hostname when query returns empty, got:', { tab, hostname });
+        failed = true;
+    } else {
+        console.log('✅ Passed: returns null when no tabs match');
+    }
+
     if (failed) {
         console.error('\n❌ Utils tests failed.');
         process.exit(1);
@@ -119,5 +208,5 @@ function runUtilsTests() {
     }
 }
 
-runUtilsTests();
+await runUtilsTests();
 

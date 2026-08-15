@@ -1,6 +1,6 @@
 "use strict";
 
-import { browser, getLogger } from "./utils.js";
+import { browser, getLogger, getActiveTab } from "./utils.js";
 import { getConfig } from "./config.js";
 import { fetchRahtiData, fetchRahtiDataWithRetry } from "./rahti.js";
 import { controller } from "./controller.js";
@@ -106,9 +106,9 @@ browser().storage.onChanged.addListener(async (changes, area) => {
         if (newVal.clickbaitLevel !== oldVal.clickbaitLevel || newVal.enabled !== oldVal.enabled) {
             log("Clickbait level or extension status changed, notifying active tab");
             try {
-                const tabs = await browser().tabs.query({ active: true, currentWindow: true });
-                if (tabs[0] && tabs[0].id) {
-                    await browser().tabs.sendMessage(tabs[0].id, { command: "convertClickbaits" });
+                const tab = await getActiveTab();
+                if (tab && tab.id) {
+                    await browser().tabs.sendMessage(tab.id, { command: "convertClickbaits" });
                 }
             } catch (err) {
                 // ignore error if tab doesn't have listener
@@ -120,9 +120,9 @@ browser().storage.onChanged.addListener(async (changes, area) => {
     if (isModifiersChanged) {
         log("Modifiers changed, notifying active tab");
         try {
-            const tabs = await browser().tabs.query({ active: true, currentWindow: true });
-            if (tabs[0] && tabs[0].id) {
-                await browser().tabs.sendMessage(tabs[0].id, { command: "convertClickbaits" });
+            const tab = await getActiveTab();
+            if (tab && tab.id) {
+                await browser().tabs.sendMessage(tab.id, { command: "convertClickbaits" });
             }
         } catch (err) {
             log("Tab message send failed (likely no listener):", err);
@@ -185,8 +185,21 @@ async function initSuola() {
         try {
             const go = new Go();
             const wasmUrl = browser().runtime.getURL("build/js.wasm");
-            const response = await fetch(wasmUrl);
-            const result = await WebAssembly.instantiateStreaming(response, go.importObject);
+            let result;
+            try {
+                const response = await fetch(wasmUrl);
+                if (typeof WebAssembly.instantiateStreaming === "function") {
+                    result = await WebAssembly.instantiateStreaming(response, go.importObject);
+                } else {
+                    const bytes = await response.arrayBuffer();
+                    result = await WebAssembly.instantiate(bytes, go.importObject);
+                }
+            } catch (streamErr) {
+                log("Streaming WASM instantiation failed, falling back to arrayBuffer:", streamErr);
+                const fallbackResponse = await fetch(wasmUrl);
+                const bytes = await fallbackResponse.arrayBuffer();
+                result = await WebAssembly.instantiate(bytes, go.importObject);
+            }
             go.run(result.instance);
             log("Suola WebAssembly initialized in background.");
         } catch (err) {
@@ -351,7 +364,7 @@ if (browser().runtime && browser().runtime.onStartup) {
     });
 }
 
-// Ensure periodic alarm is scheduled and database is checked on background script load
+// Ensure periodic alarm is scheduled, content scripts are registered, and database is checked on background script load
 (async () => {
     try {
         const alarm = await browser().alarms.get(PULL_ALARM_NAME);
@@ -360,6 +373,7 @@ if (browser().runtime && browser().runtime.onStartup) {
         if (!alarm) {
             await scheduleAlarm(intervalMinutes);
         }
+        await updateDynamicContentScripts();
         if (await isDatabaseStale()) {
             log("Database is stale on script evaluation, triggering background fetch with retry...");
             fetchRahtiDataWithRetry().catch((err) => {
@@ -367,7 +381,7 @@ if (browser().runtime && browser().runtime.onStartup) {
             });
         }
     } catch (err) {
-        log("Failed checking alarm and database status on script evaluation:", err);
+        log("Failed checking alarm, content scripts, and database status on script evaluation:", err);
     }
 })();
 
