@@ -18,6 +18,7 @@ const log = getLogger("view");
 
 // Track the JSON of the last rendered conversions list to avoid unnecessary DOM rebuilding on scroll.
 let lastConversionsJson = null;
+let lastConfigSiteKeys = null;
 
 const expandoTemplate = document.createElement("template");
 expandoTemplate.innerHTML = `
@@ -199,22 +200,24 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
 };
 
 const _refreshSettingsView = ({ isConversionEnabled, isDevelopmentEnv, config }) => {
-
-    // First reset the view, as rahti-fetch alarm will keep re-adding enabled
-    // sites to their list in UI.
+    const siteKeys = JSON.stringify(config.siteConfigs || {});
     const sitesEnabledList = document.getElementById("sites-enabled-ul");
-    while (sitesEnabledList.firstChild) {
-        sitesEnabledList.removeChild(sitesEnabledList.firstChild);
-    }
 
-    // Add the supported sites' listing to UI.
-    for (const [host, site] of Object.entries(config.siteConfigs)) {
-        const siteToggle = document.createElement("site-toggle-setting");
-        siteToggle.setAttribute("domain", host);
-        siteToggle.setAttribute("name", site.name || host);
-        siteToggle.setAttribute("origins", JSON.stringify(site.origins || [`https://${host}/*`]));
-        siteToggle.setAttribute("layout", "compact");
-        sitesEnabledList.appendChild(siteToggle);
+    if (sitesEnabledList && (siteKeys !== lastConfigSiteKeys || sitesEnabledList.children.length === 0)) {
+        lastConfigSiteKeys = siteKeys;
+        while (sitesEnabledList.firstChild) {
+            sitesEnabledList.removeChild(sitesEnabledList.firstChild);
+        }
+
+        // Add the supported sites' listing to UI.
+        for (const [host, site] of Object.entries(config.siteConfigs || {})) {
+            const siteToggle = document.createElement("site-toggle-setting");
+            siteToggle.setAttribute("domain", host);
+            siteToggle.setAttribute("name", site.name || host);
+            siteToggle.setAttribute("origins", JSON.stringify(site.origins || [`https://${host}/*`]));
+            siteToggle.setAttribute("layout", "compact");
+            sitesEnabledList.appendChild(siteToggle);
+        }
     }
 
 
