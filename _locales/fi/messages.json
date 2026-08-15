@@ -257,7 +257,7 @@
     "description": "Otsikko klikkitason raja-arvolle 0 (Not Clickbait at all)"
   },
   "clickbaitLevel0Desc": {
-    "message": "Käsitellään kaikki otsikot, myös neutraalit",
+    "message": "Otsikko on suoraviivainen, asiapitoinen ja neutraali, ilman liioittelua tai tunteisiin vetoamista.",
     "description": "Kuvaus klikkitason raja-arvolle 0 (Not Clickbait at all)"
   },
   "clickbaitLevel1Title": {
@@ -265,7 +265,7 @@
     "description": "Otsikko klikkitason raja-arvolle 1 (Slightly Clickbaity)"
   },
   "clickbaitLevel1Desc": {
-    "message": "Käsitellään myös hieman houkuttelevat otsikot",
+    "message": "Otsikko on enimmäkseen asiapitoinen, mutta siinä on pieni uteliaisuutta herättävä elementti tai lievää liioittelua.",
     "description": "Kuvaus klikkitason raja-arvolle 1 (Slightly Clickbaity)"
   },
   "clickbaitLevel2Title": {
@@ -273,7 +273,7 @@
     "description": "Otsikko klikkitason raja-arvolle 2 (Moderately Clickbaity)"
   },
   "clickbaitLevel2Desc": {
-    "message": "Käsitellään kohtuullisen sensaatiohakuiset otsikot",
+    "message": "Otsikko on hieman sensaatiohakuinen, käyttää tunteisiin vetoavaa tai epämääräistä kieltä, mutta edustaa silti artikkelin sisältöä tarkasti.",
     "description": "Kuvaus klikkitason raja-arvolle 2 (Moderately Clickbaity)"
   },
   "clickbaitLevel3Title": {
@@ -281,7 +281,7 @@
     "description": "Otsikko klikkitason raja-arvolle 3 (Very Clickbaity)"
   },
   "clickbaitLevel3Desc": {
-    "message": "Käsitellään erittäin sensaatiohakuiset otsikot",
+    "message": "Otsikko on vahvasti liioiteltu, harhaanjohtava tai sensaatiohakuinen, ja se käyttää usein voimakasta tunteisiin vetoamista tai tiedon panttaamista.",
     "description": "Kuvaus klikkitason raja-arvolle 3 (Very Clickbaity)"
   },
   "clickbaitLevel4Title": {
@@ -289,7 +289,7 @@
     "description": "Otsikko klikkitason raja-arvolle 4 (Extremely Clickbaity)"
   },
   "clickbaitLevel4Desc": {
-    "message": "Käsitellään vain harhaanjohtavat otsikot",
+    "message": "Otsikko on petollinen, harhaanjohtava tai esittää pöyristyttäviä väitteitä, jotka eivät vastaa artikkelin sisältöä.",
     "description": "Kuvaus klikkitason raja-arvolle 4 (Extremely Clickbaity)"
   },
 
