@@ -250,13 +250,15 @@ browser().runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         const key = getFaviconKey(domain);
         (async () => {
-            // Persistent cache check: skip if valid and not expired
-            const stored = await browser().storage.local.get(key);
-            const existing = stored[key];
-            if (!isFaviconExpired(existing)) return;
-
+            // In-flight guard inside async flow to avoid race before the first await
+            if (pendingFaviconDomains.has(domain)) return;
             pendingFaviconDomains.add(domain);
             try {
+                // Persistent cache check: skip if valid and not expired
+                const stored = await browser().storage.local.get(key);
+                const existing = stored[key];
+                if (!isFaviconExpired(existing)) return;
+
                 const response = await fetch(url);
                 const altDomain = domain.startsWith("www.") ? domain.slice(4) : `www.${domain}`;
                 if (!response.ok) {
