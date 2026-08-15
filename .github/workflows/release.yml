@@ -73,7 +73,7 @@ jobs:
 
       - name: "🏗️ Build Extension Package"
         run: |
-          make build USE_RELEASE_ARTIFACTS=1
+          make build USE_RELEASE_ARTIFACTS=1 NON_OSS=1
 
       - name: "🛡️ Verify Suola Artifact Attestation"
         env:
