@@ -635,6 +635,67 @@
                 padding: 6px 12px;
             }
         }
+
+        .about {
+            color: #666;
+            line-height: 1.6;
+
+            h3, h4 {
+                margin-bottom: 10px;
+                color: #667eea;
+                font-size: 1.1rem;
+            }
+
+            a {
+                color: #667eea;
+                text-decoration: none;
+
+                &:hover {
+                    text-decoration: underline;
+                }
+            }
+
+            ul {
+                margin-bottom: 20px;
+                list-style-position: inside;
+            }
+
+            .store-links {
+                list-style: none;
+                padding-left: 0;
+                line-height: 1.8;
+
+                li {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin-bottom: 6px;
+
+                    img {
+                        border-radius: 2px;
+                        flex-shrink: 0;
+                    }
+                }
+            }
+
+            #about-info {
+                margin-bottom: 20px;
+                padding: 15px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                font-size: 0.9em;
+                color: #555;
+                font-family: monospace;
+
+                p {
+                    margin-bottom: 6px;
+
+                    &:last-child {
+                        margin-bottom: 0;
+                    }
+                }
+            }
+        }
     </style>
 </head>
 <body>
@@ -736,6 +797,58 @@
                 <p class="section-description">Määritä tietokannan automaattinen päivitysväli ja hallitse manuaalista päivitystä</p>
                 
                 <database-status-setting></database-status-setting>
+            </fieldset>
+
+            <!-- About Section -->
+            <fieldset class="about">
+                <legend>ℹ️ About</legend>
+
+                <p>Klikkikuri Paatti is available:</p>
+                <ul class="store-links">
+                    <li>
+                        <img src="https://icons.duckduckgo.com/ip3/chromewebstore.google.com.ico" width="16" height="16" alt="Chrome Web Store">
+                        <a href="https://chromewebstore.google.com/detail/klikkikuri-paatti/jalegaigmgljhnaakmbbaajooffgcbgc" target="_blank">in the Chrome Web Store</a>
+                    </li>
+                    <li>
+                        <img src="https://icons.duckduckgo.com/ip3/addons.mozilla.org.ico" width="16" height="16" alt="Mozilla Add-ons">
+                        <a href="https://addons.mozilla.org/fi/firefox/addon/klikkikuri" target="_blank">in the Mozilla Add-ons directory</a>
+                    </li>
+                    <li>
+                        <img src="https://icons.duckduckgo.com/ip3/github.com.ico" width="16" height="16" alt="GitHub">
+                        <a href="https://github.com/Klikkikuri/paatti" target="_blank">Klikkikuri Paatti on GitHub</a>
+                    </li>
+                </ul>
+
+                <h3>Contributors</h3>
+                <ul>
+                    <li><a href="https://github.com/isoteemu" target="_blank">Teemu Autto</a></li>
+                    <li><a href="https://github.com/trkks" target="_blank">Juho Tarkkanen</a></li>
+                    <li><a href="https://github.com/taijakolehmainen" target="_blank">Taija Kolehmainen</a></li>
+                </ul>
+
+                <h3>Feedback</h3>
+                <ul>
+                    <li><a href="https://github.com/Klikkikuri/paatti/issues/new" target="_blank">Create an issue on GitHub</a></li>
+                </ul>
+
+                <h4>Paatti info</h4>
+                <div id="about-info">
+                    <p>Paatti version: <code id="about-version">—</code></p>
+                    <p>Environment: <code id="about-env">—</code></p>
+                    <p>Clickbait level: <code id="about-clickbait-level">—</code></p>
+                    <p>Operating system: <code id="about-os">—</code></p>
+                    <p>Browser: <code id="about-browser">—</code></p>
+                    <p>Last database update: <code id="about-db-update">—</code></p>
+                    <p>Database generation date: <code id="about-db-gen">—</code></p>
+                    <p>Active modifiers: <code id="about-modifiers">—</code></p>
+                    <p>Active sites: <code id="about-sites">—</code></p>
+                </div>
+
+                <h3>Licenses and credits</h3>
+                <p>
+                    Klikkikuri Paatti is licensed under <a href="https://interoperable-europe.ec.europa.eu/collection/eupl/eupl-text-eupl-12" target="_blank">EUPL-1.2</a>.
+                </p>
+                <p id="non-oss-credit"></p>
             </fieldset>
 
 
