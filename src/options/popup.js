@@ -72,6 +72,57 @@ let cachedPageStats = null;
 
 const levelToI18nKey = (level) => `clickbaitinessLabel_${level.replaceAll(" ", "_")}`;
 
+/**
+ * Create a stat row element for a given clickbait level and count.
+ * @param {string} level Clickbaitiness level
+ * @param {number} count Count of occurrences
+ * @returns {HTMLDivElement} Row element containing <dt> and <dd>
+ */
+const _createStatRow = (level, count) => {
+    const rowDiv = document.createElement("div");
+    rowDiv.className = "stats-row";
+
+    const dt = document.createElement("dt");
+    dt.className = "stats-label";
+
+    const dot = document.createElement("span");
+    dot.className = "stats-dot";
+    dot.dataset.level = level.toLowerCase().replaceAll(" ", "-");
+
+    dt.appendChild(dot);
+    dt.appendChild(document.createTextNode(browser().i18n.getMessage(levelToI18nKey(level))));
+
+    const dd = document.createElement("dd");
+    dd.className = "stats-count";
+    dd.textContent = String(count);
+
+    rowDiv.appendChild(dt);
+    rowDiv.appendChild(dd);
+    return rowDiv;
+};
+
+/**
+ * Create a summary total row element.
+ * @param {number} totalCount Total count of occurrences
+ * @returns {HTMLDivElement} Row element containing <dt> and <dd>
+ */
+const _createTotalStatRow = (totalCount) => {
+    const rowDiv = document.createElement("div");
+    rowDiv.className = "stats-row stats-total-row";
+
+    const dt = document.createElement("dt");
+    dt.className = "stats-label";
+    dt.textContent = browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelTotal");
+
+    const dd = document.createElement("dd");
+    dd.className = "stats-count";
+    dd.textContent = String(totalCount);
+
+    rowDiv.appendChild(dt);
+    rowDiv.appendChild(dd);
+    return rowDiv;
+};
+
 const _refreshHomeView = ({ site, pageStats, isSiteEnabled }) => {
     const siteHeaderElem = document.getElementById("site-host");
     // Reset possible error state.
@@ -155,28 +206,11 @@ const _refreshHomeView = ({ site, pageStats, isSiteEnabled }) => {
     // Populate live page statistics list under gauge (skip levels with count === 0)
     const pageStatsList = document.getElementById("homeview-page-stats-list");
     if (pageStatsList) {
-        pageStatsList.innerHTML = "";
+        pageStatsList.replaceChildren();
         for (const level of [...Clickbaitiness.LEVELS].reverse()) {
             const count = statsTableData[level] || 0;
             if (count > 0) {
-                const li = document.createElement("li");
-                li.style.display = "flex";
-                li.style.justifyContent = "space-between";
-                li.style.width = "100%";
-                li.style.padding = "2px 8px";
-                li.style.color = "#475569";
-                li.style.fontWeight = "500";
-
-                const labelSpan = document.createElement("span");
-                labelSpan.textContent = browser().i18n.getMessage(levelToI18nKey(level));
-
-                const countSpan = document.createElement("span");
-                countSpan.textContent = String(count);
-                countSpan.style.fontWeight = "bold";
-
-                li.appendChild(labelSpan);
-                li.appendChild(countSpan);
-                pageStatsList.appendChild(li);
+                pageStatsList.appendChild(_createStatRow(level, count));
             }
         }
     }
@@ -184,30 +218,18 @@ const _refreshHomeView = ({ site, pageStats, isSiteEnabled }) => {
 
 const _refreshStatsView = ({ cumulativeStats }) => {
     const statsTableData = (cumulativeStats || {}).groupedByClickbaitiness || {};
+    const statsList = document.getElementById("statistics-grouped-by-clickbaitiness");
+    if (statsList) {
+        statsList.replaceChildren();
 
-    // Display total amount of found titles for this site.
-    const table = document.getElementById("statistics-grouped-by-clickbaitiness");
-    if (table) {
-        table.querySelector("tfoot td").textContent = Object.values(statsTableData).reduce((acc, x) => acc + x, 0);
-
-        // The static HTML table has the row elements sorted by clickbaitiness level.
-        const clickbaitinessTableRows = table.querySelector("tbody").children;
-
-        for (const row of clickbaitinessTableRows) {
-            const levelI8nKey = row.id.replaceAll("-", "_");
-            const levelKey = levelI8nKey.split("clickbaitinessLabel_")[1].replaceAll("_", " ");
-            row.querySelector("th").textContent = browser().i18n.getMessage(levelI8nKey);
-            row.querySelector("td").textContent = statsTableData[levelKey] || 0;
+        let total = 0;
+        for (const level of [...Clickbaitiness.LEVELS].reverse()) {
+            const count = statsTableData[level] || 0;
+            total += count;
+            statsList.appendChild(_createStatRow(level, count));
         }
 
-        const statisticsGroupedByClickbaitinessTableHeaders =
-            document.querySelectorAll("#statistics-grouped-by-clickbaitiness thead th");
-        statisticsGroupedByClickbaitinessTableHeaders[0].textContent =
-            browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelClickbaitiness");
-        statisticsGroupedByClickbaitinessTableHeaders[1].textContent =
-            browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelAmount");
-        document.querySelector("#statistics-grouped-by-clickbaitiness tfoot th").textContent =
-            browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelTotal");
+        statsList.appendChild(_createTotalStatRow(total));
     }
 };
 

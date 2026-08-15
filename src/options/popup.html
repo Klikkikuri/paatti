@@ -42,7 +42,7 @@
                     <text id="gauge-text" x="50" y="45" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#222">0%</text>
                     <text id="gauge-label" x="50" y="58" font-family="Arial, sans-serif" font-size="5.5" font-weight="bold" text-anchor="middle" fill="#666"></text>
                 </svg>
-                <ul id="homeview-page-stats-list" style="list-style: none; padding: 0; margin: 8px 0 0 0; width: 100%; display: flex; flex-direction: column; gap: 4px; font-size: 0.85em;"></ul>
+                <dl id="homeview-page-stats-list" class="stats-list"></dl>
             </div>
             <button id="request-site-btn" class="push-button hidden" style="margin: 0; font-size: 0.9em; padding: 6px 12px; min-height: 32px;"></button>
         </div>
@@ -51,42 +51,7 @@
     <!-- STATS VIEW -->
     <div class="content statsview hidden">
         <div id="statsview">
-            <table id="statistics-grouped-by-clickbaitiness">
-                <thead>
-                    <tr>
-                        <th scope="col"></th>
-                        <th scope="col"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr id="clickbaitinessLabel-Extremely-Clickbaity">
-                        <th scope="row"></th>
-                        <td></td>
-                    </tr>
-                    <tr id="clickbaitinessLabel-Very-Clickbaity">
-                        <th scope="row"></th>
-                        <td></td>
-                    </tr>
-                    <tr id="clickbaitinessLabel-Moderately-Clickbaity">
-                        <th scope="row"></th>
-                        <td></td>
-                    </tr>
-                    <tr id="clickbaitinessLabel-Slightly-Clickbaity">
-                        <th scope="row"></th>
-                        <td></td>
-                    </tr>
-                    <tr id="clickbaitinessLabel-Not-Clickbait-at-all">
-                        <th scope="row"></th>
-                        <td></td>
-                    </tr>
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <th scope="row"></th>
-                        <td></td>
-                    </tr>
-                </tfoot>
-            </table>
+            <dl id="statistics-grouped-by-clickbaitiness" class="stats-list"></dl>
         </div>
     </div>
 
