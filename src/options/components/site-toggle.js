@@ -41,7 +41,8 @@ detailedTemplate.innerHTML = `
             align-items: center;
             justify-content: center;
         }
-        .site-favicon img {
+        .site-favicon img,
+        .site-favicon .site-favicon-fallback {
             border-radius: 4px;
             display: block;
         }
