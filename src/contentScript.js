@@ -13,7 +13,7 @@ let hrefSign;
 (async () => {
     ////////////////////////////////////////////////////////////////////////////
     // Import modules.
-    const browser = (typeof chrome !== "undefined" ? chrome : globalThis.browser);
+    const browser = (typeof globalThis.browser !== "undefined" ? globalThis.browser : globalThis.chrome);
     const { model: model, modelEvents: modelEvents, klikkikuriStatus: klikkikuriStatus } = await import(browser.runtime.getURL("src/model.js"));
     const { controller } = await import(browser.runtime.getURL("src/controller.js"));
     const { getLogger, debounce, canAppendSpan } = await import(browser.runtime.getURL("src/utils.js"));
@@ -39,6 +39,26 @@ let hrefSign;
     }
 
     const log = getLogger("content_script");
+
+    /**
+     * Returns the favicon URL the browser would use for this page:
+     * first <link rel="icon"> found, falling back to /favicon.ico.
+     *
+     * @returns {string} Absolute URL of the page favicon.
+     */
+    const extractFaviconUrl = () => {
+        const link = document.querySelector('link[rel~="icon"]');
+        return link?.href ?? `${window.location.protocol}//${window.location.host}/favicon.ico`;
+    };
+
+    // Dispatch favicon URL to background for caching. Non-blocking, non-fatal.
+    browser.runtime.sendMessage({
+        action: "storeFavicon",
+        domain: window.location.hostname,
+        url: extractFaviconUrl()
+    }).catch((err) => {
+        log("storeFavicon message failed (non-fatal):", err);
+    });
 
     hrefSign = async (url) => {
         try {
@@ -418,7 +438,7 @@ let hrefSign;
 
     const observer = new MutationObserver((mutations) => {
         // Check if extension context was invalidated (e.g. extension updated/reloaded)
-        const browserObj = (typeof chrome !== "undefined" ? chrome : globalThis.browser);
+        const browserObj = (typeof globalThis.browser !== "undefined" ? globalThis.browser : globalThis.chrome);
         if (!browserObj || !browserObj.runtime || !browserObj.runtime.id) {
             log("Extension context is invalidated. Disconnecting MutationObserver.");
             observer.disconnect();
@@ -631,7 +651,7 @@ let hrefSign;
 
     // Send a message to the popup when the user scrolls the page.
     window.addEventListener("scroll", debounce(() => {
-        const browserObj = (typeof chrome !== "undefined" ? chrome : globalThis.browser);
+        const browserObj = (typeof globalThis.browser !== "undefined" ? globalThis.browser : globalThis.chrome);
         if (browserObj && browserObj.runtime && browserObj.runtime.id) {
             browserObj.runtime.sendMessage({ action: "pageScrolled" }).catch((err) => {
                 // Ignore error when popup/background is not listening.

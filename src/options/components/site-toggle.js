@@ -3,6 +3,7 @@ import { controller } from '../../controller.js';
 import { isSiteEnabled } from '../utils.js';
 import { getConfig } from '../../config.js';
 import './toggle-button.js';
+import './favicon-img.js';
 const compactTemplate = document.createElement('template');
 compactTemplate.innerHTML = `
     <label class="site-label"></label>
@@ -36,6 +37,14 @@ detailedTemplate.innerHTML = `
         .site-favicon {
             border-radius: 4px;
             flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .site-favicon img,
+        .site-favicon .site-favicon-fallback {
+            border-radius: 4px;
+            display: block;
         }
         .site-name {
             font-weight: bold;
@@ -62,7 +71,7 @@ detailedTemplate.innerHTML = `
     </style>
     <div class="site-main-section">
         <div class="site-info">
-            <img alt="" width="24" height="24" class="site-favicon" crossorigin="anonymous" referrerpolicy="no-referrer">
+            <favicon-img class="site-favicon" size="24"></favicon-img>
             <div class="site-details">
                 <div class="site-name"></div>
                 <div class="site-domain"></div>
@@ -119,9 +128,8 @@ class SiteToggleSetting extends HTMLElement {
             this.classList.add('site-item');
             this.replaceChildren(detailedTemplate.content.cloneNode(true));
 
-            const faviconUrl = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
-            const imgEl = this.querySelector('.site-favicon');
-            if (imgEl) imgEl.src = faviconUrl;
+            const faviconEl = this.querySelector('favicon-img');
+            if (faviconEl) faviconEl.setAttribute('domain', domain);
 
             const nameEl = this.querySelector('.site-name');
             if (nameEl) nameEl.textContent = name;

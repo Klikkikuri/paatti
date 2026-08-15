@@ -10,6 +10,7 @@ import './components/master-switch-setting.js';
 import './components/title-modifier-setting.js';
 import './components/database-status-setting.js';
 import './components/clickbait-level-vertical.js';
+import './components/favicon-img.js';
 
 // Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {

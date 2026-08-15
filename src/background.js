@@ -4,9 +4,13 @@ import { browser, getLogger } from "./utils.js";
 import { getConfig } from "./config.js";
 import { fetchRahtiData, fetchRahtiDataWithRetry } from "./rahti.js";
 import { controller } from "./controller.js";
+import { getFaviconKey, makeFaviconEntry, isFaviconExpired } from "./faviconCache.js";
 import "./../build/wasm_exec.js";
 
 const log = getLogger("background");
+
+/** Tracks domains whose favicon fetch is currently in-flight within this SW lifecycle. */
+const pendingFaviconDomains = new Set();
 
 const DEFAULT_ENVIRONMENT = "free";
 const PULL_ALARM_NAME = "periodic-data-pull";
@@ -235,6 +239,69 @@ browser().runtime.onMessage.addListener((message, sender, sendResponse) => {
             sendResponse({ success: false, error: err.message || String(err) });
         });
         return true; // Keep message channel open for async response
+    }
+
+    if (message.action === "storeFavicon") {
+        const { domain, url } = message;
+        if (!domain || !url) return;
+
+        // In-flight guard: skip if a fetch for this domain is already running
+        if (pendingFaviconDomains.has(domain)) return;
+
+        const key = getFaviconKey(domain);
+        (async () => {
+            // In-flight guard inside async flow to avoid race before the first await
+            if (pendingFaviconDomains.has(domain)) return;
+            pendingFaviconDomains.add(domain);
+            try {
+                // Persistent cache check: skip if valid and not expired
+                const stored = await browser().storage.local.get(key);
+                const existing = stored[key];
+                if (!isFaviconExpired(existing)) return;
+
+                const response = await fetch(url, {
+                    credentials: "omit",
+                    referrerPolicy: "no-referrer"
+                });
+                const altDomain = domain.startsWith("www.") ? domain.slice(4) : `www.${domain}`;
+                if (!response.ok) {
+                    // Negatively cache: prevents retry on every page load
+                    const negEntry = makeFaviconEntry(null);
+                    await browser().storage.local.set({
+                        [key]: negEntry,
+                        [getFaviconKey(altDomain)]: negEntry
+                    });
+                    log(`Favicon fetch failed for ${domain} (HTTP ${response.status}), negatively cached.`);
+                    return;
+                }
+
+                const buffer = await response.arrayBuffer();
+                const contentType = response.headers.get("content-type") || "image/x-icon";
+
+                // Manual Base64 conversion — FileReader is unavailable in Service Workers
+                const bytes = new Uint8Array(buffer);
+                let binary = "";
+                const chunk = 8192;
+                for (let i = 0; i < bytes.byteLength; i += chunk) {
+                    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+                }
+                const dataUri = `data:${contentType};base64,${btoa(binary)}`;
+                const favEntry = makeFaviconEntry(dataUri);
+
+                await browser().storage.local.set({
+                    [key]: favEntry,
+                    [getFaviconKey(altDomain)]: favEntry
+                });
+                log(`Favicon cached for ${domain}.`);
+            } catch (err) {
+                // Transient network error — do NOT negatively cache; will retry next page load
+                log(`Favicon fetch error for ${domain}:`, err);
+            } finally {
+                pendingFaviconDomains.delete(domain);
+            }
+        })();
+        // No return true — sendResponse is never called for this action
+        return;
     }
 });
 
