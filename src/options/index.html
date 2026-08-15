@@ -263,6 +263,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            gap: 6px;
             font-size: 0.9rem;
             color: #667eea;
             border: 1.2px solid #667eea;
@@ -635,6 +636,71 @@
                 padding: 6px 12px;
             }
         }
+
+        .about {
+            color: #666;
+            line-height: 1.6;
+
+            h3, h4 {
+                margin-bottom: 10px;
+                color: #667eea;
+                font-size: 1.1rem;
+            }
+
+            a {
+                color: #667eea;
+                text-decoration: none;
+
+                &:hover:not(.detail-button) {
+                    text-decoration: underline;
+                }
+            }
+
+            ul {
+                margin-bottom: 20px;
+                list-style-position: inside;
+            }
+
+            .store-links {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                list-style: none;
+                padding-left: 0;
+                margin-bottom: 20px;
+
+                li {
+                    display: inline-flex;
+
+                    img {
+                        border-radius: 2px;
+                        flex-shrink: 0;
+                    }
+                }
+            }
+
+            #about-info {
+                margin-bottom: 20px;
+                padding: 15px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                font-size: 0.9em;
+                color: #555;
+                font-family: monospace;
+                line-height: 1.6;
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 6px 10px;
+
+                dt {
+                    font-weight: normal;
+                }
+
+                dd {
+                    margin-inline-start: 0;
+                }
+            }
+        }
     </style>
 </head>
 <body>
@@ -738,11 +804,78 @@
                 <database-status-setting></database-status-setting>
             </fieldset>
 
+            <!-- About Section -->
+            <fieldset class="about">
+                <legend>ℹ️ About</legend>
+
+                <p>Klikkikuri Paatti is available:</p>
+                <ul class="store-links">
+                    <li>
+                        <a href="https://addons.mozilla.org/fi/firefox/addon/klikkikuri" target="_blank" rel="noopener noreferrer" class="detail-button">
+                            <img src="https://icons.duckduckgo.com/ip3/addons.mozilla.org.ico" width="16" height="16" alt="Firefox Add-ons" crossorigin="anonymous" referrerpolicy="no-referrer">
+                            Firefox Add-ons ↗
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://chromewebstore.google.com/detail/klikkikuri-paatti/jalegaigmgljhnaakmbbaajooffgcbgc" target="_blank" rel="noopener noreferrer" class="detail-button">
+                            <img src="https://icons.duckduckgo.com/ip3/chromewebstore.google.com.ico" width="16" height="16" alt="Chrome Web Store" crossorigin="anonymous" referrerpolicy="no-referrer">
+                            Chrome Web Store ↗
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/Klikkikuri/paatti" target="_blank" rel="noopener noreferrer" class="detail-button">
+                            <img src="https://icons.duckduckgo.com/ip3/github.com.ico" width="16" height="16" alt="GitHub" crossorigin="anonymous" referrerpolicy="no-referrer">
+                            GitHub ↗
+                        </a>
+                    </li>
+                </ul>
+
+                <h3>Contributors</h3>
+                <ul>
+                    <li><a href="https://github.com/isoteemu" target="_blank" rel="noopener noreferrer">Teemu Autto</a></li>
+                    <li><a href="https://github.com/trkks" target="_blank" rel="noopener noreferrer">Juho Tarkkanen</a></li>
+                    <li><a href="https://github.com/taijakolehmainen" target="_blank" rel="noopener noreferrer">Taija Kolehmainen</a></li>
+                </ul>
+
+                <h3>Feedback</h3>
+                <ul>
+                    <li><a href="https://github.com/Klikkikuri/paatti/issues/new" target="_blank" rel="noopener noreferrer">Create an issue on GitHub</a></li>
+                </ul>
+
+                <h4>Paatti info</h4>
+                <dl id="about-info">
+                    <dt>Paatti version:</dt>
+                    <dd><code id="about-version">—</code></dd>
+                    <dt>Environment:</dt>
+                    <dd><code id="about-env">—</code></dd>
+                    <dt>Browser:</dt>
+                    <dd><code id="about-browser">—</code></dd>
+                    <dt>Operating system:</dt>
+                    <dd><code id="about-os">—</code></dd>
+                    <dt>Last database update:</dt>
+                    <dd><code id="about-db-update">—</code></dd>
+                    <dt>Database generation date:</dt>
+                    <dd><code id="about-db-gen">—</code></dd>
+                    <dt>Clickbait level:</dt>
+                    <dd><code id="about-clickbait-level">—</code></dd>
+                    <dt>Active modifiers:</dt>
+                    <dd><code id="about-modifiers">—</code></dd>
+                    <dt>Active sites:</dt>
+                    <dd><code id="about-sites">—</code></dd>
+                </dl>
+
+                <h3>Licenses and credits</h3>
+                <p>
+                    Klikkikuri Paatti is licensed under <a href="https://interoperable-europe.ec.europa.eu/collection/eupl/eupl-text-eupl-12" target="_blank" rel="noopener noreferrer">EUPL-1.2</a>.
+                </p>
+                <p id="non-oss-credit"></p>
+            </fieldset>
+
 
         </div>
 
         <footer>
-            <p><span id="product-name">Klikkikuri Paatti</span> <span id="product-version"></span> | <a href="https://github.com/Klikkikuri" target="_blank">GitHub</a></p>
+            <p><span id="product-name">Klikkikuri Paatti</span> <span id="product-version"></span> | <a href="https://github.com/Klikkikuri" target="_blank" rel="noopener noreferrer">GitHub</a></p>
         </footer>
     </div>
 

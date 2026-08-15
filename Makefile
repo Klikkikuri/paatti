@@ -1,4 +1,5 @@
 DOCKER ?= docker
+NON_OSS ?= 0
 BUILD_DIR := $(shell pwd)/build
 TEST_DATA_BUILD_DIR := $(BUILD_DIR)/test_data
 TEST_DATA_SIGNATURES := $(TEST_DATA_BUILD_DIR)/signatures.txt
@@ -69,6 +70,10 @@ dist: build-suola
 	mkdir -p $(DIST_DIR)/build
 	cp -r $(EXTENSION_ASSETS) $(DIST_DIR)/
 	cp $(addprefix $(BUILD_DIR)/, $(WASM_ASSETS)) $(DIST_DIR)/build/
+ifeq ($(NON_OSS),1)
+	@echo "Overlaying non-OSS assets (NON_OSS=1)..."
+	cp -r assets/non-oss/by-kagi/src/. $(DIST_DIR)/src/
+endif
 
 package: dist
 	cd $(DIST_DIR) && zip -r -FS $(BUILD_EXTENSION) .

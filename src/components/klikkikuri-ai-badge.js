@@ -5,6 +5,12 @@ import { createBadgeClass } from "./badge-base.js";
 /**
  * Custom Web Component for EU-styled AI content badges.
  * Displays the official EU AI circle badge icon (solid circle with bold 'AI' cutout/fill).
+ *
+ * NOTE: A non-OSS variant of this file exists at
+ * assets/non-oss/by-kagi/src/components/klikkikuri-ai-badge.js
+ * which overrides this file in NON_OSS=1 builds. When modifying this file
+ * (e.g. shared styles, component API, or custom element registration),
+ * apply the same structural changes there as well.
  */
 const templateHtml = `
 <style>

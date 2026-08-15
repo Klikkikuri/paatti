@@ -47,4 +47,54 @@ const getClickbaitLevelInfo = (level) => {
     return { title, description };
 };
 
-export { isSiteEnabled, displayProductInfo, getClickbaitLevelInfo };
+/**
+ * Gets a human-readable browser name + version using native structured APIs.
+ * Avoids User-Agent string parsing entirely.
+ * @returns {Promise<string>}
+ */
+const getBrowserInfo = async () => {
+    // Firefox native API
+    if (browser().runtime.getBrowserInfo) {
+        const info = await browser().runtime.getBrowserInfo();
+        return `${info.name} ${info.version}`;
+    }
+
+    // Chromium native API
+    const brands = navigator.userAgentData?.brands;
+    if (brands?.length) {
+        const brand = brands.find((b) => b.brand && !/^not/i.test(b.brand)) ?? brands.at(-1);
+        return brand ? `${brand.brand} ${brand.version}` : 'Unknown';
+    }
+
+    return 'Unknown';
+};
+
+/**
+ * Formats a timestamp or Date into an ISO 8601 string with local timezone offset.
+ * Example: "2026-08-15T12:36:28+03:00"
+ * @param {number|string|Date|null} dateInput
+ * @returns {string}
+ */
+const formatIsoWithTimezone = (dateInput) => {
+    if (!dateInput) return '—';
+    const date = new Date(dateInput);
+    if (isNaN(date.getTime())) return '—';
+
+    const pad = (n) => String(n).padStart(2, '0');
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    const seconds = pad(date.getSeconds());
+
+    const offsetMinutes = -date.getTimezoneOffset();
+    const offsetSign = offsetMinutes >= 0 ? '+' : '-';
+    const absOffset = Math.abs(offsetMinutes);
+    const offsetHours = pad(Math.floor(absOffset / 60));
+    const offsetMins = pad(absOffset % 60);
+
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetSign}${offsetHours}:${offsetMins}`;
+};
+
+export { isSiteEnabled, displayProductInfo, getClickbaitLevelInfo, getBrowserInfo, formatIsoWithTimezone };

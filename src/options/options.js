@@ -1,8 +1,9 @@
 import { getConfig } from '../config.js';
 import { browser } from '../utils.js';
-import { displayProductInfo } from './utils.js';
+import { displayProductInfo, getBrowserInfo, formatIsoWithTimezone } from './utils.js';
 import { model } from '../model.js';
 import { controller } from '../controller.js';
+import { NON_OSS_CREDIT_HTML } from './non-oss-info.js';
 import './components/site-list-setting.js';
 import './components/visual-highlight-setting.js';
 import './components/master-switch-setting.js';
@@ -15,6 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadSettings();
     displayProductInfo();
     setupEventListeners();
+    await renderAbout();
 });
 
 async function loadSettings() {
@@ -271,4 +273,76 @@ async function setupEventListeners() {
 browser().storage.onChanged.addListener(async (changes, area) => {
     console.log("Storage changed, reloading settings in options page");
     await loadSettings();
+    await renderAbout();
 });
+
+/**
+ * Sets the text content of an about-info field by element ID.
+ * Silently no-ops if the element is not found.
+ * @param {string} id - Element ID
+ * @param {string} value - Text to display
+ */
+function setAboutField(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+
+/**
+ * Populates the About section with runtime and config info useful for issue reports.
+ * Gathers data from manifest, config, model, and navigator.
+ */
+async function renderAbout() {
+    const manifest = browser().runtime.getManifest();
+    const config = await getConfig();
+    const status = await model.read.getDatabaseStatus();
+
+    // Version
+    setAboutField('about-version', manifest.version);
+
+    // Environment
+    setAboutField('about-env', config.activeEnv || 'free');
+
+    // Browser — native APIs
+    setAboutField('about-browser', await getBrowserInfo());
+
+    // OS — prefer userAgentData (Chromium), fall back to navigator.platform
+    const platform = navigator.userAgentData?.platform || navigator.platform || '—';
+    const arch = navigator.userAgentData?.architecture || '';
+    setAboutField('about-os', arch ? `${platform} ${arch}` : platform);
+
+    // Last DB fetch
+    setAboutField('about-db-update', formatIsoWithTimezone(status.lastDatabaseUpdate));
+
+    // DB generation date
+    setAboutField('about-db-gen', formatIsoWithTimezone(status.databaseGenerationDate));
+
+    // Clickbait level
+    const clickbaitLevel = config.clickbaitLevel !== undefined ? config.clickbaitLevel : 2;
+    setAboutField('about-clickbait-level', `${clickbaitLevel}`);
+
+    // Active modifiers — list names of enabled modifiers
+    const modifiers = config.modifiers || {};
+    const activeModifiers = Object.entries(modifiers)
+        .filter(([, enabled]) => enabled)
+        .map(([name]) => name);
+    setAboutField('about-modifiers', activeModifiers.length ? activeModifiers.join(', ') : 'none');
+
+    // Enabled sites — if global toggle is off, show that instead of listing sites
+    if (!config.enabled) {
+        setAboutField('about-sites', 'extension disabled');
+    } else {
+        const sitesEnabled = await model.read.getSitesEnabled();
+        const enabledSites = Object.entries(sitesEnabled)
+            .filter(([, enabled]) => enabled)
+            .map(([domain]) => domain);
+        setAboutField('about-sites', enabledSites.length ? enabledSites.join(', ') : 'none');
+    }
+
+    // Non-OSS credit (empty string in OSS builds -> no visible output)
+    const creditEl = document.getElementById('non-oss-credit');
+    if (creditEl && NON_OSS_CREDIT_HTML) {
+        creditEl.innerHTML = NON_OSS_CREDIT_HTML;
+    }
+}
+

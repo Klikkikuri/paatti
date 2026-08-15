@@ -62,7 +62,7 @@ detailedTemplate.innerHTML = `
     </style>
     <div class="site-main-section">
         <div class="site-info">
-            <img alt="" width="24" height="24" class="site-favicon">
+            <img alt="" width="24" height="24" class="site-favicon" crossorigin="anonymous" referrerpolicy="no-referrer">
             <div class="site-details">
                 <div class="site-name"></div>
                 <div class="site-domain"></div>
