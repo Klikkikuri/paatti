@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="fi">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title></title>
+    <title data-i18n="popupPageTitle">Klikkikuri Paatti</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -17,7 +17,7 @@
             <div id="active-tab-indicator" class="text-muted-small" style="font-weight: bold; opacity: 0.8; text-transform: uppercase; font-size: 0.7em; letter-spacing: 0.05em; text-align: left;"></div>
         </div>
         <div>
-            <compact-button id="open-options" icon="images/icon_gear.svg" alt="Settings icon"></compact-button>
+            <compact-button id="open-options" icon="images/icon_gear.svg" alt="Settings icon" data-i18n-alt="iconSettingsAlt" data-i18n-title="navigationSettingsLabel"></compact-button>
             <power-button></power-button>
         </div>
     </div>
@@ -141,39 +141,39 @@
         <div>
             <input id="navi-main" class="open-home hidden" type="radio" name="navi" checked>
             <label for="navi-main" class="push-button compact-button">
-                <img class="icon" src="images/icon_home.svg" height="15" alt="Home icon">
+                <img class="icon" src="images/icon_home.svg" height="15" alt="Home icon" data-i18n-alt="iconHomeAlt">
             </label>
         </div>
 
         <div>
             <input id="navi-feedback" class="open-feedbackview hidden" type="radio" name="navi">
             <label for="navi-feedback" class="push-button compact-button">
-                <img class="icon" src="images/icon_comment.svg" height="15" alt="Comment icon">
+                <img class="icon" src="images/icon_comment.svg" height="15" alt="Comment icon" data-i18n-alt="iconFeedbackAlt">
             </label>
         </div>
 
         <div>
             <input id="navi-stats" class="open-statsview hidden" type="radio" name="navi">
             <label for="navi-stats" class="push-button compact-button">
-                <img class="icon" src="images/icon_chart.svg" height="15" alt="Stats icon">
+                <img class="icon" src="images/icon_chart.svg" height="15" alt="Stats icon" data-i18n-alt="iconStatsAlt">
             </label>
         </div>
 
         <div>
             <input id="navi-settings" class="open-settingsview hidden" type="radio" name="navi">
             <label for="navi-settings" class="push-button compact-button">
-                <img class="icon" src="images/icon_slider.svg" height="15" alt="Slider icon">
+                <img class="icon" src="images/icon_slider.svg" height="15" alt="Slider icon" data-i18n-alt="iconSettingsAlt">
             </label>
         </div>
     </div>
 
     <!-- LOGO -->
     <div id="logo">
-        <span>Made with</span>
+        <span data-i18n="logoMadeWith">Made with</span>
         <span id="logo-graphics">
             <input class="hidden" id="enable-devmode">
             <label for="enable-devmode">
-                <img src="images/klikkihAI_logo_1.png" height="15" alt="Klikkukuri logo">
+                <img src="images/klikkihAI_logo_1.png" height="15" alt="Klikkikuri logo" data-i18n-alt="iconLogoAlt">
                 <span class="devmode hidden">🤓</span>
             </label>
             <!-- Start of hidden devmode controls list -->
@@ -181,7 +181,7 @@
             <label for="copy-link-signatures" class="devmode">🧂</label>
             <!-- End of list -->
         </span>
-        <span>by Klikkikuri</span>
+        <span data-i18n="logoByKlikkikuri">by Klikkikuri</span>
     </div>
 
     <!-- VERSION INFO -->

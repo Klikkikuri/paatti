@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Klikkikuri Paatti - Asetukset</title>
+    <title data-i18n="optionsPageTitle">Klikkikuri Paatti - Settings</title>
     <style>
         * {
             box-sizing: border-box;
@@ -710,90 +710,90 @@
     <div class="container">
         <header>
             <h1>⛵ Klikkikuri Paatti</h1>
-            <p>Klikkikuri - Purjehdi verkkoa ilman klikkiotsikkoja</p>
+            <p data-i18n="headerSubtitle">Klikkikuri - Sail the web without clickbait headlines</p>
         </header>
 
         <div class="content">
             <!-- Main Extension Toggle -->
             <fieldset>
-                <legend>🔌 Laajennuksen tila</legend>
-                <p class="section-description">Ota laajennus käyttöön tai pois käytöstä</p>
+                <legend data-i18n="legendExtensionStatus">🔌 Extension Status</legend>
+                <p class="section-description" data-i18n="descExtensionStatus">Enable or disable the extension</p>
                 <master-switch-setting></master-switch-setting>
             </fieldset>
 
             <!-- Clickbait Level -->
             <fieldset>
-                <legend>🎯 Klikkiotsikoiden taso</legend>
-                <p class="section-description">Määritä, kuinka klikkikynnystä nostetaan</p>
+                <legend data-i18n="legendClickbaitLevel">🎯 Clickbait Threshold</legend>
+                <p class="section-description" data-i18n="descClickbaitLevel">Configure how aggressively clickbait headlines are filtered</p>
                 <clickbait-level-vertical></clickbait-level-vertical>
             </fieldset>
 
             <!-- Site Configuration -->
             <fieldset>
-                <legend>🌐 Sivustokohtaiset asetukset</legend>
-                <p class="section-description">Valitse, millä sivustoilla laajennus on käytössä</p>
+                <legend data-i18n="legendSiteConfig">🌐 Site Configuration</legend>
+                <p class="section-description" data-i18n="descSiteConfig">Select which sites the extension is enabled on</p>
                 <site-list-setting id="siteList"></site-list-setting>
             </fieldset>
 
             <!-- Title Modifiers -->
             <fieldset>
-                <legend>🏷️ Otsikkomerkinnät</legend>
-                <p class="section-description">Ota käyttöön automaattiset ilmaisimet ja muokkaukset otsikoille (voimassa kaikilla laitteilla)</p>
+                <legend data-i18n="legendTitleModifiers">🏷️ Title Modifiers</legend>
+                <p class="section-description" data-i18n="descTitleModifiers">Enable automatic indicators and modifications for headlines (applies across all devices)</p>
                 <title-modifier-setting modifier="aiSlop"></title-modifier-setting>
                 <title-modifier-setting modifier="video"></title-modifier-setting>
             </fieldset>
 
             <!-- Environment Configuration -->
             <fieldset>
-                <legend>⚙️ Ympäristön asetukset</legend>
-                <p class="section-description">Valitse käyttöympäristö (kehittäjille)</p>
+                <legend data-i18n="legendEnvironmentConfig">⚙️ Environment Configuration</legend>
+                <p class="section-description" data-i18n="descEnvironmentConfig">Select operating environment (for developers)</p>
                 <div class="env-selector">
                     <label class="env-option" data-env="free">
                         <input type="radio" name="environment" value="free">
-                        <div class="env-title">Ilmainen</div>
-                        <div class="env-description">Ilmaiset uutiset</div>
+                        <div class="env-title" data-i18n="envFreeTitle">Free</div>
+                        <div class="env-description" data-i18n="envFreeDesc">Free and open service with community updates</div>
                     </label>
                     <label class="env-option" data-env="paid">
                         <input type="radio" name="environment" value="paid">
-                        <div class="env-title">Maksullinen</div>
-                        <div class="env-description">Maksulliset uutiset</div>
+                        <div class="env-title" data-i18n="envPaidTitle">Paid</div>
+                        <div class="env-description" data-i18n="envPaidDesc">Paid service with additional lists for paywalled content and faster updates</div>
                     </label>
                     <label class="env-option" data-env="development">
                         <input type="radio" name="environment" value="development">
-                        <div class="env-title">Kehitys</div>
-                        <div class="env-description">Kehitykseen tarkoitettu ympäristö</div>
+                        <div class="env-title" data-i18n="envDevTitle">Development</div>
+                        <div class="env-description" data-i18n="envDevDesc">Environment intended for development</div>
                     </label>
                 </div>
 
                 <!-- Invitation Section (shown only in paid mode) -->
                 <div id="invitation-section">
                     <hr>
-                    <h3 style="margin-bottom: 15px; color: #667eea;">📧 Kutsu maksulliseen versioon</h3>
-                    <p style="color: #666; margin-bottom: 15px; line-height: 1.5;">Maksullinen versio ei ole vielä saatavilla. Jätä sähköpostiosoitteesi, niin lähetämme sinulle kutsun maksullisen version käyttöön.</p>
+                    <h3 style="margin-bottom: 15px; color: #667eea;" data-i18n="invitationTitle">📧 Invitation to paid version</h3>
+                    <p style="color: #666; margin-bottom: 15px; line-height: 1.5;" data-i18n="invitationDesc">The paid version is not yet available. Enter your email address to receive an invitation when it launches.</p>
                     <div class="email-input-wrapper">
                         <div class="email-icon">
                             <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                 <path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="m3.5 5.5 7.893 6.036a1 1 0 0 0 1.214 0L20.5 5.5M4 19h16a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1Z"/>
                             </svg>
                         </div>
-                        <input type="email" id="invitationEmail" placeholder="Sähköpostiosoite">
-                        <button type="button" class="email-submit-btn" id="submitInvitation">Lähetä</button>
+                        <input type="email" id="invitationEmail" placeholder="Email address" data-i18n-placeholder="invitationEmailPlaceholder">
+                        <button type="button" class="email-submit-btn" id="submitInvitation" data-i18n="invitationSubmitBtn">Send</button>
                     </div>
                 </div>
 
                 <!-- Debug Settings (shown only in development mode) -->
                 <div id="debug-settings">
                     <hr>
-                    <h3 style="margin-bottom: 15px; color: #667eea;">🐛 Debug-asetukset</h3>
+                    <h3 style="margin-bottom: 15px; color: #667eea;" data-i18n="debugSettingsTitle">🐛 Debug Settings</h3>
                     <visual-highlight-setting></visual-highlight-setting>
                     <div class="setting-group" style="margin-top: 15px;">
                         <div class="number-input-group" style="margin: 0; padding: 15px; background: #f8f9fa; border-radius: 8px; display: flex; flex-direction: column; gap: 10px;">
                             <div class="label-text">
-                                <strong>Tietokannan osoitteet (titleDataUrls)</strong>
-                                <span style="display: block; margin-top: 5px; margin-bottom: 8px;">Syötä JSON-tietokantojen osoitteet kehitysympäristöä varten, yksi osoite per rivi.</span>
+                                <strong data-i18n="devTitleDataUrlsTitle">Database URLs (titleDataUrls)</strong>
+                                <span style="display: block; margin-top: 5px; margin-bottom: 8px;" data-i18n="devTitleDataUrlsDesc">Enter JSON database URLs for the development environment, one URL per line.</span>
                             </div>
                             <textarea id="devTitleDataUrls" rows="3" placeholder="http://localhost:3000/data.json" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem; font-family: monospace; resize: vertical; box-sizing: border-box;"></textarea>
-                            <button type="button" class="btn-primary" id="saveDevUrlsBtn" style="margin-top: 5px; padding: 8px 16px; width: auto; align-self: flex-end;">💾 Tallenna osoitteet</button>
+                            <button type="button" class="btn-primary" id="saveDevUrlsBtn" style="margin-top: 5px; padding: 8px 16px; width: auto; align-self: flex-end;" data-i18n="saveDevUrlsBtn">💾 Save URLs</button>
                         </div>
                     </div>
                 </div>
@@ -801,17 +801,17 @@
 
             <!-- Database Update Settings & Status -->
             <fieldset>
-                <legend>🗄️ Tietokannan päivitys</legend>
-                <p class="section-description">Määritä tietokannan automaattinen päivitysväli ja hallitse manuaalista päivitystä</p>
+                <legend data-i18n="legendDatabaseUpdate">🗄️ Database Update</legend>
+                <p class="section-description" data-i18n="descDatabaseUpdate">Configure automatic database update interval and manage manual updates</p>
                 
                 <database-status-setting></database-status-setting>
             </fieldset>
 
             <!-- About Section -->
             <fieldset class="about">
-                <legend>ℹ️ About</legend>
+                <legend data-i18n="legendAbout">ℹ️ About</legend>
 
-                <p>Klikkikuri Paatti is available:</p>
+                <p data-i18n="aboutAvailableOn">Klikkikuri Paatti is available:</p>
                 <ul class="store-links">
                     <li>
                         <a href="https://addons.mozilla.org/fi/firefox/addon/klikkikuri" target="_blank" rel="noopener noreferrer" class="detail-button">
@@ -833,43 +833,43 @@
                     </li>
                 </ul>
 
-                <h3>Contributors</h3>
+                <h3 data-i18n="aboutContributorsTitle">Contributors</h3>
                 <ul>
                     <li><a href="https://github.com/isoteemu" target="_blank" rel="noopener noreferrer">Teemu Autto</a></li>
                     <li><a href="https://github.com/trkks" target="_blank" rel="noopener noreferrer">Juho Tarkkanen</a></li>
                     <li><a href="https://github.com/taijakolehmainen" target="_blank" rel="noopener noreferrer">Taija Kolehmainen</a></li>
                 </ul>
 
-                <h3>Feedback</h3>
+                <h3 data-i18n="aboutFeedbackTitle">Feedback</h3>
                 <ul>
-                    <li><a href="https://github.com/Klikkikuri/paatti/issues/new" target="_blank" rel="noopener noreferrer">Create an issue on GitHub</a></li>
+                    <li><a href="https://github.com/Klikkikuri/paatti/issues/new" target="_blank" rel="noopener noreferrer" data-i18n="aboutCreateIssueLink">Create an issue on GitHub</a></li>
                 </ul>
 
-                <h4>Paatti info</h4>
+                <h4 data-i18n="aboutPaattiInfoTitle">Paatti info</h4>
                 <dl id="about-info">
-                    <dt>Paatti version:</dt>
+                    <dt data-i18n="aboutLabelVersion">Paatti version:</dt>
                     <dd><code id="about-version">—</code></dd>
-                    <dt>Environment:</dt>
+                    <dt data-i18n="aboutLabelEnv">Environment:</dt>
                     <dd><code id="about-env">—</code></dd>
-                    <dt>Browser:</dt>
+                    <dt data-i18n="aboutLabelBrowser">Browser:</dt>
                     <dd><code id="about-browser">—</code></dd>
-                    <dt>Operating system:</dt>
+                    <dt data-i18n="aboutLabelOS">Operating system:</dt>
                     <dd><code id="about-os">—</code></dd>
-                    <dt>Last database update:</dt>
+                    <dt data-i18n="aboutLabelLastDbUpdate">Last database update:</dt>
                     <dd><code id="about-db-update">—</code></dd>
-                    <dt>Database generation date:</dt>
+                    <dt data-i18n="aboutLabelDbGenDate">Database generation date:</dt>
                     <dd><code id="about-db-gen">—</code></dd>
-                    <dt>Clickbait level:</dt>
+                    <dt data-i18n="aboutLabelClickbaitLevel">Clickbait level:</dt>
                     <dd><code id="about-clickbait-level">—</code></dd>
-                    <dt>Active modifiers:</dt>
+                    <dt data-i18n="aboutLabelActiveModifiers">Active modifiers:</dt>
                     <dd><code id="about-modifiers">—</code></dd>
-                    <dt>Active sites:</dt>
+                    <dt data-i18n="aboutLabelActiveSites">Active sites:</dt>
                     <dd><code id="about-sites">—</code></dd>
                 </dl>
 
-                <h3>Licenses and credits</h3>
+                <h3 data-i18n="aboutLicensesTitle">Licenses and credits</h3>
                 <p>
-                    Klikkikuri Paatti is licensed under <a href="https://interoperable-europe.ec.europa.eu/collection/eupl/eupl-text-eupl-12" target="_blank" rel="noopener noreferrer">EUPL-1.2</a>.
+                    <span data-i18n="aboutLicensePrefix">Klikkikuri Paatti is licensed under</span> <a href="https://interoperable-europe.ec.europa.eu/collection/eupl/eupl-text-eupl-12" target="_blank" rel="noopener noreferrer">EUPL-1.2</a>.
                 </p>
                 <p id="non-oss-credit"></p>
             </fieldset>

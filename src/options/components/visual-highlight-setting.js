@@ -2,6 +2,7 @@ import { browser } from '../../utils.js';
 import { controller } from '../../controller.js';
 import { model } from '../../model.js';
 import { getConfig } from '../../config.js';
+import { localizeDocument } from '../utils.js';
 import './toggle-button.js';
 
 const compactTemplate = document.createElement('template');
@@ -15,8 +16,8 @@ detailedTemplate.innerHTML = `
     <div class="setting-group">
         <div class="setting-label">
             <div class="label-text">
-                <strong>Debug-visualisoinnit</strong>
-                <span>Näytä visuaaliset debug-merkit käsitellyistä elementeistä</span>
+                <strong data-i18n="devmodeVisualHighlightTitle">Visual Highlight</strong>
+                <span data-i18n="devmodeVisualHighlightDesc">Show visual debug indicators on processed elements</span>
             </div>
             <toggle-button id="debugVisuals"></toggle-button>
         </div>
@@ -44,13 +45,14 @@ class VisualHighlightSetting extends HTMLElement {
             this.classList.add('compact-setting-row');
             this.replaceChildren(compactTemplate.content.cloneNode(true));
 
-            const labelText = browser().i18n.getMessage('devmodeSetDebugVisualsLabel') || 'Visuaalinen korostus';
+            const labelText = browser().i18n.getMessage('devmodeSetDebugVisualsLabel') || 'Visual Highlight';
             const labelEl = this.querySelector('.label-text');
             if (labelEl) {
                 labelEl.textContent = labelText;
             }
         } else {
             this.replaceChildren(detailedTemplate.content.cloneNode(true));
+            localizeDocument(this);
         }
 
         const toggleBtn = this.querySelector('toggle-button');
@@ -111,7 +113,12 @@ class VisualHighlightSetting extends HTMLElement {
                 if (layout !== 'compact') {
                     this.dispatchEvent(new CustomEvent('setting-saved', {
                         bubbles: true,
-                        detail: { key: 'visualHighlightEnabled', value: checked, success: true, message: 'Asetus tallennettu!' }
+                        detail: {
+                            key: 'visualHighlightEnabled',
+                            value: checked,
+                            success: true,
+                            message: browser().i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
+                        }
                     }));
                 }
             } catch (err) {
@@ -120,7 +127,12 @@ class VisualHighlightSetting extends HTMLElement {
                 if (layout !== 'compact') {
                     this.dispatchEvent(new CustomEvent('setting-saved', {
                         bubbles: true,
-                        detail: { key: 'visualHighlightEnabled', value: !checked, success: false, message: 'Virhe asetuksen tallentamisessa' }
+                        detail: {
+                            key: 'visualHighlightEnabled',
+                            value: !checked,
+                            success: false,
+                            message: browser().i18n.getMessage('settingSavedError') || 'Error saving setting'
+                        }
                     }));
                 }
             }

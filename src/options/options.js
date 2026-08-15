@@ -1,6 +1,6 @@
 import { getConfig } from '../config.js';
 import { browser } from '../utils.js';
-import { displayProductInfo, getBrowserInfo, formatIsoWithTimezone } from './utils.js';
+import { displayProductInfo, getBrowserInfo, formatIsoWithTimezone, localizeDocument } from './utils.js';
 import { model } from '../model.js';
 import { controller } from '../controller.js';
 import { NON_OSS_CREDIT_HTML } from './non-oss-info.js';
@@ -14,6 +14,7 @@ import './components/favicon-img.js';
 
 // Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {
+    localizeDocument();
     await loadSettings();
     displayProductInfo();
     setupEventListeners();
@@ -75,7 +76,7 @@ async function loadSettings() {
         // Database status is managed by the database-status-setting component
     } catch (error) {
         console.error('Error loading settings:', error);
-        showStatus('Virhe asetusten lataamisessa', true);
+        showStatus(browser().i18n.getMessage('optionsErrorLoadingSettings') || 'Error loading settings', true);
     }
 }
 
@@ -118,30 +119,24 @@ async function registerEmail() {
     const submitButton = document.getElementById('submitInvitation');
     const email = emailInput.value.trim();
     if (!email) {
-        showStatus('Syötä sähköpostiosoite', true);
+        showStatus(browser().i18n.getMessage('invitationEmailRequired') || 'Please enter an email address', true);
         return;
     }
     
     // Disable button during submission
     const originalText = submitButton.textContent;
     submitButton.disabled = true;
-    submitButton.textContent = 'Lähetetään...';
+    submitButton.textContent = browser().i18n.getMessage('invitationEmailSending') || 'Sending...';
     
     // Placeholder function to simulate email registration
     const action = "https://docs.google.com/forms/d/e/1FAIpQLSf0m5X_EKJume6oSbz5o36CmOVofsNy8F8AjrwOLQ4Tm4B_8g/formResponse";
     const formData = new FormData();
-    // emailAddress	"test@example.com"
-    // fvv	"1"
-    // partialResponse	'[null,null,"-689544841256870296"]'
-    // pageHistory	"0"
-    // fbzx	"-689544841256870296"
-    // submissionTimestamp	"1768143435223"
     formData.append('emailAddress', email);
     formData.append('pageHistory', '0');
     formData.append('submissionTimestamp', Date.now().toString());
 
     try {
-        const response = await fetch(action, {
+        await fetch(action, {
             method: 'POST',
             mode: 'no-cors',
             referrerPolicy: 'no-referrer',
@@ -153,9 +148,9 @@ async function registerEmail() {
         await model.write.setEmail(email, 'paid');
         
         // Show success state on button
-        submitButton.textContent = '✓ Lähetetty';
+        submitButton.textContent = browser().i18n.getMessage('invitationEmailSent') || '✓ Sent';
         submitButton.classList.add('success');
-        showStatus('Sähköposti rekisteröity onnistuneesti!');
+        showStatus(browser().i18n.getMessage('invitationEmailSuccess') || 'Email registered successfully!');
 
         // Reset button after fade completes
         setTimeout(() => {
@@ -165,7 +160,7 @@ async function registerEmail() {
         }, 3300);
     } catch (error) {
         console.error('Error registering email:', error);
-        showStatus('Virhe sähköpostin rekisteröinnissä', true);
+        showStatus(browser().i18n.getMessage('invitationEmailError') || 'Error registering email', true);
 
         // Reset button on error
         submitButton.textContent = originalText;
@@ -196,10 +191,10 @@ async function setupEventListeners() {
             toggleDebugSettings(val);
             try {
                 await controller.setEnvironment(val);
-                showStatus('Ympäristö tallennettu!');
+                showStatus(browser().i18n.getMessage('envSavedSuccess') || 'Environment saved!');
             } catch (error) {
                 console.error('Error saving environment:', error);
-                showStatus('Virhe ympäristön tallentamisessa', true);
+                showStatus(browser().i18n.getMessage('envSavedError') || 'Error saving environment', true);
             }
         });
     });
@@ -251,17 +246,18 @@ async function setupEventListeners() {
                     try {
                         new URL(url);
                     } catch (e) {
-                        showStatus(`Virheellinen kehitys-URL: ${url}`, true);
+                        const errMsg = browser().i18n.getMessage('devUrlsInvalid', [url]) || `Invalid development URL: ${url}`;
+                        showStatus(errMsg, true);
                         return;
                     }
                 }
                 
                 try {
                     await controller.setDevTitleDataUrls(urls);
-                    showStatus('Kehitys-URL:t tallennettu!');
+                    showStatus(browser().i18n.getMessage('devUrlsSavedSuccess') || 'Development URLs saved!');
                 } catch (error) {
                     console.error('Error saving dev URLs:', error);
-                    showStatus('Virhe tallennettaessa kehitys-URL:eja', true);
+                    showStatus(browser().i18n.getMessage('devUrlsSavedError') || 'Error saving development URLs', true);
                 }
             }
         });
@@ -327,17 +323,18 @@ async function renderAbout() {
     const activeModifiers = Object.entries(modifiers)
         .filter(([, enabled]) => enabled)
         .map(([name]) => name);
-    setAboutField('about-modifiers', activeModifiers.length ? activeModifiers.join(', ') : 'none');
+    const noneText = browser().i18n.getMessage('aboutNone') || 'none';
+    setAboutField('about-modifiers', activeModifiers.length ? activeModifiers.join(', ') : noneText);
 
     // Enabled sites — if global toggle is off, show that instead of listing sites
     if (!config.enabled) {
-        setAboutField('about-sites', 'extension disabled');
+        setAboutField('about-sites', browser().i18n.getMessage('aboutExtensionDisabled') || 'extension disabled');
     } else {
         const sitesEnabled = await model.read.getSitesEnabled();
         const enabledSites = Object.entries(sitesEnabled)
             .filter(([, enabled]) => enabled)
             .map(([domain]) => domain);
-        setAboutField('about-sites', enabledSites.length ? enabledSites.join(', ') : 'none');
+        setAboutField('about-sites', enabledSites.length ? enabledSites.join(', ') : noneText);
     }
 
     // Non-OSS credit (empty string in OSS builds -> no visible output)

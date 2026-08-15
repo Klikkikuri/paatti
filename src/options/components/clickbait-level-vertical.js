@@ -1,5 +1,6 @@
 import { ClickbaitLevelBase } from './clickbait-level-base.js';
 import { controller } from '../../controller.js';
+import { browser } from '../../utils.js';
 import { getClickbaitLevelInfo } from '../utils.js';
 
 /**
@@ -51,7 +52,12 @@ class ClickbaitLevelVertical extends ClickbaitLevelBase {
                 await controller.setClickbaitLevel(value);
                 this.dispatchEvent(new CustomEvent('setting-saved', {
                     bubbles: true,
-                    detail: { key: 'clickbaitLevel', value, success: true, message: 'Asetus tallennettu!' }
+                    detail: {
+                        key: 'clickbaitLevel',
+                        value,
+                        success: true,
+                        message: browser().i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
+                    }
                 }));
             }
         });
@@ -67,7 +73,12 @@ class ClickbaitLevelVertical extends ClickbaitLevelBase {
                     await controller.setClickbaitLevel(value);
                     this.dispatchEvent(new CustomEvent('setting-saved', {
                         bubbles: true,
-                        detail: { key: 'clickbaitLevel', value, success: true, message: 'Asetus tallennettu!' }
+                        detail: {
+                            key: 'clickbaitLevel',
+                            value,
+                            success: true,
+                            message: browser().i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
+                        }
                     }));
                 }
             });
