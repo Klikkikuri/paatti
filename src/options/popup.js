@@ -76,28 +76,108 @@ const levelToI18nKey = (level) => `clickbaitinessLabel_${level.replaceAll(" ", "
  * Create a stat row element for a given clickbait level and count.
  * @param {string} level Clickbaitiness level
  * @param {number} count Count of occurrences
+ * @param {Object} [options] Optional configuration
+ * @param {number} [options.clickbaitLevelThreshold] Current active threshold level (0-4)
  * @returns {HTMLDivElement} Row element containing <dt> and <dd>
  */
-const _createStatRow = (level, count) => {
+const _createStatRow = (level, count, { clickbaitLevelThreshold } = {}) => {
     const rowDiv = document.createElement("div");
     rowDiv.className = "stats-row";
+
+    const mainDiv = document.createElement("div");
+    mainDiv.className = "stats-row-main";
 
     const dt = document.createElement("dt");
     dt.className = "stats-label";
 
-    const dot = document.createElement("span");
-    dot.className = "stats-dot";
-    dot.dataset.level = level.toLowerCase().replaceAll(" ", "-");
-
-    dt.appendChild(dot);
-    dt.appendChild(document.createTextNode(browser().i18n.getMessage(levelToI18nKey(level))));
+    const labelText = document.createElement("span");
+    labelText.className = "stats-label-text";
+    labelText.textContent = browser().i18n.getMessage(levelToI18nKey(level));
 
     const dd = document.createElement("dd");
     dd.className = "stats-count";
     dd.textContent = String(count);
 
-    rowDiv.appendChild(dt);
-    rowDiv.appendChild(dd);
+    // Add combined color dot and info indicator button and inline details
+    const levelIndex = Clickbaitiness.stringToNumber(level);
+    if (levelIndex >= 0) {
+        const levelInfo = getClickbaitLevelInfo(levelIndex);
+
+        const dotBtn = document.createElement("button");
+        dotBtn.type = "button";
+        dotBtn.className = "stats-dot-btn";
+        dotBtn.dataset.level = level.toLowerCase().replaceAll(" ", "-");
+
+        if (typeof clickbaitLevelThreshold === "number") {
+            dotBtn.dataset.zone = levelIndex >= clickbaitLevelThreshold ? "water" : "sky";
+        }
+
+        dotBtn.textContent = "i";
+        dotBtn.setAttribute("aria-label", browser().i18n.getMessage("statsviewInfoBtnAriaLabel", [labelText.textContent]));
+        dotBtn.setAttribute("aria-expanded", "false");
+        dotBtn.setAttribute("title", levelInfo.description || "");
+
+        dt.appendChild(dotBtn);
+        dt.appendChild(labelText);
+
+        // Create inline details container with description only
+        const detailsDiv = document.createElement("div");
+        detailsDiv.className = "stats-row-details hidden";
+
+        const descSpan = document.createElement("span");
+        descSpan.className = "stats-details-desc";
+        descSpan.textContent = levelInfo.description || "";
+        detailsDiv.appendChild(descSpan);
+
+        const toggleDetails = (e) => {
+            e?.stopPropagation();
+            const willOpen = detailsDiv.classList.contains("hidden");
+
+            // Close other open details rows
+            document.querySelectorAll(".stats-row.is-open").forEach((row) => {
+                if (row !== rowDiv) {
+                    row.classList.remove("is-open");
+                    const otherBtn = row.querySelector(".stats-dot-btn");
+                    if (otherBtn) otherBtn.setAttribute("aria-expanded", "false");
+                    const otherDetails = row.querySelector(".stats-row-details");
+                    if (otherDetails) otherDetails.classList.add("hidden");
+                }
+            });
+
+            if (willOpen) {
+                detailsDiv.classList.remove("hidden");
+                rowDiv.classList.add("is-open");
+                dotBtn.setAttribute("aria-expanded", "true");
+            } else {
+                detailsDiv.classList.add("hidden");
+                rowDiv.classList.remove("is-open");
+                dotBtn.setAttribute("aria-expanded", "false");
+            }
+        };
+
+        dotBtn.addEventListener("click", toggleDetails);
+        mainDiv.addEventListener("click", (e) => {
+            if (e.target !== dotBtn) {
+                toggleDetails(e);
+            }
+        });
+        mainDiv.style.cursor = "pointer";
+
+        mainDiv.appendChild(dt);
+        mainDiv.appendChild(dd);
+        rowDiv.appendChild(mainDiv);
+        rowDiv.appendChild(detailsDiv);
+    } else {
+        const dot = document.createElement("span");
+        dot.className = "stats-dot";
+        dt.appendChild(dot);
+        dt.appendChild(labelText);
+
+        mainDiv.appendChild(dt);
+        mainDiv.appendChild(dd);
+        rowDiv.appendChild(mainDiv);
+    }
+
     return rowDiv;
 };
 
@@ -110,6 +190,9 @@ const _createTotalStatRow = (totalCount) => {
     const rowDiv = document.createElement("div");
     rowDiv.className = "stats-row stats-total-row";
 
+    const mainDiv = document.createElement("div");
+    mainDiv.className = "stats-row-main";
+
     const dt = document.createElement("dt");
     dt.className = "stats-label";
     dt.textContent = browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelTotal");
@@ -118,12 +201,29 @@ const _createTotalStatRow = (totalCount) => {
     dd.className = "stats-count";
     dd.textContent = String(totalCount);
 
-    rowDiv.appendChild(dt);
-    rowDiv.appendChild(dd);
+    mainDiv.appendChild(dt);
+    mainDiv.appendChild(dd);
+    rowDiv.appendChild(mainDiv);
     return rowDiv;
 };
 
-const _refreshHomeView = ({ site, pageStats, isSiteEnabled }) => {
+/**
+ * Create a threshold divider element with hook emoji.
+ * @returns {HTMLDivElement}
+ */
+const _createThresholdDivider = () => {
+    const divider = document.createElement("div");
+    divider.className = "stats-threshold-divider";
+
+    const label = document.createElement("span");
+    label.className = "stats-threshold-divider-label";
+    label.textContent = `🪝 ${browser().i18n.getMessage("statsThresholdDividerLabel")}`;
+
+    divider.appendChild(label);
+    return divider;
+};
+
+const _refreshHomeView = ({ site, pageStats, isSiteEnabled, clickbaitLevelThreshold }) => {
     const siteHeaderElem = document.getElementById("site-host");
     // Reset possible error state.
     siteHeaderElem.classList.remove("error");
@@ -207,26 +307,45 @@ const _refreshHomeView = ({ site, pageStats, isSiteEnabled }) => {
     const pageStatsList = document.getElementById("homeview-page-stats-list");
     if (pageStatsList) {
         pageStatsList.replaceChildren();
-        for (const level of [...Clickbaitiness.LEVELS].reverse()) {
-            const count = statsTableData[level] || 0;
-            if (count > 0) {
-                pageStatsList.appendChild(_createStatRow(level, count));
+
+        const visibleLevels = Clickbaitiness.LEVELS.filter((level) => {
+            return (statsTableData[level] || 0) > 0;
+        });
+
+        if (visibleLevels.length > 0 && typeof clickbaitLevelThreshold === "number") {
+            let dividerInserted = false;
+
+            for (const level of visibleLevels) {
+                const levelIndex = Clickbaitiness.stringToNumber(level);
+                if (!dividerInserted && levelIndex >= clickbaitLevelThreshold) {
+                    pageStatsList.appendChild(_createThresholdDivider());
+                    dividerInserted = true;
+                }
+                pageStatsList.appendChild(_createStatRow(level, statsTableData[level], { clickbaitLevelThreshold }));
+            }
+
+            if (!dividerInserted && clickbaitLevelThreshold <= 4) {
+                pageStatsList.appendChild(_createThresholdDivider());
+            }
+        } else {
+            for (const level of visibleLevels) {
+                pageStatsList.appendChild(_createStatRow(level, statsTableData[level], { clickbaitLevelThreshold }));
             }
         }
     }
 };
 
-const _refreshStatsView = ({ cumulativeStats }) => {
+const _refreshStatsView = ({ cumulativeStats, clickbaitLevelThreshold }) => {
     const statsTableData = (cumulativeStats || {}).groupedByClickbaitiness || {};
     const statsList = document.getElementById("statistics-grouped-by-clickbaitiness");
     if (statsList) {
         statsList.replaceChildren();
 
         let total = 0;
-        for (const level of [...Clickbaitiness.LEVELS].reverse()) {
+        for (const level of Clickbaitiness.LEVELS) {
             const count = statsTableData[level] || 0;
             total += count;
-            statsList.appendChild(_createStatRow(level, count));
+            statsList.appendChild(_createStatRow(level, count, { clickbaitLevelThreshold }));
         }
 
         statsList.appendChild(_createTotalStatRow(total));
@@ -338,6 +457,8 @@ const refresh = async () => {
     }
     // database-last-updated, database-generation-date, and update-database-btn states are managed by the database-status-setting component
 
+    const clickbaitLevelThreshold = await model.read.getClickbaitLevel();
+
     _refreshSettingsView({
         isConversionEnabled,
         isDevelopmentEnv,
@@ -347,9 +468,11 @@ const refresh = async () => {
         site: pageHostname,
         pageStats: cachedPageStats,
         isSiteEnabled: matchingDomain ? isCurrentSiteEnabled : undefined,
+        clickbaitLevelThreshold,
     });
     _refreshStatsView({
         cumulativeStats,
+        clickbaitLevelThreshold,
     });
 
     // Load product name and version from manifest
@@ -543,10 +666,12 @@ const handleDomContentLoaded = async (e) => {
                     const pageHostname = await getCurrentTabHostname();
                     const matchingDomain = await model.read.getMatchingSiteDomain(pageHostname);
                     const isCurrentSiteEnabled = matchingDomain ? await isSiteEnabled(matchingDomain) : false;
+                    const clickbaitLevelThreshold = await model.read.getClickbaitLevel();
                     _refreshHomeView({
                         site: pageHostname,
                         pageStats: cachedPageStats,
                         isSiteEnabled: matchingDomain ? isCurrentSiteEnabled : undefined,
+                        clickbaitLevelThreshold,
                     });
                 }
             });
@@ -554,6 +679,19 @@ const handleDomContentLoaded = async (e) => {
             log("Content script not ready to receive connection:", err);
         }
     }
+
+    // Close open stats row details on document click outside stats rows
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest(".stats-row")) {
+            document.querySelectorAll(".stats-row.is-open").forEach((row) => {
+                row.classList.remove("is-open");
+                const btn = row.querySelector(".stats-dot-btn");
+                if (btn) btn.setAttribute("aria-expanded", "false");
+                const details = row.querySelector(".stats-row-details");
+                if (details) details.classList.add("hidden");
+            });
+        }
+    });
 
     ///////////////////////////////////////////////////////////////////////////////
     // Register handlers for visual changes like moving between views.

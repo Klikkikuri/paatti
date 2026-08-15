@@ -66,6 +66,20 @@
     "message": "Total",
     "description": "Title of the stats section clickbaitiness grouping table for the total amount of converted titles"
   },
+  "statsviewInfoBtnAriaLabel": {
+    "message": "Information about clickbait level: $1",
+    "description": "Accessible aria-label for clickbait level info button",
+    "placeholders": {
+      "level": {
+        "content": "$1",
+        "example": "Moderately Clickbaity"
+      }
+    }
+  },
+  "statsThresholdDividerLabel": {
+    "message": "Threshold",
+    "description": "Label for the clickbait threshold divider line shown in home view stats list"
+  },
 
   "feedbackviewRateTitleOriginalTitleLabel": {
     "message": "Original:",

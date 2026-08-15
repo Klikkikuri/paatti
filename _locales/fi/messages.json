@@ -66,6 +66,20 @@
     "message": "Yhteensä",
     "description": "Title of the stats section clickbaitiness grouping table for the total amount of converted titles"
   },
+  "statsviewInfoBtnAriaLabel": {
+    "message": "Lisätietoa klikkitasosta: $1",
+    "description": "Saavutettava aria-label klikkitason lisätietopainikkeelle",
+    "placeholders": {
+      "level": {
+        "content": "$1",
+        "example": "Kohtalaisesti klikkimäiset"
+      }
+    }
+  },
+  "statsThresholdDividerLabel": {
+    "message": "Raja-arvo",
+    "description": "Otsikko klikkitason raja-arvon erotinviivalle päänäkymän tilastolistassa"
+  },
 
   "feedbackviewRateTitleOriginalTitleLabel": {
     "message": "Alkuperäinen:",
