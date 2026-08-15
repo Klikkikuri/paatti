@@ -10,7 +10,7 @@ Sail smoothly through the clickbait-infested web using this browser extension.
     - [Feedback and correction interface](#feedback-and-correction-interface)
     - [Normal operation](#normal-operation)
   - [Installing](#installing)
-    - [Installing the pre-packaged browser extension](#installing-the-pre-build-browser-extension)
+    - [Installing the pre-build browser extension](#installing-the-pre-build-browser-extension)
     - [Building from Source](#building-from-source)
       - [Requirements](#requirements)
       - [Build Flags \& Options](#build-flags--options)
@@ -31,6 +31,7 @@ Sail smoothly through the clickbait-infested web using this browser extension.
   - [Architecture](#architecture)
   - [Privacy Policy](#privacy-policy)
   - [License](#license)
+    - [Non-OSS Assets](#non-oss-assets)
 
 
 ## Features
@@ -135,6 +136,10 @@ make build
 - **Use pre-built release artifacts** (downloads release binaries from GitHub):
   ```sh
   make build USE_RELEASE_ARTIFACTS=1
+  ```
+- **Include non-OSS assets** (overlays assets from `assets/non-oss/by-kagi/`):
+  ```sh
+  make build NON_OSS=1
   ```
 
 #### Configuration
@@ -362,3 +367,6 @@ This project is licensed under the European Union Public Licence v1.2 (EUPL-1.2)
 - English version: [LICENSE.md](LICENSE.md)
 - Finnish version (Suomenkielinen versio): [LISENSSI.md](LISENSSI.md)
 
+### Non-OSS Assets
+
+Assets located in [`assets/non-oss/by-kagi/`](./assets/non-oss/by-kagi/) (specifically the AI smell icon) are designed by and copyright of [Kagi Inc.](https://kagi.com/) and used with permission (see [`assets/non-oss/by-kagi/PERMISSION.txt`](./assets/non-oss/by-kagi/PERMISSION.txt)). These assets are not covered by the EUPL-1.2 license and are excluded from default builds unless explicitly opted into via `NON_OSS=1`.
