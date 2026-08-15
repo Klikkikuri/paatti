@@ -54,10 +54,6 @@
     "description": "Instruction text to show in the bottom of 'main' view to help user with an unexpected error"
   },
 
-  "statsviewHeader": {
-    "message": "Tilastoja",
-    "description": "Title of the statistics view section"
-  },
   "statsviewGroupedByClickbaitinessLabelClickbaitiness": {
     "message": "Klikkiotsikkoisuus",
     "description": "Title of the stats section clickbaitiness grouping table for the 'type' or 'severity' of clickbait"

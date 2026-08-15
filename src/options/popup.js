@@ -200,8 +200,6 @@ const _refreshStatsView = ({ cumulativeStats }) => {
             row.querySelector("td").textContent = statsTableData[levelKey] || 0;
         }
 
-        document.getElementById("statsview-header").textContent =
-            browser().i18n.getMessage("statsviewHeader");
         const statisticsGroupedByClickbaitinessTableHeaders =
             document.querySelectorAll("#statistics-grouped-by-clickbaitiness thead th");
         statisticsGroupedByClickbaitinessTableHeaders[0].textContent =
