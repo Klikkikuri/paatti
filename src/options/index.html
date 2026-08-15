@@ -672,9 +672,12 @@
                 li {
                     display: inline-flex;
 
-                    img {
+                    img, favicon-img {
                         border-radius: 2px;
                         flex-shrink: 0;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
                     }
                 }
             }
@@ -812,19 +815,19 @@
                 <ul class="store-links">
                     <li>
                         <a href="https://addons.mozilla.org/fi/firefox/addon/klikkikuri" target="_blank" rel="noopener noreferrer" class="detail-button">
-                            <img src="https://icons.duckduckgo.com/ip3/addons.mozilla.org.ico" width="16" height="16" alt="Firefox Add-ons" crossorigin="anonymous" referrerpolicy="no-referrer">
+                            <favicon-img domain="addons.mozilla.org" size="16"></favicon-img>
                             Firefox Add-ons ↗
                         </a>
                     </li>
                     <li>
                         <a href="https://chromewebstore.google.com/detail/klikkikuri-paatti/jalegaigmgljhnaakmbbaajooffgcbgc" target="_blank" rel="noopener noreferrer" class="detail-button">
-                            <img src="https://icons.duckduckgo.com/ip3/chromewebstore.google.com.ico" width="16" height="16" alt="Chrome Web Store" crossorigin="anonymous" referrerpolicy="no-referrer">
+                            <favicon-img domain="chromewebstore.google.com" size="16"></favicon-img>
                             Chrome Web Store ↗
                         </a>
                     </li>
                     <li>
                         <a href="https://github.com/Klikkikuri/paatti" target="_blank" rel="noopener noreferrer" class="detail-button">
-                            <img src="https://icons.duckduckgo.com/ip3/github.com.ico" width="16" height="16" alt="GitHub" crossorigin="anonymous" referrerpolicy="no-referrer">
+                            <favicon-img domain="github.com" size="16"></favicon-img>
                             GitHub ↗
                         </a>
                     </li>
