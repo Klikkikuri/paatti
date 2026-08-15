@@ -244,13 +244,18 @@ class SiteToggleSetting extends HTMLElement {
  * @param {function} callbacks.onPermissionGranted - Callback when permission is granted.
  */
 export async function handleSiteToggleHelper(checked, domain, origins, currentHasPermission, closeOnPermissionRequest, callbacks) {
+    const successMsg = browser().i18n.getMessage('siteSettingSaved', [domain]) || `Setting for ${domain} saved!`;
+    const errorMsg = browser().i18n.getMessage('siteSettingSaveError') || 'Error saving site setting';
+    const noPermMsg = browser().i18n.getMessage('permissionNotGranted') || 'Permission was not granted';
+    const reqPermErrorMsg = browser().i18n.getMessage('permissionRequestError') || 'Error requesting permission';
+
     if (checked) {
         if (currentHasPermission) {
             try {
                 await controller.setSiteEnabled(true, domain);
-                callbacks.onSuccess(true, `Sivuston ${domain} asetus tallennettu!`);
+                callbacks.onSuccess(true, successMsg);
             } catch (error) {
-                callbacks.onFailure(false, 'Virhe tallennettaessa sivuston asetusta');
+                callbacks.onFailure(false, errorMsg);
             }
         } else {
             if (closeOnPermissionRequest) {
@@ -258,7 +263,7 @@ export async function handleSiteToggleHelper(checked, domain, origins, currentHa
                     browser().permissions.request({ origins });
                     window.close();
                 } catch (error) {
-                    callbacks.onFailure(false, 'Virhe pyydettäessä lupaa');
+                    callbacks.onFailure(false, reqPermErrorMsg);
                 }
             } else {
                 try {
@@ -266,21 +271,21 @@ export async function handleSiteToggleHelper(checked, domain, origins, currentHa
                     if (granted) {
                         await controller.setSiteEnabled(true, domain);
                         callbacks.onPermissionGranted();
-                        callbacks.onSuccess(true, `Sivuston ${domain} asetus tallennettu!`);
+                        callbacks.onSuccess(true, successMsg);
                     } else {
-                        callbacks.onFailure(false, 'Lupaa ei myönnetty');
+                        callbacks.onFailure(false, noPermMsg);
                     }
                 } catch (error) {
-                    callbacks.onFailure(false, 'Virhe pyydettäessä lupaa');
+                    callbacks.onFailure(false, reqPermErrorMsg);
                 }
             }
         }
     } else {
         try {
             await controller.setSiteEnabled(false, domain);
-            callbacks.onSuccess(false, `Sivuston ${domain} asetus tallennettu!`);
+            callbacks.onSuccess(false, successMsg);
         } catch (error) {
-            callbacks.onFailure(true, 'Virhe tallennettaessa sivuston asetusta');
+            callbacks.onFailure(true, errorMsg);
         }
     }
 }

@@ -2,6 +2,7 @@ import { browser } from '../../utils.js';
 import { controller } from '../../controller.js';
 import { model } from '../../model.js';
 import { getConfig } from '../../config.js';
+import { localizeDocument } from '../utils.js';
 
 const compactTemplate = document.createElement('template');
 compactTemplate.innerHTML = `
@@ -21,8 +22,8 @@ detailedTemplate.innerHTML = `
         <div class="setting-group">
             <label class="setting-label">
                 <div class="label-text">
-                    <strong>Automaattinen päivitysväli</strong>
-                    <span>Määritä uuden datan automaattinen hakuväli minuuteissa</span>
+                    <strong data-i18n="dbRefreshIntervalTitle">Automatic update interval</strong>
+                    <span data-i18n="dbRefreshIntervalDesc">Set the automatic fetch interval for new data in minutes</span>
                 </div>
                 <input type="number" id="refreshInterval" min="1" max="1440" value="20" style="width: 80px; padding: 8px; border: 2px solid #ddd; border-radius: 6px; font-size: 1em; text-align: center;">
             </label>
@@ -32,15 +33,15 @@ detailedTemplate.innerHTML = `
         <div class="setting-info-card" style="display: flex; justify-content: space-between; align-items: center;">
             <div class="label-text" style="display: flex; flex-direction: column; gap: 8px; text-align: left;">
                 <div>
-                    <strong style="display: block; margin-bottom: 2px;">Viimeisin haku</strong>
-                    <span id="dbLastUpdatedText">Ladataan...</span>
+                    <strong style="display: block; margin-bottom: 2px;" data-i18n="dbLastFetchedTitle">Last fetched</strong>
+                    <span id="dbLastUpdatedText">—</span>
                 </div>
                 <div>
-                    <strong style="display: block; margin-bottom: 2px;">Tietokannan luontiaika</strong>
-                    <span id="dbGenerationDateText">Ladataan...</span>
+                    <strong style="display: block; margin-bottom: 2px;" data-i18n="dbGenerationDateTitle">Database generation date</strong>
+                    <span id="dbGenerationDateText">—</span>
                 </div>
             </div>
-            <button type="button" class="btn-secondary" id="manualUpdateBtn" style="flex: 0 0 auto; width: auto; min-width: 150px; padding: 8px 16px; margin: 0;">Päivitä tietokanta</button>
+            <button type="button" class="btn-secondary" id="manualUpdateBtn" style="flex: 0 0 auto; width: auto; min-width: 150px; padding: 8px 16px; margin: 0;" data-i18n="databaseUpdateBtn">Update Database</button>
         </div>
     </div>
 `;
@@ -64,11 +65,12 @@ class DatabaseStatusSetting extends HTMLElement {
 
         if (layout === 'compact') {
             this.replaceChildren(compactTemplate.content.cloneNode(true));
-            const btnText = browser().i18n.getMessage('databaseUpdateBtn') || 'Päivitä';
+            const btnText = browser().i18n.getMessage('databaseUpdateBtn') || 'Update Database';
             const btn = this.querySelector('#update-database-btn');
             if (btn) btn.textContent = btnText;
         } else {
             this.replaceChildren(detailedTemplate.content.cloneNode(true));
+            localizeDocument(this);
         }
 
         this.loadState(layout);
@@ -201,19 +203,34 @@ class DatabaseStatusSetting extends HTMLElement {
                                 await controller.setRefreshIntervalMinutes(value);
                                 this.dispatchEvent(new CustomEvent('setting-saved', {
                                     bubbles: true,
-                                    detail: { key: 'refreshInterval', value, success: true, message: 'Päivitysväli tallennettu!' }
+                                    detail: {
+                                        key: 'refreshInterval',
+                                        value,
+                                        success: true,
+                                        message: browser().i18n.getMessage('dbRefreshIntervalSaved') || 'Update interval saved!'
+                                    }
                                 }));
                             } catch (error) {
                                 console.error('Error saving refresh interval:', error);
                                 this.dispatchEvent(new CustomEvent('setting-saved', {
                                     bubbles: true,
-                                    detail: { key: 'refreshInterval', value, success: false, message: 'Virhe tallennettaessa päivitysväliä' }
+                                    detail: {
+                                        key: 'refreshInterval',
+                                        value,
+                                        success: false,
+                                        message: browser().i18n.getMessage('dbRefreshIntervalError') || 'Error saving update interval'
+                                    }
                                 }));
                             }
                         } else {
                             this.dispatchEvent(new CustomEvent('setting-saved', {
                                 bubbles: true,
-                                detail: { key: 'refreshInterval', value, success: false, message: 'Virheellinen päivitysväli!' }
+                                detail: {
+                                    key: 'refreshInterval',
+                                    value,
+                                    success: false,
+                                    message: browser().i18n.getMessage('dbRefreshIntervalInvalid') || 'Invalid update interval!'
+                                }
                             }));
                         }
                     });
@@ -229,7 +246,8 @@ class DatabaseStatusSetting extends HTMLElement {
             updateBtn.addEventListener('click', async () => {
                 updateBtn.disabled = true;
                 const originalText = updateBtn.textContent;
-                updateBtn.textContent = layout === 'compact' ? '◦◦◦' : 'Päivitetään...';
+                const updatingText = browser().i18n.getMessage('databaseUpdateBtnUpdating') || 'Updating...';
+                updateBtn.textContent = layout === 'compact' ? '◦◦◦' : updatingText;
 
                 try {
                     const response = await browser().runtime.sendMessage({ action: 'updateDatabase' });
@@ -238,15 +256,24 @@ class DatabaseStatusSetting extends HTMLElement {
                         if (layout !== 'compact') {
                             this.dispatchEvent(new CustomEvent('setting-saved', {
                                 bubbles: true,
-                                detail: { key: 'databaseUpdate', success: true, message: 'Tietokanta päivitetty onnistuneesti!' }
+                                detail: {
+                                    key: 'databaseUpdate',
+                                    success: true,
+                                    message: browser().i18n.getMessage('databaseUpdateSuccess') || 'Updated!'
+                                }
                             }));
                         }
                     } else {
-                        const errorMsg = response?.error || 'Tuntematon virhe';
+                        const errorMsg = response?.error || '';
+                        const failText = browser().i18n.getMessage('databaseUpdateFailed') || 'Failed!';
                         if (layout !== 'compact') {
                             this.dispatchEvent(new CustomEvent('setting-saved', {
                                 bubbles: true,
-                                detail: { key: 'databaseUpdate', success: false, message: `Tietokannan päivitys epäonnistui: ${errorMsg}` }
+                                detail: {
+                                    key: 'databaseUpdate',
+                                    success: false,
+                                    message: errorMsg ? `${failText}: ${errorMsg}` : failText
+                                }
                             }));
                         }
                     }
@@ -255,7 +282,11 @@ class DatabaseStatusSetting extends HTMLElement {
                     if (layout !== 'compact') {
                         this.dispatchEvent(new CustomEvent('setting-saved', {
                             bubbles: true,
-                            detail: { key: 'databaseUpdate', success: false, message: 'Tietokannan päivitys epäonnistui' }
+                            detail: {
+                                key: 'databaseUpdate',
+                                success: false,
+                                message: browser().i18n.getMessage('databaseUpdateFailed') || 'Failed!'
+                            }
                         }));
                     }
                 } finally {

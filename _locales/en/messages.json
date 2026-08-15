@@ -1,44 +1,54 @@
 {
+  "extensionName": {
+    "message": "Klikkikuri Paatti",
+    "description": "Name of the extension."
+  },
   "extensionDescription": {
     "message": "Converts clickbaits headlines on news sites to better match the article contents",
     "description": "Description of the extension."
   },
+  "optionsPageTitle": {
+    "message": "Klikkikuri Paatti - Settings",
+    "description": "Title of the options page."
+  },
+  "popupPageTitle": {
+    "message": "Klikkikuri Paatti",
+    "description": "Title of the popup page."
+  },
+  "headerSubtitle": {
+    "message": "Klikkikuri - Sail the web without clickbait headlines",
+    "description": "Subtitle in header of options page."
+  },
 
   "clickbaitinessLabel_Not_Clickbait_at_all": {
-      "message": "Not Clickbait at all",
-      "description": "Label for the not clickbait at all title 'type' or 'severity'"
+    "message": "Not Clickbait at all",
+    "description": "Label for the not clickbait at all title 'type' or 'severity'"
   },
-
   "clickbaitinessLabel_Slightly_Clickbaity": {
-      "message": "Slightly Clickbaity",
-      "description": "Label for the slightly clickbaity title 'type' or 'severity'"
+    "message": "Slightly Clickbaity",
+    "description": "Label for the slightly clickbaity title 'type' or 'severity'"
   },
-
   "clickbaitinessLabel_Moderately_Clickbaity": {
-      "message": "Moderately Clickbaity",
-      "description": "Label for the moderately clickbaity title 'type' or 'severity'"
+    "message": "Moderately Clickbaity",
+    "description": "Label for the moderately clickbaity title 'type' or 'severity'"
   },
-
   "clickbaitinessLabel_Very_Clickbaity": {
-      "message": "Very Clickbaity",
-      "description": "Label for the very clickbaity title 'type' or 'severity'"
+    "message": "Very Clickbaity",
+    "description": "Label for the very clickbaity title 'type' or 'severity'"
   },
-
   "clickbaitinessLabel_Extremely_Clickbaity": {
-      "message": "Extremely Clickbaity",
-      "description": "Label for the extremely clickbaity title 'type' or 'severity'"
+    "message": "Extremely Clickbaity",
+    "description": "Label for the extremely clickbaity title 'type' or 'severity'"
   },
 
   "siteTitleProcessingNotSupported": {
     "message": "Site not supported",
     "description": "Message to show in 'main' title element when the visited site is not supported for processing"
   },
-
   "siteTitleProcessingDisabled": {
     "message": "Site processing is disabled",
     "description": "Message to show in 'main' title element when the visited site is disabled in settings"
   },
-
   "statsErrorUserFixInstructions": {
     "message": "Failed to load site data. Try refreshing the page",
     "description": "Instruction text to show in the bottom of 'main' view to help user with an unexpected error"
@@ -48,57 +58,43 @@
     "message": "Statistics",
     "description": "Title of the statistics view section"
   },
-
   "statsviewGroupedByClickbaitinessLabelClickbaitiness": {
     "message": "Clickbaitiness",
     "description": "Title of the stats section clickbaitiness grouping table for the 'type' or 'severity' of clickbait"
   },
-
   "statsviewGroupedByClickbaitinessLabelAmount": {
     "message": "Amount",
     "description": "Title of the stats section clickbaitiness grouping table for the amount of this type of clickbait"
   },
-
   "statsviewGroupedByClickbaitinessLabelTotal": {
     "message": "Total",
     "description": "Title of the stats section clickbaitiness grouping table for the total amount of converted titles"
-  },
-
-  "feedbackviewRateTitleHeader": {
-    "message": "Rate this clickbait",
-    "description": "Title of the feedback view aligned headline rating section"
   },
 
   "feedbackviewRateTitleOriginalTitleLabel": {
     "message": "Original:",
     "description": "Text marking the original headline on the feedback view aligned headline rating section"
   },
-
   "feedbackviewRateTitleConvertedTitleLabel": {
     "message": "Aligned:",
     "description": "Text marking the aligned headline on the feedback view aligned headline rating section"
   },
-
   "feedbackviewRateTitleConversionIsGood": {
     "message": "Is good",
     "description": "Text on the button in the feedback view aligned headline rating that the user can rate the alignment as 'good'"
   },
-
   "feedbackviewRateTitleConversionIsBad": {
     "message": "Is no good",
     "description": "Text on the button in the feedback view aligned headline rating that the user can rate the alignment as 'bad'"
   },
-
   "feedbackviewNoConversions": {
     "message": "No aligned headlines on this page.",
     "description": "Message displayed when there are no aligned clickbaits on the current page"
   },
-
   "feedbackviewCurrentPageLabel": {
     "message": "Current page",
     "description": "Label indicating that the conversion is for the active page itself"
   },
-
   "feedbackviewReportCommentPlaceholder": {
     "message": "Describe the issue...",
     "description": "Placeholder for comments in reporting form"
@@ -107,7 +103,6 @@
     "message": "Submit",
     "description": "Label for submit button in reporting form"
   },
-
   "feedbackviewReportSuccess": {
     "message": "✓ Feedback submitted!",
     "description": "Success message after reporting conversion"
@@ -125,12 +120,10 @@
     "message": "News sites to process",
     "description": "Title of the settings view enabled sites section"
   },
-
   "settingsviewStatusTitle": {
     "message": "Extension Status",
     "description": "Title of the settings view status section"
   },
-
   "settingsviewMasterSwitchLabel": {
     "message": "Activate Paatti",
     "description": "Label of the settings view master switch toggle"
@@ -140,42 +133,32 @@
     "message": "Klikkikuri",
     "description": "Label of the navigation menu main view button"
   },
-
   "navigationStatsLabel": {
     "message": "Statistics",
     "description": "Label of the navigation menu statistics view button"
   },
-
-  "homeviewHeader": {
-    "message": "Klikkikuri",
-    "description": "Title of the home/status view"
+  "navigationFeedbackLabel": {
+    "message": "Feedback and rating",
+    "description": "Label of the navigation menu feedback view button"
   },
-
+  "navigationSettingsLabel": {
+    "message": "Preferences",
+    "description": "Label of the navigation menu settings view button"
+  },
 
   "homeviewStatusDisabled": {
     "message": "Paatti is disabled on this site.",
     "description": "Text saying that Paatti is disabled on the current site"
   },
-
   "homeviewStatusNotSupported": {
     "message": "This site is not supported by Paatti.",
     "description": "Text saying that the site is not supported"
   },
-
   "homeviewRequestSiteBtn": {
     "message": "Request site support",
     "description": "Label of the button to request site support on GitHub"
   },
 
-  "navigationFeedbackLabel": {
-    "message": "Feedback and rating",
-    "description": "Label of the navigation menu feedback view button"
-  },
-
-  "navigationSettingsLabel": {
-    "message": "Preferences",
-    "description": "Label of the navigation menu settings view button"
-  },
   "preferencesViewMoreSettingsBtn": {
     "message": "More settings...",
     "description": "Label of the button in preferences view that opens options page"
@@ -185,7 +168,6 @@
     "message": "Settings for nerds",
     "description": "Title-attribute of the hidden devmode activation button"
   },
-
   "devmodeCopyLinkSignaturesTitle": {
     "message": "Copy link signatures on this site to your clipboard",
     "description": "Title-attribute of the hidden devmode link signature copying button"
@@ -202,10 +184,6 @@
     "message": "Copy to Clipboard",
     "description": "Button text to copy link signatures to clipboard"
   },
-  "devmodeSetTitleDataUrlLabel": {
-    "message": "Data Source URL",
-    "description": "Label for the devmode title data source URL select dropdown"
-  },
   "settingsviewDevmodeTitle": {
     "message": "Developer Settings",
     "description": "Title of the settings view developer mode section"
@@ -214,6 +192,7 @@
     "message": "Database Update",
     "description": "Title of the settings view database status section"
   },
+
   "databaseLastUpdated": {
     "message": "Last fetched: $TIME$",
     "description": "Text showing when the database was last updated",
@@ -258,6 +237,7 @@
     "message": "Failed!",
     "description": "Failure message after database update"
   },
+
   "settingsviewClickbaitLevelTitle": {
     "message": "Clickbait Threshold",
     "description": "Title of the settings view clickbait level section"
@@ -302,10 +282,12 @@
     "message": "Process only misleading headlines",
     "description": "Description for clickbait level 4 (Extremely Clickbaity)"
   },
+
   "sitePolicyLinkText": {
     "message": "Publisher's policy",
     "description": "Short link text for publisher's policy button"
   },
+
   "modifierAiSlopTitle": {
     "message": "AI Content Marker",
     "description": "Title for AI content marker setting"
@@ -338,6 +320,7 @@
     "message": "This link is mostly video rather than a written article.",
     "description": "Tooltip text for video content marker"
   },
+
   "settingSavedSuccess": {
     "message": "Setting saved!",
     "description": "Notification message shown when a setting is saved successfully"
@@ -349,5 +332,348 @@
   "powerButtonAriaLabel": {
     "message": "Toggle extension for current site",
     "description": "Aria label for the power button that toggles the extension on/off for the current site"
+  },
+
+  "logoMadeWith": {
+    "message": "Made with",
+    "description": "Text in popup footer before logo"
+  },
+  "logoByKlikkikuri": {
+    "message": "by Klikkikuri",
+    "description": "Text in popup footer after logo"
+  },
+  "iconHomeAlt": {
+    "message": "Home icon",
+    "description": "Alt text for home navigation icon"
+  },
+  "iconFeedbackAlt": {
+    "message": "Comment icon",
+    "description": "Alt text for feedback navigation icon"
+  },
+  "iconStatsAlt": {
+    "message": "Stats icon",
+    "description": "Alt text for stats navigation icon"
+  },
+  "iconSettingsAlt": {
+    "message": "Settings icon",
+    "description": "Alt text for settings navigation icon"
+  },
+  "iconLogoAlt": {
+    "message": "Klikkikuri logo",
+    "description": "Alt text for Klikkikuri logo"
+  },
+
+  "legendExtensionStatus": {
+    "message": "🔌 Extension Status",
+    "description": "Legend for extension status section"
+  },
+  "descExtensionStatus": {
+    "message": "Enable or disable the extension",
+    "description": "Description for extension status section"
+  },
+  "masterSwitchTitle": {
+    "message": "Activate Paatti",
+    "description": "Title for main activation switch"
+  },
+  "masterSwitchDesc": {
+    "message": "When enabled, the extension processes clickbait headlines on configured sites",
+    "description": "Description for main activation switch"
+  },
+  "masterSwitchSaved": {
+    "message": "Extension status saved!",
+    "description": "Notification message when master switch state is saved"
+  },
+  "masterSwitchSaveError": {
+    "message": "Error saving extension status",
+    "description": "Notification message when master switch state save fails"
+  },
+
+  "legendClickbaitLevel": {
+    "message": "🎯 Clickbait Threshold",
+    "description": "Legend for clickbait threshold section"
+  },
+  "descClickbaitLevel": {
+    "message": "Configure how aggressively clickbait headlines are filtered",
+    "description": "Description for clickbait threshold section"
+  },
+
+  "legendSiteConfig": {
+    "message": "🌐 Site Configuration",
+    "description": "Legend for site configuration section"
+  },
+  "descSiteConfig": {
+    "message": "Select which sites the extension is enabled on",
+    "description": "Description for site configuration section"
+  },
+
+  "legendTitleModifiers": {
+    "message": "🏷️ Title Modifiers",
+    "description": "Legend for title modifiers section"
+  },
+  "descTitleModifiers": {
+    "message": "Enable automatic indicators and modifications for headlines (applies across all devices)",
+    "description": "Description for title modifiers section"
+  },
+
+  "legendEnvironmentConfig": {
+    "message": "⚙️ Environment Configuration",
+    "description": "Legend for environment configuration section"
+  },
+  "descEnvironmentConfig": {
+    "message": "Select operating environment (for developers)",
+    "description": "Description for environment configuration section"
+  },
+  "envFreeTitle": {
+    "message": "Free",
+    "description": "Title for free environment option"
+  },
+  "envFreeDesc": {
+    "message": "Free and open service with community updates",
+    "description": "Description for free environment option"
+  },
+  "envPaidTitle": {
+    "message": "Paid",
+    "description": "Title for paid environment option"
+  },
+  "envPaidDesc": {
+    "message": "Paid service with additional lists for paywalled content and faster updates",
+    "description": "Description for paid environment option"
+  },
+  "envDevTitle": {
+    "message": "Development",
+    "description": "Title for development environment option"
+  },
+  "envDevDesc": {
+    "message": "Environment intended for development",
+    "description": "Description for development environment option"
+  },
+  "envSavedSuccess": {
+    "message": "Environment saved!",
+    "description": "Notification message when environment is saved"
+  },
+  "envSavedError": {
+    "message": "Error saving environment",
+    "description": "Notification message when environment save fails"
+  },
+
+  "invitationTitle": {
+    "message": "📧 Invitation to paid version",
+    "description": "Title for paid version invitation section"
+  },
+  "invitationDesc": {
+    "message": "The paid version is not yet available. Enter your email address to receive an invitation when it launches.",
+    "description": "Description for paid version invitation section"
+  },
+  "invitationEmailPlaceholder": {
+    "message": "Email address",
+    "description": "Placeholder for invitation email input"
+  },
+  "invitationSubmitBtn": {
+    "message": "Send",
+    "description": "Label for invitation submit button"
+  },
+  "invitationEmailRequired": {
+    "message": "Please enter an email address",
+    "description": "Warning message when email field is empty"
+  },
+  "invitationEmailSending": {
+    "message": "Sending...",
+    "description": "Button text while email is being sent"
+  },
+  "invitationEmailSent": {
+    "message": "✓ Sent",
+    "description": "Button text after email is sent"
+  },
+  "invitationEmailSuccess": {
+    "message": "Email registered successfully!",
+    "description": "Notification message on successful email registration"
+  },
+  "invitationEmailError": {
+    "message": "Error registering email",
+    "description": "Notification message on failed email registration"
+  },
+
+  "debugSettingsTitle": {
+    "message": "🐛 Debug Settings",
+    "description": "Title for debug settings section"
+  },
+  "devmodeVisualHighlightTitle": {
+    "message": "Visual Highlight",
+    "description": "Title for visual highlight setting in options"
+  },
+  "devmodeVisualHighlightDesc": {
+    "message": "Show visual debug indicators on processed elements",
+    "description": "Description for visual highlight setting in options"
+  },
+  "devTitleDataUrlsTitle": {
+    "message": "Database URLs (titleDataUrls)",
+    "description": "Title for development database URLs textarea"
+  },
+  "devTitleDataUrlsDesc": {
+    "message": "Enter JSON database URLs for the development environment, one URL per line.",
+    "description": "Description for development database URLs textarea"
+  },
+  "saveDevUrlsBtn": {
+    "message": "💾 Save URLs",
+    "description": "Button to save development database URLs"
+  },
+  "devUrlsInvalid": {
+    "message": "Invalid development URL: $URL$",
+    "description": "Error message when a development URL is invalid",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "http://localhost:3000/data.json"
+      }
+    }
+  },
+  "devUrlsSavedSuccess": {
+    "message": "Development URLs saved!",
+    "description": "Notification message when development URLs are saved"
+  },
+  "devUrlsSavedError": {
+    "message": "Error saving development URLs",
+    "description": "Notification message when development URLs save fails"
+  },
+
+  "legendDatabaseUpdate": {
+    "message": "🗄️ Database Update",
+    "description": "Legend for database update section"
+  },
+  "descDatabaseUpdate": {
+    "message": "Configure automatic database update interval and manage manual updates",
+    "description": "Description for database update section"
+  },
+  "dbRefreshIntervalTitle": {
+    "message": "Automatic update interval",
+    "description": "Title for refresh interval setting"
+  },
+  "dbRefreshIntervalDesc": {
+    "message": "Set the automatic fetch interval for new data in minutes",
+    "description": "Description for refresh interval setting"
+  },
+  "dbRefreshIntervalSaved": {
+    "message": "Update interval saved!",
+    "description": "Notification message when refresh interval is saved"
+  },
+  "dbRefreshIntervalError": {
+    "message": "Error saving update interval",
+    "description": "Notification message when refresh interval save fails"
+  },
+  "dbRefreshIntervalInvalid": {
+    "message": "Invalid update interval!",
+    "description": "Notification message when refresh interval is invalid"
+  },
+  "dbLastFetchedTitle": {
+    "message": "Last fetched",
+    "description": "Label for last fetched database timestamp"
+  },
+  "dbGenerationDateTitle": {
+    "message": "Database generation date",
+    "description": "Label for database generation timestamp"
+  },
+
+  "legendAbout": {
+    "message": "ℹ️ About",
+    "description": "Legend for about section"
+  },
+  "aboutAvailableOn": {
+    "message": "Klikkikuri Paatti is available:",
+    "description": "Text introducing store links in about section"
+  },
+  "aboutContributorsTitle": {
+    "message": "Contributors",
+    "description": "Heading for contributors in about section"
+  },
+  "aboutFeedbackTitle": {
+    "message": "Feedback",
+    "description": "Heading for feedback in about section"
+  },
+  "aboutCreateIssueLink": {
+    "message": "Create an issue on GitHub",
+    "description": "Link text to create issue on GitHub"
+  },
+  "aboutPaattiInfoTitle": {
+    "message": "Paatti info",
+    "description": "Heading for Paatti info in about section"
+  },
+  "aboutLabelVersion": {
+    "message": "Paatti version:",
+    "description": "Label for version in about section"
+  },
+  "aboutLabelEnv": {
+    "message": "Environment:",
+    "description": "Label for environment in about section"
+  },
+  "aboutLabelBrowser": {
+    "message": "Browser:",
+    "description": "Label for browser in about section"
+  },
+  "aboutLabelOS": {
+    "message": "Operating system:",
+    "description": "Label for OS in about section"
+  },
+  "aboutLabelLastDbUpdate": {
+    "message": "Last database update:",
+    "description": "Label for last database update in about section"
+  },
+  "aboutLabelDbGenDate": {
+    "message": "Database generation date:",
+    "description": "Label for database generation date in about section"
+  },
+  "aboutLabelClickbaitLevel": {
+    "message": "Clickbait level:",
+    "description": "Label for clickbait level in about section"
+  },
+  "aboutLabelActiveModifiers": {
+    "message": "Active modifiers:",
+    "description": "Label for active modifiers in about section"
+  },
+  "aboutLabelActiveSites": {
+    "message": "Active sites:",
+    "description": "Label for active sites in about section"
+  },
+  "aboutLicensesTitle": {
+    "message": "Licenses and credits",
+    "description": "Heading for licenses in about section"
+  },
+  "aboutLicensePrefix": {
+    "message": "Klikkikuri Paatti is licensed under",
+    "description": "Prefix before license link in about section"
+  },
+  "aboutExtensionDisabled": {
+    "message": "extension disabled",
+    "description": "Text displayed in about section when extension is disabled"
+  },
+  "aboutNone": {
+    "message": "none",
+    "description": "Text displayed in about section when list is empty"
+  },
+
+  "siteSettingSaved": {
+    "message": "Setting for $DOMAIN$ saved!",
+    "description": "Notification message when site setting is saved",
+    "placeholders": {
+      "domain": {
+        "content": "$1",
+        "example": "hs.fi"
+      }
+    }
+  },
+  "siteSettingSaveError": {
+    "message": "Error saving site setting",
+    "description": "Notification message when site setting save fails"
+  },
+  "permissionNotGranted": {
+    "message": "Permission was not granted",
+    "description": "Notification message when site permission is not granted"
+  },
+  "permissionRequestError": {
+    "message": "Error requesting permission",
+    "description": "Notification message when site permission request fails"
+  },
+  "optionsErrorLoadingSettings": {
+    "message": "Error loading settings",
+    "description": "Notification message when options page fails to load settings"
   }
 }

@@ -4,7 +4,7 @@ import { getLogger, browser, getCurrentTabHostname } from "../utils.js";
 import { model, modelEvents } from "../model.js";
 import { controller } from "../controller.js";
 import { getConfig } from "../config.js";
-import { isSiteEnabled, displayProductInfo, getClickbaitLevelInfo } from "./utils.js";
+import { isSiteEnabled, displayProductInfo, getClickbaitLevelInfo, localizeDocument } from "./utils.js";
 import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
 import "./components/master-switch-setting.js";
@@ -32,8 +32,6 @@ expandoTemplate.innerHTML = `
 ///////////////////////////////////////////////////////////////////////////////
 // Helper procedures and definitions.
 ///////////////////////////////////////////////////////////////////////////////
-
-const getSitesEnabledItemId = (host) => `${host}-enabled`;
 
 /**
  * Store the different views' IDs here in order to make making changes a bit
@@ -108,10 +106,6 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
     }
 
     // Populate Home/Status view elements
-    const homeviewHeader = document.getElementById("homeview-header");
-    if (homeviewHeader) {
-        homeviewHeader.textContent = browser().i18n.getMessage("homeviewHeader");
-    }
     const homeviewStatusText = document.getElementById("homeview-status-text");
     if (homeviewStatusText) {
         homeviewStatusText.textContent = statusTextKey ? browser().i18n.getMessage(statusTextKey) : "";
@@ -204,7 +198,7 @@ const _refreshContentView = ({ site, data, isSiteEnabled }) => {
         browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelTotal");
 };
 
-const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlSelected, isDevelopmentEnv, testTitleDataUrl, config, visualHighlightEnabled, sitesPermissions }) => {
+const _refreshSettingsView = ({ isConversionEnabled, isDevelopmentEnv, config }) => {
 
     // First reset the view, as rahti-fetch alarm will keep re-adding enabled
     // sites to their list in UI.
@@ -244,17 +238,6 @@ const _refreshSettingsView = ({ isConversionEnabled, sitesEnabled, titleDataUrlS
 };
 
 
-///////////////////////////////////////////////////////////////////////////////
-// Adapters that use the controller but also trigger other business logic
-// procedures.
-///////////////////////////////////////////////////////////////////////////////
-
-const handleClickMainSwitch = async (e) => {
-    await controller.setEnabled(e.target.checked);
-};
-
-
-
 /**
  * Show this and hide other of the views.
  * @param {*} viewName Identifier of the view to show.
@@ -291,19 +274,8 @@ const refresh = async () => {
     const isConversionEnabled = await model.read.isEnabled();
     const pageHostname = await getCurrentTabHostname();
     const pageStatistics = await model.read.getStatistics(pageHostname);
-    const sitesEnabled = await model.read.getSitesEnabled();
-    const titleDataUrlSelected = await model.read.getTitleDataUrls();
     const isDevelopmentEnv = await model.read.isDevelopmentEnv();
-    const testTitleDataUrl = await model.read.getTestTitleDataUrl();
     const config = await getConfig();
-    const visualHighlightEnabled = await model.read.getVisualHighlightEnabled();
-
-    const sitesPermissions = {};
-    for (const host of Object.keys(config.siteConfigs)) {
-        const origins = config.siteConfigs[host]?.origins || [];
-        sitesPermissions[host] = origins.length > 0 ? await browser().permissions.contains({ origins }) : false;
-    }
-
 
     const matchingDomain = await model.read.getMatchingSiteDomain(pageHostname);
     const isCurrentSiteEnabled = matchingDomain ? await isSiteEnabled(matchingDomain) : false;
@@ -322,10 +294,7 @@ const refresh = async () => {
     }
     // settingsview-clickbait-level is managed by the clickbait-level-horizontal component
 
-    // Load database status
-    const dbStatus = await model.read.getDatabaseStatus();
-    const lastDatabaseUpdate = dbStatus.lastDatabaseUpdate;
-    const databaseGenerationDate = dbStatus.databaseGenerationDate;
+    // Update settings view database status section title
     const dbTitleEl = document.getElementById("settingsview-database-status-title");
     if (dbTitleEl) {
         dbTitleEl.textContent = browser().i18n.getMessage("settingsviewDatabaseStatusTitle");
@@ -334,13 +303,8 @@ const refresh = async () => {
 
     _refreshSettingsView({
         isConversionEnabled,
-        sitesEnabled,
-        titleDataUrlSelected,
         isDevelopmentEnv,
-        testTitleDataUrl,
         config,
-        visualHighlightEnabled,
-        sitesPermissions,
     });
     _refreshContentView({
         site: pageHostname,
@@ -523,6 +487,7 @@ const refresh = async () => {
 // handleUpdateDatabaseClick is now encapsulated in the database-status-setting component
 
 const handleDomContentLoaded = async (e) => {
+    localizeDocument();
     log("Setting up UI");
 
     // Connect directly to the content script in the active tab.
@@ -645,8 +610,6 @@ const __devmodeCopyLinkSignatures = async (e) => {
 const view = {
     handleDomContentLoaded: handleDomContentLoaded,
     showView: showView,
-    handleClickMainSwitch: handleClickMainSwitch,
-
     refresh: refresh,
 };
 

@@ -1,6 +1,7 @@
 import { browser } from '../../utils.js';
 import { controller } from '../../controller.js';
 import { model } from '../../model.js';
+import { localizeDocument } from '../utils.js';
 import './toggle-button.js';
 
 const compactTemplate = document.createElement('template');
@@ -14,8 +15,8 @@ detailedTemplate.innerHTML = `
     <div class="setting-group">
         <div class="setting-label">
             <div class="label-text">
-                <strong>Aktivoi Paatti</strong>
-                <span>Kun päällä, laajennus käsittelee klikkiotsikot määritetyillä sivustoilla</span>
+                <strong data-i18n="masterSwitchTitle">Activate Paatti</strong>
+                <span data-i18n="masterSwitchDesc">When enabled, the extension processes clickbait headlines on configured sites</span>
             </div>
             <toggle-button id="extensionEnabled"></toggle-button>
         </div>
@@ -43,13 +44,14 @@ class MasterSwitchSetting extends HTMLElement {
             this.classList.add('compact-setting-row');
             this.replaceChildren(compactTemplate.content.cloneNode(true));
 
-            const labelText = browser().i18n.getMessage('settingsviewMasterSwitchLabel') || 'Aktivoi laajennus';
+            const labelText = browser().i18n.getMessage('settingsviewMasterSwitchLabel') || 'Activate Paatti';
             const labelEl = this.querySelector('.label-text');
             if (labelEl) {
                 labelEl.textContent = labelText;
             }
         } else {
             this.replaceChildren(detailedTemplate.content.cloneNode(true));
+            localizeDocument(this);
         }
 
         const toggleBtn = this.querySelector('toggle-button');
@@ -110,7 +112,12 @@ class MasterSwitchSetting extends HTMLElement {
                 if (layout !== 'compact') {
                     this.dispatchEvent(new CustomEvent('setting-saved', {
                         bubbles: true,
-                        detail: { key: 'extensionEnabled', value: checked, success: true, message: 'Laajennuksen tila tallennettu!' }
+                        detail: {
+                            key: 'extensionEnabled',
+                            value: checked,
+                            success: true,
+                            message: browser().i18n.getMessage('masterSwitchSaved') || 'Extension status saved!'
+                        }
                     }));
                 }
             } catch (err) {
@@ -119,7 +126,12 @@ class MasterSwitchSetting extends HTMLElement {
                 if (layout !== 'compact') {
                     this.dispatchEvent(new CustomEvent('setting-saved', {
                         bubbles: true,
-                        detail: { key: 'extensionEnabled', value: !checked, success: false, message: 'Virhe laajennuksen tilan tallentamisessa' }
+                        detail: {
+                            key: 'extensionEnabled',
+                            value: !checked,
+                            success: false,
+                            message: browser().i18n.getMessage('masterSwitchSaveError') || 'Error saving extension status'
+                        }
                     }));
                 }
             }

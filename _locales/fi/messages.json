@@ -1,44 +1,54 @@
 {
+  "extensionName": {
+    "message": "Klikkikuri Paatti",
+    "description": "Name of the extension."
+  },
   "extensionDescription": {
     "message": "Korvaa uutissivujen klikkiotsikot vastaamaan paremmin juttujen sisältöä",
     "description": "Description of the extension."
   },
+  "optionsPageTitle": {
+    "message": "Klikkikuri Paatti - Asetukset",
+    "description": "Title of the options page."
+  },
+  "popupPageTitle": {
+    "message": "Klikkikuri Paatti",
+    "description": "Title of the popup page."
+  },
+  "headerSubtitle": {
+    "message": "Klikkikuri - Purjehdi verkkoa ilman klikkiotsikkoja",
+    "description": "Subtitle in header of options page."
+  },
 
   "clickbaitinessLabel_Not_Clickbait_at_all": {
-      "message": "Ei lainkaan klikkiotsikko",
-      "description": "Label for the not clickbait at all title 'type' or 'severity'"
+    "message": "Ei lainkaan klikkiotsikko",
+    "description": "Label for the not clickbait at all title 'type' or 'severity'"
   },
-
   "clickbaitinessLabel_Slightly_Clickbaity": {
-      "message": "Hieman klikkiotsikko",
-      "description": "Label for the slightly clickbaity title 'type' or 'severity'"
+    "message": "Hieman klikkiotsikko",
+    "description": "Label for the slightly clickbaity title 'type' or 'severity'"
   },
-
   "clickbaitinessLabel_Moderately_Clickbaity": {
-      "message": "Melko klikkiotsikko",
-      "description": "Label for the moderately clickbaity title 'type' or 'severity'"
+    "message": "Melko klikkiotsikko",
+    "description": "Label for the moderately clickbaity title 'type' or 'severity'"
   },
-
   "clickbaitinessLabel_Very_Clickbaity": {
-      "message": "Hyvin klikkiotsikko",
-      "description": "Label for the very clickbaity title 'type' or 'severity'"
+    "message": "Hyvin klikkiotsikko",
+    "description": "Label for the very clickbaity title 'type' or 'severity'"
   },
-
   "clickbaitinessLabel_Extremely_Clickbaity": {
-      "message": "Erittäin klikkiotsikko",
-      "description": "Label for the extremely clickbaity title 'type' or 'severity'"
+    "message": "Erittäin klikkiotsikko",
+    "description": "Label for the extremely clickbaity title 'type' or 'severity'"
   },
 
   "siteTitleProcessingNotSupported": {
     "message": "Sivuston käsittelyä ei tueta",
     "description": "Message to show in 'main' title element when the visited site is not supported for processing"
   },
-
   "siteTitleProcessingDisabled": {
     "message": "Sivuston käsittely on pois päältä",
     "description": "Message to show in 'main' title element when the visited site is disabled in settings"
   },
-
   "statsErrorUserFixInstructions": {
     "message": "Sivun tietoja ei saatu ladattua. Koeta päivittää ikkuna.",
     "description": "Instruction text to show in the bottom of 'main' view to help user with an unexpected error"
@@ -48,57 +58,43 @@
     "message": "Tilastoja",
     "description": "Title of the statistics view section"
   },
-
   "statsviewGroupedByClickbaitinessLabelClickbaitiness": {
     "message": "Klikkiotsikkoisuus",
     "description": "Title of the stats section clickbaitiness grouping table for the 'type' or 'severity' of clickbait"
   },
-
   "statsviewGroupedByClickbaitinessLabelAmount": {
     "message": "Määrä",
     "description": "Title of the stats section clickbaitiness grouping table for the amount of this type of clickbait"
   },
-
   "statsviewGroupedByClickbaitinessLabelTotal": {
     "message": "Yhteensä",
     "description": "Title of the stats section clickbaitiness grouping table for the total amount of converted titles"
-  },
-
-  "feedbackviewRateTitleHeader": {
-    "message": "Arvostele tämä klikkiotsikko",
-    "description": "Title of the feedback view converted title rating section"
   },
 
   "feedbackviewRateTitleOriginalTitleLabel": {
     "message": "Alkuperäinen:",
     "description": "Text marking the original title on the feedback view converted title rating section"
   },
-
   "feedbackviewRateTitleConvertedTitleLabel": {
     "message": "Oikaistu:",
     "description": "Text marking the converted title on the feedback view converted title rating section"
   },
-
   "feedbackviewRateTitleConversionIsGood": {
     "message": "Nappaa",
     "description": "Text on the button in the feedback view converted title rating that the user can rate the conversion as 'good'"
   },
-
   "feedbackviewRateTitleConversionIsBad": {
     "message": "Ei nappaa",
     "description": "Text on the button in the feedback view converted title rating that the user can rate the conversion as 'bad'"
   },
-
   "feedbackviewNoConversions": {
     "message": "Ei oikaistuja otsikoita tällä sivulla.",
     "description": "Message displayed when there are no converted clickbaits on the current page"
   },
-
   "feedbackviewCurrentPageLabel": {
     "message": "Nykyinen sivu",
     "description": "Label indicating that the conversion is for the active page itself"
   },
-
   "feedbackviewReportCommentPlaceholder": {
     "message": "Kuvaile ongelmaa...",
     "description": "Placeholder for comments in reporting form"
@@ -107,7 +103,6 @@
     "message": "Lähetä",
     "description": "Label for submit button in reporting form"
   },
-
   "feedbackviewReportSuccess": {
     "message": "✓ Palaute lähetetty!",
     "description": "Success message after reporting conversion"
@@ -125,12 +120,10 @@
     "message": "Käsiteltävät uutissivustot",
     "description": "Title of the settings view enabled sites section"
   },
-
   "settingsviewStatusTitle": {
     "message": "Laajennuksen tila",
     "description": "Title of the settings view status section"
   },
-
   "settingsviewMasterSwitchLabel": {
     "message": "Aktivoi Paatti",
     "description": "Label of the settings view master switch toggle"
@@ -140,41 +133,32 @@
     "message": "Klikkikuri",
     "description": "Label of the navigation menu main view button"
   },
-
   "navigationStatsLabel": {
     "message": "Tilastot",
     "description": "Label of the navigation menu statistics view button"
   },
-
-  "homeviewHeader": {
-    "message": "Klikkikuri",
-    "description": "Title of the home/status view"
+  "navigationFeedbackLabel": {
+    "message": "Palaute ja arviointi",
+    "description": "Label of the navigation menu feedback view button"
+  },
+  "navigationSettingsLabel": {
+    "message": "Asetukset",
+    "description": "Label of the navigation menu settings view button"
   },
 
   "homeviewStatusDisabled": {
     "message": "Paatti on pois käytöstä tällä sivustolla.",
     "description": "Text saying that Paatti is disabled on the current site"
   },
-
   "homeviewStatusNotSupported": {
     "message": "Paatti ei tue tätä sivustoa.",
     "description": "Text saying that the site is not supported"
   },
-
   "homeviewRequestSiteBtn": {
     "message": "Pyydä sivutukea",
     "description": "Label of the button to request site support on GitHub"
   },
 
-  "navigationFeedbackLabel": {
-    "message": "Palaute ja arviointi",
-    "description": "Label of the navigation menu feedback view button"
-  },
-
-  "navigationSettingsLabel": {
-    "message": "Asetukset",
-    "description": "Label of the navigation menu settings view button"
-  },
   "preferencesViewMoreSettingsBtn": {
     "message": "Lisää asetuksia...",
     "description": "Label of the button in preferences view that opens options page"
@@ -184,7 +168,6 @@
     "message": "Asetuksia nörteille",
     "description": "Title-attribute of the hidden devmode activation button"
   },
-
   "devmodeCopyLinkSignaturesTitle": {
     "message": "Kopioi tämän sivun linkkien suolaukset leikepöydällesi",
     "description": "Title-attribute of the hidden devmode link signature copying button"
@@ -201,10 +184,6 @@
     "message": "Kopioi leikepöydälle",
     "description": "Button text to copy link signatures to clipboard"
   },
-  "devmodeSetTitleDataUrlLabel": {
-    "message": "Tietolähteen osoite",
-    "description": "Label for the devmode title data source URL select dropdown"
-  },
   "settingsviewDevmodeTitle": {
     "message": "Kehittäjäasetukset",
     "description": "Title of the settings view developer mode section"
@@ -213,6 +192,7 @@
     "message": "Tietokannan tila",
     "description": "Title of the settings view database status section"
   },
+
   "databaseLastUpdated": {
     "message": "Haettu: $TIME$",
     "description": "Text showing when the database was last updated",
@@ -257,6 +237,7 @@
     "message": "Virhe!",
     "description": "Failure message after database update"
   },
+
   "settingsviewClickbaitLevelTitle": {
     "message": "Klikkiotsikoiden raja-arvo",
     "description": "Title of the settings view clickbait level section"
@@ -301,10 +282,12 @@
     "message": "Käsitellään vain harhaanjohtavat otsikot",
     "description": "Kuvaus klikkitason raja-arvolle 4 (Extremely Clickbaity)"
   },
+
   "sitePolicyLinkText": {
     "message": "Julkaisijan periaatteet",
     "description": "Short link text for publisher's policy button"
   },
+
   "modifierAiSlopTitle": {
     "message": "Tekoälymerkintä (AI)",
     "description": "Otsikko tekoälymerkinnän valinnalle"
@@ -337,6 +320,7 @@
     "message": "Juttu on pääosin video eikä luettava artikkeli.",
     "description": "Tooltip-teksti videomerkinnälle"
   },
+
   "settingSavedSuccess": {
     "message": "Asetus tallennettu!",
     "description": "Notification message shown when a setting is saved successfully"
@@ -348,5 +332,348 @@
   "powerButtonAriaLabel": {
     "message": "Vaihda laajennuksen tilaa nykyiselle sivustolle",
     "description": "Aria label for the power button that toggles the extension on/off for the current site"
+  },
+
+  "logoMadeWith": {
+    "message": "Made with",
+    "description": "Text in popup footer before logo"
+  },
+  "logoByKlikkikuri": {
+    "message": "by Klikkikuri",
+    "description": "Text in popup footer after logo"
+  },
+  "iconHomeAlt": {
+    "message": "Kotikuvake",
+    "description": "Alt text for home navigation icon"
+  },
+  "iconFeedbackAlt": {
+    "message": "Palautekuvake",
+    "description": "Alt text for feedback navigation icon"
+  },
+  "iconStatsAlt": {
+    "message": "Tilastokuvake",
+    "description": "Alt text for stats navigation icon"
+  },
+  "iconSettingsAlt": {
+    "message": "Asetuskuvake",
+    "description": "Alt text for settings navigation icon"
+  },
+  "iconLogoAlt": {
+    "message": "Klikkikuri-logo",
+    "description": "Alt text for Klikkikuri logo"
+  },
+
+  "legendExtensionStatus": {
+    "message": "🔌 Laajennuksen tila",
+    "description": "Legend for extension status section"
+  },
+  "descExtensionStatus": {
+    "message": "Ota laajennus käyttöön tai pois käytöstä",
+    "description": "Description for extension status section"
+  },
+  "masterSwitchTitle": {
+    "message": "Aktivoi Paatti",
+    "description": "Title for main activation switch"
+  },
+  "masterSwitchDesc": {
+    "message": "Kun päällä, laajennus käsittelee klikkiotsikot määritetyillä sivustoilla",
+    "description": "Description for main activation switch"
+  },
+  "masterSwitchSaved": {
+    "message": "Laajennuksen tila tallennettu!",
+    "description": "Notification message when master switch state is saved"
+  },
+  "masterSwitchSaveError": {
+    "message": "Virhe laajennuksen tilan tallentamisessa",
+    "description": "Notification message when master switch state save fails"
+  },
+
+  "legendClickbaitLevel": {
+    "message": "🎯 Klikkiotsikoiden taso",
+    "description": "Legend for clickbait threshold section"
+  },
+  "descClickbaitLevel": {
+    "message": "Määritä, kuinka klikkikynnystä nostetaan",
+    "description": "Description for clickbait threshold section"
+  },
+
+  "legendSiteConfig": {
+    "message": "🌐 Sivustokohtaiset asetukset",
+    "description": "Legend for site configuration section"
+  },
+  "descSiteConfig": {
+    "message": "Valitse, millä sivustoilla laajennus on käytössä",
+    "description": "Description for site configuration section"
+  },
+
+  "legendTitleModifiers": {
+    "message": "🏷️ Otsikkomerkinnät",
+    "description": "Legend for title modifiers section"
+  },
+  "descTitleModifiers": {
+    "message": "Ota käyttöön automaattiset ilmaisimet ja muokkaukset otsikoille (voimassa kaikilla laitteilla)",
+    "description": "Description for title modifiers section"
+  },
+
+  "legendEnvironmentConfig": {
+    "message": "⚙️ Ympäristön asetukset",
+    "description": "Legend for environment configuration section"
+  },
+  "descEnvironmentConfig": {
+    "message": "Valitse käyttöympäristö (kehittäjille)",
+    "description": "Description for environment configuration section"
+  },
+  "envFreeTitle": {
+    "message": "Ilmainen",
+    "description": "Title for free environment option"
+  },
+  "envFreeDesc": {
+    "message": "Maksuton ja avoin palvelu yhteisöpäivityksillä",
+    "description": "Description for free environment option"
+  },
+  "envPaidTitle": {
+    "message": "Maksullinen",
+    "description": "Title for paid environment option"
+  },
+  "envPaidDesc": {
+    "message": "Maksullinen palvelu lisälistoilla maksumuurisisällöille ja nopeammilla päivityksillä",
+    "description": "Description for paid environment option"
+  },
+  "envDevTitle": {
+    "message": "Kehitys",
+    "description": "Title for development environment option"
+  },
+  "envDevDesc": {
+    "message": "Kehitykseen tarkoitettu ympäristö",
+    "description": "Description for development environment option"
+  },
+  "envSavedSuccess": {
+    "message": "Ympäristö tallennettu!",
+    "description": "Notification message when environment is saved"
+  },
+  "envSavedError": {
+    "message": "Virhe ympäristön tallentamisessa",
+    "description": "Notification message when environment save fails"
+  },
+
+  "invitationTitle": {
+    "message": "📧 Kutsu maksulliseen versioon",
+    "description": "Title for paid version invitation section"
+  },
+  "invitationDesc": {
+    "message": "Maksullinen versio ei ole vielä saatavilla. Jätä sähköpostiosoitteesi, niin lähetämme sinulle kutsun maksullisen version käyttöön.",
+    "description": "Description for paid version invitation section"
+  },
+  "invitationEmailPlaceholder": {
+    "message": "Sähköpostiosoite",
+    "description": "Placeholder for invitation email input"
+  },
+  "invitationSubmitBtn": {
+    "message": "Lähetä",
+    "description": "Label for invitation submit button"
+  },
+  "invitationEmailRequired": {
+    "message": "Syötä sähköpostiosoite",
+    "description": "Warning message when email field is empty"
+  },
+  "invitationEmailSending": {
+    "message": "Lähetetään...",
+    "description": "Button text while email is being sent"
+  },
+  "invitationEmailSent": {
+    "message": "✓ Lähetetty",
+    "description": "Button text after email is sent"
+  },
+  "invitationEmailSuccess": {
+    "message": "Sähköposti rekisteröity onnistuneesti!",
+    "description": "Notification message on successful email registration"
+  },
+  "invitationEmailError": {
+    "message": "Virhe sähköpostin rekisteröinnissä",
+    "description": "Notification message on failed email registration"
+  },
+
+  "debugSettingsTitle": {
+    "message": "🐛 Debug-asetukset",
+    "description": "Title for debug settings section"
+  },
+  "devmodeVisualHighlightTitle": {
+    "message": "Debug-visualisoinnit",
+    "description": "Title for visual highlight setting in options"
+  },
+  "devmodeVisualHighlightDesc": {
+    "message": "Näytä visuaaliset debug-merkit käsitellyistä elementeistä",
+    "description": "Description for visual highlight setting in options"
+  },
+  "devTitleDataUrlsTitle": {
+    "message": "Tietokannan osoitteet (titleDataUrls)",
+    "description": "Title for development database URLs textarea"
+  },
+  "devTitleDataUrlsDesc": {
+    "message": "Syötä JSON-tietokantojen osoitteet kehitysympäristöä varten, yksi osoite per rivi.",
+    "description": "Description for development database URLs textarea"
+  },
+  "saveDevUrlsBtn": {
+    "message": "💾 Tallenna osoitteet",
+    "description": "Button to save development database URLs"
+  },
+  "devUrlsInvalid": {
+    "message": "Virheellinen kehitys-URL: $URL$",
+    "description": "Error message when a development URL is invalid",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "http://localhost:3000/data.json"
+      }
+    }
+  },
+  "devUrlsSavedSuccess": {
+    "message": "Kehitys-URL:t tallennettu!",
+    "description": "Notification message when development URLs are saved"
+  },
+  "devUrlsSavedError": {
+    "message": "Virhe tallennettaessa kehitys-URL:eja",
+    "description": "Notification message when development URLs save fails"
+  },
+
+  "legendDatabaseUpdate": {
+    "message": "🗄️ Tietokannan päivitys",
+    "description": "Legend for database update section"
+  },
+  "descDatabaseUpdate": {
+    "message": "Määritä tietokannan automaattinen päivitysväli ja hallitse manuaalista päivitystä",
+    "description": "Description for database update section"
+  },
+  "dbRefreshIntervalTitle": {
+    "message": "Automaattinen päivitysväli",
+    "description": "Title for refresh interval setting"
+  },
+  "dbRefreshIntervalDesc": {
+    "message": "Määritä uuden datan automaattinen hakuväli minuuteissa",
+    "description": "Description for refresh interval setting"
+  },
+  "dbRefreshIntervalSaved": {
+    "message": "Päivitysväli tallennettu!",
+    "description": "Notification message when refresh interval is saved"
+  },
+  "dbRefreshIntervalError": {
+    "message": "Virhe tallennettaessa päivitysväliä",
+    "description": "Notification message when refresh interval save fails"
+  },
+  "dbRefreshIntervalInvalid": {
+    "message": "Virheellinen päivitysväli!",
+    "description": "Notification message when refresh interval is invalid"
+  },
+  "dbLastFetchedTitle": {
+    "message": "Viimeisin haku",
+    "description": "Label for last fetched database timestamp"
+  },
+  "dbGenerationDateTitle": {
+    "message": "Tietokannan luontiaika",
+    "description": "Label for database generation timestamp"
+  },
+
+  "legendAbout": {
+    "message": "ℹ️ Tietoja",
+    "description": "Legend for about section"
+  },
+  "aboutAvailableOn": {
+    "message": "Klikkikuri Paatti on saatavilla:",
+    "description": "Text introducing store links in about section"
+  },
+  "aboutContributorsTitle": {
+    "message": "Kehittäjät",
+    "description": "Heading for contributors in about section"
+  },
+  "aboutFeedbackTitle": {
+    "message": "Palaute",
+    "description": "Heading for feedback in about section"
+  },
+  "aboutCreateIssueLink": {
+    "message": "Luo vikailmoitus GitHubissa",
+    "description": "Link text to create issue on GitHub"
+  },
+  "aboutPaattiInfoTitle": {
+    "message": "Paatin tiedot",
+    "description": "Heading for Paatti info in about section"
+  },
+  "aboutLabelVersion": {
+    "message": "Paatin versio:",
+    "description": "Label for version in about section"
+  },
+  "aboutLabelEnv": {
+    "message": "Ympäristö:",
+    "description": "Label for environment in about section"
+  },
+  "aboutLabelBrowser": {
+    "message": "Selain:",
+    "description": "Label for browser in about section"
+  },
+  "aboutLabelOS": {
+    "message": "Käyttöjärjestelmä:",
+    "description": "Label for OS in about section"
+  },
+  "aboutLabelLastDbUpdate": {
+    "message": "Viimeisin tietokannan haku:",
+    "description": "Label for last database update in about section"
+  },
+  "aboutLabelDbGenDate": {
+    "message": "Tietokannan luontiaika:",
+    "description": "Label for database generation date in about section"
+  },
+  "aboutLabelClickbaitLevel": {
+    "message": "Klikkikynnystaso:",
+    "description": "Label for clickbait level in about section"
+  },
+  "aboutLabelActiveModifiers": {
+    "message": "Aktiiviset merkinnät:",
+    "description": "Label for active modifiers in about section"
+  },
+  "aboutLabelActiveSites": {
+    "message": "Aktiiviset sivustot:",
+    "description": "Label for active sites in about section"
+  },
+  "aboutLicensesTitle": {
+    "message": "Lisenssit ja kiitokset",
+    "description": "Heading for licenses in about section"
+  },
+  "aboutLicensePrefix": {
+    "message": "Klikkikuri Paatti on lisensoitu lisenssillä",
+    "description": "Prefix before license link in about section"
+  },
+  "aboutExtensionDisabled": {
+    "message": "laajennus pois käytöstä",
+    "description": "Text displayed in about section when extension is disabled"
+  },
+  "aboutNone": {
+    "message": "ei mitään",
+    "description": "Text displayed in about section when list is empty"
+  },
+
+  "siteSettingSaved": {
+    "message": "Sivuston $DOMAIN$ asetus tallennettu!",
+    "description": "Notification message when site setting is saved",
+    "placeholders": {
+      "domain": {
+        "content": "$1",
+        "example": "hs.fi"
+      }
+    }
+  },
+  "siteSettingSaveError": {
+    "message": "Virhe tallennettaessa sivuston asetusta",
+    "description": "Notification message when site setting save fails"
+  },
+  "permissionNotGranted": {
+    "message": "Lupaa ei myönnetty",
+    "description": "Notification message when site permission is not granted"
+  },
+  "permissionRequestError": {
+    "message": "Virhe pyydettäessä lupaa",
+    "description": "Notification message when site permission request fails"
+  },
+  "optionsErrorLoadingSettings": {
+    "message": "Virhe asetusten lataamisessa",
+    "description": "Notification message when options page fails to load settings"
   }
 }
