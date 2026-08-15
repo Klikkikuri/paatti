@@ -10,7 +10,7 @@ Sail smoothly through the clickbait-infested web using this browser extension.
     - [Feedback and correction interface](#feedback-and-correction-interface)
     - [Normal operation](#normal-operation)
   - [Installing](#installing)
-    - [Installing the pre-build browser extension](#installing-the-pre-build-browser-extension)
+    - [Installing the pre-built browser extension](#installing-the-pre-built-browser-extension)
     - [Building from Source](#building-from-source)
       - [Requirements](#requirements)
       - [Build Flags \& Options](#build-flags--options)
@@ -87,7 +87,7 @@ Extension in normal action, staying out of the way unless specifically invoked b
 
 ## Installing
 
-### Installing the pre-build browser extension
+### Installing the pre-built browser extension
 
 Klikkikuri Paatti browser extension is also available in [🛍️ Google Chrome Webstore](https://chromewebstore.google.com/detail/klikkikuri-paatti/jalegaigmgljhnaakmbbaajooffgcbgc?hl=en) and in [🦊 Mozilla Firefox Add-on](https://addons.mozilla.org/fi-FI/firefox/addon/klikkikuri/). Unless you're interested on developing or using more bleeding edge version, you should prefer those.
 
