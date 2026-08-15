@@ -3,9 +3,7 @@
     "message": "Klikkikuri Paatti",
     "description": "Name of the extension."
   },
-  "extensionDescription": {
-    "message": "Converts clickbaits headlines on news sites to better match the article contents",
-    "description": "Description of the extension."
+    "message": "Converts clickbait headlines on news sites to better match the article contents",
   },
   "optionsPageTitle": {
     "message": "Klikkikuri Paatti - Settings",
