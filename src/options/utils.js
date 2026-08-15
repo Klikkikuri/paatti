@@ -62,8 +62,8 @@ const getBrowserInfo = async () => {
     // Chromium native API
     const brands = navigator.userAgentData?.brands;
     if (brands?.length) {
-        const brand = brands.at(-1);
-        return `${brand.brand} ${brand.version}`;
+        const brand = brands.find((b) => b.brand && !/^not/i.test(b.brand)) ?? brands.at(-1);
+        return brand ? `${brand.brand} ${brand.version}` : 'Unknown';
     }
 
     return 'Unknown';
