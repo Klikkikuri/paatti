@@ -6,7 +6,39 @@ import './toggle-button.js';
 import './favicon-img.js';
 const compactTemplate = document.createElement('template');
 compactTemplate.innerHTML = `
-    <label class="site-label"></label>
+    <style>
+        .compact-site-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            flex: 1;
+            margin-right: 10px;
+        }
+        .site-favicon {
+            border-radius: 4px;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .site-favicon img,
+        .site-favicon .site-favicon-fallback {
+            border-radius: 4px;
+            display: block;
+        }
+        .site-label {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+            user-select: none;
+        }
+    </style>
+    <div class="compact-site-info">
+        <favicon-img class="site-favicon" size="18"></favicon-img>
+        <label class="site-label"></label>
+    </div>
     <toggle-button type="toggle"></toggle-button>
 `;
 
@@ -118,6 +150,9 @@ class SiteToggleSetting extends HTMLElement {
             this.classList.add('compact-setting-row');
             this.replaceChildren(compactTemplate.content.cloneNode(true));
 
+            const faviconEl = this.querySelector('favicon-img');
+            if (faviconEl) faviconEl.setAttribute('domain', domain);
+
             const labelEl = this.querySelector('.site-label');
             if (labelEl) {
                 labelEl.setAttribute('for', `toggle-${domain}`);
@@ -144,16 +179,14 @@ class SiteToggleSetting extends HTMLElement {
         }
 
         // Allow clicking anywhere on the row to toggle (excluding detail buttons or switch itself)
-        if (layout !== 'compact') {
-            this.addEventListener('click', (e) => {
-                if (e.target.closest('toggle-button') || e.target.closest('.detail-button')) return;
-                toggleBtn.checked = !toggleBtn.checked;
-                toggleBtn.dispatchEvent(new CustomEvent('toggle-change', {
-                    bubbles: true,
-                    detail: { checked: toggleBtn.checked }
-                }));
-            });
-        }
+        this.addEventListener('click', (e) => {
+            if (e.target.closest('toggle-button') || e.target.closest('.detail-button')) return;
+            toggleBtn.checked = !toggleBtn.checked;
+            toggleBtn.dispatchEvent(new CustomEvent('toggle-change', {
+                bubbles: true,
+                detail: { checked: toggleBtn.checked }
+            }));
+        });
 
         // Fetch state asynchronously
         this.loadState(toggleBtn, domain, origins, layout);
