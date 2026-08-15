@@ -259,7 +259,10 @@ browser().runtime.onMessage.addListener((message, sender, sendResponse) => {
                 const existing = stored[key];
                 if (!isFaviconExpired(existing)) return;
 
-                const response = await fetch(url);
+                const response = await fetch(url, {
+                    credentials: "omit",
+                    referrerPolicy: "no-referrer"
+                });
                 const altDomain = domain.startsWith("www.") ? domain.slice(4) : `www.${domain}`;
                 if (!response.ok) {
                     // Negatively cache: prevents retry on every page load
