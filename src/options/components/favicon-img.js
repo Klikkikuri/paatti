@@ -1,6 +1,7 @@
 "use strict";
 
 import { browser } from '../../utils.js';
+import { getFaviconKey, isFaviconExpired } from '../../faviconCache.js';
 
 /**
  * Curated accessible palette for deterministic domain letter badges.
@@ -12,9 +13,40 @@ const BADGE_PALETTE = [
 ];
 
 /**
+ * Cached promise determining whether the runtime supports the MV3 favicon API permission.
+ * @type {Promise<boolean>|null}
+ */
+let faviconApiSupportedPromise = null;
+
+/**
+ * Checks whether the browser runtime grants and supports the 'favicon' permission.
+ * Chromium returns true when 'favicon' is in manifest permissions.
+ * Firefox does not support this permission and returns false or rejects.
+ *
+ * @returns {Promise<boolean>} True if the favicon API is supported and granted.
+ */
+async function supportsFaviconApi() {
+    if (faviconApiSupportedPromise !== null) {
+        return faviconApiSupportedPromise;
+    }
+    faviconApiSupportedPromise = (async () => {
+        try {
+            const b = browser();
+            if (b?.permissions?.contains) {
+                return await b.permissions.contains({ permissions: ['favicon'] });
+            }
+        } catch (_err) {
+            // Non-supporting browsers (e.g. Firefox) reject unknown permission names
+        }
+        return false;
+    })();
+    return faviconApiSupportedPromise;
+}
+
+/**
  * Custom element for rendering site favicons with a tiered fallback pipeline.
  * Tier 1: MV3 _favicon/ internal routing (Chromium)
- * Tier 2: [Reserved: Custom storage cache]
+ * Tier 2: Base64 data-URI cached by background script in browser.storage.local
  * Tier 3: Deterministic initial-letter placeholder badge
  *
  * Operates directly in Light DOM to ensure external styles (e.g. border-radius, flex layout)
@@ -102,7 +134,12 @@ export class FaviconImg extends HTMLElement {
             });
 
             this.img.addEventListener('error', () => {
-                this.resolveFallbackTier();
+                // Prevent infinite loop if Tier 2 (data URI) fails to load
+                if (this.img.src.startsWith('data:')) {
+                    this.showFallback();
+                } else {
+                    this.resolveFallbackTier();
+                }
             });
 
             this.fallbackBadge = document.createElement('span');
@@ -143,11 +180,51 @@ export class FaviconImg extends HTMLElement {
     }
 
     /**
-     * Resolves through the tiered fallback chain:
-     * Tier 2 (Future Storage) -> Tier 3 (Terminal Letter Badge).
+     * Resolves through the tiered fallback chain.
+     * Tier 2: Base64 data-URI from browser.storage.local (privacy-first, all browsers).
+     * Tier 3: Deterministic initial-letter placeholder badge (terminal fallback).
+     *
+     * @returns {Promise<void>}
      */
-    resolveFallbackTier() {
-        // [TIER 2 HOOK: Future custom storage lookup will be inserted here]
+    async resolveFallbackTier() {
+        const domain = this.getAttribute('domain') || '';
+
+        if (domain) {
+            try {
+                const b = browser();
+                const key = getFaviconKey(domain);
+                let stored = await b.storage.local.get(key);
+                let entry = stored?.[key];
+
+                // If not found or expired, try fallback with or without www. prefix
+                if (!entry || isFaviconExpired(entry)) {
+                    const altDomain = domain.startsWith('www.')
+                        ? domain.slice(4)
+                        : `www.${domain}`;
+                    const altKey = getFaviconKey(altDomain);
+                    const altStored = await b.storage.local.get(altKey);
+                    if (altStored?.[altKey] && !isFaviconExpired(altStored[altKey])) {
+                        entry = altStored[altKey];
+                    }
+                }
+
+                if (entry && !isFaviconExpired(entry) && entry.data !== null) {
+                    // Valid, non-expired cached favicon — show it
+                    if (this.img) {
+                        this.img.src = entry.data;
+                        if (this.img.complete && this.img.naturalWidth > 0) {
+                            this.img.style.display = 'block';
+                            if (this.fallbackBadge) {
+                                this.fallbackBadge.style.display = 'none';
+                            }
+                        }
+                    }
+                    return;
+                }
+            } catch (_err) {
+                // Storage unavailable — fall through to Tier 3
+            }
+        }
 
         // Tier 3: Terminal fallback
         this.showFallback();
@@ -155,14 +232,16 @@ export class FaviconImg extends HTMLElement {
 
     /**
      * Executes the tiered resolution pipeline.
+     *
+     * @returns {Promise<void>}
      */
-    updateSource() {
+    async updateSource() {
         const domain = this.getAttribute('domain') || '';
         const size = this.getAttribute('size') || '24';
         const numSize = parseInt(size, 10) || 24;
 
         if (!domain) {
-            this.resolveFallbackTier();
+            await this.resolveFallbackTier();
             return;
         }
 
@@ -172,10 +251,10 @@ export class FaviconImg extends HTMLElement {
         }
 
         // --- Tier 1: MV3 _favicon/ Routing ---
-        const isFirefox = typeof browser().runtime.getBrowserInfo === 'function';
-        if (isFirefox) {
-            // Firefox does not support MV3 _favicon/ internal routing
-            this.resolveFallbackTier();
+        const hasFaviconApi = await supportsFaviconApi();
+        if (!hasFaviconApi) {
+            // Browser does not support the MV3 favicon permission/API
+            await this.resolveFallbackTier();
             return;
         }
 
@@ -188,7 +267,7 @@ export class FaviconImg extends HTMLElement {
 
             this.img.src = url.href;
         } catch (e) {
-            this.resolveFallbackTier();
+            await this.resolveFallbackTier();
         }
     }
 }

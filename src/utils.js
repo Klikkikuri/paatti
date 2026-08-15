@@ -1,7 +1,7 @@
 "use strict";
 
 
-const browser = () => (typeof chrome !== "undefined" ? chrome : globalThis.browser);
+const browser = () => (typeof globalThis.browser !== "undefined" ? globalThis.browser : globalThis.chrome);
 
 const getComplicatedLogger = (name) => {
     const logInitTime = Date.now();
