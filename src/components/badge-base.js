@@ -18,7 +18,13 @@
  */
 export function createBadgeClass(templateHtml, defaultLabel) {
     const template = document.createElement("template");
-    template.innerHTML = templateHtml;
+    const doc = new DOMParser().parseFromString(templateHtml, "text/html");
+    while (doc.head.firstChild) {
+        template.content.appendChild(doc.head.firstChild);
+    }
+    while (doc.body.firstChild) {
+        template.content.appendChild(doc.body.firstChild);
+    }
 
     return class extends HTMLElement {
         static get observedAttributes() {

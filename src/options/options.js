@@ -340,7 +340,10 @@ async function renderAbout() {
     // Non-OSS credit (empty string in OSS builds -> no visible output)
     const creditEl = document.getElementById('non-oss-credit');
     if (creditEl && NON_OSS_CREDIT_HTML) {
-        creditEl.innerHTML = NON_OSS_CREDIT_HTML;
+        const doc = new DOMParser().parseFromString(NON_OSS_CREDIT_HTML, 'text/html');
+        while (doc.body.firstChild) {
+            creditEl.appendChild(doc.body.firstChild);
+        }
     }
 }
 
