@@ -25,7 +25,7 @@ detailedTemplate.innerHTML = `
                     <strong data-i18n="dbRefreshIntervalTitle">Automatic update interval</strong>
                     <span data-i18n="dbRefreshIntervalDesc">Set the automatic fetch interval for new data in minutes</span>
                 </div>
-                <input type="number" id="refreshInterval" min="1" max="1440" value="20" style="width: 80px; padding: 8px; border: 2px solid #ddd; border-radius: 6px; font-size: 1em; text-align: center;">
+                <input type="number" id="refreshInterval" min="1" max="1440" value="20" style="width: 80px; padding: 8px; border: 2px solid var(--color-border); border-radius: 6px; font-size: 1em; text-align: center;">
             </label>
         </div>
 

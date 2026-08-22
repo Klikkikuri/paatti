@@ -1,0 +1,224 @@
+/**
+ * Shared design tokens for every extension page (popup, options) and for the
+ * light-DOM Web Components they host.
+ *
+ * This is the single source of truth for colour: pages and components must
+ * reference `var(--color-*)` rather than literal values, so a theme change is a
+ * one-file edit and both pages stay consistent.
+ *
+ * Dark mode follows `prefers-color-scheme`, which is the right signal here:
+ * these are extension pages rendered in browser chrome, not content injected
+ * into a website. In-page badges deliberately do the opposite and inherit the
+ * page's own colours — see src/components/badge-style.js.
+ */
+
+:root {
+    /* Tell the browser which schemes we support so form controls, scrollbars
+     * and the canvas behind the page follow along. */
+    color-scheme: light dark;
+
+    /* Typography. --font-display carries the retro/terminal character of the UI
+     * (buttons and headings); --font-body stays a plain UI face for copy.
+     * Both are system stacks on purpose: no webfont is bundled or fetched. */
+    --font-display: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+        "DejaVu Sans Mono", "Liberation Mono", monospace;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+
+    /* Brand */
+    --color-brand: #667eea;
+    --color-brand-alt: #764ba2;
+    --color-brand-hover: #5568d3;
+    --color-on-brand: #ffffff;
+    /* The brand gradient stays deep in both themes, so text on it is always light.
+     * Flat brand fills invert with the theme, hence the separate token above. */
+    --color-on-gradient: #ffffff;
+    --gradient-brand: linear-gradient(135deg, var(--color-brand) 0%, var(--color-brand-alt) 100%);
+
+    /* Surfaces */
+    --color-bg-body: whitesmoke;
+    --color-surface: #ffffff;
+    --color-surface-muted: #f8f9fa;
+    --color-surface-hover: #e9ecef;
+
+    /* Recessed well: barely a tint below --color-surface. The sunken look comes
+     * from --shadow-inset; this only keeps cards placed on it reading as raised. */
+    --color-surface-well: #f7f8fa;
+
+    /* Home view artwork. Two takes on the same composition, one per theme; the
+     * scrim tokens say how much of the well colour is laid over the image at its
+     * top and bottom edge, so text on it stays readable. Paths resolve relative
+     * to this file, which sits beside styles.css. */
+    --home-bg: url("images/bg-light.webp");
+    --scrim-top: 45%;
+    --scrim-bottom: 80%;
+    /* The options page shows the same artwork behind an opaque card, so it only
+     * needs enough veiling to stay recessive. */
+    --scrim-page: 30%;
+
+    /* Text */
+    --color-text-primary: #222;
+    --color-text-secondary: #555;
+    --color-text-muted: #888;
+    --color-text-heading: #333;
+
+    /* Borders and depth */
+    --color-border: #ddd;
+    --color-border-strong: #555;
+    --color-border-subtle: #e0e0e0;
+    --shadow-color: rgba(0, 0, 0, 0.2);
+    --shadow-ambient: rgba(0, 0, 0, 0.05);
+    /* Inner shadow for recessed areas, cast from the top-left so it matches the
+     * light direction the push buttons' drop shadows already imply. */
+    --shadow-inset: rgba(0, 0, 0, 0.18);
+
+    /* Status */
+    --color-success: #28a745;
+    --color-success-strong: #10b981;
+    --color-danger: #dc3545;
+    --color-danger-strong: #ef4444;
+    --color-warning: #ff9f43;
+    --color-info: #53b9ff;
+    --color-neutral: #6c757d;
+    --color-neutral-hover: #5a6268;
+
+    /* One clickbait severity scale, from harmless to egregious, used by the
+     * options slider, the popup gauge and the level badges. The badges mix these
+     * hues against the current surface and text colour (see .clickbait-level-badge
+     * in styles.css), so they need no second palette and no dark-mode variant. */
+    --severity-0: #64748b;
+    --severity-1: #4caf50;
+    --severity-2: #eab308;
+    --severity-3: #f97316;
+    --severity-4: #ef4444;
+    --gradient-severity-vertical: linear-gradient(to top,
+        var(--severity-1) 0%, var(--severity-2) 50%, var(--severity-4) 100%);
+
+    /* Popup stats chips. Two scales: "sky" above the threshold (calm -> alarming)
+     * and "water" below it (shallow -> deep). Each level is a bg/fg pair so the
+     * chip stays legible on its own, independent of the surface behind it. */
+    --color-on-accent: #ffffff;
+    --dot-sky-1-bg: #e0f2fe;  --dot-sky-1-fg: #075985;
+    --dot-sky-2-bg: #7dd3fc;  --dot-sky-2-fg: #0c4a6e;
+    --dot-sky-3-bg: #fdba74;  --dot-sky-3-fg: #7c2d12;
+    --dot-sky-4-bg: #f97316;
+    --dot-sky-5-bg: #ea580c;
+    --dot-water-1-bg: #38bdf8;  --dot-water-1-fg: #0c4a6e;
+    --dot-water-2-bg: #0284c7;
+    --dot-water-3-bg: #2563eb;
+    --dot-water-4-bg: #1e40af;
+    --dot-water-5-bg: #0f172a;
+
+
+    /* Monochrome icon images (images/icon_*.svg) are black artwork, so they are
+     * inverted rather than recoloured when the surface goes dark. */
+    --icon-filter: none;
+
+    /* Toggle button */
+    --toggle-bg-off: #ccc;
+    --toggle-bg-on: var(--color-info);
+    --toggle-knob: #ffffff;
+
+    /* Raised containers (see .raised in styles.css): how far their drop shadow
+     * falls, mirroring the push buttons' --push-offset at a smaller scale. */
+    --raised-offset: 3px;
+
+    /* Push button (popup's tactile button style). --push-offset is both the
+     * drop-shadow distance and how far the button sinks when pressed. */
+    --push-offset: 0.25rem;
+    --push-bg: #e3e3e3;
+    --push-bg-active: #fbfbfb;
+    --push-text: var(--color-text-secondary);
+    --push-shadow: #777;
+    --push-accent: #3399df;
+    --push-accent-bright: #73d9ff;
+
+    /* Feedback items */
+    --feedback-bg-hover: #f0f7ff;
+    --feedback-border-hover: #b3d7ff;
+    --feedback-text-conv: #111;
+    --feedback-input-border: #ccc;
+    --feedback-vote-yes-bg: #ecfdf5;
+    --feedback-vote-yes-text: #065f46;
+    --feedback-vote-no-bg: #fef2f2;
+    --feedback-vote-no-text: #991b1b;
+    --feedback-tag: #6366f1;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        /* Brand hues are lightened so they keep contrast against dark surfaces;
+         * the gradient keeps the original deeper tones since it only ever sits
+         * behind white text. */
+        --color-brand: #99a6f2;
+        --color-brand-alt: #b38ce0;
+        --color-brand-hover: #b3bcf7;
+        --color-on-brand: #10121a;
+        --gradient-brand: linear-gradient(135deg, #4c5bb8 0%, #593a80 100%);
+
+        --color-bg-body: #14161c;
+        --color-surface: #1c1f27;
+        --color-surface-muted: #23262f;
+        --color-surface-hover: #2c3039;
+        --color-surface-well: #191b22;
+        /* The night artwork is already dark, so it needs far less veiling than
+         * the sunset does to keep light text readable. */
+        --home-bg: url("images/bg-dark.webp");
+        --scrim-top: 30%;
+        --scrim-bottom: 65%;
+        --scrim-page: 45%;
+
+        --color-text-primary: #e6e8ee;
+        --color-text-secondary: #b0b5c0;
+        --color-text-muted: #878d9a;
+        --color-text-heading: #f2f4f8;
+
+        --color-border: #3a3f4a;
+        --color-border-strong: #565d6b;
+        --color-border-subtle: #2e323b;
+        --shadow-color: rgba(0, 0, 0, 0.6);
+        --shadow-ambient: rgba(0, 0, 0, 0.35);
+        --shadow-inset: rgba(0, 0, 0, 0.55);
+
+        --color-success: #3ddc84;
+        --color-success-strong: #34d399;
+        --color-danger: #ff6b6b;
+        --color-danger-strong: #f87171;
+        --color-warning: #ffb066;
+        --color-info: #53b9ff;
+        --color-neutral: #4a4f5a;
+        --color-neutral-hover: #5c626e;
+
+        /* Lifted a little so they hold up against a dark surface. */
+        --severity-1: #5ec269;
+        --severity-2: #ffca28;
+        --severity-4: #ff6b6b;
+
+        /* Chips keep their hue in dark mode; only the two darkest water levels
+         * are lifted so they stay visible against a dark surface. */
+        --dot-water-4-bg: #2a4fc7;
+        --dot-water-5-bg: #33415c;
+
+
+        --icon-filter: invert(1);
+
+        --toggle-bg-off: #4a4f5a;
+        --toggle-knob: #dfe3ea;
+
+        --push-bg: #2a2e37;
+        --push-bg-active: #343946;
+        --push-text: var(--color-text-secondary);
+        --push-shadow: #0b0d12;
+        --push-accent: #6ec1ff;
+        --push-accent-bright: #a8e0ff;
+
+        --feedback-bg-hover: #232a36;
+        --feedback-text-conv: var(--color-text-heading);
+        --feedback-input-border: #4a4f5a;
+        --feedback-vote-yes-bg: #14342a;
+        --feedback-vote-yes-text: #6ee7b7;
+        --feedback-vote-no-bg: #3a1d1d;
+        --feedback-vote-no-text: #fca5a5;
+        --feedback-tag: #a5a9f5;
+    }
+}

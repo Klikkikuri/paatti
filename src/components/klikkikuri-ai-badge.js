@@ -1,10 +1,16 @@
 "use strict";
 
 import { createBadgeClass } from "./badge-base.js";
+import { knockoutMask } from "./badge-style.js";
 
 /**
  * Custom Web Component for EU-styled AI content badges.
- * Displays the official EU AI circle badge icon (solid circle with bold 'AI' cutout/fill).
+ * Displays the official EU AI circle badge icon (solid circle with bold 'AI' cutout).
+ *
+ * The circle is painted with `currentColor` and the "AI" lettering is knocked
+ * out of it, so the badge inherits the headline's colour and lets the page's
+ * background show through the letters. See badge-style.js for why no explicit
+ * light/dark colours are declared here.
  *
  * NOTE: A non-OSS variant of this file exists at
  * assets/non-oss/by-kagi/src/components/klikkikuri-ai-badge.js
@@ -12,58 +18,17 @@ import { createBadgeClass } from "./badge-base.js";
  * (e.g. shared styles, component API, or custom element registration),
  * apply the same structural changes there as well.
  */
-const templateHtml = `
-<style>
-:host {
-    display: inline-flex !important;
-    align-items: center;
-    vertical-align: middle;
-    margin-right: 0.35em;
-    font-size: 0.85em;
-    line-height: 1;
-    user-select: none;
-}
+const CIRCLE = `<circle cx="12" cy="12" r="11" />`;
+const LETTERS = `<text class="badge-glyph-font" x="12" y="15.5" text-anchor="middle">AI</text>`;
 
-.ai-icon {
-    display: inline-block;
-    width: 1.1em;
-    height: 1.1em;
-    min-width: 16px;
-    min-height: 16px;
-    flex-shrink: 0;
-}
-
-.ai-icon-bg {
-    fill: currentColor;
-}
-
-.ai-icon-text {
-    fill: #ffffff;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-    font-weight: 800;
-    font-size: 11px;
-}
-
-:host {
-    color: #000000;
-}
-
-@media (prefers-color-scheme: dark) {
-    :host {
-        color: #ffffff;
-    }
-    .ai-icon-text {
-        fill: #000000;
-    }
-}
-</style>
-<svg class="ai-icon" role="img" viewBox="0 0 24 24" width="18" height="18">
-    <circle class="ai-icon-bg" cx="12" cy="12" r="11" />
-    <text class="ai-icon-text" x="12" y="15.5" text-anchor="middle">AI</text>
+const svgMarkup = `
+<svg class="badge-icon" role="img" viewBox="0 0 24 24" width="18" height="18">
+    ${knockoutMask("ai-cutout", CIRCLE, LETTERS)}
+    <g fill="currentColor" mask="url(#ai-cutout)">${CIRCLE}</g>
 </svg>
 `;
 
-export class KlikkikuriAiBadge extends createBadgeClass(templateHtml, "AI content") {}
+export class KlikkikuriAiBadge extends createBadgeClass(svgMarkup, "AI content") {}
 
 if (typeof window !== "undefined" && window.customElements && !window.customElements.get("klikkikuri-ai-badge")) {
     window.customElements.define("klikkikuri-ai-badge", KlikkikuriAiBadge);

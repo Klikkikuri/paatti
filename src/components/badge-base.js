@@ -1,30 +1,26 @@
 "use strict";
 
+import { badgeStyleSheet } from "./badge-style.js";
+
 /**
  * Factory that creates a badge Web Component class sharing common badge behaviour.
- * Each badge only needs to supply its own shadow DOM template (style + SVG markup)
- * and a fallback label string.
+ * Each badge only needs to supply its own SVG markup and a fallback label string;
+ * the styling comes from the shared stylesheet in badge-style.js.
  *
  * The returned class handles:
- *  - Shadow root attachment and template cloning
+ *  - Shadow root attachment, stylesheet adoption and template cloning
  *  - `label` / `tooltip` attribute observation
  *  - SVG aria-label and <title> synchronisation
  *  - Forcing display:inline-flex via inline style so host-page stylesheets
  *    (which take precedence over shadow-internal :host rules) cannot hide the badge
  *
- * @param {string} templateHtml - Full shadow DOM template HTML (style + SVG).
+ * @param {string} svgMarkup - The badge's `<svg>` markup.
  * @param {string} defaultLabel - Fallback aria-label when no attribute is set.
  * @returns {typeof HTMLElement} A custom element class ready for registration.
  */
-export function createBadgeClass(templateHtml, defaultLabel) {
+export function createBadgeClass(svgMarkup, defaultLabel) {
     const template = document.createElement("template");
-    const doc = new DOMParser().parseFromString(templateHtml, "text/html");
-    while (doc.head.firstChild) {
-        template.content.appendChild(doc.head.firstChild);
-    }
-    while (doc.body.firstChild) {
-        template.content.appendChild(doc.body.firstChild);
-    }
+    template.innerHTML = svgMarkup;
 
     return class extends HTMLElement {
         static get observedAttributes() {
@@ -35,6 +31,9 @@ export function createBadgeClass(templateHtml, defaultLabel) {
             super();
             if (!this.shadowRoot) {
                 this.attachShadow({ mode: "open" });
+                // One parsed stylesheet shared by every badge, rather than a
+                // <style> element cloned into each instance.
+                this.shadowRoot.adoptedStyleSheets = [badgeStyleSheet];
                 this.shadowRoot.appendChild(template.content.cloneNode(true));
             }
         }

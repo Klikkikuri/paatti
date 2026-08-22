@@ -23,7 +23,7 @@ let lastConfigSiteKeys = null;
 
 const expandoTemplate = document.createElement("template");
 expandoTemplate.innerHTML = `
-    <button class="push-button expando-btn" style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85em; font-weight: 600; color: #475569; cursor: pointer; transition: background 0.15s ease;">
+    <button class="push-button expando-btn" style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border: 1px solid var(--color-border-subtle); border-radius: 8px; font-size: 0.85em; font-weight: 600; color: var(--color-text-secondary); cursor: pointer; transition: background 0.15s ease;">
         <span class="expando-btn-text"></span>
         <span class="expando-arrow" style="font-size: 0.85em; transition: transform 0.2s ease;">▼</span>
     </button>
@@ -659,11 +659,11 @@ const refresh = async () => {
                 }
 
                 if (expandoWasOpen) {
-                    expandoBtn.style.background = "#e2e8f0";
+                    expandoBtn.style.background = "var(--color-surface-hover)";
                     expandoArrow.style.transform = "rotate(180deg)";
                     expandoContent.classList.remove("hidden");
                 } else {
-                    expandoBtn.style.background = "#f8fafc";
+                    expandoBtn.style.background = "var(--color-surface-muted)";
                     expandoArrow.style.transform = "";
                     expandoContent.classList.add("hidden");
                 }
@@ -681,7 +681,7 @@ const refresh = async () => {
                     if (isHidden) {
                         expandoContent.classList.remove("hidden");
                         expandoArrow.style.transform = "rotate(180deg)";
-                        expandoBtn.style.background = "#e2e8f0";
+                        expandoBtn.style.background = "var(--color-surface-hover)";
 
                         // Smooth scroll to the first item of the expanded list
                         const firstItem = expandoContent.querySelector("feedback-item");
@@ -693,7 +693,7 @@ const refresh = async () => {
                     } else {
                         expandoContent.classList.add("hidden");
                         expandoArrow.style.transform = "rotate(0deg)";
-                        expandoBtn.style.background = "#f8fafc";
+                        expandoBtn.style.background = "var(--color-surface-muted)";
                     }
                 });
 

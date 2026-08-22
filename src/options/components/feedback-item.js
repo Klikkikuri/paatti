@@ -7,13 +7,11 @@ const log = getLogger('components/feedback-item');
 const template = document.createElement('template');
 template.innerHTML = `
     <style>
+        /* Surface, border and shadow come from the shared .raised rule in
+         * styles.css; only this card's own layout lives here. */
         .feedback-card {
-            background: #ffffff;
-            border: 1px solid #555;
-            border-radius: 6px;
             padding: 10px;
             margin-bottom: 10px;
-            box-shadow: #777 4px 4px;
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -29,11 +27,11 @@ template.innerHTML = `
         }
 
         .feedback-row.original {
-            border-left: 3px solid #ff9f43;
+            border-left: 3px solid var(--color-warning);
         }
 
         .feedback-row.converted {
-            border-left: 3px solid #10b981;
+            border-left: 3px solid var(--color-success-strong);
         }
 
         .feedback-label {
@@ -41,12 +39,12 @@ template.innerHTML = `
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.04em;
-            color: #777;
+            color: var(--color-text-muted);
         }
 
         .feedback-text {
             font-size: 0.88em;
-            color: #222;
+            color: var(--color-text-primary);
             line-height: 1.35;
             font-weight: bold;
         }
@@ -59,30 +57,27 @@ template.innerHTML = `
             min-height: 24px;
         }
 
+        /* Smaller than a regular push button, so it casts and travels less. */
         .feedback-action-btn {
+            --push-offset: 2px;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 4px;
             cursor: pointer;
             font-family: inherit;
-            box-shadow: #777 2px 2px !important;
-        }
-
-        .feedback-action-btn:active {
-            box-shadow: #777 0px 0px !important;
         }
 
         .feedback-action-btn.good:hover {
-            background: #ecfdf5 !important;
-            outline-color: #10b981 !important;
-            color: #065f46 !important;
+            background: var(--feedback-vote-yes-bg) !important;
+            outline-color: var(--color-success-strong) !important;
+            color: var(--feedback-vote-yes-text) !important;
         }
 
         .feedback-action-btn.bad:hover {
-            background: #fef2f2 !important;
-            outline-color: #ef4444 !important;
-            color: #991b1b !important;
+            background: var(--feedback-vote-no-bg) !important;
+            outline-color: var(--color-danger-strong) !important;
+            color: var(--feedback-vote-no-text) !important;
         }
 
         .feedback-input-container {
@@ -95,11 +90,11 @@ template.innerHTML = `
             display: flex;
             width: 100%;
             box-sizing: border-box;
-            border: 1px solid #555;
+            border: 1px solid var(--color-border-strong);
             border-radius: 6px;
             overflow: hidden;
-            background: #ffffff;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+            background: var(--color-surface);
+            box-shadow: inset 0 1px 3px var(--shadow-ambient);
         }
 
         .feedback-text-input {
@@ -109,15 +104,15 @@ template.innerHTML = `
             border: none;
             outline: none;
             background: transparent;
-            color: #222;
+            color: var(--color-text-primary);
             box-sizing: border-box;
         }
 
         .feedback-submit-button {
-            background: #e3e3e3;
+            background: var(--push-bg);
             border: none;
-            border-left: 1px solid #555;
-            color: #222;
+            border-left: 1px solid var(--color-border-strong);
+            color: var(--color-text-primary);
             padding: 6px 12px;
             font-size: 0.8em;
             font-weight: bold;
@@ -125,10 +120,12 @@ template.innerHTML = `
         }
 
         .feedback-submit-button:hover {
-            background: #53b9ff;
-            color: white;
+            background: var(--color-info);
+            color: var(--color-on-accent);
         }
 
+        /* Colours per level come from theme.css via the [data-level] rules in
+         * styles.css; this element only carries layout. */
         .clickbait-level-badge {
             display: inline-flex;
             align-items: center;
@@ -144,7 +141,7 @@ template.innerHTML = `
     
     <li class="feedback-card">
         <div class="current-page-container" style="display: flex; align-items: center; margin-bottom: 4px;">
-            <span class="current-page-tag" style="font-size: 0.72em; color: #6366f1; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px;">
+            <span class="current-page-tag" style="font-size: 0.72em; color: var(--feedback-tag); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px;">
                 📌 <span class="current-page-label-text"></span>
             </span>
         </div>
@@ -161,7 +158,7 @@ template.innerHTML = `
             <span class="feedback-text converted-title-text"></span>
         </div>
         
-        <hr style="border: 0; border-top: 1px solid #555; margin: 4px 0;">
+        <hr style="border: 0; border-top: 1px solid var(--color-border-strong); margin: 4px 0;">
         
         <div class="feedback-actions">
             <button class="push-button feedback-action-btn good" style="margin: 0; padding: 4px 8px; font-size: 0.8em; min-width: 80px;"></button>
@@ -219,58 +216,36 @@ class FeedbackItem extends HTMLElement {
         }
     }
 
+    /**
+     * Resolve a clickbait level (numeric, string alias, or English label) to a
+     * localized badge label and a numeric level used as the CSS colour key.
+     *
+     * @param {number|string} level - Clickbait level as stored on the item.
+     * @returns {{text: string, level: number}} Badge label and normalized level.
+     */
     getClickbaitBadgeInfo(level) {
         const lang = (browser().i18n.getUILanguage() || 'fi').split('-')[0];
         const isFi = lang === 'fi';
-        
-        switch (level) {
-            case "Not Clickbait at all":
-            case 0:
-            case "0":
-                return {
-                    text: isFi ? "Neutraali" : "Neutral",
-                    bg: "#f1f5f9",
-                    color: "#475569",
-                    border: "#cbd5e1"
-                };
-            case "Slightly Clickbaity":
-            case 1:
-            case "1":
-                return {
-                    text: isFi ? "Lievä" : "Low",
-                    bg: "#ecfdf5",
-                    color: "#065f46",
-                    border: "#a7f3d0"
-                };
-            case "Moderately Clickbaity":
-            case 2:
-            case "2":
-                return {
-                    text: isFi ? "Kohtalainen" : "Medium",
-                    bg: "#fef9c3",
-                    color: "#713f12",
-                    border: "#fef08a"
-                };
-            case "Very Clickbaity":
-            case 3:
-            case "3":
-                return {
-                    text: isFi ? "Voimakas" : "High",
-                    bg: "#ffedd5",
-                    color: "#9a3412",
-                    border: "#fed7aa"
-                };
-            case "Extremely Clickbaity":
-            case 4:
-            case "4":
-            default:
-                return {
-                    text: isFi ? "Äärimmäinen" : "Extreme",
-                    bg: "#fee2e2",
-                    color: "#991b1b",
-                    border: "#fecaca"
-                };
+
+        const LABELS = [
+            { fi: "Neutraali", en: "Neutral", alias: "Not Clickbait at all" },
+            { fi: "Lievä", en: "Low", alias: "Slightly Clickbaity" },
+            { fi: "Kohtalainen", en: "Medium", alias: "Moderately Clickbaity" },
+            { fi: "Voimakas", en: "High", alias: "Very Clickbaity" },
+            { fi: "Äärimmäinen", en: "Extreme", alias: "Extremely Clickbaity" },
+        ];
+
+        let index = LABELS.findIndex((entry) => entry.alias === level);
+        if (index < 0) {
+            index = Number.parseInt(level, 10);
         }
+        // Anything unrecognised is treated as the most severe level, matching
+        // the previous `default:` branch.
+        if (!Number.isInteger(index) || index < 0 || index >= LABELS.length) {
+            index = LABELS.length - 1;
+        }
+
+        return { text: isFi ? LABELS[index].fi : LABELS[index].en, level: index };
     }
 
     render() {
@@ -303,9 +278,7 @@ class FeedbackItem extends HTMLElement {
         const badgeEl = this.querySelector('.clickbait-level-badge');
         if (badgeEl) {
             badgeEl.textContent = badge.text;
-            badgeEl.style.background = badge.bg;
-            badgeEl.style.color = badge.color;
-            badgeEl.style.borderColor = badge.border;
+            badgeEl.dataset.level = String(badge.level);
         }
 
         const originalTitleEl = this.querySelector('.original-title-text');
@@ -458,12 +431,12 @@ class FeedbackItem extends HTMLElement {
         };
 
         goodBtn.addEventListener("click", async () => {
-            setFeedbackStatus("...", "#666", false);
+            setFeedbackStatus("...", "var(--color-text-secondary)", false);
             const success = await submitFeedback("good_conversion");
             if (success) {
-                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportSuccess") || "Kiitos palautteesta!", "#10b981", true);
+                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportSuccess") || "Kiitos palautteesta!", "var(--color-success-strong)", true);
             } else {
-                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportFailure") || "Lähetys epäonnistui", "#ef4444", true);
+                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportFailure") || "Lähetys epäonnistui", "var(--color-danger-strong)", true);
             }
         });
 
@@ -484,9 +457,9 @@ class FeedbackItem extends HTMLElement {
             formDiv.classList.add("hidden");
             buttonsDiv.style.display = "flex";
             if (success) {
-                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportSuccess") || "Kiitos palautteesta!", "#10b981", true);
+                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportSuccess") || "Kiitos palautteesta!", "var(--color-success-strong)", true);
             } else {
-                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportFailure") || "Lähetys epäonnistui", "#ef4444", true);
+                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportFailure") || "Lähetys epäonnistui", "var(--color-danger-strong)", true);
             }
         };
 
