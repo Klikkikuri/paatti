@@ -60,7 +60,8 @@ ifeq ($(DOCKER),false)
 else
 	mkdir -p suola/build
 	$(DOCKER) build --target wasm-builder -t buildsuola suola/
-	$(DOCKER) run --mount type=bind,src=$(shell pwd)/suola/build/,dst=/app/build buildsuola
+	# The extension only needs the browser module and its TinyGo support file.
+	$(DOCKER) run --mount type=bind,src=$(shell pwd)/suola/build/,dst=/app/build buildsuola make js
 	mkdir -p $(BUILD_DIR)
 	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
 	cp suola/build/wasm_exec.js $(BUILD_DIR)/wasm_exec.js
