@@ -53,6 +53,7 @@ endif
 
 build-suola-local: ensure-suola
 ifeq ($(DOCKER),false)
+	$(MAKE) check-tinygo
 	$(MAKE) -C suola js
 	mkdir -p $(BUILD_DIR)
 	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
@@ -66,6 +67,16 @@ else
 	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
 	cp suola/build/wasm_exec.js $(BUILD_DIR)/wasm_exec.js
 endif
+
+# The browser module is built with TinyGo; stock Go no longer produces js.wasm,
+# and the two toolchains' wasm_exec.js are not interchangeable.
+check-tinygo:
+	@command -v tinygo >/dev/null 2>&1 || { \
+		echo "Error: tinygo not found on PATH."; \
+		echo "Install TinyGo (https://tinygo.org/getting-started/install/),"; \
+		echo "or build in a container by dropping DOCKER=false."; \
+		exit 1; \
+	}
 
 dist: build-suola
 	mkdir -p $(DIST_DIR)/build
@@ -106,4 +117,4 @@ test:
 	node tests/faviconCache.test.mjs
 	node tests/stats.test.mjs
 
-.PHONY: build init ensure-suola package source-dist test-data clean build-suola-local build-suola release dist test
+.PHONY: build init ensure-suola check-tinygo package source-dist test-data clean build-suola-local build-suola release dist test
