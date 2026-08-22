@@ -115,11 +115,11 @@ Due to how Google Chrome has walled-garden approach to chrome extensions, there 
 - (optional, for testing) Python 3
 - `suola` submodule (automatically initialized by `make` if missing)
   - [`suola`](https://github.com/Klikkikuri/suola)
-  - Go 1.25+ (for local compilation without Docker)
+  - TinyGo 0.41+ (for local compilation without Docker)
 
 Fetch and build dependencies and package for distribution with `make`.
 
-When `make build` is executed, it first checks if the `suola` submodule is initialized, fetching it automatically if missing. It then compiles `suola` into WebAssembly binaries (`js.wasm` and `wasm_exec.js`) locally using Docker (or host Go when `DOCKER=false`). Alternatively, passing `USE_RELEASE_ARTIFACTS=1` downloads pre-built WebAssembly release assets directly from GitHub. Finally, all extension assets (`src/`, `icons/`, `_locales/`, `manifest.json`) and the WebAssembly binaries are staged into `build/dist/` and packaged into `build/klikkikuri-paatti.zip`.
+When `make build` is executed, it first checks if the `suola` submodule is initialized, fetching it automatically if missing. It then compiles `suola` into WebAssembly binaries (`js.wasm` and its support file `wasm_exec.js`) locally using Docker (or a host toolchain when `DOCKER=false`). The two files must come from the same toolchain to work together, so run `make clean` when switching between build methods. Alternatively, passing `USE_RELEASE_ARTIFACTS=1` downloads pre-built WebAssembly release assets directly from GitHub. Finally, all extension assets (`src/`, `icons/`, `_locales/`, `manifest.json`) and the WebAssembly binaries are staged into `build/dist/` and packaged into `build/klikkikuri-paatti.zip`.
 
 ```sh
 make build
@@ -127,7 +127,7 @@ make build
 
 #### Build Flags & Options
 
-- **Local compilation using Go without Docker**:
+- **Local compilation without Docker**:
   ```sh
   make build DOCKER=false
   ```

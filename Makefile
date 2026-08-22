@@ -53,6 +53,7 @@ endif
 
 build-suola-local: ensure-suola
 ifeq ($(DOCKER),false)
+	$(MAKE) check-tinygo
 	$(MAKE) -C suola js
 	mkdir -p $(BUILD_DIR)
 	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
@@ -60,11 +61,22 @@ ifeq ($(DOCKER),false)
 else
 	mkdir -p suola/build
 	$(DOCKER) build --target wasm-builder -t buildsuola suola/
-	$(DOCKER) run --mount type=bind,src=$(shell pwd)/suola/build/,dst=/app/build buildsuola
+	# The extension only needs the browser module and its TinyGo support file.
+	$(DOCKER) run --mount type=bind,src=$(shell pwd)/suola/build/,dst=/app/build buildsuola make js
 	mkdir -p $(BUILD_DIR)
 	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
 	cp suola/build/wasm_exec.js $(BUILD_DIR)/wasm_exec.js
 endif
+
+# The browser module is built with TinyGo; stock Go no longer produces js.wasm,
+# and the two toolchains' wasm_exec.js are not interchangeable.
+check-tinygo:
+	@command -v tinygo >/dev/null 2>&1 || { \
+		echo "Error: tinygo not found on PATH."; \
+		echo "Install TinyGo (https://tinygo.org/getting-started/install/),"; \
+		echo "or build in a container by dropping DOCKER=false."; \
+		exit 1; \
+	}
 
 dist: build-suola
 	mkdir -p $(DIST_DIR)/build
@@ -97,7 +109,7 @@ clean:
 release:
 	node release.js $(VERSION)
 
-test:
+test: test-wasm
 	node tests/config.test.mjs
 	node tests/utils.test.mjs
 	node tests/rahti.test.mjs
@@ -105,4 +117,19 @@ test:
 	node tests/faviconCache.test.mjs
 	node tests/stats.test.mjs
 
-.PHONY: build init ensure-suola package source-dist test-data clean build-suola-local build-suola release dist test
+# suola's own smoke test for the browser module, run against the artifacts
+# staged in $(BUILD_DIR). It is the only check that js.wasm loads and signs
+# URLs the way the rules say it should; the tests above never touch it. Needs
+# nothing but node, so it is skipped rather than failed when the artifacts have
+# not been built yet -- or when the submodule is pinned to a release tag older
+# than the test itself, which USE_RELEASE_ARTIFACTS=1 requires.
+test-wasm:
+	@if [ ! -f suola/test/js_smoke.cjs ]; then \
+		echo "Skipping Wasm smoke test: the suola checkout predates it."; \
+	elif [ -f "$(BUILD_DIR)/js.wasm" ] && [ -f "$(BUILD_DIR)/wasm_exec.js" ]; then \
+		node suola/test/js_smoke.cjs "$(BUILD_DIR)"; \
+	else \
+		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
+	fi
+
+.PHONY: build init ensure-suola check-tinygo package source-dist test-data clean build-suola-local build-suola release dist test test-wasm
