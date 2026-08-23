@@ -178,8 +178,8 @@ Three references, one per concern:
 - `src/options/components/page-background.js` — the co-located stylesheet and the async-lifecycle rules. It is
   content-free, so it is the wrong reference for anything to do with markup or events.
 - `ComponentBase` in `component-utils.js` — lifecycle and teardown.
-- `createBadgeClass` in `src/components/badge-base.js` — the class-factory idiom, for components that differ only in
-  their data.
+- `createToggleSetting` in `src/options/components/toggle-setting.js`, and `createBadgeClass` in
+  `src/components/badge-base.js` — the class-factory idiom, for components that differ only in their data.
 
 #### Testing
 
