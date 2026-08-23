@@ -62,8 +62,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && ln -sf "$(command -v fdfind)" /usr/local/bin/fd
 
 # Linters behind `make lint`: eslint enforces the browser-namespace import rule,
-# web-ext the AMO checks. run.sh uses web-ext too.
-RUN npm install -g eslint@10 web-ext@10
+# web-ext the AMO checks. run.sh uses web-ext too. jsdom is imported rather than run --
+# the `make test` target points NODE_PATH at the global root so the tests can reach it.
+RUN npm install -g eslint@10 web-ext@10 jsdom@27
 
 # Disable passwordless sudo
 RUN rm -f /etc/sudoers.d/node

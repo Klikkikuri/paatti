@@ -201,6 +201,15 @@ Tests that touch the extension APIs use the in-memory fake in
 under test — `src/browser-api.js` resolves the namespace once, at module evaluation, so a static import would
 beat the assignment.
 
+Tests that need a DOM use [`tests/helpers/dom.mjs`](./tests/helpers/dom.mjs), which puts a jsdom document on
+`globalThis`. Install it before the dynamic import as well: a component module builds its templates and calls
+`customElements.define` at evaluation time. jsdom comes from the dev container image rather than a
+`package.json`, so `make test` needs the container — the `test` target points `NODE_PATH` at the global npm root,
+because ESM resolution ignores it and the helper reaches jsdom through the CJS resolver.
+
+jsdom does no layout and does not resolve the cascade, so it covers structure, lifecycle and events but says
+nothing about styling. Check CSS in a real browser instead.
+
 ### Local Test Data & Hashed Signatures
 
 For local development and testing, you can generate and serve mock clickbait databases using the two Python helper scripts ([`generate_test_data.py`](./generate_test_data.py) and [`httpserver.py`](./httpserver.py)).
