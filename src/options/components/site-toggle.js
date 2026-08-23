@@ -1,4 +1,4 @@
-import { browser } from '../../utils.js';
+import browser from '../../browser-api.js';
 import { controller } from '../../controller.js';
 import { isSiteEnabled } from '../utils.js';
 import { getConfig } from '../../config.js';
@@ -197,7 +197,7 @@ class SiteToggleSetting extends HTMLElement {
      */
     async loadState(toggleBtn, domain, origins, layout) {
         const isEnabled = await isSiteEnabled(domain);
-        const hasPermission = origins.length > 0 ? await browser().permissions.contains({ origins }) : false;
+        const hasPermission = origins.length > 0 ? await browser.permissions.contains({ origins }) : false;
 
         toggleBtn.checked = isEnabled;
         toggleBtn.dataset.hasPermission = String(hasPermission);
@@ -218,7 +218,7 @@ class SiteToggleSetting extends HTMLElement {
 
             const detailsContainer = this.querySelector('.site-details-container');
             if (detailsContainer && layout !== 'compact' && policyUrl) {
-                const linkText = browser().i18n.getMessage('sitePolicyLinkText') || 'Julkaisijan periaatteet';
+                const linkText = browser.i18n.getMessage('sitePolicyLinkText') || 'Julkaisijan periaatteet';
                 const link = document.createElement('a');
                 link.href = policyUrl;
                 link.target = '_blank';
@@ -277,10 +277,10 @@ class SiteToggleSetting extends HTMLElement {
  * @param {function} callbacks.onPermissionGranted - Callback when permission is granted.
  */
 export async function handleSiteToggleHelper(checked, domain, origins, currentHasPermission, closeOnPermissionRequest, callbacks) {
-    const successMsg = browser().i18n.getMessage('siteSettingSaved', [domain]) || `Setting for ${domain} saved!`;
-    const errorMsg = browser().i18n.getMessage('siteSettingSaveError') || 'Error saving site setting';
-    const noPermMsg = browser().i18n.getMessage('permissionNotGranted') || 'Permission was not granted';
-    const reqPermErrorMsg = browser().i18n.getMessage('permissionRequestError') || 'Error requesting permission';
+    const successMsg = browser.i18n.getMessage('siteSettingSaved', [domain]) || `Setting for ${domain} saved!`;
+    const errorMsg = browser.i18n.getMessage('siteSettingSaveError') || 'Error saving site setting';
+    const noPermMsg = browser.i18n.getMessage('permissionNotGranted') || 'Permission was not granted';
+    const reqPermErrorMsg = browser.i18n.getMessage('permissionRequestError') || 'Error requesting permission';
 
     if (checked) {
         if (currentHasPermission) {
@@ -293,14 +293,14 @@ export async function handleSiteToggleHelper(checked, domain, origins, currentHa
         } else {
             if (closeOnPermissionRequest) {
                 try {
-                    browser().permissions.request({ origins });
+                    browser.permissions.request({ origins });
                     window.close();
                 } catch (error) {
                     callbacks.onFailure(false, reqPermErrorMsg);
                 }
             } else {
                 try {
-                    const granted = await browser().permissions.request({ origins });
+                    const granted = await browser.permissions.request({ origins });
                     if (granted) {
                         await controller.setSiteEnabled(true, domain);
                         callbacks.onPermissionGranted();

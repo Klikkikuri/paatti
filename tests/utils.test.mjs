@@ -1,4 +1,8 @@
-import { parseSemVer, sanitizeUrlForFeedback, canAppendSpan, getActiveTab, getCurrentTabHostname } from '../src/utils.js';
+// One stable namespace object, as at runtime: the cases below swap `query`, they do not
+// replace globalThis.browser -- browser-api.js resolves it once, at the import below.
+const mockTabs = { query: async () => [] };
+globalThis.browser = { tabs: mockTabs };
+const { parseSemVer, sanitizeUrlForFeedback, canAppendSpan, getActiveTab, getCurrentTabHostname } = await import('../src/utils.js');
 
 /**
  * Runs test cases for utility functions in src/utils.js.
@@ -112,15 +116,11 @@ async function runUtilsTests() {
 
     console.log('\n--- getActiveTab & getCurrentTabHostname Tests ---');
     // Test desktop environment (currentWindow works)
-    globalThis.browser = {
-        tabs: {
-            query: async (queryInfo) => {
-                if (queryInfo.currentWindow) {
-                    return [{ id: 1, url: 'https://www.hs.fi/kotimaa/art-12345.html' }];
-                }
-                return [{ id: 2, url: 'https://other.fi' }];
-            }
+    mockTabs.query = async (queryInfo) => {
+        if (queryInfo.currentWindow) {
+            return [{ id: 1, url: 'https://www.hs.fi/kotimaa/art-12345.html' }];
         }
+        return [{ id: 2, url: 'https://other.fi' }];
     };
 
     let tab = await getActiveTab();
@@ -140,18 +140,14 @@ async function runUtilsTests() {
     }
 
     // Test mobile/Android environment (currentWindow returns empty array, active query succeeds)
-    globalThis.browser = {
-        tabs: {
-            query: async (queryInfo) => {
-                if (queryInfo.currentWindow) {
-                    return [];
-                }
-                if (queryInfo.active) {
-                    return [{ id: 42, url: 'https://yle.fi/uutiset/18-1234' }];
-                }
-                return [];
-            }
+    mockTabs.query = async (queryInfo) => {
+        if (queryInfo.currentWindow) {
+            return [];
         }
+        if (queryInfo.active) {
+            return [{ id: 42, url: 'https://yle.fi/uutiset/18-1234' }];
+        }
+        return [];
     };
 
     tab = await getActiveTab();
@@ -171,11 +167,7 @@ async function runUtilsTests() {
     }
 
     // Test tab without url or invalid url
-    globalThis.browser = {
-        tabs: {
-            query: async () => [{ id: 99 }]
-        }
-    };
+    mockTabs.query = async () => [{ id: 99 }];
     hostname = await getCurrentTabHostname();
     if (hostname !== null) {
         console.error('❌ Expected null hostname for tab without URL, got:', hostname);
@@ -185,11 +177,7 @@ async function runUtilsTests() {
     }
 
     // Test query error / no tabs
-    globalThis.browser = {
-        tabs: {
-            query: async () => []
-        }
-    };
+    mockTabs.query = async () => [];
     tab = await getActiveTab();
     hostname = await getCurrentTabHostname();
     if (tab !== null || hostname !== null) {

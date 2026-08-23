@@ -1,4 +1,5 @@
-import { browser, getLogger } from '../utils.js';
+import browser from '../browser-api.js';
+import { getLogger } from '../utils.js';
 import { getConfig } from '../config.js';
 
 const log = getLogger('options/utils');
@@ -14,7 +15,7 @@ const isSiteEnabled = async (domain) => {
 
     const enabled = siteConfig.enabled !== undefined ? siteConfig.enabled : false;
     const origins = siteConfig.origins || [];
-    const hasPermission = origins.length > 0 ? await browser().permissions.contains({ origins }) : false;
+    const hasPermission = origins.length > 0 ? await browser.permissions.contains({ origins }) : false;
 
     return enabled && hasPermission;
 };
@@ -22,7 +23,7 @@ const isSiteEnabled = async (domain) => {
 // Display product name and version in the options page header and footer
 const displayProductInfo = () => {
     try {
-        const manifest = browser().runtime.getManifest();
+        const manifest = browser.runtime.getManifest();
 
         const productNameEl = document.getElementById("product-name");
         const productVersionEl = document.getElementById("product-version");
@@ -42,8 +43,8 @@ const displayProductInfo = () => {
  * @returns {{title: string, description: string}} Title and description
  */
 const getClickbaitLevelInfo = (level) => {
-    const title = browser().i18n.getMessage(`clickbaitLevel${level}Title`);
-    const description = browser().i18n.getMessage(`clickbaitLevel${level}Desc`);
+    const title = browser.i18n.getMessage(`clickbaitLevel${level}Title`);
+    const description = browser.i18n.getMessage(`clickbaitLevel${level}Desc`);
     return { title, description };
 };
 
@@ -54,8 +55,8 @@ const getClickbaitLevelInfo = (level) => {
  */
 const getBrowserInfo = async () => {
     // Firefox native API
-    if (browser().runtime.getBrowserInfo) {
-        const info = await browser().runtime.getBrowserInfo();
+    if (browser.runtime.getBrowserInfo) {
+        const info = await browser.runtime.getBrowserInfo();
         return `${info.name} ${info.version}`;
     }
 
@@ -112,7 +113,7 @@ const formatIsoWithTimezone = (dateInput) => {
  */
 const localizeDocument = (root = document) => {
     try {
-        const i18n = browser()?.i18n;
+        const i18n = browser?.i18n;
         if (!i18n || !i18n.getMessage) return;
 
         // Set document language if processing top-level document

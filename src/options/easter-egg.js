@@ -7,7 +7,7 @@
  *
  * Kept apart from the <page-background> component that uses it, and free of both
  * DOM and randomness, so the rule can be read and tested on its own. The calendar
- * holds i18n keys and never resolved text, which keeps browser() out of here too.
+ * holds i18n keys and never resolved text, which keeps the `browser` namespace out of here too.
  */
 
 /**
@@ -98,7 +98,7 @@ function specialDayMessageKey(date) {
  * key that settles which environment is read at all. Everything else -- statistics
  * above all, which are written constantly -- is none of this rule's business.
  *
- * @param {Object} changes - chrome.storage.onChanged changes.
+ * @param {Object} changes - browser.storage.onChanged changes.
  * @param {string} areaName - Storage area the change came from.
  * @returns {boolean}
  */

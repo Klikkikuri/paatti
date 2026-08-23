@@ -1,7 +1,7 @@
 "use strict";
 
 
-const browser = () => (typeof globalThis.browser !== "undefined" ? globalThis.browser : globalThis.chrome);
+import browser from "./browser-api.js";
 
 const getComplicatedLogger = (name) => {
     const logInitTime = Date.now();
@@ -51,13 +51,13 @@ const getLogger = (name) => {
  */
 const getActiveTab = async () => {
     try {
-        const tabs = await browser().tabs.query({ active: true, currentWindow: true });
+        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
         if (tabs && tabs.length > 0 && tabs[0]) return tabs[0];
     } catch (e) {
         // Fallback to active query below
     }
     try {
-        const tabs = await browser().tabs.query({ active: true });
+        const tabs = await browser.tabs.query({ active: true });
         if (tabs && tabs.length > 0 && tabs[0]) return tabs[0];
     } catch (e) {
         // Ignore
@@ -179,5 +179,5 @@ const canAppendSpan = (elem) => {
     return typeof elem.replaceChildren === "function";
 };
 
-export { getLogger, browser, getActiveTab, getCurrentTabHostname, debounce, parseSemVer, sanitizeUrlForFeedback, canAppendSpan };
+export { getLogger, getActiveTab, getCurrentTabHostname, debounce, parseSemVer, sanitizeUrlForFeedback, canAppendSpan };
 

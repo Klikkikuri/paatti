@@ -1,4 +1,5 @@
-import { browser, getLogger } from '../../utils.js';
+import browser from '../../browser-api.js';
+import { getLogger } from '../../utils.js';
 import { model } from '../../model.js';
 import { shouldShowEasterEgg, affectsEasterEgg, dayKey, unitHash, specialDayMessageKey } from '../easter-egg.js';
 import { adoptComponentStyleSheet } from './component-utils.js';
@@ -42,13 +43,13 @@ class PageBackground extends HTMLElement {
             if (!affectsEasterEgg(changes, areaName)) return;
             this.applyEasterEgg();
         };
-        browser().storage.onChanged.addListener(this.#storageListener);
+        browser.storage.onChanged.addListener(this.#storageListener);
     }
 
     disconnectedCallback() {
         if (!this.#storageListener) return;
 
-        browser().storage.onChanged.removeListener(this.#storageListener);
+        browser.storage.onChanged.removeListener(this.#storageListener);
         this.#storageListener = null;
     }
 

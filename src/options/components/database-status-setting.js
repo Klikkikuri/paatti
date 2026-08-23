@@ -1,4 +1,4 @@
-import { browser } from '../../utils.js';
+import browser from '../../browser-api.js';
 import { controller } from '../../controller.js';
 import { model } from '../../model.js';
 import { getConfig } from '../../config.js';
@@ -65,7 +65,7 @@ class DatabaseStatusSetting extends HTMLElement {
 
         if (layout === 'compact') {
             this.replaceChildren(compactTemplate.content.cloneNode(true));
-            const btnText = browser().i18n.getMessage('databaseUpdateBtn') || 'Update Database';
+            const btnText = browser.i18n.getMessage('databaseUpdateBtn') || 'Update Database';
             const btn = this.querySelector('#update-database-btn');
             if (btn) btn.textContent = btnText;
         } else {
@@ -77,12 +77,12 @@ class DatabaseStatusSetting extends HTMLElement {
 
         // Auto-sync database status when changed elsewhere
         this.storageListener = () => this.sync(layout);
-        browser().storage.onChanged.addListener(this.storageListener);
+        browser.storage.onChanged.addListener(this.storageListener);
     }
 
     disconnectedCallback() {
         if (this.storageListener) {
-            browser().storage.onChanged.removeListener(this.storageListener);
+            browser.storage.onChanged.removeListener(this.storageListener);
         }
     }
 
@@ -124,7 +124,7 @@ class DatabaseStatusSetting extends HTMLElement {
      * Helper to safely format a localized string containing placeholders with a time element.
      */
     setSafeTranslationWithTime(containerEl, messageKey, timeEl) {
-        const messagePattern = browser().i18n.getMessage(messageKey, ["__PLACEHOLDER__"]);
+        const messagePattern = browser.i18n.getMessage(messageKey, ["__PLACEHOLDER__"]);
         if (!messagePattern) {
             containerEl.replaceChildren(timeEl);
             return;
@@ -154,7 +154,7 @@ class DatabaseStatusSetting extends HTMLElement {
                         const timeEl = this.formatDateOrTime(status.lastDatabaseUpdate, true);
                         this.setSafeTranslationWithTime(dbLastUpdatedEl, "databaseLastUpdated", timeEl);
                     } else {
-                        dbLastUpdatedEl.textContent = browser().i18n.getMessage("databaseNeverUpdated");
+                        dbLastUpdatedEl.textContent = browser.i18n.getMessage("databaseNeverUpdated");
                     }
                 }
                 const dbGenDateEl = this.querySelector('#database-generation-date');
@@ -163,7 +163,7 @@ class DatabaseStatusSetting extends HTMLElement {
                         const timeEl = this.formatDateOrTime(status.databaseGenerationDate, true);
                         this.setSafeTranslationWithTime(dbGenDateEl, "databaseGenerationDate", timeEl);
                     } else {
-                        dbGenDateEl.textContent = browser().i18n.getMessage("databaseGenerationNever");
+                        dbGenDateEl.textContent = browser.i18n.getMessage("databaseGenerationNever");
                     }
                 }
             } else {
@@ -207,7 +207,7 @@ class DatabaseStatusSetting extends HTMLElement {
                                         key: 'refreshInterval',
                                         value,
                                         success: true,
-                                        message: browser().i18n.getMessage('dbRefreshIntervalSaved') || 'Update interval saved!'
+                                        message: browser.i18n.getMessage('dbRefreshIntervalSaved') || 'Update interval saved!'
                                     }
                                 }));
                             } catch (error) {
@@ -218,7 +218,7 @@ class DatabaseStatusSetting extends HTMLElement {
                                         key: 'refreshInterval',
                                         value,
                                         success: false,
-                                        message: browser().i18n.getMessage('dbRefreshIntervalError') || 'Error saving update interval'
+                                        message: browser.i18n.getMessage('dbRefreshIntervalError') || 'Error saving update interval'
                                     }
                                 }));
                             }
@@ -229,7 +229,7 @@ class DatabaseStatusSetting extends HTMLElement {
                                     key: 'refreshInterval',
                                     value,
                                     success: false,
-                                    message: browser().i18n.getMessage('dbRefreshIntervalInvalid') || 'Invalid update interval!'
+                                    message: browser.i18n.getMessage('dbRefreshIntervalInvalid') || 'Invalid update interval!'
                                 }
                             }));
                         }
@@ -246,11 +246,11 @@ class DatabaseStatusSetting extends HTMLElement {
             updateBtn.addEventListener('click', async () => {
                 updateBtn.disabled = true;
                 const originalText = updateBtn.textContent;
-                const updatingText = browser().i18n.getMessage('databaseUpdateBtnUpdating') || 'Updating...';
+                const updatingText = browser.i18n.getMessage('databaseUpdateBtnUpdating') || 'Updating...';
                 updateBtn.textContent = layout === 'compact' ? '◦◦◦' : updatingText;
 
                 try {
-                    const response = await browser().runtime.sendMessage({ action: 'updateDatabase' });
+                    const response = await browser.runtime.sendMessage({ action: 'updateDatabase' });
                     if (response && response.success) {
                         await this.sync(layout);
                         if (layout !== 'compact') {
@@ -259,13 +259,13 @@ class DatabaseStatusSetting extends HTMLElement {
                                 detail: {
                                     key: 'databaseUpdate',
                                     success: true,
-                                    message: browser().i18n.getMessage('databaseUpdateSuccess') || 'Updated!'
+                                    message: browser.i18n.getMessage('databaseUpdateSuccess') || 'Updated!'
                                 }
                             }));
                         }
                     } else {
                         const errorMsg = response?.error || '';
-                        const failText = browser().i18n.getMessage('databaseUpdateFailed') || 'Failed!';
+                        const failText = browser.i18n.getMessage('databaseUpdateFailed') || 'Failed!';
                         if (layout !== 'compact') {
                             this.dispatchEvent(new CustomEvent('setting-saved', {
                                 bubbles: true,
@@ -285,7 +285,7 @@ class DatabaseStatusSetting extends HTMLElement {
                             detail: {
                                 key: 'databaseUpdate',
                                 success: false,
-                                message: browser().i18n.getMessage('databaseUpdateFailed') || 'Failed!'
+                                message: browser.i18n.getMessage('databaseUpdateFailed') || 'Failed!'
                             }
                         }));
                     }

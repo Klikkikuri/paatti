@@ -1,4 +1,4 @@
-import { browser } from '../../utils.js';
+import browser from '../../browser-api.js';
 import { controller } from '../../controller.js';
 import { getConfig } from '../../config.js';
 import './toggle-button.js';
@@ -75,7 +75,7 @@ class TitleModifierSetting extends HTMLElement {
             this.replaceChildren(compactTemplate.content.cloneNode(true));
 
             const labelText = meta
-                ? (browser().i18n.getMessage(meta.labelKey) || meta.labelFallback)
+                ? (browser.i18n.getMessage(meta.labelKey) || meta.labelFallback)
                 : modifier;
 
             const labelEl = this.querySelector('.label-text');
@@ -84,10 +84,10 @@ class TitleModifierSetting extends HTMLElement {
             this.replaceChildren(detailedTemplate.content.cloneNode(true));
 
             const title = meta
-                ? (browser().i18n.getMessage(meta.titleKey) || meta.titleFallback)
+                ? (browser.i18n.getMessage(meta.titleKey) || meta.titleFallback)
                 : modifier;
             const description = meta
-                ? (browser().i18n.getMessage(meta.descKey) || meta.descFallback)
+                ? (browser.i18n.getMessage(meta.descKey) || meta.descFallback)
                 : '';
 
             const titleEl = this.querySelector('.title-text');
@@ -111,12 +111,12 @@ class TitleModifierSetting extends HTMLElement {
 
         // Auto-sync state when settings are changed elsewhere
         this.storageListener = () => this.sync(toggleBtn, modifier);
-        browser().storage.onChanged.addListener(this.storageListener);
+        browser.storage.onChanged.addListener(this.storageListener);
     }
 
     disconnectedCallback() {
         if (this.storageListener) {
-            browser().storage.onChanged.removeListener(this.storageListener);
+            browser.storage.onChanged.removeListener(this.storageListener);
         }
     }
 
@@ -169,7 +169,7 @@ class TitleModifierSetting extends HTMLElement {
                             key: `modifier-${modifier}`,
                             value: checked,
                             success: true,
-                            message: browser().i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
+                            message: browser.i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
                         }
                     }));
                 }
@@ -183,7 +183,7 @@ class TitleModifierSetting extends HTMLElement {
                             key: `modifier-${modifier}`,
                             value: !checked,
                             success: false,
-                            message: browser().i18n.getMessage('settingSavedError') || 'Error saving setting'
+                            message: browser.i18n.getMessage('settingSavedError') || 'Error saving setting'
                         }
                     }));
                 }

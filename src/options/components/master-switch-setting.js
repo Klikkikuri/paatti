@@ -1,4 +1,4 @@
-import { browser } from '../../utils.js';
+import browser from '../../browser-api.js';
 import { controller } from '../../controller.js';
 import { model } from '../../model.js';
 import { localizeDocument } from '../utils.js';
@@ -44,7 +44,7 @@ class MasterSwitchSetting extends HTMLElement {
             this.classList.add('compact-setting-row');
             this.replaceChildren(compactTemplate.content.cloneNode(true));
 
-            const labelText = browser().i18n.getMessage('settingsviewMasterSwitchLabel') || 'Activate Paatti';
+            const labelText = browser.i18n.getMessage('settingsviewMasterSwitchLabel') || 'Activate Paatti';
             const labelEl = this.querySelector('.label-text');
             if (labelEl) {
                 labelEl.textContent = labelText;
@@ -59,12 +59,12 @@ class MasterSwitchSetting extends HTMLElement {
 
         // Auto-sync state when settings are changed elsewhere (e.g. from popup/options)
         this.storageListener = () => this.sync(toggleBtn);
-        browser().storage.onChanged.addListener(this.storageListener);
+        browser.storage.onChanged.addListener(this.storageListener);
     }
 
     disconnectedCallback() {
         if (this.storageListener) {
-            browser().storage.onChanged.removeListener(this.storageListener);
+            browser.storage.onChanged.removeListener(this.storageListener);
         }
     }
 
@@ -116,7 +116,7 @@ class MasterSwitchSetting extends HTMLElement {
                             key: 'extensionEnabled',
                             value: checked,
                             success: true,
-                            message: browser().i18n.getMessage('masterSwitchSaved') || 'Extension status saved!'
+                            message: browser.i18n.getMessage('masterSwitchSaved') || 'Extension status saved!'
                         }
                     }));
                 }
@@ -130,7 +130,7 @@ class MasterSwitchSetting extends HTMLElement {
                             key: 'extensionEnabled',
                             value: !checked,
                             success: false,
-                            message: browser().i18n.getMessage('masterSwitchSaveError') || 'Error saving extension status'
+                            message: browser.i18n.getMessage('masterSwitchSaveError') || 'Error saving extension status'
                         }
                     }));
                 }

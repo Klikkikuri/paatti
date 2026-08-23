@@ -1,4 +1,5 @@
-import { browser, getLogger } from "./utils.js";
+import browser from "./browser-api.js";
+import { getLogger } from "./utils.js";
 
 const log = getLogger("storage");
 
@@ -25,7 +26,7 @@ class Storage {
      * Keeps in-memory cache in sync with updates done in other extension contexts.
      */
     async reload() {
-        const stored = await browser().storage.local.get([this.ns, this.indexKey]);
+        const stored = await browser.storage.local.get([this.ns, this.indexKey]);
         this.data = stored[this.ns] || {};
         this.index = stored[this.indexKey]
             ? new Set(stored[this.indexKey])
@@ -40,7 +41,7 @@ class Storage {
     async set(key, value) {
         this.data[key] = value;
         this.index.add(key);
-        await browser().storage.local.set({ 
+        await browser.storage.local.set({ 
             [this.ns]: this.data,
             [this.indexKey]: Array.from(this.index)
         });
@@ -65,7 +66,7 @@ class Storage {
     async delete(key) {
         delete this.data[key];
         this.index.delete(key);
-        await browser().storage.local.set({ 
+        await browser.storage.local.set({ 
             [this.ns]: this.data,
             [this.indexKey]: Array.from(this.index)
         });
@@ -79,7 +80,7 @@ class Storage {
     async store(entries) {
         Object.assign(this.data, entries);
         Object.keys(entries).forEach(key => this.index.add(key));
-        await browser().storage.local.set({ 
+        await browser.storage.local.set({ 
             [this.ns]: this.data,
             [this.indexKey]: Array.from(this.index)
         });
@@ -95,7 +96,7 @@ class Storage {
             delete this.data[key];
             this.index.delete(key);
         });
-        await browser().storage.local.set({ 
+        await browser.storage.local.set({ 
             [this.ns]: this.data,
             [this.indexKey]: Array.from(this.index)
         });
@@ -113,13 +114,13 @@ class Storage {
      * Removes all storage entries for this namespace and clears local data.
      */
     async prune() {
-        const allData = await browser().storage.local.get(null);
+        const allData = await browser.storage.local.get(null);
         // Identify keys that start with the namespace
         const keysToRemove = Object.keys(allData).filter(key => 
             key.startsWith(this.ns)
         );
         if (keysToRemove.length > 0) {
-            await browser().storage.local.remove(keysToRemove);
+            await browser.storage.local.remove(keysToRemove);
             console.debug(`Pruned ${keysToRemove.length} entries from namespace: ${this.ns}`);
         }
         // Clear local data and index
@@ -134,7 +135,7 @@ class Storage {
  */
 const initStorage = async (ns) => {
     const indexKey = `${ns}_index`;
-    const stored = await browser().storage.local.get([ns, indexKey]);
+    const stored = await browser.storage.local.get([ns, indexKey]);
     const data = stored[ns] || {};
     const index = stored[indexKey] ? new Set(stored[indexKey]) : new Set(Object.keys(data));
     log(`Initialized storage for namespace: ${ns} with ${index.size} keys.`);

@@ -1,6 +1,7 @@
 "use strict";
 
-import { getLogger, browser, getActiveTab, getCurrentTabHostname } from "./utils.js";
+import browser from "./browser-api.js";
+import { getLogger, getActiveTab, getCurrentTabHostname } from "./utils.js";
 import { model, modelEvents } from "./model.js";
 
 const log = getLogger("controller");
@@ -10,7 +11,7 @@ const _dispatchConversion = async () => {
     try {
         const activeTab = await getActiveTab();
         if (activeTab && activeTab.id) {
-            await browser().tabs.sendMessage(activeTab.id, { command: "convertClickbaits" });
+            await browser.tabs.sendMessage(activeTab.id, { command: "convertClickbaits" });
             log("Conversion dispatch performed.");
         }
     } catch (err) {
@@ -106,7 +107,7 @@ const controller = {
         dumpLinkSignatures: async () => {
             log("Generating dump of link signatures for the current page...");
             // Get the active tab.
-            const tabs = browser().tabs;
+            const tabs = browser.tabs;
             const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
             const result = await tabs.sendMessage(activeTabId, { command: "devmode_generateLinkSignatures" });
 
@@ -117,7 +118,7 @@ const controller = {
         setTitleDataUrl: async (url) => {
             log("Setting title data URL...");
 
-            const tabs = browser().tabs;
+            const tabs = browser.tabs;
             const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
 
             const currentTabHostname = await getCurrentTabHostname();
@@ -137,7 +138,7 @@ const controller = {
     },
 };
 
-if (browser().tabs) {
+if (browser.tabs) {
     model.events.addEventListener(modelEvents.enabledChange, controller.dispatchConversion);
     model.events.addEventListener(modelEvents.environmentChange, controller.dispatchConversion);
 }

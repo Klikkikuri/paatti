@@ -1,6 +1,7 @@
 "use strict";
 
-import { browser, getLogger, getActiveTab } from "./utils.js";
+import browser from "./browser-api.js";
+import { getLogger, getActiveTab } from "./utils.js";
 import { getConfig } from "./config.js";
 import { fetchRahtiData, fetchRahtiDataWithRetry } from "./rahti.js";
 import { controller } from "./controller.js";
@@ -37,7 +38,7 @@ async function updateDynamicContentScripts() {
         }
 
         try {
-            await browser().scripting.unregisterContentScripts({ ids: ["paatti-content-script"] });
+            await browser.scripting.unregisterContentScripts({ ids: ["paatti-content-script"] });
         } catch (e) {
             // Ignore if not registered yet
         }
@@ -47,7 +48,7 @@ async function updateDynamicContentScripts() {
             // For rewiews grep: chrome.scripting.registerContentScripts()
             // For rewiews grep: browser.scripting.registerContentScripts()
 
-            await browser().scripting.registerContentScripts([{
+            await browser.scripting.registerContentScripts([{
                 id: "paatti-content-script",
                 js: [
                     "src/contentScript.js"
@@ -68,8 +69,8 @@ async function updateDynamicContentScripts() {
 
 
 async function scheduleAlarm(minutes) {
-    await browser().alarms.clear(PULL_ALARM_NAME);
-    browser().alarms.create(PULL_ALARM_NAME, {
+    await browser.alarms.clear(PULL_ALARM_NAME);
+    browser.alarms.create(PULL_ALARM_NAME, {
         periodInMinutes: minutes
     });
     log(`Alarm rescheduled for every ${minutes} minutes.`);
@@ -78,7 +79,7 @@ async function scheduleAlarm(minutes) {
 /**
  * Handle alarm settings changes.
  */
-browser().storage.onChanged.addListener(async (changes, area) => {
+browser.storage.onChanged.addListener(async (changes, area) => {
     const isPreferencesChanged = area === 'local' && changes.userPreferences;
     const isOverridesChanged = area === 'sync' && changes.userSiteOverrides;
     const isModifiersChanged = area === 'sync' && changes.modifiers;
@@ -108,7 +109,7 @@ browser().storage.onChanged.addListener(async (changes, area) => {
             try {
                 const tab = await getActiveTab();
                 if (tab && tab.id) {
-                    await browser().tabs.sendMessage(tab.id, { command: "convertClickbaits" });
+                    await browser.tabs.sendMessage(tab.id, { command: "convertClickbaits" });
                 }
             } catch (err) {
                 // ignore error if tab doesn't have listener
@@ -122,7 +123,7 @@ browser().storage.onChanged.addListener(async (changes, area) => {
         try {
             const tab = await getActiveTab();
             if (tab && tab.id) {
-                await browser().tabs.sendMessage(tab.id, { command: "convertClickbaits" });
+                await browser.tabs.sendMessage(tab.id, { command: "convertClickbaits" });
             }
         } catch (err) {
             log("Tab message send failed (likely no listener):", err);
@@ -130,11 +131,11 @@ browser().storage.onChanged.addListener(async (changes, area) => {
     }
 });
 
-browser().runtime.onInstalled.addListener(async () => {
+browser.runtime.onInstalled.addListener(async () => {
 
     // Detect environment
     const environment = await new Promise((resolve) => {
-        browser().management.getSelf((info) => {
+        browser.management.getSelf((info) => {
             if (info.installType === 'development') {
                 resolve("development");
             } else {
@@ -145,7 +146,7 @@ browser().runtime.onInstalled.addListener(async () => {
 
     try {
         // Set default environment on install
-        await browser().storage.local.set({ userPreferences: { environment: environment } });
+        await browser.storage.local.set({ userPreferences: { environment: environment } });
         log(`Set default environment to '${environment}' on install.`);
     } catch (error) {
         log("Error setting default environment on install:", error);
@@ -167,7 +168,7 @@ browser().runtime.onInstalled.addListener(async () => {
 });
 
 // Handle periodic alarm to fetch Rahti data
-browser().alarms.onAlarm.addListener((alarm) => {
+browser.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === PULL_ALARM_NAME) {
         log("Alarm triggered: fetching Rahti data.");
         fetchRahtiDataWithRetry().catch((err) => {
@@ -184,7 +185,7 @@ async function initSuola() {
     suolaPromise = (async () => {
         try {
             const go = new Go();
-            const wasmUrl = browser().runtime.getURL("build/js.wasm");
+            const wasmUrl = browser.runtime.getURL("build/js.wasm");
             let result;
             try {
                 const response = await fetch(wasmUrl);
@@ -211,14 +212,14 @@ async function initSuola() {
     return suolaPromise;
 }
 
-browser().runtime.onMessage.addListener((message, sender, sendResponse) => {
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "updateDatabase") {
         log("Manual database update requested.");
         // Manual updates invoke fetchRahtiData directly without retry logic
         fetchRahtiData({ force: true })
             .then((success) => {
                 if (success) {
-                    browser().storage.local.get("lastDatabaseUpdate").then((result) => {
+                    browser.storage.local.get("lastDatabaseUpdate").then((result) => {
                         sendResponse({ success: true, lastDatabaseUpdate: result.lastDatabaseUpdate });
                     });
                 } else {
@@ -268,7 +269,7 @@ browser().runtime.onMessage.addListener((message, sender, sendResponse) => {
             pendingFaviconDomains.add(domain);
             try {
                 // Persistent cache check: skip if valid and not expired
-                const stored = await browser().storage.local.get(key);
+                const stored = await browser.storage.local.get(key);
                 const existing = stored[key];
                 if (!isFaviconExpired(existing)) return;
 
@@ -280,7 +281,7 @@ browser().runtime.onMessage.addListener((message, sender, sendResponse) => {
                 if (!response.ok) {
                     // Negatively cache: prevents retry on every page load
                     const negEntry = makeFaviconEntry(null);
-                    await browser().storage.local.set({
+                    await browser.storage.local.set({
                         [key]: negEntry,
                         [getFaviconKey(altDomain)]: negEntry
                     });
@@ -301,7 +302,7 @@ browser().runtime.onMessage.addListener((message, sender, sendResponse) => {
                 const dataUri = `data:${contentType};base64,${btoa(binary)}`;
                 const favEntry = makeFaviconEntry(dataUri);
 
-                await browser().storage.local.set({
+                await browser.storage.local.set({
                     [key]: favEntry,
                     [getFaviconKey(altDomain)]: favEntry
                 });
@@ -332,7 +333,7 @@ async function isDatabaseStale() {
     try {
         const config = await getConfig();
         const intervalMinutes = config.refreshIntervalMinutes || 30;
-        const result = await browser().storage.local.get("lastDatabaseUpdate");
+        const result = await browser.storage.local.get("lastDatabaseUpdate");
         if (!result.lastDatabaseUpdate) {
             return true;
         }
@@ -345,8 +346,8 @@ async function isDatabaseStale() {
 }
 
 // Handle browser startup event to ensure database freshness
-if (browser().runtime && browser().runtime.onStartup) {
-    browser().runtime.onStartup.addListener(async () => {
+if (browser.runtime && browser.runtime.onStartup) {
+    browser.runtime.onStartup.addListener(async () => {
         log("Browser startup detected.");
         try {
             const config = await getConfig();
@@ -367,7 +368,7 @@ if (browser().runtime && browser().runtime.onStartup) {
 // Ensure periodic alarm is scheduled, content scripts are registered, and database is checked on background script load
 (async () => {
     try {
-        const alarm = await browser().alarms.get(PULL_ALARM_NAME);
+        const alarm = await browser.alarms.get(PULL_ALARM_NAME);
         const config = await getConfig();
         const intervalMinutes = config.refreshIntervalMinutes || 30;
         if (!alarm) {
@@ -387,7 +388,7 @@ if (browser().runtime && browser().runtime.onStartup) {
 
 
 // Listen to browser permission additions to synchronize model state
-browser().permissions.onAdded.addListener(async (permissions) => {
+browser.permissions.onAdded.addListener(async (permissions) => {
     log("Permissions added:", permissions);
     if (permissions.origins) {
         const config = await getConfig();
@@ -403,7 +404,7 @@ browser().permissions.onAdded.addListener(async (permissions) => {
 });
 
 // Listen to browser permission removals to synchronize model state
-browser().permissions.onRemoved.addListener(async (permissions) => {
+browser.permissions.onRemoved.addListener(async (permissions) => {
     log("Permissions removed:", permissions);
     if (permissions.origins) {
         const config = await getConfig();

@@ -1,6 +1,6 @@
 import { ClickbaitLevelBase } from './clickbait-level-base.js';
 import { controller } from '../../controller.js';
-import { browser } from '../../utils.js';
+import browser from '../../browser-api.js';
 import { getClickbaitLevelInfo } from '../utils.js';
 
 /**
@@ -56,7 +56,7 @@ class ClickbaitLevelVertical extends ClickbaitLevelBase {
                         key: 'clickbaitLevel',
                         value,
                         success: true,
-                        message: browser().i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
+                        message: browser.i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
                     }
                 }));
             }
@@ -77,7 +77,7 @@ class ClickbaitLevelVertical extends ClickbaitLevelBase {
                             key: 'clickbaitLevel',
                             value,
                             success: true,
-                            message: browser().i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
+                            message: browser.i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
                         }
                     }));
                 }

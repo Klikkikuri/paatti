@@ -123,6 +123,14 @@ clean:
 release:
 	node release.js $(VERSION)
 
+lint:
+	eslint .
+
+# Not part of `lint`: web-ext errors on the gecko update_url this project needs for
+# self-hosted Firefox updates. Read the report, keep UNSAFE_VAR_ASSIGNMENT at zero.
+lint-webext: dist
+	-web-ext lint --source-dir $(DIST_DIR)
+
 test: test-wasm
 	node tests/config.test.mjs
 	node tests/utils.test.mjs
@@ -131,6 +139,7 @@ test: test-wasm
 	node tests/faviconCache.test.mjs
 	node tests/stats.test.mjs
 	node tests/easter-egg.test.mjs
+	node tests/browser-namespace.test.mjs
 
 # suola's own smoke test for the browser module, run against the artifacts
 # staged in $(BUILD_DIR). It is the only check that js.wasm loads and signs
@@ -147,4 +156,4 @@ test-wasm:
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
 	fi
 
-.PHONY: build init ensure-suola check-tinygo package source-dist test-data clean build-suola-local build-suola rebuild-suola release dist test test-wasm
+.PHONY: build init ensure-suola check-tinygo package source-dist test-data clean build-suola-local build-suola rebuild-suola release dist test test-wasm lint lint-webext

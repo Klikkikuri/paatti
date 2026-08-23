@@ -3,7 +3,8 @@
  * Coordinates single-flight locks, retryable background updates, and storage initialization.
  */
 
-import { getLogger, browser } from "./utils.js";
+import browser from "./browser-api.js";
+import { getLogger } from "./utils.js";
 import { getConfig } from "./config.js";
 import { initStorage } from "./storage.js";
 import { validRahtiData, rahtiToKeyed } from "./rahti/schema.js";
@@ -36,7 +37,7 @@ async function _executeFetchRahtiData(options = {}) {
 
     let rahtiHeaders = {};
     try {
-        const stored = await browser().storage.local.get("rahtiHeaders");
+        const stored = await browser.storage.local.get("rahtiHeaders");
         rahtiHeaders = stored.rahtiHeaders || {};
     } catch (err) {
         log("Failed to load rahti headers from storage:", err);
@@ -51,7 +52,7 @@ async function _executeFetchRahtiData(options = {}) {
     if (allNotModified) {
         log("All URLs returned 304 Not Modified. Database is up to date.");
         try {
-            await browser().storage.local.set({ lastDatabaseUpdate: Date.now() });
+            await browser.storage.local.set({ lastDatabaseUpdate: Date.now() });
         } catch (e) {
             log("Failed to save database update timestamp:", e);
         }
