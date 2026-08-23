@@ -50,6 +50,7 @@
         "src/modifiers.js",
         "src/stats.js",
         "src/components/badge-base.js",
+        "src/components/badge-style.js",
         "src/components/klikkikuri-ai-badge.js",
         "src/components/klikkikuri-video-badge.js",
         "build/js.wasm"
