@@ -134,10 +134,6 @@
     --push-accent-bright: #73d9ff;
 
     /* Feedback items */
-    --feedback-bg-hover: #f0f7ff;
-    --feedback-border-hover: #b3d7ff;
-    --feedback-text-conv: #111;
-    --feedback-input-border: #ccc;
     --feedback-vote-yes-bg: #ecfdf5;
     --feedback-vote-yes-text: #065f46;
     --feedback-vote-no-bg: #fef2f2;
@@ -211,9 +207,6 @@
         --push-accent: #6ec1ff;
         --push-accent-bright: #a8e0ff;
 
-        --feedback-bg-hover: #232a36;
-        --feedback-text-conv: var(--color-text-heading);
-        --feedback-input-border: #4a4f5a;
         --feedback-vote-yes-bg: #14342a;
         --feedback-vote-yes-text: #6ee7b7;
         --feedback-vote-no-bg: #3a1d1d;
