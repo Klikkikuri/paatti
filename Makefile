@@ -9,9 +9,16 @@ BUILD_EXTENSION := $(BUILD_DIR)/klikkikuri-paatti.zip
 DIST_DIR := $(BUILD_DIR)/dist
 EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md docs/PRIVACY_POLICY.md
 WASM_ASSETS := js.wasm wasm_exec.js
+WASM_OUTPUTS := $(addprefix $(BUILD_DIR)/, $(WASM_ASSETS))
+# The module's inputs, taken from the submodule so the list cannot drift.
+SUOLA_SOURCES := $(patsubst %,suola/%,$(shell git -C suola ls-files 2>/dev/null))
+# Outside a git tree -- an unpacked source-dist -- ask the filesystem instead.
+ifeq ($(SUOLA_SOURCES),)
+SUOLA_SOURCES := $(shell find suola -type f -not -path 'suola/build/*')
+endif
 
 
-build: ensure-suola build-suola package
+build: package
 
 init:
 	git submodule init --init --recursive
@@ -34,7 +41,14 @@ ensure-suola:
 		exit 1; \
 	fi
 
-build-suola:
+build-suola: $(WASM_OUTPUTS)
+
+# For when the artifacts' timestamps say they are current but they are not.
+rebuild-suola:
+	rm -f $(WASM_OUTPUTS)
+	$(MAKE) build-suola
+
+$(WASM_OUTPUTS) &: $(SUOLA_SOURCES) | ensure-suola
 ifneq ($(USE_RELEASE_ARTIFACTS),)
 	# Fetch pre-built artifacts from GitHub releases for tagged suola submodule
 	@if [ -d suola ] && (cd suola && git describe --tags --exact-match >/dev/null 2>&1); then \
@@ -66,10 +80,10 @@ else
 	cp suola/build/wasm_exec.js $(BUILD_DIR)/wasm_exec.js
 endif
 
-dist: build-suola
+dist: $(WASM_OUTPUTS)
 	mkdir -p $(DIST_DIR)/build
 	cp -r $(EXTENSION_ASSETS) $(DIST_DIR)/
-	cp $(addprefix $(BUILD_DIR)/, $(WASM_ASSETS)) $(DIST_DIR)/build/
+	cp $(WASM_OUTPUTS) $(DIST_DIR)/build/
 ifeq ($(NON_OSS),1)
 	@echo "Overlaying non-OSS assets (NON_OSS=1)..."
 	cp -r assets/non-oss/by-kagi/src/. $(DIST_DIR)/src/
@@ -105,4 +119,4 @@ test:
 	node tests/faviconCache.test.mjs
 	node tests/stats.test.mjs
 
-.PHONY: build init ensure-suola package source-dist test-data clean build-suola-local build-suola release dist test
+.PHONY: build init ensure-suola package source-dist test-data clean build-suola-local build-suola rebuild-suola release dist test
