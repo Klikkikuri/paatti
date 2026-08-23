@@ -1,6 +1,6 @@
 import { browser, getLogger, sanitizeUrlForFeedback } from '../../utils.js';
 import { getConfig } from '../../config.js';
-import { model } from '../../model.js';
+import { model, Clickbaitiness } from '../../model.js';
 
 const log = getLogger('components/feedback-item');
 
@@ -217,35 +217,29 @@ class FeedbackItem extends HTMLElement {
     }
 
     /**
-     * Resolve a clickbait level (numeric, string alias, or English label) to a
+     * Resolve a clickbait level (numeric or Clickbaitiness level string) to a
      * localized badge label and a numeric level used as the CSS colour key.
      *
      * @param {number|string} level - Clickbait level as stored on the item.
      * @returns {{text: string, level: number}} Badge label and normalized level.
      */
     getClickbaitBadgeInfo(level) {
-        const lang = (browser().i18n.getUILanguage() || 'fi').split('-')[0];
-        const isFi = lang === 'fi';
+        // Fallbacks mirror _locales/en, the manifest default_locale, so a missing
+        // translation degrades to English instead of to the UI language of the day.
+        const FALLBACKS = ["Neutral", "Low", "Medium", "High", "Extreme"];
 
-        const LABELS = [
-            { fi: "Neutraali", en: "Neutral", alias: "Not Clickbait at all" },
-            { fi: "Lievä", en: "Low", alias: "Slightly Clickbaity" },
-            { fi: "Kohtalainen", en: "Medium", alias: "Moderately Clickbaity" },
-            { fi: "Voimakas", en: "High", alias: "Very Clickbaity" },
-            { fi: "Äärimmäinen", en: "Extreme", alias: "Extremely Clickbaity" },
-        ];
-
-        let index = LABELS.findIndex((entry) => entry.alias === level);
+        let index = Clickbaitiness.stringToNumber(level);
         if (index < 0) {
             index = Number.parseInt(level, 10);
         }
         // Anything unrecognised is treated as the most severe level, matching
         // the previous `default:` branch.
-        if (!Number.isInteger(index) || index < 0 || index >= LABELS.length) {
-            index = LABELS.length - 1;
+        if (!Number.isInteger(index) || index < 0 || index >= FALLBACKS.length) {
+            index = FALLBACKS.length - 1;
         }
 
-        return { text: isFi ? LABELS[index].fi : LABELS[index].en, level: index };
+        const text = browser().i18n.getMessage(`clickbaitBadgeLevel${index}`) || FALLBACKS[index];
+        return { text, level: index };
     }
 
     render() {
@@ -257,20 +251,20 @@ class FeedbackItem extends HTMLElement {
         if (this._item.isMainPage) {
             const currentPageLabelText = this.querySelector('.current-page-label-text');
             if (currentPageLabelText) {
-                currentPageLabelText.textContent = browser().i18n.getMessage("feedbackviewCurrentPageLabel") || "nykyinen sivu";
+                currentPageLabelText.textContent = browser().i18n.getMessage("feedbackviewCurrentPageLabel") || "Current page";
             }
         } else if (currentPageContainer) {
             currentPageContainer.remove();
         }
 
-        const origLabel = browser().i18n.getMessage("feedbackviewRateTitleOriginalTitleLabel") || "Alkuperäinen";
+        const origLabel = browser().i18n.getMessage("feedbackviewRateTitleOriginalTitleLabel") || "Original:";
         const badge = this.getClickbaitBadgeInfo(this._item.clickbaitLevel || 0);
 
-        const convLabel = browser().i18n.getMessage("feedbackviewRateTitleConvertedTitleLabel") || "Klikkiotsikko korjattu";
-        const placeholderText = browser().i18n.getMessage("feedbackviewReportCommentPlaceholder") || "Mitä otsikossa pitäisi lukea?";
-        const goodBtnText = "👍 " + (browser().i18n.getMessage("feedbackviewRateTitleConversionIsGood") || "Hyvä korjaus");
-        const badBtnText = "👎 " + (browser().i18n.getMessage("feedbackviewRateTitleConversionIsBad") || "Huono korjaus");
-        const submitBtnText = browser().i18n.getMessage("feedbackviewReportSubmitBtn") || "Lähetä";
+        const convLabel = browser().i18n.getMessage("feedbackviewRateTitleConvertedTitleLabel") || "Aligned:";
+        const placeholderText = browser().i18n.getMessage("feedbackviewReportCommentPlaceholder") || "Describe the issue...";
+        const goodBtnText = "👍 " + (browser().i18n.getMessage("feedbackviewRateTitleConversionIsGood") || "Is good");
+        const badBtnText = "👎 " + (browser().i18n.getMessage("feedbackviewRateTitleConversionIsBad") || "Is no good");
+        const submitBtnText = browser().i18n.getMessage("feedbackviewReportSubmitBtn") || "Submit";
 
         const originalLabelEl = this.querySelector('.original-label-text');
         if (originalLabelEl) originalLabelEl.textContent = origLabel;
@@ -434,9 +428,9 @@ class FeedbackItem extends HTMLElement {
             setFeedbackStatus("...", "var(--color-text-secondary)", false);
             const success = await submitFeedback("good_conversion");
             if (success) {
-                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportSuccess") || "Kiitos palautteesta!", "var(--color-success-strong)", true);
+                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportSuccess") || "✓ Feedback submitted!", "var(--color-success-strong)", true);
             } else {
-                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportFailure") || "Lähetys epäonnistui", "var(--color-danger-strong)", true);
+                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportFailure") || "✗ Failed to send report.", "var(--color-danger-strong)", true);
             }
         });
 
@@ -457,9 +451,9 @@ class FeedbackItem extends HTMLElement {
             formDiv.classList.add("hidden");
             buttonsDiv.style.display = "flex";
             if (success) {
-                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportSuccess") || "Kiitos palautteesta!", "var(--color-success-strong)", true);
+                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportSuccess") || "✓ Feedback submitted!", "var(--color-success-strong)", true);
             } else {
-                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportFailure") || "Lähetys epäonnistui", "var(--color-danger-strong)", true);
+                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportFailure") || "✗ Failed to send report.", "var(--color-danger-strong)", true);
             }
         };
 
