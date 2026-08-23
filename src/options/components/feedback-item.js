@@ -1,4 +1,5 @@
-import { browser, getLogger, sanitizeUrlForFeedback } from '../../utils.js';
+import browser from '../../browser-api.js';
+import { getLogger, sanitizeUrlForFeedback } from '../../utils.js';
 import { getConfig } from '../../config.js';
 import { model, Clickbaitiness } from '../../model.js';
 
@@ -238,7 +239,7 @@ class FeedbackItem extends HTMLElement {
             index = FALLBACKS.length - 1;
         }
 
-        const text = browser().i18n.getMessage(`clickbaitBadgeLevel${index}`) || FALLBACKS[index];
+        const text = browser.i18n.getMessage(`clickbaitBadgeLevel${index}`) || FALLBACKS[index];
         return { text, level: index };
     }
 
@@ -251,20 +252,20 @@ class FeedbackItem extends HTMLElement {
         if (this._item.isMainPage) {
             const currentPageLabelText = this.querySelector('.current-page-label-text');
             if (currentPageLabelText) {
-                currentPageLabelText.textContent = browser().i18n.getMessage("feedbackviewCurrentPageLabel") || "Current page";
+                currentPageLabelText.textContent = browser.i18n.getMessage("feedbackviewCurrentPageLabel") || "Current page";
             }
         } else if (currentPageContainer) {
             currentPageContainer.remove();
         }
 
-        const origLabel = browser().i18n.getMessage("feedbackviewRateTitleOriginalTitleLabel") || "Original:";
+        const origLabel = browser.i18n.getMessage("feedbackviewRateTitleOriginalTitleLabel") || "Original:";
         const badge = this.getClickbaitBadgeInfo(this._item.clickbaitLevel || 0);
 
-        const convLabel = browser().i18n.getMessage("feedbackviewRateTitleConvertedTitleLabel") || "Aligned:";
-        const placeholderText = browser().i18n.getMessage("feedbackviewReportCommentPlaceholder") || "Describe the issue...";
-        const goodBtnText = "👍 " + (browser().i18n.getMessage("feedbackviewRateTitleConversionIsGood") || "Is good");
-        const badBtnText = "👎 " + (browser().i18n.getMessage("feedbackviewRateTitleConversionIsBad") || "Is no good");
-        const submitBtnText = browser().i18n.getMessage("feedbackviewReportSubmitBtn") || "Submit";
+        const convLabel = browser.i18n.getMessage("feedbackviewRateTitleConvertedTitleLabel") || "Aligned:";
+        const placeholderText = browser.i18n.getMessage("feedbackviewReportCommentPlaceholder") || "Describe the issue...";
+        const goodBtnText = "👍 " + (browser.i18n.getMessage("feedbackviewRateTitleConversionIsGood") || "Is good");
+        const badBtnText = "👎 " + (browser.i18n.getMessage("feedbackviewRateTitleConversionIsBad") || "Is no good");
+        const submitBtnText = browser.i18n.getMessage("feedbackviewReportSubmitBtn") || "Submit";
 
         const originalLabelEl = this.querySelector('.original-label-text');
         if (originalLabelEl) originalLabelEl.textContent = origLabel;
@@ -428,9 +429,9 @@ class FeedbackItem extends HTMLElement {
             setFeedbackStatus("...", "var(--color-text-secondary)", false);
             const success = await submitFeedback("good_conversion");
             if (success) {
-                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportSuccess") || "✓ Feedback submitted!", "var(--color-success-strong)", true);
+                setFeedbackStatus(browser.i18n.getMessage("feedbackviewReportSuccess") || "✓ Feedback submitted!", "var(--color-success-strong)", true);
             } else {
-                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportFailure") || "✗ Failed to send report.", "var(--color-danger-strong)", true);
+                setFeedbackStatus(browser.i18n.getMessage("feedbackviewReportFailure") || "✗ Failed to send report.", "var(--color-danger-strong)", true);
             }
         });
 
@@ -451,9 +452,9 @@ class FeedbackItem extends HTMLElement {
             formDiv.classList.add("hidden");
             buttonsDiv.style.display = "flex";
             if (success) {
-                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportSuccess") || "✓ Feedback submitted!", "var(--color-success-strong)", true);
+                setFeedbackStatus(browser.i18n.getMessage("feedbackviewReportSuccess") || "✓ Feedback submitted!", "var(--color-success-strong)", true);
             } else {
-                setFeedbackStatus(browser().i18n.getMessage("feedbackviewReportFailure") || "✗ Failed to send report.", "var(--color-danger-strong)", true);
+                setFeedbackStatus(browser.i18n.getMessage("feedbackviewReportFailure") || "✗ Failed to send report.", "var(--color-danger-strong)", true);
             }
         };
 
@@ -488,7 +489,7 @@ class FeedbackItem extends HTMLElement {
         if (feedbackItemEl && this._item.highlightId) {
             feedbackItemEl.addEventListener("mouseenter", () => {
                 if (this._tab) {
-                    browser().tabs.sendMessage(this._tab.id, {
+                    browser.tabs.sendMessage(this._tab.id, {
                         command: "highlightElement",
                         highlightId: this._item.highlightId
                     }).catch((err) => log("Failed to send highlight message:", err));
@@ -496,7 +497,7 @@ class FeedbackItem extends HTMLElement {
             });
             feedbackItemEl.addEventListener("mouseleave", () => {
                 if (this._tab) {
-                    browser().tabs.sendMessage(this._tab.id, {
+                    browser.tabs.sendMessage(this._tab.id, {
                         command: "unhighlightElement",
                         highlightId: this._item.highlightId
                     }).catch((err) => log("Failed to send unhighlight message:", err));

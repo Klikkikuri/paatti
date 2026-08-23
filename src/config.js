@@ -1,6 +1,7 @@
 "use strict";
 
-import { browser, getLogger } from "./utils.js";
+import browser from "./browser-api.js";
+import { getLogger } from "./utils.js";
 
 const log = getLogger("config");
 
@@ -326,7 +327,7 @@ let isListenerRegistered = false;
 function ensureListenerRegistered() {
     if (isListenerRegistered) return;
     isListenerRegistered = true;
-    const browserStorage = browser()?.storage;
+    const browserStorage = browser?.storage;
     if (browserStorage && browserStorage.onChanged) {
         browserStorage.onChanged.addListener((changes, areaName) => {
             log("Storage changed in area:", areaName, ". Invalidating config cache.");
@@ -350,8 +351,8 @@ async function getConfig() {
 
     const currentPromise = (async () => {
         const [localData, syncData] = await Promise.all([
-            browser().storage.local.get("userPreferences"),
-            browser().storage.sync.get(["userSiteOverrides", "modifiers", "environmentConfigs"])
+            browser.storage.local.get("userPreferences"),
+            browser.storage.sync.get(["userSiteOverrides", "modifiers", "environmentConfigs"])
         ]);
 
         const userPreferences = localData.userPreferences || {};

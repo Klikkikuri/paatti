@@ -1,6 +1,6 @@
 "use strict";
 
-import { browser } from '../../utils.js';
+import browser from '../../browser-api.js';
 import { getFaviconKey, isFaviconExpired } from '../../faviconCache.js';
 
 /**
@@ -31,9 +31,8 @@ async function supportsFaviconApi() {
     }
     faviconApiSupportedPromise = (async () => {
         try {
-            const b = browser();
-            if (b?.permissions?.contains) {
-                return await b.permissions.contains({ permissions: ['favicon'] });
+            if (browser?.permissions?.contains) {
+                return await browser.permissions.contains({ permissions: ['favicon'] });
             }
         } catch (_err) {
             // Non-supporting browsers (e.g. Firefox) reject unknown permission names
@@ -191,9 +190,8 @@ export class FaviconImg extends HTMLElement {
 
         if (domain) {
             try {
-                const b = browser();
                 const key = getFaviconKey(domain);
-                let stored = await b.storage.local.get(key);
+                let stored = await browser.storage.local.get(key);
                 let entry = stored?.[key];
 
                 // If not found or expired, try fallback with or without www. prefix
@@ -202,7 +200,7 @@ export class FaviconImg extends HTMLElement {
                         ? domain.slice(4)
                         : `www.${domain}`;
                     const altKey = getFaviconKey(altDomain);
-                    const altStored = await b.storage.local.get(altKey);
+                    const altStored = await browser.storage.local.get(altKey);
                     if (altStored?.[altKey] && !isFaviconExpired(altStored[altKey])) {
                         entry = altStored[altKey];
                     }
@@ -259,9 +257,8 @@ export class FaviconImg extends HTMLElement {
         }
 
         try {
-            const b = browser();
             const pageUrl = domain.startsWith('http') ? domain : `https://${domain}`;
-            const url = new URL(b.runtime.getURL('/_favicon/'));
+            const url = new URL(browser.runtime.getURL('/_favicon/'));
             url.searchParams.append('pageUrl', pageUrl);
             url.searchParams.append('size', size);
 

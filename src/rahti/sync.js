@@ -3,7 +3,8 @@
  * Synchronizes merged datasets to local storage, prunes obsolete entries, and updates timestamps.
  */
 
-import { getLogger, browser } from "../utils.js";
+import browser from "../browser-api.js";
+import { getLogger } from "../utils.js";
 
 const log = getLogger("rahti:sync");
 
@@ -69,7 +70,7 @@ async function saveUpdateMetadata(latestUpdated, rahtiHeaders, successfulResults
         if (overallLatest) {
             storageItems.databaseGenerationDate = overallLatest;
         }
-        await browser().storage.local.set(storageItems);
+        await browser.storage.local.set(storageItems);
     } catch (e) {
         log("Failed to save database update timestamps and headers:", e);
     }
@@ -83,7 +84,7 @@ async function saveUpdateMetadata(latestUpdated, rahtiHeaders, successfulResults
  */
 async function isDatabaseRecentlyUpdated(thresholdMs = 60000) {
     try {
-        const stored = await browser().storage.local.get("lastDatabaseUpdate");
+        const stored = await browser.storage.local.get("lastDatabaseUpdate");
         if (stored.lastDatabaseUpdate) {
             const ageMs = Date.now() - stored.lastDatabaseUpdate;
             return ageMs < thresholdMs;

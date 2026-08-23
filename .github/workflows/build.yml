@@ -39,6 +39,11 @@ jobs:
         run: |
           make build NON_OSS=1
 
+      - name: "🧹 Lint"
+        run: |
+          npm install -g eslint@10
+          make lint
+
       - name: "🧪 Run Tests"
         run: |
           make test

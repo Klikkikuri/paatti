@@ -1,4 +1,4 @@
-import { browser } from '../../utils.js';
+import browser from '../../browser-api.js';
 import { controller } from '../../controller.js';
 import { model } from '../../model.js';
 import { localizeDocument } from '../utils.js';
@@ -44,7 +44,7 @@ class VisualHighlightSetting extends HTMLElement {
             this.classList.add('compact-setting-row');
             this.replaceChildren(compactTemplate.content.cloneNode(true));
 
-            const labelText = browser().i18n.getMessage('devmodeSetDebugVisualsLabel') || 'Visual Highlight';
+            const labelText = browser.i18n.getMessage('devmodeSetDebugVisualsLabel') || 'Visual Highlight';
             const labelEl = this.querySelector('.label-text');
             if (labelEl) {
                 labelEl.textContent = labelText;
@@ -59,12 +59,12 @@ class VisualHighlightSetting extends HTMLElement {
 
         // Auto-sync state when settings are changed elsewhere
         this.storageListener = () => this.sync(toggleBtn, layout);
-        browser().storage.onChanged.addListener(this.storageListener);
+        browser.storage.onChanged.addListener(this.storageListener);
     }
 
     disconnectedCallback() {
         if (this.storageListener) {
-            browser().storage.onChanged.removeListener(this.storageListener);
+            browser.storage.onChanged.removeListener(this.storageListener);
         }
     }
 
@@ -116,7 +116,7 @@ class VisualHighlightSetting extends HTMLElement {
                             key: 'visualHighlightEnabled',
                             value: checked,
                             success: true,
-                            message: browser().i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
+                            message: browser.i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
                         }
                     }));
                 }
@@ -130,7 +130,7 @@ class VisualHighlightSetting extends HTMLElement {
                             key: 'visualHighlightEnabled',
                             value: !checked,
                             success: false,
-                            message: browser().i18n.getMessage('settingSavedError') || 'Error saving setting'
+                            message: browser.i18n.getMessage('settingSavedError') || 'Error saving setting'
                         }
                     }));
                 }

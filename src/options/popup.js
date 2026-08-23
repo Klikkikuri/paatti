@@ -1,6 +1,7 @@
 "use strict";
 
-import { getLogger, browser, getActiveTab, getCurrentTabHostname } from "../utils.js";
+import browser from "../browser-api.js";
+import { getLogger, getActiveTab, getCurrentTabHostname } from "../utils.js";
 import { model, modelEvents, Clickbaitiness } from "../model.js";
 import { controller } from "../controller.js";
 import { getConfig } from "../config.js";
@@ -93,7 +94,7 @@ const _createStatRow = (level, count, { clickbaitLevelThreshold } = {}) => {
 
     const labelText = document.createElement("span");
     labelText.className = "stats-label-text";
-    labelText.textContent = browser().i18n.getMessage(levelToI18nKey(level));
+    labelText.textContent = browser.i18n.getMessage(levelToI18nKey(level));
 
     const dd = document.createElement("dd");
     dd.className = "stats-count";
@@ -114,7 +115,7 @@ const _createStatRow = (level, count, { clickbaitLevelThreshold } = {}) => {
         }
 
         dotBtn.textContent = "i";
-        dotBtn.setAttribute("aria-label", browser().i18n.getMessage("statsviewInfoBtnAriaLabel", [labelText.textContent]));
+        dotBtn.setAttribute("aria-label", browser.i18n.getMessage("statsviewInfoBtnAriaLabel", [labelText.textContent]));
         dotBtn.setAttribute("aria-expanded", "false");
         dotBtn.setAttribute("title", levelInfo.description || "");
 
@@ -196,7 +197,7 @@ const _createTotalStatRow = (totalCount) => {
 
     const dt = document.createElement("dt");
     dt.className = "stats-label";
-    dt.textContent = browser().i18n.getMessage("statsviewGroupedByClickbaitinessLabelTotal");
+    dt.textContent = browser.i18n.getMessage("statsviewGroupedByClickbaitinessLabelTotal");
 
     const dd = document.createElement("dd");
     dd.className = "stats-count";
@@ -308,8 +309,8 @@ const _createThresholdDivider = () => {
 
     const label = document.createElement("span");
     label.className = "stats-threshold-divider-label";
-    label.textContent = `🪝 ${browser().i18n.getMessage("statsThresholdDividerLabel")}`;
-    divider.setAttribute("title", browser().i18n.getMessage("statsThresholdDividerLabel") || "");
+    label.textContent = `🪝 ${browser.i18n.getMessage("statsThresholdDividerLabel")}`;
+    divider.setAttribute("title", browser.i18n.getMessage("statsThresholdDividerLabel") || "");
 
     divider.appendChild(label);
     return divider;
@@ -328,12 +329,12 @@ const _refreshHomeView = ({ site, pageStats, isSiteEnabled, clickbaitLevelThresh
     // Show appropriate elements and handle errors.
     if (isSiteEnabled === undefined) {
         siteHeaderElem.classList.add("error");
-        siteHeaderElem.textContent = browser().i18n.getMessage("siteTitleProcessingNotSupported");
+        siteHeaderElem.textContent = browser.i18n.getMessage("siteTitleProcessingNotSupported");
         statusTextKey = "homeviewStatusNotSupported";
 
         if (requestSiteBtn) {
             requestSiteBtn.classList.remove("hidden");
-            requestSiteBtn.textContent = browser().i18n.getMessage("homeviewRequestSiteBtn");
+            requestSiteBtn.textContent = browser.i18n.getMessage("homeviewRequestSiteBtn");
         }
     } else {
         if (requestSiteBtn) {
@@ -342,7 +343,7 @@ const _refreshHomeView = ({ site, pageStats, isSiteEnabled, clickbaitLevelThresh
 
         if (!isSiteEnabled) {
             siteHeaderElem.classList.add("error");
-            siteHeaderElem.textContent = browser().i18n.getMessage("siteTitleProcessingDisabled");
+            siteHeaderElem.textContent = browser.i18n.getMessage("siteTitleProcessingDisabled");
             statusTextKey = "homeviewStatusDisabled";
         } else if (pageStats === null) {
             // Live page stats not yet received from content script (push model is async).
@@ -363,7 +364,7 @@ const _refreshHomeView = ({ site, pageStats, isSiteEnabled, clickbaitLevelThresh
     // Populate Home/Status view elements
     const homeviewStatusText = document.getElementById("homeview-status-text");
     if (homeviewStatusText) {
-        homeviewStatusText.textContent = statusTextKey ? browser().i18n.getMessage(statusTextKey) : "";
+        homeviewStatusText.textContent = statusTextKey ? browser.i18n.getMessage(statusTextKey) : "";
     }
 
     const gaugeContainer = document.getElementById("gauge-container");
@@ -391,7 +392,7 @@ const _refreshHomeView = ({ site, pageStats, isSiteEnabled, clickbaitLevelThresh
         // Update gauge label
         const gaugeLabel = document.getElementById("gauge-label");
         if (gaugeLabel && labelI18nKey) {
-            gaugeLabel.textContent = browser().i18n.getMessage(labelI18nKey);
+            gaugeLabel.textContent = browser.i18n.getMessage(labelI18nKey);
         }
     }
 
@@ -500,7 +501,7 @@ const _refreshSettingsView = ({ isConversionEnabled, isDevelopmentEnv, config })
     }
 
     document.getElementById("settingsview-sites-enabled-title").textContent =
-        browser().i18n.getMessage("settingsviewSitesEnabledTitle");
+        browser.i18n.getMessage("settingsviewSitesEnabledTitle");
 };
 
 
@@ -527,7 +528,7 @@ const showView = (viewName) => {
         else if (viewName === "feedback") labelKey = "navigationFeedbackLabel";
         else if (viewName === "settings") labelKey = "navigationSettingsLabel";
         
-        indicator.textContent = labelKey ? browser().i18n.getMessage(labelKey) : "";
+        indicator.textContent = labelKey ? browser.i18n.getMessage(labelKey) : "";
     }
 };
 
@@ -549,21 +550,21 @@ const refresh = async () => {
     // Update settings view master switch
     const settingsviewStatusTitle = document.getElementById("settingsview-status-title");
     if (settingsviewStatusTitle) {
-        settingsviewStatusTitle.textContent = browser().i18n.getMessage("settingsviewStatusTitle");
+        settingsviewStatusTitle.textContent = browser.i18n.getMessage("settingsviewStatusTitle");
     }
     // settingsview-extension-enabled state and label are managed by the master-switch-setting component
 
     // Update settings view clickbait level section
     const settingsviewClickbaitLevelTitle = document.getElementById("settingsview-clickbait-level-title");
     if (settingsviewClickbaitLevelTitle) {
-        settingsviewClickbaitLevelTitle.textContent = browser().i18n.getMessage("settingsviewClickbaitLevelTitle");
+        settingsviewClickbaitLevelTitle.textContent = browser.i18n.getMessage("settingsviewClickbaitLevelTitle");
     }
     // settingsview-clickbait-level is managed by the clickbait-level-horizontal component
 
     // Update settings view database status section title
     const dbTitleEl = document.getElementById("settingsview-database-status-title");
     if (dbTitleEl) {
-        dbTitleEl.textContent = browser().i18n.getMessage("settingsviewDatabaseStatusTitle");
+        dbTitleEl.textContent = browser.i18n.getMessage("settingsviewDatabaseStatusTitle");
     }
     // database-last-updated, database-generation-date, and update-database-btn states are managed by the database-status-setting component
 
@@ -594,7 +595,7 @@ const refresh = async () => {
     const tab = await getActiveTab();
     if (tab) {
         try {
-            conversions = await browser().tabs.sendMessage(tab.id, { 
+            conversions = await browser.tabs.sendMessage(tab.id, { 
                 command: "getConversions", 
                 onlyVisible: true 
             });
@@ -620,7 +621,7 @@ const refresh = async () => {
 
             if (activeConversions.length === 0) {
                 if (noConversionsEl) {
-                    noConversionsEl.textContent = browser().i18n.getMessage("feedbackviewNoConversions");
+                    noConversionsEl.textContent = browser.i18n.getMessage("feedbackviewNoConversions");
                     noConversionsEl.classList.remove("hidden");
                 }
             } else {
@@ -642,7 +643,7 @@ const refresh = async () => {
                 expandoContainer.style.width = "100%";
                 expandoContainer.style.marginTop = "15px";
 
-                const expandoBtnText = browser().i18n.getMessage("feedbackviewShowBelowThresholdBtn", [underThresholdConversions.length]) || `Näytä klikkikynnyksen alittavat otsikot (${underThresholdConversions.length})`;
+                const expandoBtnText = browser.i18n.getMessage("feedbackviewShowBelowThresholdBtn", [underThresholdConversions.length]) || `Näytä klikkikynnyksen alittavat otsikot (${underThresholdConversions.length})`;
 
                 // Render the expando with its previous open/closed state.
                 expandoContainer.replaceChildren(expandoTemplate.content.cloneNode(true));
@@ -701,36 +702,36 @@ const refresh = async () => {
     }
 
     document.getElementById("navi-main").parentElement.title =
-        browser().i18n.getMessage("navigationMainLabel");
+        browser.i18n.getMessage("navigationMainLabel");
     document.getElementById("navi-stats").parentElement.title =
-        browser().i18n.getMessage("navigationStatsLabel");
+        browser.i18n.getMessage("navigationStatsLabel");
     document.getElementById("navi-feedback").parentElement.title =
-        browser().i18n.getMessage("navigationFeedbackLabel");
+        browser.i18n.getMessage("navigationFeedbackLabel");
     document.getElementById("navi-settings").parentElement.title =
-        browser().i18n.getMessage("navigationSettingsLabel");
+        browser.i18n.getMessage("navigationSettingsLabel");
     document.getElementById("open-options").title =
-        browser().i18n.getMessage("navigationSettingsLabel");
+        browser.i18n.getMessage("navigationSettingsLabel");
 
     document.querySelector("label[for=enable-devmode] span").title =
-        browser().i18n.getMessage("devmodeHiddenButtonTitle");
+        browser.i18n.getMessage("devmodeHiddenButtonTitle");
     document.querySelector("label[for=copy-link-signatures]").title =
-        browser().i18n.getMessage("devmodeCopyLinkSignaturesTitle");
+        browser.i18n.getMessage("devmodeCopyLinkSignaturesTitle");
 
     const settingsviewDevmodeTitle = document.getElementById("settingsview-devmode-title");
     if (settingsviewDevmodeTitle) {
-        settingsviewDevmodeTitle.textContent = browser().i18n.getMessage("settingsviewDevmodeTitle");
+        settingsviewDevmodeTitle.textContent = browser.i18n.getMessage("settingsviewDevmodeTitle");
     }
     const devmodeDumpLinkHashLabel = document.getElementById("devmode-dumpLinkHash-label");
     if (devmodeDumpLinkHashLabel) {
-        devmodeDumpLinkHashLabel.textContent = browser().i18n.getMessage("devmodeDumpLinkHashLabel");
+        devmodeDumpLinkHashLabel.textContent = browser.i18n.getMessage("devmodeDumpLinkHashLabel");
     }
     const devmodeDumpLinkHashBtn = document.getElementById("devmode-dumpLinkHash");
     if (devmodeDumpLinkHashBtn) {
-        devmodeDumpLinkHashBtn.textContent = browser().i18n.getMessage("devmodeDumpLinkHashBtn");
+        devmodeDumpLinkHashBtn.textContent = browser.i18n.getMessage("devmodeDumpLinkHashBtn");
     }
     const openOptionsBtn = document.getElementById("open-options-btn");
     if (openOptionsBtn) {
-        openOptionsBtn.textContent = browser().i18n.getMessage("preferencesViewMoreSettingsBtn");
+        openOptionsBtn.textContent = browser.i18n.getMessage("preferencesViewMoreSettingsBtn");
     }
     // Label text is managed by the visual-highlight-setting component
 
@@ -765,7 +766,7 @@ const handleDomContentLoaded = async (e) => {
     const tab = await getActiveTab();
     if (tab) {
         try {
-            window.contentPort = browser().tabs.connect(tab.id, { name: "paatti-popup-direct" });
+            window.contentPort = browser.tabs.connect(tab.id, { name: "paatti-popup-direct" });
             window.contentPort.onMessage.addListener(async (msg) => {
                 if (msg && msg.action === "pageStatsUpdated") {
                     log("Received live pageStats from content script:", msg.pageStats);
@@ -815,14 +816,14 @@ const handleDomContentLoaded = async (e) => {
     // settingsview-clickbait-level inputs and label states are managed by the clickbait-level-horizontal component
     document.getElementById("open-options")
         .addEventListener("click", () => {
-            browser().runtime.openOptionsPage();
+            browser.runtime.openOptionsPage();
             window.close();
         });
 
     const openOptionsBtnEl = document.getElementById("open-options-btn");
     if (openOptionsBtnEl) {
         openOptionsBtnEl.addEventListener("click", () => {
-            browser().runtime.openOptionsPage();
+            browser.runtime.openOptionsPage();
             window.close();
         });
     }
@@ -832,7 +833,7 @@ const handleDomContentLoaded = async (e) => {
         requestSiteBtn.addEventListener("click", async () => {
             const hostname = await getCurrentTabHostname();
             const url = `https://github.com/klikkikuri/paatti/issues?q=is%3Aissue+${encodeURIComponent(hostname)}`;
-            browser().tabs.create({ url });
+            browser.tabs.create({ url });
         });
     }
 
@@ -926,10 +927,10 @@ document.addEventListener("DOMContentLoaded", view.handleDomContentLoaded);
 model.events.addEventListener(modelEvents.enabledChange, view.refresh);
 model.events.addEventListener(modelEvents.statisticsChange, view.refresh);
 // TODO: Maybe refactor this to abstract local storage away (or don't, wtfgas).
-browser().storage.local.onChanged.addListener(view.refresh);
+browser.storage.local.onChanged.addListener(view.refresh);
 
 // Listen for page scroll events sent from the content script and refresh the popup content.
-browser().runtime.onMessage.addListener((message) => {
+browser.runtime.onMessage.addListener((message) => {
     if (message.action === "pageScrolled") {
         // Prevent refreshing if the user has an active feedback typing form open.
         // We query for .feedback-input-container since that is used by feedback-item components.

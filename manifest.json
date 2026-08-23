@@ -38,6 +38,7 @@
     {
       "resources": [
         "icons/klikkikuri-48.png",
+        "src/browser-api.js",
         "src/utils.js",
         "src/model.js",
         "src/controller.js",

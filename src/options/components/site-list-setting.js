@@ -1,4 +1,4 @@
-import { browser } from '../../utils.js';
+import browser from '../../browser-api.js';
 import { getConfig } from '../../config.js';
 import './site-toggle.js';
 
@@ -26,12 +26,12 @@ class SiteListSetting extends HTMLElement {
                 this.render();
             }
         };
-        browser().storage.onChanged.addListener(this.storageListener);
+        browser.storage.onChanged.addListener(this.storageListener);
     }
 
     disconnectedCallback() {
         if (this.storageListener) {
-            browser().storage.onChanged.removeListener(this.storageListener);
+            browser.storage.onChanged.removeListener(this.storageListener);
         }
     }
 

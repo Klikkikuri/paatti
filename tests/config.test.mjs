@@ -12,7 +12,7 @@ let syncGetCalls = 0;
 let mockLocalData = {};
 let mockSyncData = {};
 
-// Mock browser API globally before importing config.js
+// Mock the extension API before the dynamic import below.
 globalThis.chrome = {
   storage: {
     local: {
@@ -39,8 +39,9 @@ globalThis.chrome = {
 const manifestPath = path.join(__dirname, '..', 'manifest.json');
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 
-// Import dynamic getConfig from src/config.js
-import { getConfig } from '../src/config.js';
+// Imported dynamically: a static import is hoisted above the mock above, so browser-api.js
+// would resolve the namespace before globalThis.chrome exists.
+const { getConfig } = await import('../src/config.js');
 
 async function runTests() {
   console.log('Running configuration verification tests...');

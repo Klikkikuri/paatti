@@ -1,7 +1,7 @@
 "use strict";
 
 import { model } from "./model.js";
-import { browser } from "./utils.js";
+import browser from "./browser-api.js";
 
 const LABEL_AI_SLOP = "com.github.klikkikuri/ai-slop=true";
 const LABEL_VIDEO = "com.github.klikkikuri/type=video";
@@ -20,8 +20,8 @@ const titleModifiers = [
          */
         modify: (title, entry) => {
             if (entry.labels && entry.labels.includes(LABEL_AI_SLOP)) {
-                const tooltip = browser()?.i18n?.getMessage("modifierAiSlopTooltip") || "Sisältö on pääosin luotu tai käännetty tekoälyllä.";
-                const label = browser()?.i18n?.getMessage("modifierAiSlopLabel") || "AI";
+                const tooltip = browser?.i18n?.getMessage("modifierAiSlopTooltip") || "Sisältö on pääosin luotu tai käännetty tekoälyllä.";
+                const label = browser?.i18n?.getMessage("modifierAiSlopLabel") || "AI";
                 return {
                     text: title,
                     tagName: "klikkikuri-ai-badge",
@@ -42,8 +42,8 @@ const titleModifiers = [
          */
         modify: (title, entry) => {
             if (entry.labels && entry.labels.includes(LABEL_VIDEO)) {
-                const tooltip = browser()?.i18n?.getMessage("modifierVideoTooltip") || "This link is mostly video rather than a written article.";
-                const label = browser()?.i18n?.getMessage("modifierVideoLabel") || "Video";
+                const tooltip = browser?.i18n?.getMessage("modifierVideoTooltip") || "This link is mostly video rather than a written article.";
+                const label = browser?.i18n?.getMessage("modifierVideoLabel") || "Video";
                 return {
                     text: title,
                     tagName: "klikkikuri-video-badge",

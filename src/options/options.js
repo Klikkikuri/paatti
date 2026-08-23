@@ -1,5 +1,5 @@
 import { getConfig } from '../config.js';
-import { browser } from '../utils.js';
+import browser from '../browser-api.js';
 import { displayProductInfo, getBrowserInfo, formatIsoWithTimezone, localizeDocument } from './utils.js';
 import { model } from '../model.js';
 import { controller } from '../controller.js';
@@ -79,7 +79,7 @@ async function loadSettings() {
         // Database status is managed by the database-status-setting component
     } catch (error) {
         console.error('Error loading settings:', error);
-        showStatus(browser().i18n.getMessage('optionsErrorLoadingSettings') || 'Error loading settings', true);
+        showStatus(browser.i18n.getMessage('optionsErrorLoadingSettings') || 'Error loading settings', true);
     }
 }
 
@@ -122,14 +122,14 @@ async function registerEmail() {
     const submitButton = document.getElementById('submitInvitation');
     const email = emailInput.value.trim();
     if (!email) {
-        showStatus(browser().i18n.getMessage('invitationEmailRequired') || 'Please enter an email address', true);
+        showStatus(browser.i18n.getMessage('invitationEmailRequired') || 'Please enter an email address', true);
         return;
     }
     
     // Disable button during submission
     const originalText = submitButton.textContent;
     submitButton.disabled = true;
-    submitButton.textContent = browser().i18n.getMessage('invitationEmailSending') || 'Sending...';
+    submitButton.textContent = browser.i18n.getMessage('invitationEmailSending') || 'Sending...';
     
     // Placeholder function to simulate email registration
     const action = "https://docs.google.com/forms/d/e/1FAIpQLSf0m5X_EKJume6oSbz5o36CmOVofsNy8F8AjrwOLQ4Tm4B_8g/formResponse";
@@ -151,9 +151,9 @@ async function registerEmail() {
         await model.write.setEmail(email, 'paid');
         
         // Show success state on button
-        submitButton.textContent = browser().i18n.getMessage('invitationEmailSent') || '✓ Sent';
+        submitButton.textContent = browser.i18n.getMessage('invitationEmailSent') || '✓ Sent';
         submitButton.classList.add('success');
-        showStatus(browser().i18n.getMessage('invitationEmailSuccess') || 'Email registered successfully!');
+        showStatus(browser.i18n.getMessage('invitationEmailSuccess') || 'Email registered successfully!');
 
         // Reset button after fade completes
         setTimeout(() => {
@@ -163,7 +163,7 @@ async function registerEmail() {
         }, 3300);
     } catch (error) {
         console.error('Error registering email:', error);
-        showStatus(browser().i18n.getMessage('invitationEmailError') || 'Error registering email', true);
+        showStatus(browser.i18n.getMessage('invitationEmailError') || 'Error registering email', true);
 
         // Reset button on error
         submitButton.textContent = originalText;
@@ -194,10 +194,10 @@ async function setupEventListeners() {
             toggleDebugSettings(val);
             try {
                 await controller.setEnvironment(val);
-                showStatus(browser().i18n.getMessage('envSavedSuccess') || 'Environment saved!');
+                showStatus(browser.i18n.getMessage('envSavedSuccess') || 'Environment saved!');
             } catch (error) {
                 console.error('Error saving environment:', error);
-                showStatus(browser().i18n.getMessage('envSavedError') || 'Error saving environment', true);
+                showStatus(browser.i18n.getMessage('envSavedError') || 'Error saving environment', true);
             }
         });
     });
@@ -249,7 +249,7 @@ async function setupEventListeners() {
                     try {
                         new URL(url);
                     } catch (e) {
-                        const errMsg = browser().i18n.getMessage('devUrlsInvalid', [url]) || `Invalid development URL: ${url}`;
+                        const errMsg = browser.i18n.getMessage('devUrlsInvalid', [url]) || `Invalid development URL: ${url}`;
                         showStatus(errMsg, true);
                         return;
                     }
@@ -257,10 +257,10 @@ async function setupEventListeners() {
                 
                 try {
                     await controller.setDevTitleDataUrls(urls);
-                    showStatus(browser().i18n.getMessage('devUrlsSavedSuccess') || 'Development URLs saved!');
+                    showStatus(browser.i18n.getMessage('devUrlsSavedSuccess') || 'Development URLs saved!');
                 } catch (error) {
                     console.error('Error saving dev URLs:', error);
-                    showStatus(browser().i18n.getMessage('devUrlsSavedError') || 'Error saving development URLs', true);
+                    showStatus(browser.i18n.getMessage('devUrlsSavedError') || 'Error saving development URLs', true);
                 }
             }
         });
@@ -270,7 +270,7 @@ async function setupEventListeners() {
 }
 
 // Keep options page synchronized with settings changes from other parts of the extension (e.g. popup)
-browser().storage.onChanged.addListener(async (changes, area) => {
+browser.storage.onChanged.addListener(async (changes, area) => {
     console.log("Storage changed, reloading settings in options page");
     await loadSettings();
     await renderAbout();
@@ -367,7 +367,7 @@ function setAboutHtml(id, html) {
  * Gathers data from manifest, config, model, and navigator.
  */
 async function renderAbout() {
-    const manifest = browser().runtime.getManifest();
+    const manifest = browser.runtime.getManifest();
     const config = await getConfig();
     const status = await model.read.getDatabaseStatus();
 
@@ -400,12 +400,12 @@ async function renderAbout() {
     const activeModifiers = Object.entries(modifiers)
         .filter(([, enabled]) => enabled)
         .map(([name]) => name);
-    const noneText = browser().i18n.getMessage('aboutNone') || 'none';
+    const noneText = browser.i18n.getMessage('aboutNone') || 'none';
     setAboutField('about-modifiers', activeModifiers.length ? activeModifiers.join(', ') : noneText);
 
     // Enabled sites — if global toggle is off, show that instead of listing sites
     if (!config.enabled) {
-        setAboutField('about-sites', browser().i18n.getMessage('aboutExtensionDisabled') || 'extension disabled');
+        setAboutField('about-sites', browser.i18n.getMessage('aboutExtensionDisabled') || 'extension disabled');
     } else {
         const sitesEnabled = await model.read.getSitesEnabled();
         const enabledSites = Object.entries(sitesEnabled)
@@ -418,7 +418,7 @@ async function renderAbout() {
     const specialDay = document.getElementById('special-day');
     const specialDayKey = specialDayMessageKey(new Date());
     if (specialDay) {
-        if (specialDayKey) setAboutHtml('special-day-reason', browser().i18n.getMessage(specialDayKey));
+        if (specialDayKey) setAboutHtml('special-day-reason', browser.i18n.getMessage(specialDayKey));
         specialDay.classList.toggle('visible', Boolean(specialDayKey));
     }
 

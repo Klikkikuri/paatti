@@ -13,7 +13,8 @@ let hrefSign;
 (async () => {
     ////////////////////////////////////////////////////////////////////////////
     // Import modules.
-    const browser = (typeof globalThis.browser !== "undefined" ? globalThis.browser : globalThis.chrome);
+    // Resolved inline, not imported: this file needs runtime.getURL() before it can import browser-api.js.
+    const browser = globalThis.browser ?? globalThis.chrome;
     const { model: model, modelEvents: modelEvents, klikkikuriStatus: klikkikuriStatus } = await import(browser.runtime.getURL("src/model.js"));
     const { controller } = await import(browser.runtime.getURL("src/controller.js"));
     const { getLogger, debounce, canAppendSpan } = await import(browser.runtime.getURL("src/utils.js"));
@@ -449,8 +450,7 @@ let hrefSign;
 
     const observer = new MutationObserver((mutations) => {
         // Check if extension context was invalidated (e.g. extension updated/reloaded)
-        const browserObj = (typeof globalThis.browser !== "undefined" ? globalThis.browser : globalThis.chrome);
-        if (!browserObj || !browserObj.runtime || !browserObj.runtime.id) {
+        if (!browser.runtime?.id) {
             log("Extension context is invalidated. Disconnecting MutationObserver.");
             observer.disconnect();
             return;
@@ -662,9 +662,8 @@ let hrefSign;
 
     // Send a message to the popup when the user scrolls the page.
     window.addEventListener("scroll", debounce(() => {
-        const browserObj = (typeof globalThis.browser !== "undefined" ? globalThis.browser : globalThis.chrome);
-        if (browserObj && browserObj.runtime && browserObj.runtime.id) {
-            browserObj.runtime.sendMessage({ action: "pageScrolled" }).catch((err) => {
+        if (browser.runtime?.id) {
+            browser.runtime.sendMessage({ action: "pageScrolled" }).catch((err) => {
                 // Ignore error when popup/background is not listening.
             });
         }

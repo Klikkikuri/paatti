@@ -1,4 +1,5 @@
-import { browser, getCurrentTabHostname } from '../../utils.js';
+import browser from '../../browser-api.js';
+import { getCurrentTabHostname } from '../../utils.js';
 import { model } from '../../model.js';
 import { getConfig } from '../../config.js';
 import { isSiteEnabled } from '../utils.js';
@@ -44,7 +45,7 @@ export class PowerButton extends HTMLElement {
 
         // Auto-sync status when settings are changed elsewhere
         this.storageListener = () => this.sync();
-        browser().storage.onChanged.addListener(this.storageListener);
+        browser.storage.onChanged.addListener(this.storageListener);
     }
 
     /**
@@ -52,7 +53,7 @@ export class PowerButton extends HTMLElement {
      */
     disconnectedCallback() {
         if (this.storageListener) {
-            browser().storage.onChanged.removeListener(this.storageListener);
+            browser.storage.onChanged.removeListener(this.storageListener);
         }
     }
 
@@ -62,7 +63,7 @@ export class PowerButton extends HTMLElement {
     render() {
         this.replaceChildren(template.content.cloneNode(true));
         
-        const localizedLabel = browser().i18n.getMessage("powerButtonAriaLabel") || "Toggle extension for current site";
+        const localizedLabel = browser.i18n.getMessage("powerButtonAriaLabel") || "Toggle extension for current site";
         
         const checkbox = this.querySelector('input');
         if (checkbox) {
@@ -109,7 +110,7 @@ export class PowerButton extends HTMLElement {
         
         // Query permissions
         const hasPermission = this.origins.length > 0 
-            ? await browser().permissions.contains({ origins: this.origins }) 
+            ? await browser.permissions.contains({ origins: this.origins }) 
             : false;
         
         this.hasPermission = hasPermission;

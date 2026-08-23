@@ -1,4 +1,4 @@
-import { browser } from '../../utils.js';
+import browser from '../../browser-api.js';
 import { controller } from '../../controller.js';
 import { model } from '../../model.js';
 import { affectsEasterEgg } from '../easter-egg.js';
@@ -60,13 +60,13 @@ class EasterEggSetting extends HTMLElement {
             if (!affectsEasterEgg(changes, areaName)) return;
             this.sync(input);
         };
-        browser().storage.onChanged.addListener(this.#storageListener);
+        browser.storage.onChanged.addListener(this.#storageListener);
     }
 
     disconnectedCallback() {
         if (!this.#storageListener) return;
 
-        browser().storage.onChanged.removeListener(this.#storageListener);
+        browser.storage.onChanged.removeListener(this.#storageListener);
         this.#storageListener = null;
     }
 
@@ -109,7 +109,7 @@ class EasterEggSetting extends HTMLElement {
                 detail: {
                     ...detail,
                     success: true,
-                    message: browser().i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
+                    message: browser.i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
                 }
             }));
         } catch (err) {
@@ -124,7 +124,7 @@ class EasterEggSetting extends HTMLElement {
                 detail: {
                     ...detail,
                     success: false,
-                    message: browser().i18n.getMessage('settingSavedError') || 'Error saving setting'
+                    message: browser.i18n.getMessage('settingSavedError') || 'Error saving setting'
                 }
             }));
         }

@@ -1,6 +1,7 @@
 "use strict";
 
-import { getLogger, browser } from "./utils.js";
+import browser from "./browser-api.js";
+import { getLogger } from "./utils.js";
 import { getConfig } from "./config.js";
 
 const log = getLogger("model");
@@ -184,31 +185,31 @@ const model = (() => {
             setEnabled: async (value, hostname) => {
                 if (hostname) {
                     log(`Enabling '${hostname}' == ${value}`);
-                    const data = await browser().storage.sync.get("userSiteOverrides");
+                    const data = await browser.storage.sync.get("userSiteOverrides");
                     const overrides = data.userSiteOverrides || {};
                     overrides[hostname] = overrides[hostname] || {};
                     overrides[hostname].enabled = value;
-                    await browser().storage.sync.set({ userSiteOverrides: overrides });
+                    await browser.storage.sync.set({ userSiteOverrides: overrides });
                 } else {
                     // Global enabled
                     log(`Enabling conversion == ${value}`);
-                    const data = await browser().storage.local.get("userPreferences");
+                    const data = await browser.storage.local.get("userPreferences");
                     const userPreferences = data.userPreferences || {};
                     userPreferences.enabled = value;
-                    await browser().storage.local.set({ userPreferences });
+                    await browser.storage.local.set({ userPreferences });
                 }
 
                 events.dispatchEvent(modelEvents.enabledChange);
             },
 
             setEnvironment: async (value) => {
-                const data = await browser().storage.local.get("userPreferences");
+                const data = await browser.storage.local.get("userPreferences");
                 const userPreferences = data.userPreferences || {};
                 const oldEnv = userPreferences.environment || "Unknown";
                 log(`Setting environment from '${oldEnv}' to ${value}`);
 
                 userPreferences.environment = value;
-                await browser().storage.local.set({ userPreferences });
+                await browser.storage.local.set({ userPreferences });
 
                 events.dispatchEvent(modelEvents.environmentChange);
             },
@@ -216,27 +217,27 @@ const model = (() => {
 
 
             setDebugVisualsEnabled: async (value) => {
-                const data = await browser().storage.local.get("userPreferences");
+                const data = await browser.storage.local.get("userPreferences");
                 const userPreferences = data.userPreferences || {};
                 userPreferences.debugVisualsEnabled = value;
-                await browser().storage.local.set({ userPreferences });
+                await browser.storage.local.set({ userPreferences });
             },
 
             setVisualHighlightEnabled: async (value) => {
-                await browser().storage.local.set({ visualHighlightEnabled: value });
+                await browser.storage.local.set({ visualHighlightEnabled: value });
             },
 
             setRefreshIntervalMinutes: async (value) => {
                 log(`Setting refresh interval minutes to ${value}`);
-                const data = await browser().storage.local.get("userPreferences");
+                const data = await browser.storage.local.get("userPreferences");
                 const userPreferences = data.userPreferences || {};
                 userPreferences.refreshIntervalMinutes = value;
-                await browser().storage.local.set({ userPreferences });
+                await browser.storage.local.set({ userPreferences });
             },
 
             setDevTitleDataUrls: async (urls) => {
                 log(`Setting development title data URLs:`, urls);
-                const data = await browser().storage.local.get("userPreferences");
+                const data = await browser.storage.local.get("userPreferences");
                 const userPreferences = data.userPreferences || {};
                 if (!userPreferences.environmentConfigs) {
                     userPreferences.environmentConfigs = {};
@@ -245,7 +246,7 @@ const model = (() => {
                     userPreferences.environmentConfigs.development = {};
                 }
                 userPreferences.environmentConfigs.development.titleDataUrls = urls;
-                await browser().storage.local.set({ userPreferences });
+                await browser.storage.local.set({ userPreferences });
             },
 
             setEasterEggProbability: async (value, env) => {
@@ -257,21 +258,21 @@ const model = (() => {
                 const clamped = clampProbability(value);
                 log(`Setting easter egg probability for environment '${env}' to ${clamped}`);
 
-                const data = await browser().storage.sync.get("environmentConfigs");
+                const data = await browser.storage.sync.get("environmentConfigs");
                 const environmentConfigs = data.environmentConfigs || {};
                 if (!environmentConfigs[env]) {
                     environmentConfigs[env] = {};
                 }
                 environmentConfigs[env].easterEggProbability = clamped;
-                await browser().storage.sync.set({ environmentConfigs });
+                await browser.storage.sync.set({ environmentConfigs });
             },
 
             setClickbaitLevel: async (value) => {
                 log(`Setting clickbait level to ${value}`);
-                const data = await browser().storage.local.get("userPreferences");
+                const data = await browser.storage.local.get("userPreferences");
                 const userPreferences = data.userPreferences || {};
                 userPreferences.clickbaitLevel = value;
-                await browser().storage.local.set({ userPreferences });
+                await browser.storage.local.set({ userPreferences });
             },
 
             /**
@@ -283,7 +284,7 @@ const model = (() => {
              */
             addStatistics: async (delta, { domain }) => {
                 log(`Adding stats delta for domain '${domain}'`);
-                const data = await browser().storage.local.get("statistics");
+                const data = await browser.storage.local.get("statistics");
                 const statistics = data.statistics || {};
 
                 // Merge incoming clickbaitiness counts into the domain's cumulative totals.
@@ -304,28 +305,28 @@ const model = (() => {
                 statistics._global.totalConversions =
                     (statistics._global.totalConversions || 0) + (delta.convertedCount || 0);
 
-                await browser().storage.local.set({ statistics });
+                await browser.storage.local.set({ statistics });
                 log(`Stored cumulative stats for '${domain}':`, statistics[domain]);
 
                 events.dispatchEvent(modelEvents.statisticsChange);
             },
 
             setTitleDataUrl: async (value) => {
-                const data = await browser().storage.local.get("userPreferences");
+                const data = await browser.storage.local.get("userPreferences");
                 const userPreferences = data.userPreferences || {};
                 if (!userPreferences.titleDataUrls) {
                     userPreferences.titleDataUrls = [];
                 }
                 userPreferences.titleDataUrls = [value];
-                await browser().storage.local.set({ userPreferences });
+                await browser.storage.local.set({ userPreferences });
                 // TODO: Need event here or just manually do it at controller?
             },
 
             setTestTitleDataUrl: async (value) => {
-                const data = await browser().storage.local.get("userPreferences");
+                const data = await browser.storage.local.get("userPreferences");
                 const userPreferences = data.userPreferences || {};
                 userPreferences.testTitleDataUrl = value;
-                await browser().storage.local.set({ userPreferences });
+                await browser.storage.local.set({ userPreferences });
             },
 
             setEmail: async (value, env) => {
@@ -334,7 +335,7 @@ const model = (() => {
                     env = await getConfig().then(cfg => cfg.activeEnv);
                 }
                 log(`Setting email for environment '${env}' to '${value}'`);
-                const data = await browser().storage.local.get("userPreferences");
+                const data = await browser.storage.local.get("userPreferences");
                 const userPreferences = data.userPreferences || {};
                 if (!userPreferences.environmentConfigs) {
                     userPreferences.environmentConfigs = {};
@@ -343,15 +344,15 @@ const model = (() => {
                     userPreferences.environmentConfigs[env] = {};
                 }
                 userPreferences.environmentConfigs[env].email = value;
-                await browser().storage.local.set({ userPreferences });
+                await browser.storage.local.set({ userPreferences });
             },
 
             setModifierEnabled: async (name, value) => {
                 log(`Setting modifier '${name}' to ${value} in sync storage`);
-                const syncData = await browser().storage.sync.get("modifiers");
+                const syncData = await browser.storage.sync.get("modifiers");
                 const modifiers = syncData.modifiers || {};
                 modifiers[name] = value;
-                await browser().storage.sync.set({ modifiers });
+                await browser.storage.sync.set({ modifiers });
             },
 
         },
@@ -359,8 +360,8 @@ const model = (() => {
         read: {
             toString: async () => {
                 const [local, sync] = await Promise.all([
-                    browser().storage.local.get(),
-                    browser().storage.sync.get()
+                    browser.storage.local.get(),
+                    browser.storage.sync.get()
                 ]);
                 return JSON.stringify({ local, sync }, null, 4);
             },
@@ -401,7 +402,7 @@ const model = (() => {
             },
 
             getVisualHighlightEnabled: async () => {
-                const data = await browser().storage.local.get("visualHighlightEnabled");
+                const data = await browser.storage.local.get("visualHighlightEnabled");
                 if (data.hasOwnProperty("visualHighlightEnabled")) {
                     return !!data.visualHighlightEnabled;
                 }
@@ -410,7 +411,7 @@ const model = (() => {
             },
 
             getDatabaseStatus: async () => {
-                const data = await browser().storage.local.get(["lastDatabaseUpdate", "databaseGenerationDate"]);
+                const data = await browser.storage.local.get(["lastDatabaseUpdate", "databaseGenerationDate"]);
                 return {
                     lastDatabaseUpdate: data.lastDatabaseUpdate || null,
                     databaseGenerationDate: data.databaseGenerationDate || null
@@ -435,14 +436,14 @@ const model = (() => {
              * that costs one page one day of a different calendar, and no more.
              */
             getEasterEggSalt: async () => {
-                const data = await browser().storage.local.get("easterEggSalt");
+                const data = await browser.storage.local.get("easterEggSalt");
                 if (typeof data.easterEggSalt === "string" && data.easterEggSalt) {
                     return data.easterEggSalt;
                 }
 
                 const salt = crypto.randomUUID();
                 log("Generating an easter egg salt for this install");
-                await browser().storage.local.set({ easterEggSalt: salt });
+                await browser.storage.local.set({ easterEggSalt: salt });
 
                 return salt;
             },
@@ -501,7 +502,7 @@ const model = (() => {
             },
 
             getStatistics: async (hostname) => {
-                const data = await browser().storage.local.get("statistics");
+                const data = await browser.storage.local.get("statistics");
                 const statistics = data.statistics || {};
                 log("The full statistics in store: ", statistics);
 
@@ -512,7 +513,7 @@ const model = (() => {
             },
 
             getGlobalStatistics: async () => {
-                const data = await browser().storage.local.get("statistics");
+                const data = await browser.storage.local.get("statistics");
                 const statistics = data.statistics || {};
                 return statistics._global || { totalConversions: 0 };
             },
