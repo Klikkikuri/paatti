@@ -1,116 +1,63 @@
-import assert from 'assert';
+import test from 'node:test';
+import assert from 'node:assert/strict';
 
-let mockModifiers = {
-    aiSlop: true,
-    video: true
-};
+import { createFakeBrowser } from './helpers/fake-browser.mjs';
 
-let changeListeners = [];
-
-// Global browser API mock for testing
-globalThis.browser = {
-    storage: {
-        local: {
-            get: async () => ({})
-        },
-        sync: {
-            get: async (keys) => {
-                return { modifiers: mockModifiers };
-            }
-        },
-        onChanged: {
-            // Store all listeners so multiple modules can subscribe without clobbering each other
-            addListener: (fn) => {
-                changeListeners.push(fn);
-            }
-        }
-    },
-    i18n: {
-        getMessage: (key) => {
-            const messages = {
-                modifierAiSlopTitle: "AI Content Marker",
-                modifierAiSlopDesc: "Displays an indicator on headlines for content exhibiting characteristics typical of AI-generated or AI-translated material.",
-                modifierAiSlopLabel: "AI",
-                modifierAiSlopTooltip: "Content exhibits characteristics typical of AI-generated or AI-translated material.",
-                modifierVideoTitle: "Video Content Marker",
-                modifierVideoDesc: "Shows a video icon next to headlines when the link is mostly video rather than a written article.",
-                modifierVideoLabel: "Video",
-                modifierVideoTooltip: "This link is mostly video rather than a written article."
-            };
-            return messages[key] || "";
-        }
+const fake = createFakeBrowser({
+    sync: { modifiers: { aiSlop: true, video: true } },
+    messages: {
+        modifierAiSlopTitle: 'AI Content Marker',
+        modifierAiSlopDesc: 'Displays an indicator on headlines for content exhibiting characteristics typical of AI-generated or AI-translated material.',
+        modifierAiSlopLabel: 'AI',
+        modifierAiSlopTooltip: 'Content exhibits characteristics typical of AI-generated or AI-translated material.',
+        modifierVideoTitle: 'Video Content Marker',
+        modifierVideoDesc: 'Shows a video icon next to headlines when the link is mostly video rather than a written article.',
+        modifierVideoLabel: 'Video',
+        modifierVideoTooltip: 'This link is mostly video rather than a written article.'
     }
-};
+});
+globalThis.browser = fake.browser;
 
 const { applyModifiers } = await import('../src/modifiers.js');
 
-function setModifiers(newModifiers) {
-    mockModifiers = { ...newModifiers };
-    changeListeners.forEach(fn => fn({}, "sync"));
-}
+/** Writing the key for real is what invalidates the config cache, as it does at runtime. */
+const setModifiers = (modifiers) => fake.browser.storage.sync.set({ modifiers });
 
-async function runTests() {
-    console.log("Running title modifiers tests...");
+test('the video modifier applies a badge when enabled and the label matches', async () => {
+    await setModifiers({ aiSlop: false, video: true });
 
-    // Test 1: Video modifier adds video badge when label is present and modifier is enabled
-    setModifiers({ aiSlop: false, video: true });
-    {
-        const entry = {
-            labels: ["com.github.klikkikuri/type=video"]
-        };
-        const result = await applyModifiers("Test Video Title", entry);
-        assert.strictEqual(result.text, "Test Video Title");
-        assert.strictEqual(result.badges.length, 1);
-        assert.strictEqual(result.badges[0].tagName, "klikkikuri-video-badge");
-        assert.strictEqual(result.badges[0].badgeText, "Video");
-        assert.strictEqual(result.badges[0].tooltip, "This link is mostly video rather than a written article.");
-        console.log("✅ Passed: Video modifier applies video badge when enabled and label matches");
-    }
+    const result = await applyModifiers('Test Video Title', { labels: ['com.github.klikkikuri/type=video'] });
 
-    // Test 2: Video modifier is ignored when disabled
-    setModifiers({ aiSlop: false, video: false });
-    {
-        const entry = {
-            labels: ["com.github.klikkikuri/type=video"]
-        };
-        const result = await applyModifiers("Test Video Title", entry);
-        assert.strictEqual(result.text, "Test Video Title");
-        assert.strictEqual(result.badges.length, 0);
-        console.log("✅ Passed: Video modifier is ignored when disabled in settings");
-    }
+    assert.equal(result.text, 'Test Video Title');
+    assert.equal(result.badges.length, 1);
+    assert.equal(result.badges[0].tagName, 'klikkikuri-video-badge');
+    assert.equal(result.badges[0].badgeText, 'Video');
+    assert.equal(result.badges[0].tooltip, 'This link is mostly video rather than a written article.');
+});
 
-    // Test 3: Multiple modifiers apply sequentially (both AI and Video)
-    setModifiers({ aiSlop: true, video: true });
-    {
-        const entry = {
-            labels: [
-                "com.github.klikkikuri/ai-slop=true",
-                "com.github.klikkikuri/type=video"
-            ]
-        };
-        const result = await applyModifiers("Combined Title", entry);
-        assert.strictEqual(result.text, "Combined Title");
-        assert.strictEqual(result.badges.length, 2);
-        assert.strictEqual(result.badges[0].tagName, "klikkikuri-ai-badge");
-        assert.strictEqual(result.badges[1].tagName, "klikkikuri-video-badge");
-        console.log("✅ Passed: Multiple active modifiers apply badges in sequence");
-    }
+test('the video modifier is ignored when disabled in settings', async () => {
+    await setModifiers({ aiSlop: false, video: false });
 
-    // Test 4: Unlabeled entry gets no badges
-    {
-        const entry = {
-            labels: ["com.github.klikkikuri/article-type=article"]
-        };
-        const result = await applyModifiers("Normal Title", entry);
-        assert.strictEqual(result.text, "Normal Title");
-        assert.strictEqual(result.badges.length, 0);
-        console.log("✅ Passed: Unlabeled entries receive no modifier badges");
-    }
+    const result = await applyModifiers('Test Video Title', { labels: ['com.github.klikkikuri/type=video'] });
 
-    console.log("\n✅ All modifiers tests passed successfully.");
-}
+    assert.equal(result.text, 'Test Video Title');
+    assert.equal(result.badges.length, 0);
+});
 
-runTests().catch((err) => {
-    console.error("❌ Test failure:", err);
-    process.exit(1);
+test('multiple active modifiers apply badges in sequence', async () => {
+    await setModifiers({ aiSlop: true, video: true });
+
+    const result = await applyModifiers('Combined Title', {
+        labels: ['com.github.klikkikuri/ai-slop=true', 'com.github.klikkikuri/type=video']
+    });
+
+    assert.equal(result.text, 'Combined Title');
+    assert.deepEqual(result.badges.map((badge) => badge.tagName), ['klikkikuri-ai-badge', 'klikkikuri-video-badge']);
+});
+
+test('unlabeled entries receive no modifier badges', async () => {
+    const result = await applyModifiers('Normal Title', { labels: ['com.github.klikkikuri/article-type=article'] });
+
+    assert.equal(result.text, 'Normal Title');
+    assert.equal(result.badges.length, 0);
 });

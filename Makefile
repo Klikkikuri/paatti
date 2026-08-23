@@ -131,15 +131,11 @@ lint:
 lint-webext: dist
 	-web-ext lint --source-dir $(DIST_DIR)
 
+# An explicit glob, not a bare `node --test`: the latter sweeps the whole tree and would
+# pick up suola's own smoke test, which test-wasm below runs deliberately and with an
+# argument. Node resolves the pattern itself, so keep it quoted.
 test: test-wasm
-	node tests/config.test.mjs
-	node tests/utils.test.mjs
-	node tests/rahti.test.mjs
-	node tests/modifiers.test.mjs
-	node tests/faviconCache.test.mjs
-	node tests/stats.test.mjs
-	node tests/easter-egg.test.mjs
-	node tests/browser-namespace.test.mjs
+	node --test 'tests/**/*.test.mjs'
 
 # suola's own smoke test for the browser module, run against the artifacts
 # staged in $(BUILD_DIR). It is the only check that js.wasm loads and signs
