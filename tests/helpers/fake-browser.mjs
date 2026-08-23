@@ -92,13 +92,18 @@ function createFakeBrowser({ local = {}, sync = {}, messages = {} } = {}) {
 
             get: async (query) => {
                 reads[areaName]++;
+                // Answered from the state at call time, as a real read is: a parked read that
+                // lands after a later write still delivers what it saw.
+                const answer = selectKeys(store(), query);
+
                 // deferNextGet() parks this read so a test can resolve two reads out of order.
                 const gate = pendingGets[areaName];
                 if (gate) {
                     pendingGets[areaName] = null;
                     await gate;
                 }
-                return selectKeys(store(), query);
+
+                return answer;
             },
 
             set: async (items) => {
