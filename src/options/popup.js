@@ -2,9 +2,9 @@
 
 import browser from "../browser-api.js";
 import { getLogger, getActiveTab, getCurrentTabHostname } from "../utils.js";
-import { model, modelEvents, Clickbaitiness } from "../model.js";
+import { model, Clickbaitiness } from "../model.js";
 import { controller } from "../controller.js";
-import { getConfig } from "../config.js";
+import { getConfig, onConfigValue } from "../config.js";
 import { computeGaugeValue } from "../stats.js";
 import { isSiteEnabled, getClickbaitLevelInfo, localizeDocument } from "./utils.js";
 import "./components/site-toggle.js";
@@ -924,10 +924,23 @@ document.addEventListener("DOMContentLoaded", view.handleDomContentLoaded);
 // "We have events at home."
 ///////////////////////////////////////////////////////////////////////////////
 
-model.events.addEventListener(modelEvents.enabledChange, view.refresh);
-model.events.addEventListener(modelEvents.statisticsChange, view.refresh);
-// TODO: Maybe refactor this to abstract local storage away (or don't, wtfgas).
-browser.storage.local.onChanged.addListener(view.refresh);
+// Everything the popup renders out of the config, flat so it compares exactly.
+onConfigValue(
+    (config) => [
+        config.enabled,
+        config.activeEnv,
+        config.clickbaitLevel,
+        ...Object.values(config.siteConfigs).map((site) => site.enabled)
+    ],
+    view.refresh
+);
+
+// Statistics are their own local key, written by the content script and the worker,
+// so they never reach the popup through the config.
+browser.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== "local" || !("statistics" in changes)) return;
+    view.refresh();
+});
 
 // Listen for page scroll events sent from the content script and refresh the popup content.
 browser.runtime.onMessage.addListener((message) => {
