@@ -81,16 +81,6 @@ class VisualHighlightSetting extends ComponentBase {
     async loadState(toggleBtn, layout) {
         await this.sync(toggleBtn);
 
-        const innerCheckbox = toggleBtn.querySelector('input');
-        if (innerCheckbox) {
-            innerCheckbox.id = layout === 'compact' ? 'devmode-setDebugVisuals' : 'debugVisuals';
-            if (layout === 'compact') {
-                innerCheckbox.classList.add('toggle');
-            } else {
-                innerCheckbox.classList.add('conversion-switch');
-            }
-        }
-
         // Handle clicking anywhere in the card (layout !== 'compact')
         const labelCard = this.querySelector('.setting-label');
         if (labelCard && layout !== 'compact') {

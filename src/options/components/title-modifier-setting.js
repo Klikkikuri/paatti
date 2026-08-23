@@ -112,16 +112,6 @@ class TitleModifierSetting extends ComponentBase {
      * Wire up the control. The checked state itself arrives from onConfigValue.
      */
     loadState(toggleBtn, modifier, layout) {
-        const innerCheckbox = toggleBtn.querySelector('input');
-        if (innerCheckbox) {
-            innerCheckbox.id = `modifier-${modifier}-input`;
-            if (layout === 'compact') {
-                innerCheckbox.classList.add('toggle');
-            } else {
-                innerCheckbox.classList.add('conversion-switch');
-            }
-        }
-
         // Handle clicking anywhere in the card (layout !== 'compact')
         const labelCard = this.querySelector('.setting-label');
         if (labelCard && layout !== 'compact') {
