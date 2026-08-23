@@ -1,0 +1,14 @@
+/**
+ * <site-list-setting> -- the options page's list of per-site rows.
+ *
+ * The rows style themselves; this only lays them out.
+ */
+
+site-list-setting {
+    display: block;
+}
+
+site-list-setting .site-list {
+    display: grid;
+    gap: 10px;
+}
