@@ -2,6 +2,7 @@ import browser from '../../browser-api.js';
 import { getLogger, sanitizeUrlForFeedback } from '../../utils.js';
 import { getConfig } from '../../config.js';
 import { model, Clickbaitiness } from '../../model.js';
+import { defineComponent } from './component-utils.js';
 
 const log = getLogger('components/feedback-item');
 
@@ -513,4 +514,4 @@ class FeedbackItem extends HTMLElement {
     }
 }
 
-customElements.define('feedback-item', FeedbackItem);
+defineComponent('feedback-item', FeedbackItem);

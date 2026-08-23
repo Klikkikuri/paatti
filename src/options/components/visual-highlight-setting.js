@@ -4,6 +4,7 @@ import { onConfigValue } from '../../config.js';
 import { model } from '../../model.js';
 import { localizeDocument } from '../utils.js';
 import './toggle-button.js';
+import { ComponentBase, defineComponent } from './component-utils.js';
 
 const compactTemplate = document.createElement('template');
 compactTemplate.innerHTML = `
@@ -28,11 +29,8 @@ detailedTemplate.innerHTML = `
  * Custom element managing the Visual Highlight / Debug Visuals setting.
  * Supports layout="compact" (popup settings list item) and layout="detailed" (options page).
  */
-class VisualHighlightSetting extends HTMLElement {
-    #unsubscribe = null;
-    #storageListener = null;
-
-    connectedCallback() {
+class VisualHighlightSetting extends ComponentBase {
+    onConnect() {
         const layout = this.getAttribute('layout') || 'detailed';
 
         if (layout === 'compact') {
@@ -54,29 +52,17 @@ class VisualHighlightSetting extends HTMLElement {
 
         // The state lives in a local key of its own, with the config only as a fallback,
         // so it takes both a config subscription and a listener for that key.
-        this.#unsubscribe = onConfigValue(
+        this.addTeardown(onConfigValue(
             (config) => config.debugVisualsEnabled,
             () => this.sync(toggleBtn)
-        );
+        ));
 
-        this.#storageListener = (changes, areaName) => {
+        const onStorageChanged = (changes, areaName) => {
             if (areaName !== 'local' || !('visualHighlightEnabled' in changes)) return;
             this.sync(toggleBtn);
         };
-        browser.storage.onChanged.addListener(this.#storageListener);
-    }
-
-    disconnectedCallback() {
-        // Two independent subscriptions, so each is guarded on its own field.
-        if (this.#unsubscribe) {
-            this.#unsubscribe();
-            this.#unsubscribe = null;
-        }
-
-        if (this.#storageListener) {
-            browser.storage.onChanged.removeListener(this.#storageListener);
-            this.#storageListener = null;
-        }
+        browser.storage.onChanged.addListener(onStorageChanged);
+        this.addTeardown(() => browser.storage.onChanged.removeListener(onStorageChanged));
     }
 
     /**
@@ -115,7 +101,7 @@ class VisualHighlightSetting extends HTMLElement {
                     bubbles: true,
                     detail: { checked: toggleBtn.checked }
                 }));
-            });
+            }, { signal: this.signal });
         }
 
         toggleBtn.addEventListener('toggle-change', async (e) => {
@@ -148,8 +134,8 @@ class VisualHighlightSetting extends HTMLElement {
                     }));
                 }
             }
-        });
+        }, { signal: this.signal });
     }
 }
 
-customElements.define('visual-highlight-setting', VisualHighlightSetting);
+defineComponent('visual-highlight-setting', VisualHighlightSetting);

@@ -2,6 +2,7 @@ import { ClickbaitLevelBase } from './clickbait-level-base.js';
 import { controller } from '../../controller.js';
 import browser from '../../browser-api.js';
 import { getClickbaitLevelInfo } from '../utils.js';
+import { defineComponent } from './component-utils.js';
 
 /**
  * Detailed vertical clickbait level slider custom element for options view.
@@ -103,4 +104,4 @@ class ClickbaitLevelVertical extends ClickbaitLevelBase {
     }
 }
 
-customElements.define('clickbait-level-vertical', ClickbaitLevelVertical);
+defineComponent('clickbait-level-vertical', ClickbaitLevelVertical);

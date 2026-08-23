@@ -4,6 +4,7 @@ import { isSiteEnabled } from '../utils.js';
 import { getConfig } from '../../config.js';
 import './toggle-button.js';
 import './favicon-img.js';
+import { defineComponent } from './component-utils.js';
 const compactTemplate = document.createElement('template');
 compactTemplate.innerHTML = `
     <style>
@@ -323,4 +324,4 @@ export async function handleSiteToggleHelper(checked, domain, origins, currentHa
     }
 }
 
-customElements.define('site-toggle-setting', SiteToggleSetting);
+defineComponent('site-toggle-setting', SiteToggleSetting);

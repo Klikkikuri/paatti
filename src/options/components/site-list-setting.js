@@ -1,5 +1,6 @@
 import { getConfig } from '../../config.js';
 import './site-toggle.js';
+import { defineComponent } from './component-utils.js';
 
 /**
  * Custom element managing the list of site-specific toggle settings in the options page.
@@ -39,4 +40,4 @@ class SiteListSetting extends HTMLElement {
     }
 }
 
-customElements.define('site-list-setting', SiteListSetting);
+defineComponent('site-list-setting', SiteListSetting);

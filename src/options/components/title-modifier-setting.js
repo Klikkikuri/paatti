@@ -4,6 +4,7 @@ import { onConfigValue } from '../../config.js';
 import './toggle-button.js';
 import '../../components/klikkikuri-ai-badge.js';
 import '../../components/klikkikuri-video-badge.js';
+import { ComponentBase, defineComponent } from './component-utils.js';
 
 const compactTemplate = document.createElement('template');
 compactTemplate.innerHTML = `
@@ -55,10 +56,8 @@ const MODIFIER_META = {
  * Custom element managing title modifier options (e.g. Tekoälymerkintä / AI Slop, Videomerkintä / Video).
  * Supports layout="compact" (popup setting) and layout="detailed" (options page).
  */
-class TitleModifierSetting extends HTMLElement {
-    #unsubscribe = null;
-
-    connectedCallback() {
+class TitleModifierSetting extends ComponentBase {
+    onConnect() {
         const modifier = this.getAttribute('modifier') || 'aiSlop';
         const layout = this.getAttribute('layout') || 'detailed';
         const meta = MODIFIER_META[modifier];
@@ -103,17 +102,10 @@ class TitleModifierSetting extends HTMLElement {
         this.loadState(toggleBtn, modifier, layout);
 
         // Selects this modifier alone, so the other one's writes do not wake it.
-        this.#unsubscribe = onConfigValue(
+        this.addTeardown(onConfigValue(
             (config) => Boolean(config.modifiers?.[modifier]),
             (enabled) => { toggleBtn.checked = enabled; }
-        );
-    }
-
-    disconnectedCallback() {
-        if (!this.#unsubscribe) return;
-
-        this.#unsubscribe();
-        this.#unsubscribe = null;
+        ));
     }
 
     /**
@@ -140,7 +132,7 @@ class TitleModifierSetting extends HTMLElement {
                     bubbles: true,
                     detail: { checked: toggleBtn.checked }
                 }));
-            });
+            }, { signal: this.signal });
         }
 
         toggleBtn.addEventListener('toggle-change', async (e) => {
@@ -173,8 +165,8 @@ class TitleModifierSetting extends HTMLElement {
                     }));
                 }
             }
-        });
+        }, { signal: this.signal });
     }
 }
 
-customElements.define('title-modifier-setting', TitleModifierSetting);
+defineComponent('title-modifier-setting', TitleModifierSetting);

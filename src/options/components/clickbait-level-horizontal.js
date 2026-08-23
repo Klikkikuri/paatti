@@ -1,6 +1,7 @@
 import { ClickbaitLevelBase } from './clickbait-level-base.js';
 import { controller } from '../../controller.js';
 import { getClickbaitLevelInfo } from '../utils.js';
+import { defineComponent } from './component-utils.js';
 
 const template = document.createElement('template');
 template.innerHTML = `
@@ -49,4 +50,4 @@ class ClickbaitLevelHorizontal extends ClickbaitLevelBase {
     }
 }
 
-customElements.define('clickbait-level-horizontal', ClickbaitLevelHorizontal);
+defineComponent('clickbait-level-horizontal', ClickbaitLevelHorizontal);

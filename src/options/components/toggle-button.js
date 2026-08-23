@@ -1,3 +1,5 @@
+import { defineComponent } from './component-utils.js';
+
 const toggleTemplate = document.createElement('template');
 toggleTemplate.innerHTML = `<input class="toggle conversion-switch" type="checkbox">`;
 
@@ -130,4 +132,4 @@ export class ToggleButton extends HTMLElement {
     }
 }
 
-customElements.define('toggle-button', ToggleButton);
+defineComponent('toggle-button', ToggleButton);

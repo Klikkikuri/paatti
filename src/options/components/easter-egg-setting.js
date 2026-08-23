@@ -3,6 +3,7 @@ import { controller } from '../../controller.js';
 import { onConfigValue } from '../../config.js';
 import { clampProbability } from '../../model.js';
 import { localizeDocument } from '../utils.js';
+import { ComponentBase, defineComponent } from './component-utils.js';
 
 /* The stored value is a fraction; the input works in whole percent, because that
  * is what a person testing the easter egg wants to type. */
@@ -32,13 +33,11 @@ template.innerHTML = `
  * 0 never shows the artwork and 100 always does, so the input doubles as the
  * on/off switch needed to look at it.
  */
-class EasterEggSetting extends HTMLElement {
-    #unsubscribe = null;
-
+class EasterEggSetting extends ComponentBase {
     /** The stored probability, held so a failed save can put it back without a re-read. */
     #probability = 0;
 
-    connectedCallback() {
+    onConnect() {
         this.replaceChildren(template.content.cloneNode(true));
         localizeDocument(this);
 
@@ -46,23 +45,16 @@ class EasterEggSetting extends HTMLElement {
         // Set here rather than in the markup: an interpolated template literal counts as a dynamic
         // innerHTML assignment, which add-on review rejects. SCALE stays the one source for the ceiling.
         input.max = String(SCALE);
-        input.addEventListener('change', () => this.save(input));
+        input.addEventListener('change', () => this.save(input), { signal: this.signal });
 
         // Calls back at once with the stored probability, then only when it moves.
-        this.#unsubscribe = onConfigValue(
+        this.addTeardown(onConfigValue(
             (config) => clampProbability(config.easterEggProbability),
             (probability) => {
                 this.#probability = probability;
                 this.show(input);
             }
-        );
-    }
-
-    disconnectedCallback() {
-        if (!this.#unsubscribe) return;
-
-        this.#unsubscribe();
-        this.#unsubscribe = null;
+        ));
     }
 
     /**
@@ -118,4 +110,4 @@ class EasterEggSetting extends HTMLElement {
     }
 }
 
-customElements.define('easter-egg-setting', EasterEggSetting);
+defineComponent('easter-egg-setting', EasterEggSetting);

@@ -3,6 +3,7 @@ import { controller } from '../../controller.js';
 import { onConfigValue } from '../../config.js';
 import { localizeDocument } from '../utils.js';
 import './toggle-button.js';
+import { ComponentBase, defineComponent } from './component-utils.js';
 
 const compactTemplate = document.createElement('template');
 compactTemplate.innerHTML = `
@@ -27,10 +28,9 @@ detailedTemplate.innerHTML = `
  * Custom element managing the global extension on/off state (Master Switch / "Aktivoi Paatti").
  * Supports layout="compact" (popup settings list item) and layout="detailed" (options page).
  */
-class MasterSwitchSetting extends HTMLElement {
-    #unsubscribe = null;
+class MasterSwitchSetting extends ComponentBase {
 
-    connectedCallback() {
+    onConnect() {
         const layout = this.getAttribute('layout') || 'detailed';
 
         if (layout === 'compact') {
@@ -51,17 +51,10 @@ class MasterSwitchSetting extends HTMLElement {
         this.loadState(toggleBtn, layout);
 
         // Calls back at once with the stored state, then only when it moves.
-        this.#unsubscribe = onConfigValue(
+        this.addTeardown(onConfigValue(
             (config) => config.enabled,
             (enabled) => { toggleBtn.checked = enabled; }
-        );
-    }
-
-    disconnectedCallback() {
-        if (!this.#unsubscribe) return;
-
-        this.#unsubscribe();
-        this.#unsubscribe = null;
+        ));
     }
 
     /**
@@ -88,7 +81,7 @@ class MasterSwitchSetting extends HTMLElement {
                     bubbles: true,
                     detail: { checked: toggleBtn.checked }
                 }));
-            });
+            }, { signal: this.signal });
         }
 
         toggleBtn.addEventListener('toggle-change', async (e) => {
@@ -121,8 +114,8 @@ class MasterSwitchSetting extends HTMLElement {
                     }));
                 }
             }
-        });
+        }, { signal: this.signal });
     }
 }
 
-customElements.define('master-switch-setting', MasterSwitchSetting);
+defineComponent('master-switch-setting', MasterSwitchSetting);
