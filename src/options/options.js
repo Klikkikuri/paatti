@@ -288,20 +288,76 @@ function setAboutField(id, value) {
 }
 
 /**
+ * Tags an about line may keep: a link, and the inline emphasis a translator may
+ * reasonably reach for. Anything outside the list is unwrapped rather than dropped,
+ * so an unexpected tag costs the markup and never the sentence.
+ */
+const ABOUT_TAGS = new Set(['A', 'B', 'STRONG', 'I', 'EM', 'CODE', 'SPAN', 'BR']);
+
+/** Tags whose text is code, not prose: unwrapping these would print the code. */
+const ABOUT_DROP_TAGS = new Set(['SCRIPT', 'STYLE', 'TEMPLATE', 'NOSCRIPT']);
+
+/**
+ * Strips an about line down to text and the few tags in ABOUT_TAGS.
+ *
+ * Today's callers pass a bundled locale string or the build overlay, so there is
+ * nothing hostile to strip. The point is the next caller: a locale file is edited
+ * by translators and the overlay by whoever cuts the non-OSS build, and neither
+ * should be able to put an <img> beacon, an event handler or a javascript: link on
+ * the options page by accident. Attributes go entirely -- an <a> is given back the
+ * only three it needs.
+ *
+ * @param {DocumentFragment|HTMLElement} root - Parsed markup, edited in place.
+ */
+function sanitizeAbout(root) {
+    for (const el of [...root.querySelectorAll('*')]) {
+        // A parent may already have taken this node out of the tree.
+        if (!root.contains(el)) continue;
+
+        if (ABOUT_DROP_TAGS.has(el.tagName)) {
+            el.remove();
+            continue;
+        }
+
+        const href = el.tagName === 'A' ? el.getAttribute('href') : null;
+        for (const name of [...el.getAttributeNames()]) el.removeAttribute(name);
+
+        if (!ABOUT_TAGS.has(el.tagName)) {
+            el.replaceWith(...el.childNodes);
+            continue;
+        }
+
+        // The anchor resolves its own href, so .protocol is what the link would really
+        // open -- a relative or protocol-relative href is judged on that, and one that
+        // does not parse at all reports an empty protocol rather than throwing. The
+        // href goes back as written, because normalizing would percent-encode the
+        // non-ASCII paths some locales link to.
+        if (el.tagName !== 'A') continue;
+        el.setAttribute('href', href ?? '');
+        if (el.protocol === 'https:' || el.protocol === 'http:') {
+            el.setAttribute('target', '_blank');
+            el.setAttribute('rel', 'noopener noreferrer');
+        } else {
+            el.replaceWith(...el.childNodes);
+        }
+    }
+}
+
+/**
  * Replaces the content of an about field with parsed markup.
  * For the few fields whose text may carry a link; runtime values use setAboutField.
- * The markup comes from a bundled locale file or from the build overlay, never from
- * remote or user data.
  * @param {string} id - Element ID
- * @param {string} html - Markup to show
+ * @param {string} html - Markup to show; sanitized by sanitizeAbout before insertion
  */
 function setAboutHtml(id, html) {
     const el = document.getElementById(id);
     if (!el) return;
 
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    sanitizeAbout(doc.body);
+
     // renderAbout() runs again on every storage change, so replace rather than
     // append: appending would stack a second copy of the line each time.
-    const doc = new DOMParser().parseFromString(html, 'text/html');
     el.replaceChildren(...doc.body.childNodes);
 }
 
