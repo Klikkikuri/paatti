@@ -1,4 +1,3 @@
-import browser from '../../browser-api.js';
 import { getConfig } from '../../config.js';
 import './site-toggle.js';
 
@@ -7,32 +6,13 @@ import './site-toggle.js';
  * Dynamically queries configurations and appends site-toggle-setting elements.
  */
 class SiteListSetting extends HTMLElement {
-    constructor() {
-        super();
-        this.initialized = false;
-        this.storageListener = null;
-    }
-
     connectedCallback() {
         this.style.display = 'block';
-        if (this.initialized) return;
-        this.initialized = true;
 
+        // No subscription: the list is the set of configured sites, which does not change
+        // at runtime, and each site-toggle-setting owns its own enabled state. render()
+        // replaces its children, so a re-attach redraws rather than duplicating.
         this.render();
-
-        // Listen for configuration updates to redraw list toggles if modified elsewhere
-        this.storageListener = (changes) => {
-            if (changes.config) {
-                this.render();
-            }
-        };
-        browser.storage.onChanged.addListener(this.storageListener);
-    }
-
-    disconnectedCallback() {
-        if (this.storageListener) {
-            browser.storage.onChanged.removeListener(this.storageListener);
-        }
     }
 
     async render() {
