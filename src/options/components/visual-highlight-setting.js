@@ -67,12 +67,16 @@ class VisualHighlightSetting extends HTMLElement {
     }
 
     disconnectedCallback() {
-        if (!this.#storageListener) return;
+        // Two independent subscriptions, so each is guarded on its own field.
+        if (this.#unsubscribe) {
+            this.#unsubscribe();
+            this.#unsubscribe = null;
+        }
 
-        this.#unsubscribe();
-        this.#unsubscribe = null;
-        browser.storage.onChanged.removeListener(this.#storageListener);
-        this.#storageListener = null;
+        if (this.#storageListener) {
+            browser.storage.onChanged.removeListener(this.#storageListener);
+            this.#storageListener = null;
+        }
     }
 
     /**
