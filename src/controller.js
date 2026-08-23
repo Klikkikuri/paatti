@@ -62,6 +62,11 @@ const controller = {
         await model.write.setDebugVisualsEnabled(value);
     },
 
+    setEasterEggProbability: async (value) => {
+        log(`Setting easter egg probability to ${value}`);
+        await model.write.setEasterEggProbability(value);
+    },
+
     setVisualHighlightEnabled: async (value) => {
         log(`Setting visual highlight to ${value}`);
         await model.write.setVisualHighlightEnabled(value);

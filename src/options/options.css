@@ -16,18 +16,25 @@ body {
     color: var(--color-text-heading);
     padding: 20px;
     min-height: 100vh;
-
-    /* Same artwork as the popup home view (--home-bg follows the theme), behind
-     * a scrim that keeps it from competing with the settings card on top.
-     * Fixed so the photo holds still while the long page scrolls. */
     background-color: var(--color-bg-body);
+    /* Host for <page-background> below; see the note on the shared rule in components.css. */
+    isolation: isolate;
+}
+
+/*
+ * Same artwork as the popup home view (--home-bg follows the theme), behind a
+ * flat scrim that keeps it from competing with the settings card on top.
+ *
+ * body is the scroll container and the page is long, so the element is pinned to
+ * the viewport rather than the far bottom of the document -- what
+ * `background-attachment: fixed` used to do for the photo.
+ */
+body > page-background {
+    position: fixed;
     background-image:
         linear-gradient(color-mix(in srgb, var(--color-bg-body) var(--scrim-page), transparent),
                         color-mix(in srgb, var(--color-bg-body) var(--scrim-page), transparent)),
         var(--home-bg);
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
 }
 
 .container {
@@ -149,7 +156,10 @@ legend {
     gap: 15px;
 }
 
-input[type="range"] {
+/* The vertical clickbait gauge. Scoped to .slider-gauge: these rules turn a range
+ * input on its side and paint the severity gradient on it, which is right for that
+ * one control and wrong for every other slider on the page. */
+.slider-gauge input[type="range"] {
     writing-mode: bt-lr;
     -webkit-appearance: slider-vertical;
     appearance: slider-vertical;
@@ -161,7 +171,7 @@ input[type="range"] {
     cursor: pointer;
 }
 
-input[type="range"]::-webkit-slider-thumb {
+.slider-gauge input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
     width: 30px;
@@ -174,13 +184,13 @@ input[type="range"]::-webkit-slider-thumb {
     box-shadow: 0 2px 8px var(--shadow-color);
 }
 
-input[type="range"]::-webkit-slider-thumb:hover {
+.slider-gauge input[type="range"]::-webkit-slider-thumb:hover {
     transform: scale(1.2);
     border-color: var(--color-brand-alt);
     box-shadow: 0 4px 12px color-mix(in srgb, var(--color-brand) 40%, transparent);
 }
 
-input[type="range"]::-moz-range-thumb {
+.slider-gauge input[type="range"]::-moz-range-thumb {
     width: 30px;
     height: 30px;
     border-radius: 50%;
@@ -191,7 +201,7 @@ input[type="range"]::-moz-range-thumb {
     box-shadow: 0 2px 8px var(--shadow-color);
 }
 
-input[type="range"]::-moz-range-thumb:hover {
+.slider-gauge input[type="range"]::-moz-range-thumb:hover {
     transform: scale(1.2);
     border-color: var(--color-brand-alt);
     box-shadow: 0 4px 12px color-mix(in srgb, var(--color-brand) 40%, transparent);

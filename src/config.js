@@ -6,6 +6,9 @@ const log = getLogger("config");
 
 const DEFAULT_ENV = {
     "refreshIntervalMinutes": 20,
+    // Chance (0..1) that the easter egg artwork shows on a dark-themed page load.
+    // Tuned low on purpose: a sighting should feel like luck, not decoration.
+    "easterEggProbability": 0.05,
     "email": "",
     "titleDataUrls": ["https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"],
     "feedbackServerUrl": "https://docs.google.com/forms/d/e/1FAIpQLSf_vo9tpXAjbP1JyhNlgRdPnpPD1K3w6aPfern_jZfJVcHtCw/formResponse",
@@ -346,12 +349,13 @@ async function getConfig() {
     const currentPromise = (async () => {
         const [localData, syncData] = await Promise.all([
             browser().storage.local.get("userPreferences"),
-            browser().storage.sync.get(["userSiteOverrides", "modifiers"])
+            browser().storage.sync.get(["userSiteOverrides", "modifiers", "environmentConfigs"])
         ]);
 
         const userPreferences = localData.userPreferences || {};
         const syncOverrides = syncData.userSiteOverrides || {}; // Structure: { "yle.fi": false }
         const syncModifiers = syncData.modifiers || {};
+        const syncEnvConfigs = syncData.environmentConfigs || {}; // Structure: { "free": { "easterEggProbability": 0.05 } }
 
         const activeEnv = userPreferences.environment || DEFAULT_CONFIG.environment || "free";
 
@@ -361,7 +365,9 @@ async function getConfig() {
         for (const env of environments) {
             mergedEnvConfigs[env] = {
                 ...DEFAULT_CONFIG.environmentConfigs[env],
-                ...(userPreferences.environmentConfigs?.[env] || {})
+                ...(userPreferences.environmentConfigs?.[env] || {}),
+                // Synced settings win over the local ones, as with modifiers below.
+                ...(syncEnvConfigs[env] || {})
             };
         }
 

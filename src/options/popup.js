@@ -14,6 +14,7 @@ import "./components/clickbait-level-horizontal.js";
 import "./components/feedback-item.js";
 import "./components/compact-button.js";
 import "./components/power-button.js";
+import "./components/page-background.js";
 
 const log = getLogger("view");
 

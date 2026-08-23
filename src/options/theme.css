@@ -50,6 +50,11 @@
      * top and bottom edge, so text on it stays readable. Paths resolve relative
      * to this file, which sits beside styles.css. */
     --home-bg: url("images/bg-light.webp");
+    /* Artwork for the easter egg <page-background> occasionally draws over the
+     * home artwork. `none` because only the night scene has been drawn so far;
+     * a daylight counterpart is one url() here plus dropping the dark-mode gate
+     * in easter-egg.js. */
+    --easter-egg-art: none;
     --scrim-top: 45%;
     --scrim-bottom: 80%;
     /* The options page shows the same artwork behind an opaque card, so it only
@@ -164,6 +169,7 @@
         /* The night artwork is already dark, so it needs far less veiling than
          * the sunset does to keep light text readable. */
         --home-bg: url("images/bg-dark.webp");
+        --easter-egg-art: url("images/meerman.webp");
         --scrim-top: 30%;
         --scrim-bottom: 65%;
         --scrim-page: 45%;
