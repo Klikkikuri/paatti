@@ -1,7 +1,6 @@
 import { browser } from '../../utils.js';
 import { controller } from '../../controller.js';
 import { model } from '../../model.js';
-import { getConfig } from '../../config.js';
 import { localizeDocument } from '../utils.js';
 import './toggle-button.js';
 

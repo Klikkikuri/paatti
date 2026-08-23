@@ -1,5 +1,3 @@
-import { browser } from '../../utils.js';
-
 /**
  * Reusable, compact circular button Web Component.
  * Renders a small circular icon button using the shared .compact-button style.

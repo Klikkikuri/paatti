@@ -1,4 +1,30 @@
 /**
+ * Content script styles injected into the visited page.
+ *
+ * Unlike the extension pages (see src/options/theme.css) these must NOT follow
+ * `prefers-color-scheme`: that reports the OS preference, while this markup
+ * lives in the page's own theme. Anything that should blend in adapts by
+ * inheriting the page's colours instead — see src/components/badge-style.js.
+ *
+ * The status colours below are the exception: they are debug signals, so they
+ * stay fixed and saturated on purpose, readable on light and dark pages alike.
+ */
+html.klikkikuri-visual-hilight {
+    --kk-skipped: #78909c;
+    --kk-converted: #2e7d32;
+    --kk-original: #ef6c00;
+    --kk-paywalled: #fbc02d;
+    --kk-error: #c62828;
+    --kk-badge-text: #ffffff;
+}
+
+/* The hover highlight is used outside visual-highlight mode too, so its colour
+ * is defined on the document root rather than on the debug class. */
+html {
+    --kk-hover: 0, 210, 255;
+}
+
+/**
  * Development mode outlines and badges for debugging
  */
 html.klikkikuri-visual-hilight *[data-klikkikuri-status] {
@@ -13,7 +39,7 @@ html.klikkikuri-visual-hilight *[data-klikkikuri-status]::after {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-size: 10px;
     font-weight: 700;
-    color: #ffffff !important;
+    color: var(--kk-badge-text) !important;
     border-radius: 20px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     z-index: 2147483647;
@@ -25,55 +51,55 @@ html.klikkikuri-visual-hilight *[data-klikkikuri-status]::after {
 }
 
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="skipped"] {
-    outline: 1.5px dashed #78909c !important;
+    outline: 1.5px dashed var(--kk-skipped) !important;
 }
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="skipped"]::after {
     content: "⏭️ Skipped";
-    background-color: #78909c !important;
+    background-color: var(--kk-skipped) !important;
 }
 
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="converted"] {
-    outline: 2px solid #2e7d32 !important;
-    box-shadow: 0 0 8px rgba(46, 125, 50, 0.2) !important;
+    outline: 2px solid var(--kk-converted) !important;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--kk-converted) 20%, transparent) !important;
 }
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="converted"]::after {
     content: "✅ Converted";
-    background-color: #2e7d32 !important;
+    background-color: var(--kk-converted) !important;
 }
 
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="original"] {
-    outline: 2px solid #ef6c00 !important;
-    box-shadow: 0 0 8px rgba(239, 108, 0, 0.2) !important;
+    outline: 2px solid var(--kk-original) !important;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--kk-original) 20%, transparent) !important;
 }
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="original"]::after {
     content: "🔄 Original";
-    background-color: #ef6c00 !important;
+    background-color: var(--kk-original) !important;
 }
 
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="paywalled"] {
-    outline: 2px solid #fbc02d !important;
-    box-shadow: 0 0 8px rgba(251, 192, 45, 0.2) !important;
+    outline: 2px solid var(--kk-paywalled) !important;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--kk-paywalled) 20%, transparent) !important;
 }
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="paywalled"]::after {
     content: "🔒 Paywalled";
-    background-color: #fbc02d !important;
+    background-color: var(--kk-paywalled) !important;
 }
 
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="error"] {
-    outline: 2px solid #c62828 !important;
-    box-shadow: 0 0 10px rgba(198, 40, 40, 0.3) !important;
+    outline: 2px solid var(--kk-error) !important;
+    box-shadow: 0 0 10px color-mix(in srgb, var(--kk-error) 30%, transparent) !important;
 }
 html.klikkikuri-visual-hilight *[data-klikkikuri-status="error"]::after {
     content: "⚠️ Error";
-    background-color: #c62828 !important;
+    background-color: var(--kk-error) !important;
 }
 
 /* Hover highlight style for corresponding feedback element (high specificity to override status outline) */
 html .klikkikuri-hover-highlight,
 html.klikkikuri-visual-hilight .klikkikuri-hover-highlight,
 html.klikkikuri-visual-hilight *[data-klikkikuri-status].klikkikuri-hover-highlight {
-    outline: 3px solid #00d2ff !important;
-    box-shadow: 0 0 12px rgba(0, 210, 255, 0.8) !important;
+    outline: 3px solid rgb(var(--kk-hover)) !important;
+    box-shadow: 0 0 12px rgba(var(--kk-hover), 0.8) !important;
     position: relative !important;
     z-index: 2147483646 !important;
     animation: klikkikuri-pulse 1.2s infinite ease-in-out !important;
@@ -81,16 +107,16 @@ html.klikkikuri-visual-hilight *[data-klikkikuri-status].klikkikuri-hover-highli
 
 @keyframes klikkikuri-pulse {
     0% {
-        outline-color: rgba(0, 210, 255, 0.6);
-        box-shadow: 0 0 8px rgba(0, 210, 255, 0.4);
+        outline-color: rgba(var(--kk-hover), 0.6);
+        box-shadow: 0 0 8px rgba(var(--kk-hover), 0.4);
     }
     50% {
-        outline-color: rgba(0, 210, 255, 1);
-        box-shadow: 0 0 18px rgba(0, 210, 255, 0.9);
+        outline-color: rgba(var(--kk-hover), 1);
+        box-shadow: 0 0 18px rgba(var(--kk-hover), 0.9);
     }
     100% {
-        outline-color: rgba(0, 210, 255, 0.6);
-        box-shadow: 0 0 8px rgba(0, 210, 255, 0.4);
+        outline-color: rgba(var(--kk-hover), 0.6);
+        box-shadow: 0 0 8px rgba(var(--kk-hover), 0.4);
     }
 }
 

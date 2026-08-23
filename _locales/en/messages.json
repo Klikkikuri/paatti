@@ -41,6 +41,27 @@
     "description": "Label for the extremely clickbaity title 'type' or 'severity'"
   },
 
+  "clickbaitBadgeLevel0": {
+    "message": "Neutral",
+    "description": "Short badge label for clickbait level 0 shown on feedback view cards"
+  },
+  "clickbaitBadgeLevel1": {
+    "message": "Low",
+    "description": "Short badge label for clickbait level 1 shown on feedback view cards"
+  },
+  "clickbaitBadgeLevel2": {
+    "message": "Medium",
+    "description": "Short badge label for clickbait level 2 shown on feedback view cards"
+  },
+  "clickbaitBadgeLevel3": {
+    "message": "High",
+    "description": "Short badge label for clickbait level 3 shown on feedback view cards"
+  },
+  "clickbaitBadgeLevel4": {
+    "message": "Extreme",
+    "description": "Short badge label for clickbait level 4 shown on feedback view cards"
+  },
+
   "siteTitleProcessingNotSupported": {
     "message": "Site not supported",
     "description": "Message to show in 'main' title element when the visited site is not supported for processing"
@@ -515,6 +536,14 @@
     "message": "Show visual debug indicators on processed elements",
     "description": "Description for visual highlight setting in options"
   },
+  "devmodeEasterEggTitle": {
+    "message": "Easter egg chance",
+    "description": "Title for the easter egg probability setting in options"
+  },
+  "devmodeEasterEggDesc": {
+    "message": "Chance that the hidden artwork joins the page background on a given day. Each theme has its own; 0 % never, 100 % every day.",
+    "description": "Description for the easter egg probability setting"
+  },
   "devTitleDataUrlsTitle": {
     "message": "Database URLs (titleDataUrls)",
     "description": "Title for development database URLs textarea"
@@ -658,6 +687,55 @@
   "aboutNone": {
     "message": "none",
     "description": "Text displayed in about section when list is empty"
+  },
+
+  "aboutSpecialDayTitle": {
+    "message": "Today",
+    "description": "Heading of the about section line shown on a special day"
+  },
+  "specialDayMinnaCanth": {
+    "message": "<a href=\"https://en.wikipedia.org/wiki/Minna_Canth\" target=\"_blank\" rel=\"noopener noreferrer\">Minna Canth's Day</a>, the Day of Equality.",
+    "description": "Special day shown in the about section on 19 March. May contain a link."
+  },
+  "specialDayPressFreedom": {
+    "message": "<a href=\"https://en.wikipedia.org/wiki/World_Press_Freedom_Day\" target=\"_blank\" rel=\"noopener noreferrer\">World Press Freedom Day</a>.",
+    "description": "Special day shown in the about section on 3 May. May contain a link."
+  },
+  "specialDayMagnaCarta": {
+    "message": "<a href=\"https://en.wikipedia.org/wiki/Magna_Carta\" target=\"_blank\" rel=\"noopener noreferrer\">Magna Carta</a>, 1215: everyone, the king included, is under the law.",
+    "description": "Special day shown in the about section on 15 June. May contain a link."
+  },
+  "specialDayJaws": {
+    "message": "<a href=\"https://en.wikipedia.org/wiki/Jaws_(film)\" target=\"_blank\" rel=\"noopener noreferrer\">Jaws</a> came to the cinemas in 1975.",
+    "description": "Special day shown in the about section on 20 June. May contain a link."
+  },
+  "specialDayKlikkikuri": {
+    "message": "The first release of Klikkikuri, <a href=\"https://github.com/Klikkikuri/paatti/releases/tag/v0.0.1\" target=\"_blank\" rel=\"noopener noreferrer\">v0.0.1</a>.",
+    "description": "Special day shown in the about section on 10 July. May contain a link."
+  },
+  "specialDayDemocracyDay": {
+    "message": "Finnish Democracy Day: the <a href=\"https://en.wikipedia.org/wiki/Constitution_of_Finland\" target=\"_blank\" rel=\"noopener noreferrer\">Constitution Act of 1919</a> made Finland a democratic republic under the rule of law.",
+    "description": "Special day shown in the about section on 17 July. May contain a link."
+  },
+  "specialDayJyu": {
+    "message": "The <a href=\"https://www.jyu.fi/en\" target=\"_blank\" rel=\"noopener noreferrer\">University of Jyväskylä</a> was founded.",
+    "description": "Special day shown in the about section on 14 August. May contain a link."
+  },
+  "specialDayTaija": {
+    "message": "A day for Taija.",
+    "description": "Special day shown in the about section on 11 October. May contain a link."
+  },
+  "specialDayPressAct": {
+    "message": "The <a href=\"https://en.wikipedia.org/wiki/Swedish_Freedom_of_the_Press_Act\" target=\"_blank\" rel=\"noopener noreferrer\">Freedom of the Press Act</a> of 1766, the first in the world.",
+    "description": "Special day shown in the about section on 2 December. May contain a link."
+  },
+  "specialDayJuho": {
+    "message": "A day for Juho.",
+    "description": "Special day shown in the about section on 4 December. May contain a link."
+  },
+  "specialDayTeemu": {
+    "message": "A day for Teemu.",
+    "description": "Special day shown in the about section on 16 December. May contain a link."
   },
 
   "siteSettingSaved": {

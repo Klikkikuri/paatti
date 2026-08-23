@@ -11,6 +11,18 @@ const modelEvents = {
     environmentChange: "environmentChange"
 };
 
+/**
+ * Clamp a stored probability into 0..1. Values reach here from a dev-only control
+ * and from preferences written by older versions, so neither range nor type is given.
+ *
+ * @param {*} value
+ * @returns {number} A probability in 0..1; 0 for anything unusable.
+ */
+function clampProbability(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.min(Math.max(number, 0), 1) : 0;
+}
+
 const klikkikuriStatus = Object.freeze({
     CONVERTED: "converted",
     ORIGINAL: "original",
@@ -236,6 +248,24 @@ const model = (() => {
                 await browser().storage.local.set({ userPreferences });
             },
 
+            setEasterEggProbability: async (value, env) => {
+                // Property of an environment, like the email below, but kept in sync
+                // storage so the odds follow the user between their browsers.
+                if (!env) {
+                    env = await getConfig().then(cfg => cfg.activeEnv);
+                }
+                const clamped = clampProbability(value);
+                log(`Setting easter egg probability for environment '${env}' to ${clamped}`);
+
+                const data = await browser().storage.sync.get("environmentConfigs");
+                const environmentConfigs = data.environmentConfigs || {};
+                if (!environmentConfigs[env]) {
+                    environmentConfigs[env] = {};
+                }
+                environmentConfigs[env].easterEggProbability = clamped;
+                await browser().storage.sync.set({ environmentConfigs });
+            },
+
             setClickbaitLevel: async (value) => {
                 log(`Setting clickbait level to ${value}`);
                 const data = await browser().storage.local.get("userPreferences");
@@ -385,6 +415,36 @@ const model = (() => {
                     lastDatabaseUpdate: data.lastDatabaseUpdate || null,
                     databaseGenerationDate: data.databaseGenerationDate || null
                 };
+            },
+
+            getEasterEggProbability: async () => {
+                const config = await getConfig();
+                return clampProbability(config.easterEggProbability);
+            },
+
+            /**
+             * The salt that gives this install its own easter egg calendar.
+             *
+             * Local and not sync, and a key of its own rather than a setting: it is a
+             * property of the install, not something the user chose. Without it every
+             * Paatti on earth would hash the same date to the same number and show the
+             * artwork on the same days.
+             *
+             * Written on the first read, so there is nothing to migrate. Two pages that
+             * race on a fresh install can both generate one and the last write wins;
+             * that costs one page one day of a different calendar, and no more.
+             */
+            getEasterEggSalt: async () => {
+                const data = await browser().storage.local.get("easterEggSalt");
+                if (typeof data.easterEggSalt === "string" && data.easterEggSalt) {
+                    return data.easterEggSalt;
+                }
+
+                const salt = crypto.randomUUID();
+                log("Generating an easter egg salt for this install");
+                await browser().storage.local.set({ easterEggSalt: salt });
+
+                return salt;
             },
 
             getClickbaitLevel: async () => {
