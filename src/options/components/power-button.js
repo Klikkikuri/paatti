@@ -4,7 +4,9 @@ import { model } from '../../model.js';
 import { getConfig, onConfigValue } from '../../config.js';
 import { isSiteEnabled } from '../utils.js';
 import { handleSiteToggleHelper } from './site-toggle.js';
-import { ComponentBase, defineComponent } from './component-utils.js';
+import { adoptComponentStyleSheet, ComponentBase, defineComponent } from './component-utils.js';
+
+adoptComponentStyleSheet(new URL('./power-button.css', import.meta.url));
 
 const template = document.createElement('template');
 template.innerHTML = `
@@ -28,7 +30,6 @@ export class PowerButton extends ComponentBase {
     hasPermission = false;
 
     onConnect() {
-        this.style.display = 'inline-block';
 
         this.render();
         this.loadState();

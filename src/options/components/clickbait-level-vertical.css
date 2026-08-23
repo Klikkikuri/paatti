@@ -1,0 +1,116 @@
+/**
+ * <clickbait-level-vertical> -- the options page's threshold gauge.
+ *
+ * Scoped under the element name, which these rules were not while they lived in
+ * options.css. Colours come from the tokens in theme.css.
+ */
+
+clickbait-level-vertical {
+    display: block;
+}
+
+clickbait-level-vertical .slider-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+clickbait-level-vertical .slider-gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+/* The vertical clickbait gauge. Scoped to .slider-gauge: these rules turn a range
+ * input on its side and paint the severity gradient on it, which is right for that
+ * one control and wrong for every other slider on the page. */
+clickbait-level-vertical .slider-gauge input[type="range"] {
+    writing-mode: bt-lr;
+    -webkit-appearance: slider-vertical;
+    appearance: slider-vertical;
+    width: 10px;
+    height: 300px;
+    border-radius: 5px;
+    background: var(--gradient-severity-vertical);
+    outline: none;
+    cursor: pointer;
+}
+
+clickbait-level-vertical .slider-gauge input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--color-surface);
+    border: 3px solid var(--color-brand);
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+clickbait-level-vertical .slider-gauge input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    border-color: var(--color-brand-alt);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--color-brand) 40%, transparent);
+}
+
+clickbait-level-vertical .slider-gauge input[type="range"]::-moz-range-thumb {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--color-surface);
+    border: 3px solid var(--color-brand);
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+clickbait-level-vertical .slider-gauge input[type="range"]::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    border-color: var(--color-brand-alt);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--color-brand) 40%, transparent);
+}
+
+clickbait-level-vertical .slider-labels {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 300px;
+    font-size: 0.95rem;
+    color: var(--color-text-secondary);
+    text-align: left;
+    padding-left: 15px;
+}
+
+clickbait-level-vertical .slider-labels label {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 60px;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+clickbait-level-vertical .slider-labels label:hover {
+    color: var(--color-brand);
+}
+
+clickbait-level-vertical .slider-labels label:hover .label-title {
+    color: var(--color-brand-alt);
+}
+
+clickbait-level-vertical .label-title {
+    font-weight: bold;
+    font-size: 1rem;
+    color: var(--color-text-heading);
+    margin-bottom: 2px;
+}
+
+clickbait-level-vertical .label-description {
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    line-height: 1.3;
+}

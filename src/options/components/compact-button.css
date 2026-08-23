@@ -1,0 +1,12 @@
+/**
+ * <compact-button> -- the small square button in the popup header.
+ *
+ * Only the host box: the look comes from .push-button.compact-button in styles.css, which
+ * the popup's navi labels wear too.
+ */
+
+compact-button {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+}

@@ -1,0 +1,10 @@
+/**
+ * <clickbait-level-horizontal> -- the popup's threshold slider.
+ *
+ * Only the host box; the control itself is styled by the shared rules the template uses.
+ */
+
+clickbait-level-horizontal {
+    display: block;
+    width: 100%;
+}
