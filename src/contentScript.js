@@ -15,7 +15,7 @@ let hrefSign;
     // Import modules.
     // Resolved inline, not imported: this file needs runtime.getURL() before it can import browser-api.js.
     const browser = globalThis.browser ?? globalThis.chrome;
-    const { model: model, modelEvents: modelEvents, klikkikuriStatus: klikkikuriStatus } = await import(browser.runtime.getURL("src/model.js"));
+    const { model: model, klikkikuriStatus: klikkikuriStatus } = await import(browser.runtime.getURL("src/model.js"));
     const { controller } = await import(browser.runtime.getURL("src/controller.js"));
     const { getLogger, debounce, canAppendSpan } = await import(browser.runtime.getURL("src/utils.js"));
 
@@ -74,8 +74,6 @@ let hrefSign;
         }
         return null;
     };
-
-    await model.events.removeEventListener(modelEvents.enabledChange, controller.dispatchConversion);
 
     let isPopupOpen = false;
 

@@ -77,6 +77,22 @@ async function scheduleAlarm(minutes) {
 }
 
 /**
+ * Ask the active tab to re-convert. The worker owns this: it is the one context that
+ * always sees the write, whichever surface made it.
+ */
+async function notifyActiveTab() {
+    try {
+        const tab = await getActiveTab();
+        if (tab && tab.id) {
+            await browser.tabs.sendMessage(tab.id, { command: "convertClickbaits" });
+        }
+    } catch (err) {
+        // Expected whenever the active tab runs no content script.
+        log("Tab message send failed (likely no listener):", err);
+    }
+}
+
+/**
  * Handle alarm settings changes.
  */
 browser.storage.onChanged.addListener(async (changes, area) => {
@@ -104,30 +120,17 @@ browser.storage.onChanged.addListener(async (changes, area) => {
                 log("Failed to fetch Rahti data on environment change:", err);
             });
         }
-        if (newVal.clickbaitLevel !== oldVal.clickbaitLevel || newVal.enabled !== oldVal.enabled) {
-            log("Clickbait level or extension status changed, notifying active tab");
-            try {
-                const tab = await getActiveTab();
-                if (tab && tab.id) {
-                    await browser.tabs.sendMessage(tab.id, { command: "convertClickbaits" });
-                }
-            } catch (err) {
-                // ignore error if tab doesn't have listener
-                log("Tab message send failed (likely no listener):", err);
-            }
+        if (newVal.clickbaitLevel !== oldVal.clickbaitLevel
+            || newVal.enabled !== oldVal.enabled
+            || newVal.environment !== oldVal.environment) {
+            log("Configuration changed, notifying active tab");
+            await notifyActiveTab();
         }
     }
 
     if (isModifiersChanged) {
         log("Modifiers changed, notifying active tab");
-        try {
-            const tab = await getActiveTab();
-            if (tab && tab.id) {
-                await browser.tabs.sendMessage(tab.id, { command: "convertClickbaits" });
-            }
-        } catch (err) {
-            log("Tab message send failed (likely no listener):", err);
-        }
+        await notifyActiveTab();
     }
 });
 
