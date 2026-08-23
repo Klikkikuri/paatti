@@ -13,7 +13,7 @@ template.innerHTML = `
         <label class="setting-label">
             <div class="label-text">
                 <strong data-i18n="devmodeEasterEggTitle">Easter egg chance</strong>
-                <span data-i18n="devmodeEasterEggDesc">How often the hidden artwork shows on a dark-themed page</span>
+                <span data-i18n="devmodeEasterEggDesc">How often the hidden artwork joins the page background</span>
             </div>
             <span style="display: flex; align-items: center; gap: 6px;">
                 <input type="number" class="easter-egg-probability" id="easterEggProbability" min="0" max="${SCALE}" step="1"

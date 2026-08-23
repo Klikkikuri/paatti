@@ -16,25 +16,9 @@ body {
     color: var(--color-text-heading);
     padding: 20px;
     min-height: 100vh;
+    /* The artwork over this colour is drawn by <page-background>, which brings its
+     * own stylesheet -- see src/options/components/page-background.css. */
     background-color: var(--color-bg-body);
-    /* Host for <page-background> below; see the note on the shared rule in components.css. */
-    isolation: isolate;
-}
-
-/*
- * Same artwork as the popup home view (--home-bg follows the theme), behind a
- * flat scrim that keeps it from competing with the settings card on top.
- *
- * body is the scroll container and the page is long, so the element is pinned to
- * the viewport rather than the far bottom of the document -- what
- * `background-attachment: fixed` used to do for the photo.
- */
-body > page-background {
-    position: fixed;
-    background-image:
-        linear-gradient(color-mix(in srgb, var(--color-bg-body) var(--scrim-page), transparent),
-                        color-mix(in srgb, var(--color-bg-body) var(--scrim-page), transparent)),
-        var(--home-bg);
 }
 
 .container {

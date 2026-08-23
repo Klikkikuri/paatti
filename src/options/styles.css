@@ -116,26 +116,9 @@ body {
     box-sizing: border-box;
 }
 
-/* Home view carries the sea artwork for the active theme, drawn by the
- * <page-background> child below. Both properties are for that child: it is taken
- * out of flow against this box, and `isolation` keeps it from sinking behind the
- * well colour (see the shared rule in components.css). */
-.content.main-content {
-    position: relative;
-    isolation: isolate;
-}
-
-/* The photo (see --home-bg in theme.css) under a top-to-bottom scrim, so the
- * status text and buttons on top of it keep their contrast. Anchored to the
- * bottom edge, where the composition puts the horizon. */
-.main-content > page-background {
-    background-position: center bottom;
-    background-image:
-        linear-gradient(to bottom,
-            color-mix(in srgb, var(--color-surface-well) var(--scrim-top), transparent),
-            color-mix(in srgb, var(--color-surface-well) var(--scrim-bottom), transparent)),
-        var(--home-bg);
-}
+/* Home view carries the sea artwork, drawn by its <page-background> child. The
+ * rules for it, this box included, travel with the component -- see
+ * src/options/components/page-background.css. */
 
 #statsview {
     display: flex;

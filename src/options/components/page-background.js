@@ -1,28 +1,29 @@
 import { browser } from '../../utils.js';
 import { model } from '../../model.js';
 import { shouldShowEasterEgg } from '../easter-egg.js';
+import { adoptComponentStyleSheet } from './component-utils.js';
 
-const DARK_QUERY = '(prefers-color-scheme: dark)';
+// None of this element's CSS is shared, so it travels with the component: a page
+// gets the styling by importing this module and nothing more.
+adoptComponentStyleSheet(new URL('./page-background.css', import.meta.url));
 
-/** Class components.css hangs the easter egg artwork off. */
-const EGG_CLASS = 'has-meerman';
+/** Class page-background.css hangs the easter egg artwork off. */
+const EGG_CLASS = 'has-easter-egg';
 
 /**
  * Custom element that carries the page artwork: the sea photo for the active
  * theme, the scrim that keeps text on top of it readable, and the easter egg
  * that occasionally joins them.
  *
- * The element paints behind the page and holds no content of its own, so the
- * host page only has to place it and say which scrim it wants -- see
- * `page-background` in components.css and the per-page rules that extend it.
+ * The element paints behind the page and holds no content of its own, so a page
+ * only has to place it; how it looks on that page is settled in the stylesheet
+ * beside this module.
  */
 class PageBackground extends HTMLElement {
     constructor() {
         super();
         this.initialized = false;
         this.storageListener = null;
-        this.darkQuery = null;
-        this.themeListener = null;
         this.lastProbability = null;
     }
 
@@ -33,13 +34,7 @@ class PageBackground extends HTMLElement {
         // Decoration only: nothing here belongs in the accessibility tree.
         this.setAttribute('aria-hidden', 'true');
 
-        this.darkQuery = window.matchMedia ? window.matchMedia(DARK_QUERY) : null;
-
-        // A theme switch decides whether the easter egg can be seen at all, so roll again.
-        this.themeListener = () => this.rollEasterEgg();
-        this.darkQuery?.addEventListener('change', this.themeListener);
-
-        // Re-roll when the development slider moves, so that control gives immediate
+        // Re-roll when the development field changes, so that control gives immediate
         // feedback. Other preference writes must not disturb a sighting on screen.
         this.storageListener = async () => {
             const probability = await model.read.getEasterEggProbability();
@@ -55,21 +50,18 @@ class PageBackground extends HTMLElement {
         if (this.storageListener) {
             browser().storage.onChanged.removeListener(this.storageListener);
         }
-        if (this.themeListener) {
-            this.darkQuery?.removeEventListener('change', this.themeListener);
-        }
     }
 
     /**
-     * Roll the dice once and show or hide the easter egg accordingly.
+     * Roll the dice once and show or hide the easter egg accordingly. A theme
+     * switch needs no roll of its own: each theme names its own artwork, so the
+     * result of this one roll simply changes shape.
      */
     async rollEasterEgg() {
         const probability = await model.read.getEasterEggProbability();
         this.lastProbability = probability;
 
-        const isDark = this.darkQuery?.matches ?? false;
-        const show = shouldShowEasterEgg({ isDark, probability, roll: Math.random() });
-        this.classList.toggle(EGG_CLASS, show);
+        this.classList.toggle(EGG_CLASS, shouldShowEasterEgg({ probability, roll: Math.random() }));
     }
 }
 

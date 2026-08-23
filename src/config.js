@@ -6,7 +6,7 @@ const log = getLogger("config");
 
 const DEFAULT_ENV = {
     "refreshIntervalMinutes": 20,
-    // Chance (0..1) that the easter egg artwork shows on a dark-themed page load.
+    // Chance (0..1) that the easter egg artwork joins the page background on a page load.
     // Tuned low on purpose: a sighting should feel like luck, not decoration.
     "easterEggProbability": 0.05,
     "email": "",

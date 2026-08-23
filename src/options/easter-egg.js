@@ -11,17 +11,16 @@
 /**
  * Decide whether the easter egg shows on this roll.
  *
+ * Which artwork appears, and where on the sea it sits, is settled by the
+ * page-background rules in components.css. Both themes have a piece, so nothing
+ * here cares about light or dark.
+ *
  * @param {Object} params
- * @param {boolean} params.isDark - True when the dark palette is active.
  * @param {number} params.probability - Chance of a sighting, 0..1.
  * @param {number} params.roll - Random number in [0, 1).
  * @returns {boolean}
  */
-function shouldShowEasterEgg({ isDark, probability, roll }) {
-    // Only the dark theme has artwork for her so far (--easter-egg-art in theme.css).
-    // Drop this gate once a daylight counterpart exists.
-    if (!isDark) return false;
-
+function shouldShowEasterEgg({ probability, roll }) {
     const chance = Number(probability);
     if (!Number.isFinite(chance) || chance <= 0) return false;
 
