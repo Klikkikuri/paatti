@@ -1,6 +1,6 @@
 import browser from '../../browser-api.js';
 import { controller } from '../../controller.js';
-import { getConfig } from '../../config.js';
+import { onConfigValue } from '../../config.js';
 import './toggle-button.js';
 import '../../components/klikkikuri-ai-badge.js';
 import '../../components/klikkikuri-video-badge.js';
@@ -56,16 +56,9 @@ const MODIFIER_META = {
  * Supports layout="compact" (popup setting) and layout="detailed" (options page).
  */
 class TitleModifierSetting extends HTMLElement {
-    constructor() {
-        super();
-        this.initialized = false;
-        this.storageListener = null;
-    }
+    #unsubscribe = null;
 
     connectedCallback() {
-        if (this.initialized) return;
-        this.initialized = true;
-
         const modifier = this.getAttribute('modifier') || 'aiSlop';
         const layout = this.getAttribute('layout') || 'detailed';
         const meta = MODIFIER_META[modifier];
@@ -109,32 +102,24 @@ class TitleModifierSetting extends HTMLElement {
         }
         this.loadState(toggleBtn, modifier, layout);
 
-        // Auto-sync state when settings are changed elsewhere
-        this.storageListener = () => this.sync(toggleBtn, modifier);
-        browser.storage.onChanged.addListener(this.storageListener);
+        // Selects this modifier alone, so the other one's writes do not wake it.
+        this.#unsubscribe = onConfigValue(
+            (config) => Boolean(config.modifiers?.[modifier]),
+            (enabled) => { toggleBtn.checked = enabled; }
+        );
     }
 
     disconnectedCallback() {
-        if (this.storageListener) {
-            browser.storage.onChanged.removeListener(this.storageListener);
-        }
+        if (!this.#unsubscribe) return;
+
+        this.#unsubscribe();
+        this.#unsubscribe = null;
     }
 
     /**
-     * Fetch and apply latest values.
+     * Wire up the control. The checked state itself arrives from onConfigValue.
      */
-    async sync(toggleBtn, modifier) {
-        const config = await getConfig();
-        const isEnabled = config.modifiers?.[modifier] || false;
-        toggleBtn.checked = isEnabled;
-    }
-
-    /**
-     * Perform initial state loading and event registration.
-     */
-    async loadState(toggleBtn, modifier, layout) {
-        await this.sync(toggleBtn, modifier);
-
+    loadState(toggleBtn, modifier, layout) {
         const innerCheckbox = toggleBtn.querySelector('input');
         if (innerCheckbox) {
             innerCheckbox.id = `modifier-${modifier}-input`;
