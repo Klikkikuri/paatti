@@ -1,200 +1,122 @@
-// One stable namespace object, as at runtime: the cases below swap `query`, they do not
+import test, { describe } from 'node:test';
+import assert from 'node:assert/strict';
+
+import { createFakeBrowser } from './helpers/fake-browser.mjs';
+
+// One stable namespace object, as at runtime: the cases below swap `tabs.query`, they do not
 // replace globalThis.browser -- browser-api.js resolves it once, at the import below.
-const mockTabs = { query: async () => [] };
-globalThis.browser = { tabs: mockTabs };
-const { parseSemVer, sanitizeUrlForFeedback, canAppendSpan, getActiveTab, getCurrentTabHostname } = await import('../src/utils.js');
+const fake = createFakeBrowser();
+globalThis.browser = fake.browser;
 
-/**
- * Runs test cases for utility functions in src/utils.js.
- */
-async function runUtilsTests() {
-    console.log('Running utils verification tests...');
-    let failed = false;
+const { parseSemVer, sanitizeUrlForFeedback, canAppendSpan, getActiveTab, getCurrentTabHostname } =
+    await import('../src/utils.js');
 
-    const sanitizeTestCases = [
+describe('sanitizeUrlForFeedback', () => {
+    const cases = [
         {
-            name: 'Strips utm_*, fbclid, ref, and session parameters while preserving valid content parameters',
+            name: 'strips utm_*, fbclid, ref and session parameters while preserving content parameters',
             input: 'https://example.com/article?utm_source=twitter&utm_medium=social&id=123&fbclid=abc1234&ref=homepage&sid=sess99',
             expected: 'https://example.com/article?id=123'
         },
         {
-            name: 'Leaves URLs without tracking parameters untouched',
+            name: 'leaves URLs without tracking parameters untouched',
             input: 'https://example.com/search?q=news&page=2',
             expected: 'https://example.com/search?q=news&page=2'
         },
         {
-            name: 'Handles empty or invalid URL strings gracefully',
+            name: 'handles empty or invalid URL strings gracefully',
             input: 'not-a-valid-url',
             expected: 'not-a-valid-url'
         }
     ];
 
-    console.log('\n--- sanitizeUrlForFeedback Tests ---');
-    for (const tc of sanitizeTestCases) {
-        const result = sanitizeUrlForFeedback(tc.input);
-        if (result !== tc.expected) {
-            console.error(`❌ Test failed: "${tc.name}"\n  Expected: ${tc.expected}\n  Got:      ${result}`);
-            failed = true;
-        } else {
-            console.log(`✅ Passed: "${tc.name}"`);
-        }
+    for (const { name, input, expected } of cases) {
+        test(name, () => assert.equal(sanitizeUrlForFeedback(input), expected));
     }
+});
 
-    const semverTestCases = [
+describe('parseSemVer', () => {
+    const cases = [
         {
-            name: 'Parses 4-part version string like 0.1.2.3 into major, minor, patch components',
+            name: 'parses a 4-part version into major, minor and patch',
             input: '0.1.2.3',
             expected: { major: 0, minor: 1, patch: 2 }
         },
+        { name: 'parses a standard 3-part version', input: '1.2.3', expected: { major: 1, minor: 2, patch: 3 } },
         {
-            name: 'Parses standard 3-part version string 1.2.3',
-            input: '1.2.3',
-            expected: { major: 1, minor: 2, patch: 3 }
-        },
-        {
-            name: 'Parses 2-part version string 1.2 with default patch level 0',
+            name: 'parses a 2-part version with a default patch level',
             input: '1.2',
             expected: { major: 1, minor: 2, patch: 0 }
         },
-        {
-            name: 'Returns null for non-numeric version string',
-            input: 'invalid',
-            expected: null
-        },
-        {
-            name: 'Returns null for empty or non-string input',
-            input: null,
-            expected: null
-        }
+        { name: 'returns null for a non-numeric version', input: 'invalid', expected: null },
+        { name: 'returns null for empty or non-string input', input: null, expected: null }
     ];
 
-    console.log('\n--- parseSemVer Tests ---');
-    for (const tc of semverTestCases) {
-        const result = parseSemVer(tc.input);
-        const passed = JSON.stringify(result) === JSON.stringify(tc.expected);
-        if (!passed) {
-            console.error(`❌ Test failed: "${tc.name}"\n  Expected: ${JSON.stringify(tc.expected)}\n  Got:      ${JSON.stringify(result)}`);
-            failed = true;
-        } else {
-            console.log(`✅ Passed: "${tc.name}"`);
-        }
+    for (const { name, input, expected } of cases) {
+        test(name, () => assert.deepEqual(parseSemVer(input), expected));
     }
+});
 
-    console.log('\n--- canAppendSpan Tests ---');
-    const canAppendSpanCases = [
+describe('canAppendSpan', () => {
+    const html = 'http://www.w3.org/1999/xhtml';
+    const cases = [
         {
-            name: 'Returns true for valid HTML element with replaceChildren',
-            input: { nodeType: 1, tagName: 'H2', namespaceURI: 'http://www.w3.org/1999/xhtml', replaceChildren: () => {} },
+            name: 'returns true for a valid HTML element with replaceChildren',
+            input: { nodeType: 1, tagName: 'H2', namespaceURI: html, replaceChildren: () => {} },
             expected: true
         },
         {
-            name: 'Returns false for SVG element',
+            name: 'returns false for an SVG element',
             input: { nodeType: 1, tagName: 'text', namespaceURI: 'http://www.w3.org/2000/svg', replaceChildren: () => {} },
             expected: false
         },
         {
-            name: 'Returns false for INPUT element',
-            input: { nodeType: 1, tagName: 'INPUT', namespaceURI: 'http://www.w3.org/1999/xhtml', replaceChildren: () => {} },
+            name: 'returns false for an INPUT element',
+            input: { nodeType: 1, tagName: 'INPUT', namespaceURI: html, replaceChildren: () => {} },
             expected: false
         },
         {
-            name: 'Returns false for null or non-element node',
+            name: 'returns false for a non-element node',
             input: { nodeType: 3, tagName: '#text' },
             expected: false
         }
     ];
 
-    for (const tc of canAppendSpanCases) {
-        const result = canAppendSpan(tc.input);
-        if (result !== tc.expected) {
-            console.error(`❌ Test failed: "${tc.name}"\n  Expected: ${tc.expected}\n  Got:      ${result}`);
-            failed = true;
-        } else {
-            console.log(`✅ Passed: "${tc.name}"`);
-        }
+    for (const { name, input, expected } of cases) {
+        test(name, () => assert.equal(canAppendSpan(input), expected));
     }
+});
 
-    console.log('\n--- getActiveTab & getCurrentTabHostname Tests ---');
-    // Test desktop environment (currentWindow works)
-    mockTabs.query = async (queryInfo) => {
-        if (queryInfo.currentWindow) {
-            return [{ id: 1, url: 'https://www.hs.fi/kotimaa/art-12345.html' }];
-        }
-        return [{ id: 2, url: 'https://other.fi' }];
-    };
+describe('getActiveTab and getCurrentTabHostname', () => {
+    test('reads the tab from a currentWindow query', async () => {
+        fake.browser.tabs.query = async (queryInfo) => (queryInfo.currentWindow
+            ? [{ id: 1, url: 'https://www.hs.fi/kotimaa/art-12345.html' }]
+            : [{ id: 2, url: 'https://other.fi' }]);
 
-    let tab = await getActiveTab();
-    if (!tab || tab.id !== 1) {
-        console.error('❌ Failed desktop getActiveTab test:', tab);
-        failed = true;
-    } else {
-        console.log('✅ Passed: getActiveTab retrieves tab via currentWindow query');
-    }
+        assert.equal((await getActiveTab())?.id, 1);
+        assert.equal(await getCurrentTabHostname(), 'www.hs.fi');
+    });
 
-    let hostname = await getCurrentTabHostname();
-    if (hostname !== 'www.hs.fi') {
-        console.error('❌ Failed desktop getCurrentTabHostname test:', hostname);
-        failed = true;
-    } else {
-        console.log('✅ Passed: getCurrentTabHostname extracts hostname from active tab');
-    }
+    test('falls back to an active query when currentWindow is empty (Firefox Android)', async () => {
+        fake.browser.tabs.query = async (queryInfo) => {
+            if (queryInfo.currentWindow) return [];
+            return queryInfo.active ? [{ id: 42, url: 'https://yle.fi/uutiset/18-1234' }] : [];
+        };
 
-    // Test mobile/Android environment (currentWindow returns empty array, active query succeeds)
-    mockTabs.query = async (queryInfo) => {
-        if (queryInfo.currentWindow) {
-            return [];
-        }
-        if (queryInfo.active) {
-            return [{ id: 42, url: 'https://yle.fi/uutiset/18-1234' }];
-        }
-        return [];
-    };
+        assert.equal((await getActiveTab())?.id, 42);
+        assert.equal(await getCurrentTabHostname(), 'yle.fi');
+    });
 
-    tab = await getActiveTab();
-    if (!tab || tab.id !== 42) {
-        console.error('❌ Failed mobile getActiveTab fallback test:', tab);
-        failed = true;
-    } else {
-        console.log('✅ Passed: getActiveTab falls back to active query when currentWindow is empty (Firefox Android)');
-    }
+    test('returns a null hostname when the tab lacks a URL', async () => {
+        fake.browser.tabs.query = async () => [{ id: 99 }];
 
-    hostname = await getCurrentTabHostname();
-    if (hostname !== 'yle.fi') {
-        console.error('❌ Failed mobile getCurrentTabHostname fallback test:', hostname);
-        failed = true;
-    } else {
-        console.log('✅ Passed: getCurrentTabHostname works with fallback query');
-    }
+        assert.equal(await getCurrentTabHostname(), null);
+    });
 
-    // Test tab without url or invalid url
-    mockTabs.query = async () => [{ id: 99 }];
-    hostname = await getCurrentTabHostname();
-    if (hostname !== null) {
-        console.error('❌ Expected null hostname for tab without URL, got:', hostname);
-        failed = true;
-    } else {
-        console.log('✅ Passed: getCurrentTabHostname gracefully returns null when tab lacks URL');
-    }
+    test('returns null for both when no tabs match', async () => {
+        fake.browser.tabs.query = async () => [];
 
-    // Test query error / no tabs
-    mockTabs.query = async () => [];
-    tab = await getActiveTab();
-    hostname = await getCurrentTabHostname();
-    if (tab !== null || hostname !== null) {
-        console.error('❌ Expected null for tab and hostname when query returns empty, got:', { tab, hostname });
-        failed = true;
-    } else {
-        console.log('✅ Passed: returns null when no tabs match');
-    }
-
-    if (failed) {
-        console.error('\n❌ Utils tests failed.');
-        process.exit(1);
-    } else {
-        console.log('\n✅ All utils tests passed successfully.');
-        process.exit(0);
-    }
-}
-
-await runUtilsTests();
-
+        assert.equal(await getActiveTab(), null);
+        assert.equal(await getCurrentTabHostname(), null);
+    });
+});

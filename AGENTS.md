@@ -16,6 +16,7 @@
 - If a simpler approach exists, say so. Push back when warranted.
 - Do NOT read sensitive files like `.env` – if information related to them is needed, ask.
 - Keep the documentation up to date.
+- Do not overly rely on comments to explain code. Verify. Code should be self-explanatory.
 - When responding or writing in English, use ASD-STE100 Simplified Technical English
 
 ### Code comments:
@@ -66,7 +67,9 @@ files ship at `src/` paths. Write their imports for that destination — `../bro
 lands in `src/options/` — not for where the file sits in the tree.
 
 `src/browser-api.js` exists only because Chrome below 148 has no `browser` namespace. Delete it once
-`minimum_chrome_version` reaches 148 — `manifest.json` still says `122.0`.
+`minimum_chrome_version` reaches 148 — `manifest.json` still says `122.0`. The lint rules then keep their two
+`chrome` entries and lose their two `browser` entries: a bare `browser` becomes the namespace, `chrome` stays
+rejected, and neither exemption is needed. `TODO.md` carries the rest of that checklist.
 
 Two traps around it:
 
@@ -76,9 +79,11 @@ Two traps around it:
   `manifest.json`. Nothing in `make test` checks this; a missing entry 404s the import and kills the content
   script on real pages only.
 
-In tests, mock `globalThis.browser` (or `globalThis.chrome`) **before** importing the module under test, which
-means a dynamic `await import(...)`. A static import is hoisted above any assignment in the module body, so
-`browser-api.js` would resolve the namespace before the mock exists.
+In tests, mock `globalThis.browser` **before** importing the module under test, which means a dynamic
+`await import(...)`. A static import is hoisted above any assignment in the module body, so `browser-api.js`
+would resolve the namespace before the mock exists. Mock `globalThis.chrome` only in
+`tests/browser-namespace.test.mjs`, which covers the fallback branch; every browser this project supports gives
+the module a `browser` to find, so a suite that mocks `chrome` tests a path none of them takes.
 
 ### web components
 
@@ -98,12 +103,15 @@ This project uses web components, which usually use a combination of methods to 
 
 - `disconnectedCallback` must undo everything `connectedCallback` did. No lifetime-scoped `initialized` flag that
   survives a detach — it leaves a re-attached element subscribed to nothing.
-- Read state *before* subscribing to `storage.onChanged`. The first `getConfig()` registers the cache invalidator in
-  `config.js`, and storage listeners run in registration order: one that runs ahead of the invalidator reads a stale
-  cache.
-- Filter `storage.onChanged` by `areaName` *and* changed key. Statistics are written constantly; nothing should
-  re-read config on every write.
-- Never float an async lifecycle call. Catch it, and after any `await` re-check `isConnected` before touching the DOM.
+- Read settings with `onConfigValue(select, callback)` from `config.js`, not a `storage.onChanged` listener of your
+  own. It calls back at once with the value in storage and then only when that value genuinely changes, and returns
+  the unsubscribe function `disconnectedCallback` owes it. Select narrowly — the value is compared by its JSON
+  shape, so a whole sub-tree re-fires whenever anything inside it moves. Return a primitive or a flat tuple.
+- A raw `storage.onChanged` listener is for keys *outside* the merged config — `statistics`,
+  `visualHighlightEnabled`, `lastDatabaseUpdate`. Filter it by `areaName` *and* changed key: statistics are written
+  constantly, and nothing should re-render on every one of those writes.
+- Never float an async lifecycle call. Catch it, and after any `await` re-check `isConnected` before touching the DOM
+  — an `onConfigValue` callback always runs a turn after the subscription, so the element may already be gone.
   Where two updates can overlap, carry a generation counter so a late read cannot overwrite a newer one.
 - Draw randomness once and hold it; never re-draw on a state change, or an unrelated update visibly disturbs what is
   already on screen.

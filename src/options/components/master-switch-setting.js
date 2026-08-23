@@ -1,6 +1,6 @@
 import browser from '../../browser-api.js';
 import { controller } from '../../controller.js';
-import { model } from '../../model.js';
+import { onConfigValue } from '../../config.js';
 import { localizeDocument } from '../utils.js';
 import './toggle-button.js';
 
@@ -28,16 +28,9 @@ detailedTemplate.innerHTML = `
  * Supports layout="compact" (popup settings list item) and layout="detailed" (options page).
  */
 class MasterSwitchSetting extends HTMLElement {
-    constructor() {
-        super();
-        this.initialized = false;
-        this.storageListener = null;
-    }
+    #unsubscribe = null;
 
     connectedCallback() {
-        if (this.initialized) return;
-        this.initialized = true;
-
         const layout = this.getAttribute('layout') || 'detailed';
 
         if (layout === 'compact') {
@@ -57,31 +50,24 @@ class MasterSwitchSetting extends HTMLElement {
         const toggleBtn = this.querySelector('toggle-button');
         this.loadState(toggleBtn, layout);
 
-        // Auto-sync state when settings are changed elsewhere (e.g. from popup/options)
-        this.storageListener = () => this.sync(toggleBtn);
-        browser.storage.onChanged.addListener(this.storageListener);
+        // Calls back at once with the stored state, then only when it moves.
+        this.#unsubscribe = onConfigValue(
+            (config) => config.enabled,
+            (enabled) => { toggleBtn.checked = enabled; }
+        );
     }
 
     disconnectedCallback() {
-        if (this.storageListener) {
-            browser.storage.onChanged.removeListener(this.storageListener);
-        }
+        if (!this.#unsubscribe) return;
+
+        this.#unsubscribe();
+        this.#unsubscribe = null;
     }
 
     /**
-     * Fetch and apply latest values.
+     * Wire up the control. The checked state itself arrives from onConfigValue.
      */
-    async sync(toggleBtn) {
-        const isEnabled = await model.read.isEnabled();
-        toggleBtn.checked = isEnabled;
-    }
-
-    /**
-     * Perform initial state loading and event registration.
-     */
-    async loadState(toggleBtn, layout) {
-        await this.sync(toggleBtn);
-
+    loadState(toggleBtn, layout) {
         const innerCheckbox = toggleBtn.querySelector('input');
         if (innerCheckbox) {
             innerCheckbox.id = layout === 'compact' ? 'settingsview-extension-enabled' : 'extensionEnabled';

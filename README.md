@@ -21,6 +21,7 @@ Sail smoothly through the clickbait-infested web using this browser extension.
       - [Via web-ext run](#via-web-ext-run)
   - [Permission Requirements](#permission-requirements)
   - [Development](#development)
+    - [Running the Tests](#running-the-tests)
     - [Local Test Data \& Hashed Signatures](#local-test-data--hashed-signatures)
       - [Step 1: Dump URL Signatures from the Page](#step-1-dump-url-signatures-from-the-page)
       - [Step 2: Save the Signatures](#step-2-save-the-signatures)
@@ -183,6 +184,23 @@ web-ext run --devtools [--chromium-binary /usr/bin/chromium] -t chromium [--url 
 
 ## Development
 
+### Running the Tests
+
+```sh
+make test
+```
+
+The suites live in `tests/` and run on the built-in [`node:test`](https://nodejs.org/api/test.html) runner. A new
+`tests/*.test.mjs` file is picked up automatically — nothing to register. Shared fixtures go under
+`tests/helpers/`, which the runner does not treat as suites. `make test` also runs `suola`'s Wasm smoke test when
+`build/` holds the artifacts, and skips it with a note when it does not.
+
+Tests that touch the extension APIs use the in-memory fake in
+[`tests/helpers/fake-browser.mjs`](./tests/helpers/fake-browser.mjs), which really dispatches
+`storage.onChanged`. Assign it to `globalThis.browser` **before** a dynamic `await import(...)` of the module
+under test — `src/browser-api.js` resolves the namespace once, at module evaluation, so a static import would
+beat the assignment.
+
 ### Local Test Data & Hashed Signatures
 
 For local development and testing, you can generate and serve mock clickbait databases using the two Python helper scripts ([`generate_test_data.py`](./generate_test_data.py) and [`httpserver.py`](./httpserver.py)).
@@ -256,7 +274,6 @@ classDiagram
         +remove(keys)
     }
     class Model {
-        +events
         +read
         +write
     }
@@ -266,17 +283,19 @@ classDiagram
         +siteConfigs
         +environmentConfigs
         +getConfig()
+        +onConfigValue(select, callback)
     }
     class Controller {
         +setEnabled(value)
         +setSiteEnabled(value)
+        +setEnvironment(value)
         +setClickbaitLevel(value)
         +setModifierEnabled(name, value)
         +setDebugVisualsEnabled(value)
         +setVisualHighlightEnabled(value)
+        +setEasterEggProbability(value)
         +setRefreshIntervalMinutes(value)
         +setDevTitleDataUrls(urls)
-        +dispatchConversion()
         +updateStatistics()
     }
     class RahtiModule {
@@ -351,6 +370,7 @@ classDiagram
     ContentScript --> Modifiers : Applies active transformations
     Modifiers --> Model : Reads modifier toggle preferences
     ContentScript --> BackgroundScript : Requests batch URL hashing
+    BackgroundScript --> ContentScript : Tells the active tab to re-convert
     BackgroundScript --> SuolaWasm : Instantiates & runs Go Wasm
     ContentScript --> Controller : Updates active page stats
     ContentScript --> StatsModule : Computes session delta & snapshot
@@ -358,12 +378,14 @@ classDiagram
     Popup --> StatsModule : Computes gauge values
     
     Popup *-- Controller : Dispatches user preferences
-    Popup *-- Model : Reads config & stats
+    Popup *-- Model : Reads stats
+    Config --> Popup : Publishes changed values
     Popup --> ContentScript : Port connection (highlights)
     Popup ..> FeedbackServer : Submits user corrections
     
     OptionsUI *-- Controller : Dispatches settings changes
-    OptionsUI *-- Model : Reads config & stats
+    OptionsUI *-- Model : Reads stats
+    Config --> OptionsUI : Publishes changed values
 ```
 
 ## Privacy Policy

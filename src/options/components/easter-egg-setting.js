@@ -1,7 +1,7 @@
 import browser from '../../browser-api.js';
 import { controller } from '../../controller.js';
-import { model } from '../../model.js';
-import { affectsEasterEgg } from '../easter-egg.js';
+import { onConfigValue } from '../../config.js';
+import { clampProbability } from '../../model.js';
 import { localizeDocument } from '../utils.js';
 
 /* The stored value is a fraction; the input works in whole percent, because that
@@ -33,10 +33,10 @@ template.innerHTML = `
  * on/off switch needed to look at it.
  */
 class EasterEggSetting extends HTMLElement {
-    #storageListener = null;
+    #unsubscribe = null;
 
-    /** Bumped per sync, so an earlier read that resolves late cannot win. */
-    #generation = 0;
+    /** The stored probability, held so a failed save can put it back without a re-read. */
+    #probability = 0;
 
     connectedCallback() {
         this.replaceChildren(template.content.cloneNode(true));
@@ -48,46 +48,33 @@ class EasterEggSetting extends HTMLElement {
         input.max = String(SCALE);
         input.addEventListener('change', () => this.save(input));
 
-        // Read before subscribing. The first getConfig() registers the cache invalidator
-        // in config.js, which must sit ahead of the listener below -- storage listeners
-        // run in registration order, and one that runs first reads a cache nobody has
-        // invalidated yet.
-        this.sync(input);
-
-        // Filtered: statistics are written constantly, and re-reading config on every one
-        // of those writes would both waste the read and fight anyone using the field.
-        this.#storageListener = (changes, areaName) => {
-            if (!affectsEasterEgg(changes, areaName)) return;
-            this.sync(input);
-        };
-        browser.storage.onChanged.addListener(this.#storageListener);
+        // Calls back at once with the stored probability, then only when it moves.
+        this.#unsubscribe = onConfigValue(
+            (config) => clampProbability(config.easterEggProbability),
+            (probability) => {
+                this.#probability = probability;
+                this.show(input);
+            }
+        );
     }
 
     disconnectedCallback() {
-        if (!this.#storageListener) return;
+        if (!this.#unsubscribe) return;
 
-        browser.storage.onChanged.removeListener(this.#storageListener);
-        this.#storageListener = null;
+        this.#unsubscribe();
+        this.#unsubscribe = null;
     }
 
     /**
-     * Show the probability now in storage.
+     * Fill the field from the stored probability.
      *
      * @param {HTMLInputElement} input - The field to fill.
      */
-    sync(input) {
-        const generation = ++this.#generation;
+    show(input) {
+        // Never fight the person typing in the field.
+        if (document.activeElement === input) return;
 
-        model.read.getEasterEggProbability().then((probability) => {
-            // A later sync has overtaken this one, or the element has left the page
-            // while the read was in flight.
-            if (generation !== this.#generation || !this.isConnected) return;
-
-            // Never fight the person typing in the field.
-            if (document.activeElement === input) return;
-
-            input.value = String(Math.round(probability * SCALE));
-        }).catch((error) => console.error('Failed to read easter egg probability:', error));
+        input.value = String(Math.round(this.#probability * SCALE));
     }
 
     /**
@@ -117,7 +104,7 @@ class EasterEggSetting extends HTMLElement {
 
             // Put back what is actually stored, so the field never shows a value that
             // did not survive the write.
-            this.sync(input);
+            this.show(input);
 
             this.dispatchEvent(new CustomEvent('setting-saved', {
                 bubbles: true,

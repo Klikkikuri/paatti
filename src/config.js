@@ -320,28 +320,93 @@ const DEFAULT_CONFIG = {
     "statistics": {},
 };
 
+// The keys getConfig() reads below. Everything else -- statistics above all, which are
+// written on every conversion batch -- leaves the cache alone.
+const WATCHED_KEYS = {
+    local: ["userPreferences"],
+    sync: ["userSiteOverrides", "modifiers", "environmentConfigs"],
+};
+
 let cachedConfig = null;
 let pendingConfigPromise = null;
-let isListenerRegistered = false;
 
-function ensureListenerRegistered() {
-    if (isListenerRegistered) return;
-    isListenerRegistered = true;
-    const browserStorage = browser?.storage;
-    if (browserStorage && browserStorage.onChanged) {
-        browserStorage.onChanged.addListener((changes, areaName) => {
-            log("Storage changed in area:", areaName, ". Invalidating config cache.");
-            cachedConfig = null;
-            pendingConfigPromise = null;
-        });
-    }
+/** Live subscriptions: { select, callback, shape }, where shape starts at NOTHING. */
+const subscriptions = new Set();
+/** Distinct from every JSON shape -- `undefined` included -- so the first publish always calls back. */
+const NOTHING = Symbol("nothing");
+
+// Registered on import, so it precedes every listener a module importing this one can add.
+browser.storage.onChanged.addListener((changes, areaName) => {
+    if (!WATCHED_KEYS[areaName]?.some((key) => key in changes)) return;
+
+    log("Watched key changed in", areaName, "- invalidating config cache.");
+    cachedConfig = null;
+    pendingConfigPromise = null;
+    publish();
+});
+
+// Serialized: storage events arrive in bursts, and an earlier, slower read must not deliver
+// its state after a newer one has already gone out.
+let publishChain = Promise.resolve();
+
+/** Re-read the config and call back the subscriptions whose selected value moved. */
+function publish() {
+    publishChain = publishChain.then(async () => {
+        if (subscriptions.size === 0) return;
+
+        const config = await getConfig();
+        // Deleting from the live Set mid-loop is safe: an entry removed before the iterator
+        // reaches it is skipped, so a callback may unsubscribe itself or a sibling. That stops
+        // being true if this is ever changed to iterate a snapshot.
+        for (const subscription of subscriptions) {
+            // Selector and callback both guarded: one component that throws on unexpected data
+            // must not stop the others from being told.
+            try {
+                const value = subscription.select(config);
+                const shape = JSON.stringify(value);
+                if (shape === subscription.shape) continue;
+
+                subscription.shape = shape;
+                subscription.callback(value);
+            } catch (error) {
+                console.error("A config subscriber failed:", error);
+            }
+        }
+    }).catch((error) => {
+        // The chain must never settle rejected, or every later publish is skipped.
+        console.error("Failed to publish a config change:", error);
+    });
+
+    return publishChain;
+}
+
+/**
+ * Watch one value derived from the merged config.
+ *
+ * Calls back once with the value in storage now -- asynchronously, so a caller that must paint
+ * at once paints a placeholder first -- and then only when that value genuinely changes.
+ *
+ * The value is compared by its JSON shape, so select narrowly. `getConfig()` rebuilds the config
+ * on every read, so a selector returning a whole sub-tree re-fires whenever anything inside it
+ * moves; return a primitive or a flat tuple of them.
+ *
+ * @param {(config: Object) => *} select - Picks the value to watch out of the merged config.
+ * @param {(value: *) => void} callback - Called with each new value.
+ * @returns {Function} Unsubscribes when called.
+ */
+function onConfigValue(select, callback) {
+    const subscription = { select, callback, shape: NOTHING };
+    subscriptions.add(subscription);
+    // Fires this subscription only: every other selected value compares equal.
+    publish();
+
+    return () => subscriptions.delete(subscription);
 }
 
 /**
  * Gets the merged configuration for the current environment.
  */
 async function getConfig() {
-    ensureListenerRegistered();
     if (cachedConfig) {
         return cachedConfig;
     }
@@ -421,4 +486,4 @@ async function getConfig() {
     return pendingConfigPromise;
 }
 
-export { getConfig };
+export { getConfig, onConfigValue };

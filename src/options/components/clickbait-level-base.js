@@ -1,48 +1,30 @@
-import browser from '../../browser-api.js';
-import { getConfig } from '../../config.js';
+import { onConfigValue } from '../../config.js';
+
+/** What the slider shows when nothing is stored yet. */
+const DEFAULT_LEVEL = 2;
 
 /**
  * Abstract base class managing clickbait level options.
- * Handles lifecycle callbacks, initial loads, and background storage syncs.
+ * Owns the lifecycle and the config subscription; subclasses supply markup only.
  */
 export class ClickbaitLevelBase extends HTMLElement {
-    constructor() {
-        super();
-        this.initialized = false;
-        this.storageListener = null;
-    }
+    #unsubscribe = null;
 
     connectedCallback() {
-        if (this.initialized) return;
-        this.initialized = true;
-
         this.render();
-        this.loadState();
 
-        this.storageListener = () => this.sync();
-        browser.storage.onChanged.addListener(this.storageListener);
+        // Calls back at once with the stored level, then only when it moves.
+        this.#unsubscribe = onConfigValue(
+            (config) => config.clickbaitLevel ?? DEFAULT_LEVEL,
+            (level) => this.updateUI(level)
+        );
     }
 
     disconnectedCallback() {
-        if (this.storageListener) {
-            browser.storage.onChanged.removeListener(this.storageListener);
-        }
-    }
+        if (!this.#unsubscribe) return;
 
-    /**
-     * Fetch active level from configuration.
-     */
-    async getActiveLevel() {
-        const config = await getConfig();
-        return config.clickbaitLevel !== undefined ? config.clickbaitLevel : 2;
-    }
-
-    /**
-     * Sync state in UI.
-     */
-    async sync() {
-        const level = await this.getActiveLevel();
-        this.updateUI(level);
+        this.#unsubscribe();
+        this.#unsubscribe = null;
     }
 
     /**
@@ -57,12 +39,5 @@ export class ClickbaitLevelBase extends HTMLElement {
      */
     updateUI(level) {
         throw new Error("updateUI() must be implemented by subclass");
-    }
-
-    /**
-     * Fetch initial values.
-     */
-    async loadState() {
-        await this.sync();
     }
 }

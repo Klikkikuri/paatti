@@ -6,12 +6,6 @@ import { getConfig } from "./config.js";
 
 const log = getLogger("model");
 
-const modelEvents = {
-    statisticsChange: "statisticsChange",
-    enabledChange: "enabledChange",
-    environmentChange: "environmentChange"
-};
-
 /**
  * Clamp a stored probability into 0..1. Values reach here from a dev-only control
  * and from preferences written by older versions, so neither range nor type is given.
@@ -139,49 +133,8 @@ function matchesAnyOrigin(hostname, origins) {
  * Namespace for __model__ of model-view-controller.
  */
 const model = (() => {
-    ///////////////////////////////////////////////////////////////////////////////
-    // The events at home.
-    ///////////////////////////////////////////////////////////////////////////////
-    let _eventListeners = {};
-    const events = {
-        addEventListener: (event, handler) => {
-            if (!_eventListeners[event]) {
-                _eventListeners[event] = [];
-            }
-            _eventListeners[event].push(handler);
-        },
-        removeEventListener: (event, handler) => {
-            const handlers = _eventListeners[event];
-            if (!handlers) {
-                log(`No handlers to remove from the event '${event}'`);
-                return;
-            }
-            const idx = handlers.indexOf(handler);
-            handlers.splice(idx, 1);
-        },
-        dispatchEvent: (event) => {
-            const handlers = _eventListeners[event];
-            if (!handlers) {
-                log(`No handlers for the dispatched event '${event}'`);
-                return;
-            }
-            log(`Dispatching ${handlers.length} ${handlers.length > 1 ? "handlers" : "handler"} for event '${event}'`);
-            for (const handler of (_eventListeners[event] ?? [])) {
-                handler();
-            }
-        },
-    };
-
-    const config = getConfig();
-
     return {
-        events,
-
         write: {
-            initialize: async () => {
-                _eventListeners = {};
-            },
-
             setEnabled: async (value, hostname) => {
                 if (hostname) {
                     log(`Enabling '${hostname}' == ${value}`);
@@ -198,8 +151,6 @@ const model = (() => {
                     userPreferences.enabled = value;
                     await browser.storage.local.set({ userPreferences });
                 }
-
-                events.dispatchEvent(modelEvents.enabledChange);
             },
 
             setEnvironment: async (value) => {
@@ -210,8 +161,6 @@ const model = (() => {
 
                 userPreferences.environment = value;
                 await browser.storage.local.set({ userPreferences });
-
-                events.dispatchEvent(modelEvents.environmentChange);
             },
 
 
@@ -307,8 +256,6 @@ const model = (() => {
 
                 await browser.storage.local.set({ statistics });
                 log(`Stored cumulative stats for '${domain}':`, statistics[domain]);
-
-                events.dispatchEvent(modelEvents.statisticsChange);
             },
 
             setTitleDataUrl: async (value) => {
@@ -416,11 +363,6 @@ const model = (() => {
                     lastDatabaseUpdate: data.lastDatabaseUpdate || null,
                     databaseGenerationDate: data.databaseGenerationDate || null
                 };
-            },
-
-            getEasterEggProbability: async () => {
-                const config = await getConfig();
-                return clampProbability(config.easterEggProbability);
             },
 
             /**
@@ -557,4 +499,4 @@ const model = (() => {
     };
 })();
 
-export { model, modelEvents, klikkikuriStatus, Clickbaitiness };
+export { model, klikkikuriStatus, Clickbaitiness, clampProbability };

@@ -1,4 +1,4 @@
-import { getConfig } from '../config.js';
+import { getConfig, onConfigValue } from '../config.js';
 import browser from '../browser-api.js';
 import { displayProductInfo, getBrowserInfo, formatIsoWithTimezone, localizeDocument } from './utils.js';
 import { model } from '../model.js';
@@ -269,11 +269,23 @@ async function setupEventListeners() {
     // Manual database update button is handled by the database-status-setting component
 }
 
-// Keep options page synchronized with settings changes from other parts of the extension (e.g. popup)
-browser.storage.onChanged.addListener(async (changes, area) => {
-    console.log("Storage changed, reloading settings in options page");
-    await loadSettings();
-    await renderAbout();
+/** The local keys the About panel prints. Neither is part of the merged config. */
+const ABOUT_STATUS_KEYS = ['lastDatabaseUpdate', 'databaseGenerationDate'];
+
+// Keep the page in step with changes made elsewhere (e.g. from the popup). Everything
+// else on the page is owned by a component that subscribes for itself.
+onConfigValue(
+    (config) => [config.activeEnv, config.environmentConfigs],
+    () => {
+        loadSettings().catch((error) => console.error('Failed to reload settings:', error));
+        renderAbout().catch((error) => console.error('Failed to render the about panel:', error));
+    }
+);
+
+browser.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== 'local' || !ABOUT_STATUS_KEYS.some((key) => key in changes)) return;
+
+    renderAbout().catch((error) => console.error('Failed to render the about panel:', error));
 });
 
 /**

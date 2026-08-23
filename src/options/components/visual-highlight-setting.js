@@ -1,5 +1,6 @@
 import browser from '../../browser-api.js';
 import { controller } from '../../controller.js';
+import { onConfigValue } from '../../config.js';
 import { model } from '../../model.js';
 import { localizeDocument } from '../utils.js';
 import './toggle-button.js';
@@ -28,16 +29,10 @@ detailedTemplate.innerHTML = `
  * Supports layout="compact" (popup settings list item) and layout="detailed" (options page).
  */
 class VisualHighlightSetting extends HTMLElement {
-    constructor() {
-        super();
-        this.initialized = false;
-        this.storageListener = null;
-    }
+    #unsubscribe = null;
+    #storageListener = null;
 
     connectedCallback() {
-        if (this.initialized) return;
-        this.initialized = true;
-
         const layout = this.getAttribute('layout') || 'detailed';
 
         if (layout === 'compact') {
@@ -57,15 +52,27 @@ class VisualHighlightSetting extends HTMLElement {
         const toggleBtn = this.querySelector('toggle-button');
         this.loadState(toggleBtn, layout);
 
-        // Auto-sync state when settings are changed elsewhere
-        this.storageListener = () => this.sync(toggleBtn, layout);
-        browser.storage.onChanged.addListener(this.storageListener);
+        // The state lives in a local key of its own, with the config only as a fallback,
+        // so it takes both a config subscription and a listener for that key.
+        this.#unsubscribe = onConfigValue(
+            (config) => config.debugVisualsEnabled,
+            () => this.sync(toggleBtn)
+        );
+
+        this.#storageListener = (changes, areaName) => {
+            if (areaName !== 'local' || !('visualHighlightEnabled' in changes)) return;
+            this.sync(toggleBtn);
+        };
+        browser.storage.onChanged.addListener(this.#storageListener);
     }
 
     disconnectedCallback() {
-        if (this.storageListener) {
-            browser.storage.onChanged.removeListener(this.storageListener);
-        }
+        if (!this.#storageListener) return;
+
+        this.#unsubscribe();
+        this.#unsubscribe = null;
+        browser.storage.onChanged.removeListener(this.#storageListener);
+        this.#storageListener = null;
     }
 
     /**
@@ -73,6 +80,8 @@ class VisualHighlightSetting extends HTMLElement {
      */
     async sync(toggleBtn) {
         const isEnabled = await model.read.getVisualHighlightEnabled();
+        if (!this.isConnected) return;
+
         toggleBtn.checked = isEnabled;
     }
 

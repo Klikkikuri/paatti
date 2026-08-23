@@ -1,23 +1,10 @@
 "use strict";
 
 import browser from "./browser-api.js";
-import { getLogger, getActiveTab, getCurrentTabHostname } from "./utils.js";
-import { model, modelEvents } from "./model.js";
+import { getLogger, getCurrentTabHostname } from "./utils.js";
+import { model } from "./model.js";
 
 const log = getLogger("controller");
-
-const _dispatchConversion = async () => {
-    log("Dispatching conversion...");
-    try {
-        const activeTab = await getActiveTab();
-        if (activeTab && activeTab.id) {
-            await browser.tabs.sendMessage(activeTab.id, { command: "convertClickbaits" });
-            log("Conversion dispatch performed.");
-        }
-    } catch (err) {
-        log("Conversion dispatch failed:", err);
-    }
-};
 
 const _setSiteEnabled = async (isEnabled, hostname) => {
     if (isEnabled) {
@@ -33,15 +20,6 @@ const _setSiteEnabled = async (isEnabled, hostname) => {
  * Namespace for __controller__ of model-view-controller.
  */
 const controller = {
-    initialize: async () => {
-        console.log("Controller initializing...");
-        await model.write.initialize();
-        /* CONFIG: Configure your desired development thingies here. */
-        if (await model.read.isDevelopmentEnv()) {
-            log("Initializing in development mode");
-        }
-    },
-
     setEnabled: async (isEnabled) => {
         log("Turning paatti ", isEnabled ? "ON" : "OFF");
         await model.write.setEnabled(isEnabled);
@@ -93,8 +71,6 @@ const controller = {
         await model.write.setModifierEnabled(name, value);
     },
 
-    dispatchConversion: _dispatchConversion,
-
     /**
      * Persist a page stats delta for a specific siteConfig domain.
      * @param {{ domain: string, delta: import('./stats.js').PageSnapshot }} params
@@ -138,10 +114,6 @@ const controller = {
     },
 };
 
-if (browser.tabs) {
-    model.events.addEventListener(modelEvents.enabledChange, controller.dispatchConversion);
-    model.events.addEventListener(modelEvents.environmentChange, controller.dispatchConversion);
-}
 
 export { controller };
 
