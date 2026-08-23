@@ -1,7 +1,7 @@
 import browser from '../../browser-api.js';
 import { getCurrentTabHostname } from '../../utils.js';
 import { model } from '../../model.js';
-import { getConfig } from '../../config.js';
+import { getConfig, onConfigValue } from '../../config.js';
 import { isSiteEnabled } from '../utils.js';
 import { handleSiteToggleHelper } from './site-toggle.js';
 
@@ -21,40 +21,39 @@ template.innerHTML = `
  * Manages its own state, permissions, and settings toggle logic.
  */
 export class PowerButton extends HTMLElement {
-    constructor() {
-        super();
-        this.initialized = false;
-        this.storageListener = null;
-        this.domain = null;
-        this.origins = [];
-        this.isSiteSupported = false;
-        this.hasPermission = false;
-    }
+    #unsubscribe = null;
+
+    domain = null;
+    origins = [];
+    isSiteSupported = false;
+    hasPermission = false;
 
     /**
      * Lifecycle callback when element is added to DOM.
      */
     connectedCallback() {
-        if (this.initialized) return;
-        this.initialized = true;
-
         this.style.display = 'inline-block';
 
         this.render();
         this.loadState();
 
-        // Auto-sync status when settings are changed elsewhere
-        this.storageListener = () => this.sync();
-        browser.storage.onChanged.addListener(this.storageListener);
+        // The selector reads this.domain, which loadState() fills in asynchronously. Until
+        // it does, sync() returns early and the shape stays provisional; the first real
+        // change corrects it. loadState()'s own sync() is what paints the initial state.
+        this.#unsubscribe = onConfigValue(
+            (config) => [config.enabled, this.domain ? config.siteConfigs[this.domain]?.enabled : null],
+            () => this.sync()
+        );
     }
 
     /**
      * Lifecycle callback when element is removed from DOM.
      */
     disconnectedCallback() {
-        if (this.storageListener) {
-            browser.storage.onChanged.removeListener(this.storageListener);
-        }
+        if (!this.#unsubscribe) return;
+
+        this.#unsubscribe();
+        this.#unsubscribe = null;
     }
 
     /**
@@ -114,6 +113,7 @@ export class PowerButton extends HTMLElement {
             : false;
         
         this.hasPermission = hasPermission;
+        if (!this.isConnected) return;
 
         const checkbox = this.querySelector('input');
         const label = this.querySelector('label');
