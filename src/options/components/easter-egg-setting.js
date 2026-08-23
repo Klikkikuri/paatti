@@ -16,7 +16,7 @@ template.innerHTML = `
                 <span data-i18n="devmodeEasterEggDesc">How often the hidden artwork joins the page background</span>
             </div>
             <span style="display: flex; align-items: center; gap: 6px;">
-                <input type="number" class="easter-egg-probability" id="easterEggProbability" min="0" max="${SCALE}" step="1"
+                <input type="number" class="easter-egg-probability" id="easterEggProbability" min="0" step="1"
                        style="width: 80px; padding: 8px; border: 2px solid var(--color-border); border-radius: 6px; font-size: 1em; text-align: center;">
                 <span>%</span>
             </span>
@@ -46,6 +46,9 @@ class EasterEggSetting extends HTMLElement {
         localizeDocument(this);
 
         const input = this.querySelector('.easter-egg-probability');
+        // Set here rather than in the markup: an interpolated template literal counts as a dynamic
+        // innerHTML assignment, which add-on review rejects. SCALE stays the one source for the ceiling.
+        input.max = String(SCALE);
         this.loadState(input);
 
         // Auto-sync state when settings are changed elsewhere

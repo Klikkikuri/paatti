@@ -14,7 +14,7 @@ const SCREEN = `<rect x="4" y="2" width="16" height="20" rx="3.5" />`;
 const PLAY = `<path d="M10 8L16.5 12L10 16Z" />`;
 
 const svgMarkup = `
-<svg class="badge-icon" role="img" viewBox="0 0 24 24" width="18" height="18">
+<svg xmlns="http://www.w3.org/2000/svg" class="badge-icon" role="img" viewBox="0 0 24 24" width="18" height="18">
     ${knockoutMask("video-cutout", SCREEN, PLAY)}
     <g fill="currentColor" mask="url(#video-cutout)">${SCREEN}</g>
 </svg>

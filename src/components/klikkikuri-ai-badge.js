@@ -22,7 +22,7 @@ const CIRCLE = `<circle cx="12" cy="12" r="11" />`;
 const LETTERS = `<text class="badge-glyph-font" x="12" y="15.5" text-anchor="middle">AI</text>`;
 
 const svgMarkup = `
-<svg class="badge-icon" role="img" viewBox="0 0 24 24" width="18" height="18">
+<svg xmlns="http://www.w3.org/2000/svg" class="badge-icon" role="img" viewBox="0 0 24 24" width="18" height="18">
     ${knockoutMask("ai-cutout", CIRCLE, LETTERS)}
     <g fill="currentColor" mask="url(#ai-cutout)">${CIRCLE}</g>
 </svg>
