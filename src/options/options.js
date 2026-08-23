@@ -4,6 +4,7 @@ import { displayProductInfo, getBrowserInfo, formatIsoWithTimezone, localizeDocu
 import { model } from '../model.js';
 import { controller } from '../controller.js';
 import { NON_OSS_CREDIT_HTML } from './non-oss-info.js';
+import { specialDayMessageKey } from './easter-egg.js';
 import './components/site-list-setting.js';
 import './components/visual-highlight-setting.js';
 import './components/master-switch-setting.js';
@@ -286,6 +287,24 @@ function setAboutField(id, value) {
     if (el) el.textContent = value;
 }
 
+/**
+ * Replaces the content of an about field with parsed markup.
+ * For the few fields whose text may carry a link; runtime values use setAboutField.
+ * The markup comes from a bundled locale file or from the build overlay, never from
+ * remote or user data.
+ * @param {string} id - Element ID
+ * @param {string} html - Markup to show
+ */
+function setAboutHtml(id, html) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    // renderAbout() runs again on every storage change, so replace rather than
+    // append: appending would stack a second copy of the line each time.
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    el.replaceChildren(...doc.body.childNodes);
+}
+
 
 /**
  * Populates the About section with runtime and config info useful for issue reports.
@@ -339,13 +358,17 @@ async function renderAbout() {
         setAboutField('about-sites', enabledSites.length ? enabledSites.join(', ') : noneText);
     }
 
+    // Today — a line on the days the easter egg calendar marks, hidden on the rest
+    const specialDay = document.getElementById('special-day');
+    const specialDayKey = specialDayMessageKey(new Date());
+    if (specialDay) {
+        if (specialDayKey) setAboutHtml('special-day-reason', browser().i18n.getMessage(specialDayKey));
+        specialDay.classList.toggle('visible', Boolean(specialDayKey));
+    }
+
     // Non-OSS credit (empty string in OSS builds -> no visible output)
-    const creditEl = document.getElementById('non-oss-credit');
-    if (creditEl && NON_OSS_CREDIT_HTML) {
-        const doc = new DOMParser().parseFromString(NON_OSS_CREDIT_HTML, 'text/html');
-        while (doc.body.firstChild) {
-            creditEl.appendChild(doc.body.firstChild);
-        }
+    if (NON_OSS_CREDIT_HTML) {
+        setAboutHtml('non-oss-credit', NON_OSS_CREDIT_HTML);
     }
 }
 

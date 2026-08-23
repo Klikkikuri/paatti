@@ -422,6 +422,31 @@ const model = (() => {
                 return clampProbability(config.easterEggProbability);
             },
 
+            /**
+             * The salt that gives this install its own easter egg calendar.
+             *
+             * Local and not sync, and a key of its own rather than a setting: it is a
+             * property of the install, not something the user chose. Without it every
+             * Paatti on earth would hash the same date to the same number and show the
+             * artwork on the same days.
+             *
+             * Written on the first read, so there is nothing to migrate. Two pages that
+             * race on a fresh install can both generate one and the last write wins;
+             * that costs one page one day of a different calendar, and no more.
+             */
+            getEasterEggSalt: async () => {
+                const data = await browser().storage.local.get("easterEggSalt");
+                if (typeof data.easterEggSalt === "string" && data.easterEggSalt) {
+                    return data.easterEggSalt;
+                }
+
+                const salt = crypto.randomUUID();
+                log("Generating an easter egg salt for this install");
+                await browser().storage.local.set({ easterEggSalt: salt });
+
+                return salt;
+            },
+
             getClickbaitLevel: async () => {
                 const config = await getConfig();
                 return config.clickbaitLevel !== undefined ? config.clickbaitLevel : 2;

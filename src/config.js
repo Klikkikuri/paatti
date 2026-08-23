@@ -6,8 +6,10 @@ const log = getLogger("config");
 
 const DEFAULT_ENV = {
     "refreshIntervalMinutes": 20,
-    // Chance (0..1) that the easter egg artwork joins the page background on a page load.
-    // Tuned low on purpose: a sighting should feel like luck, not decoration.
+    // Chance (0..1) that the easter egg artwork joins the page background on a given day.
+    // The day either has it or does not, from a calendar of its own per install, so this
+    // is how many days in a hundred carry a sighting. Tuned low on purpose: a sighting
+    // should feel like luck, not decoration.
     "easterEggProbability": 0.05,
     "email": "",
     "titleDataUrls": ["https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"],

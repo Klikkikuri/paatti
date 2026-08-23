@@ -1,6 +1,6 @@
 import { browser, getLogger } from '../../utils.js';
 import { model } from '../../model.js';
-import { shouldShowEasterEgg } from '../easter-egg.js';
+import { shouldShowEasterEgg, dayKey, unitHash, specialDayMessageKey } from '../easter-egg.js';
 import { adoptComponentStyleSheet } from './component-utils.js';
 
 // None of this element's CSS is shared, so it travels with the component: a page
@@ -42,15 +42,6 @@ function affectsEasterEgg(changes, areaName) {
  * the requirements at the top of page-background.css.
  */
 class PageBackground extends HTMLElement {
-    /**
-     * The die, drawn once when the element is created and held for its life. A
-     * change of probability then moves the bar rather than throwing new dice, so
-     * raising the odds can only ever reveal a sighting, never clear one off the
-     * screen. Rolling here rather than on connect keeps that true across a
-     * detach and re-attach, which calls connectedCallback a second time.
-     */
-    #roll = Math.random();
-
     #storageListener = null;
 
     /** Bumped per apply, so an earlier read that resolves late cannot win. */
@@ -81,23 +72,40 @@ class PageBackground extends HTMLElement {
     }
 
     /**
-     * Show or hide the easter egg for the probability now in storage. The die is
-     * the one drawn at construction, so calling this twice over on an unchanged
-     * probability settles on the same answer.
+     * Show or hide the easter egg for the probability now in storage.
+     *
+     * The roll is derived, not thrown: the day and the install's salt hash to one
+     * number that holds for the whole day, so every page load that day settles the
+     * same way. A change of probability then moves the bar against a standing
+     * number, so raising the odds can reveal a sighting but never clear one off
+     * the screen.
      *
      * A theme switch needs no work of its own: each theme names its own artwork,
-     * so the result of the standing roll simply changes shape.
+     * so the result of the roll simply changes shape.
      */
     applyEasterEgg() {
         const generation = ++this.#generation;
 
-        model.read.getEasterEggProbability().then((probability) => {
+        // A page left open over midnight picks up the new day on its next apply.
+        const today = new Date();
+
+        // Both reads are started here and awaited together. Starting one and
+        // awaiting it first would push the getConfig() that registers the cache
+        // invalidator behind the listener in connectedCallback.
+        Promise.all([
+            model.read.getEasterEggProbability(),
+            model.read.getEasterEggSalt()
+        ]).then(([probability, salt]) => {
             // A later apply has overtaken this one, or the element has left the
             // page while the read was in flight.
             if (generation !== this.#generation || !this.isConnected) return;
 
-            this.classList.toggle(EGG_CLASS, shouldShowEasterEgg({ probability, roll: this.#roll }));
-        }).catch((error) => log('Could not read the easter egg probability:', error));
+            const roll = unitHash(`${salt}:${dayKey(today)}`);
+            const shown = specialDayMessageKey(today) !== null
+                || shouldShowEasterEgg({ probability, roll });
+
+            this.classList.toggle(EGG_CLASS, shown);
+        }).catch((error) => log('Could not read the easter egg settings:', error));
     }
 }
 

@@ -687,6 +687,20 @@ footer a:hover {
         }
     }
 
+    /* Shown only on a day the easter egg calendar marks. A plain toggle: there is
+       one line to show, and nothing worth animating. */
+    #special-day {
+        display: none;
+
+        &.visible {
+            display: block;
+        }
+
+        p {
+            margin-bottom: 20px;
+        }
+    }
+
     #about-info {
         margin-bottom: 20px;
         padding: 15px;

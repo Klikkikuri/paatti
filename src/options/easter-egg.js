@@ -2,11 +2,92 @@
 
 /**
  * @file easter-egg.js
- * The rule behind the rare artwork the page background may show.
+ * The rule behind the rare artwork the page background may show, and the calendar
+ * of days that always show it.
  *
  * Kept apart from the <page-background> component that uses it, and free of both
- * DOM and randomness, so the rule can be read and tested on its own.
+ * DOM and randomness, so the rule can be read and tested on its own. The calendar
+ * holds i18n keys and never resolved text, which keeps browser() out of here too.
  */
+
+/**
+ * Days the artwork always shows, whatever the odds, keyed by MM-DD and matched
+ * every year. Kept in calendar order: a new day then has one obvious place to go,
+ * and a repeated one is easy to see. The test asserts the order.
+ */
+const SPECIAL_DAYS = Object.freeze({
+    '03-19': 'specialDayMinnaCanth',   // Minna Canth's Day
+    '05-03': 'specialDayPressFreedom', // World Press Freedom Day
+    '06-15': 'specialDayMagnaCarta',   // Magna Carta, 1215
+    '06-20': 'specialDayJaws',         // Jaws, released 20.06.1975
+    '07-10': 'specialDayKlikkikuri',   // Klikkikuri v0.0.1
+    '07-17': 'specialDayDemocracyDay', // Finnish Democracy Day, the 1919 Constitution Act
+    '08-14': 'specialDayJyu',          // JYU foundation
+    '10-11': 'specialDayTaija',        // Taija
+    '12-02': 'specialDayPressAct',     // Freedom of the Press Act, 1766
+    '12-04': 'specialDayJuho',         // Juho
+    '12-16': 'specialDayTeemu',        // Teemu
+});
+
+/**
+ * The local calendar day of a date, as YYYY-MM-DD.
+ *
+ * Local and not toISOString(), which is UTC: a user east of Greenwich would get
+ * yesterday's key through the first hours of their day, and the artwork would
+ * change under them at an hour that means nothing.
+ *
+ * @param {Date} date - The day to name. The caller passes new Date().
+ * @returns {string}
+ */
+function dayKey(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
+/**
+ * Hash a string into a number in [0, 1): 32-bit FNV-1a, then an avalanche
+ * finalizer.
+ *
+ * The finalizer is not decoration. Two neighbouring day keys differ in a single
+ * character, and plain FNV-1a carries that small difference through to a small
+ * difference in the result -- consecutive days would land beside each other in
+ * [0, 1), so sightings would arrive in clumps. The finalizer mixes the low bits
+ * back through the whole word, which scatters near-identical keys.
+ *
+ * @param {string} key - The string to hash.
+ * @returns {number} A number in [0, 1).
+ */
+function unitHash(key) {
+    let h = 2166136261;
+    for (let i = 0; i < key.length; i++) {
+        h ^= key.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+
+    h ^= h >>> 16;
+    h = Math.imul(h, 2246822507);
+    h ^= h >>> 13;
+    h = Math.imul(h, 3266489909);
+    h ^= h >>> 16;
+
+    return (h >>> 0) / 4294967296;
+}
+
+/**
+ * The i18n key that says what makes this day special, or null on an ordinary day.
+ *
+ * One table serves two callers: <page-background> only asks whether there is a
+ * key, and the about page shows the message behind it.
+ *
+ * @param {Date} date - The day to look up.
+ * @returns {?string} An i18n message key, or null.
+ */
+function specialDayMessageKey(date) {
+    return SPECIAL_DAYS[dayKey(date).slice(5)] ?? null;
+}
 
 /**
  * Decide whether the easter egg shows on this roll.
@@ -22,7 +103,7 @@
  *
  * @param {Object} params
  * @param {number} params.probability - Chance of a sighting, 0..1.
- * @param {number} params.roll - Random number in [0, 1).
+ * @param {number} params.roll - The day's number in [0, 1); see unitHash above.
  * @returns {boolean}
  */
 function shouldShowEasterEgg({ probability, roll }) {
@@ -32,4 +113,4 @@ function shouldShowEasterEgg({ probability, roll }) {
     return roll < chance;
 }
 
-export { shouldShowEasterEgg };
+export { shouldShowEasterEgg, dayKey, unitHash, specialDayMessageKey, SPECIAL_DAYS };
