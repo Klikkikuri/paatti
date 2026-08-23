@@ -46,10 +46,10 @@
     --color-surface-well: #f7f8fa;
 
     /* Home view artwork scrims. The artwork itself is <page-background>'s business
-     * -- it picks a take per theme in components.css, since the easter egg it
-     * places on the artwork needs the pixel grid that goes with it. These say how
-     * much of the surface colour is laid over the image at its top and bottom
-     * edge, so text on it stays readable. */
+     * -- it picks a take per theme in components/page-background.css, since the
+     * easter egg it places on the artwork needs the pixel grid that goes with it.
+     * These say how much of the surface colour is laid over the image at its top
+     * and bottom edge, so text on it stays readable. */
     --scrim-top: 45%;
     --scrim-bottom: 80%;
     /* The options page shows the same artwork behind an opaque card, so it only

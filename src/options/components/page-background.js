@@ -1,4 +1,4 @@
-import { browser } from '../../utils.js';
+import { browser, getLogger } from '../../utils.js';
 import { model } from '../../model.js';
 import { shouldShowEasterEgg } from '../easter-egg.js';
 import { adoptComponentStyleSheet } from './component-utils.js';
@@ -7,8 +7,29 @@ import { adoptComponentStyleSheet } from './component-utils.js';
 // gets the styling by importing this module and nothing more.
 adoptComponentStyleSheet(new URL('./page-background.css', import.meta.url));
 
+const log = getLogger('components/page-background');
+
 /** Class page-background.css hangs the easter egg artwork off. */
 const EGG_CLASS = 'has-easter-egg';
+
+/**
+ * Does this storage change carry a new easter egg probability?
+ *
+ * The value is merged from two places by getConfig(): the sync environmentConfigs
+ * the setter writes to, and the local userPreferences, which both overrides it and
+ * names the environment to read it from. Everything else -- statistics above all,
+ * which are written constantly -- is none of this element's business.
+ *
+ * @param {Object} changes - chrome.storage.onChanged changes.
+ * @param {string} areaName - Storage area the change came from.
+ * @returns {boolean}
+ */
+function affectsEasterEgg(changes, areaName) {
+    if (areaName === 'sync') return Boolean(changes.environmentConfigs);
+    if (areaName === 'local') return Boolean(changes.userPreferences);
+
+    return false;
+}
 
 /**
  * Custom element that carries the page artwork: the sea photo for the active
@@ -17,52 +38,69 @@ const EGG_CLASS = 'has-easter-egg';
  *
  * The element paints behind the page and holds no content of its own, so a page
  * only has to place it; how it looks on that page is settled in the stylesheet
- * beside this module.
+ * beside this module. The host page owes the element a stacking context -- see
+ * the requirements at the top of page-background.css.
  */
 class PageBackground extends HTMLElement {
-    constructor() {
-        super();
-        this.initialized = false;
-        this.storageListener = null;
-        this.lastProbability = null;
-    }
+    /**
+     * The die, drawn once when the element is created and held for its life. A
+     * change of probability then moves the bar rather than throwing new dice, so
+     * raising the odds can only ever reveal a sighting, never clear one off the
+     * screen. Rolling here rather than on connect keeps that true across a
+     * detach and re-attach, which calls connectedCallback a second time.
+     */
+    #roll = Math.random();
+
+    #storageListener = null;
+
+    /** Bumped per apply, so an earlier read that resolves late cannot win. */
+    #generation = 0;
 
     connectedCallback() {
-        if (this.initialized) return;
-        this.initialized = true;
-
         // Decoration only: nothing here belongs in the accessibility tree.
         this.setAttribute('aria-hidden', 'true');
 
-        // Re-roll when the development field changes, so that control gives immediate
-        // feedback. Other preference writes must not disturb a sighting on screen.
-        this.storageListener = async () => {
-            const probability = await model.read.getEasterEggProbability();
-            if (probability === this.lastProbability) return;
-            await this.rollEasterEgg();
-        };
-        browser().storage.onChanged.addListener(this.storageListener);
+        // Read before subscribing. The first getConfig() registers the cache
+        // invalidator in config.js, which must sit ahead of the listener below --
+        // storage listeners run in registration order, and one that runs first
+        // reads a cache nobody has invalidated yet.
+        this.applyEasterEgg();
 
-        this.rollEasterEgg();
+        this.#storageListener = (changes, areaName) => {
+            if (!affectsEasterEgg(changes, areaName)) return;
+            this.applyEasterEgg();
+        };
+        browser().storage.onChanged.addListener(this.#storageListener);
     }
 
     disconnectedCallback() {
-        if (this.storageListener) {
-            browser().storage.onChanged.removeListener(this.storageListener);
-        }
+        if (!this.#storageListener) return;
+
+        browser().storage.onChanged.removeListener(this.#storageListener);
+        this.#storageListener = null;
     }
 
     /**
-     * Roll the dice once and show or hide the easter egg accordingly. A theme
-     * switch needs no roll of its own: each theme names its own artwork, so the
-     * result of this one roll simply changes shape.
+     * Show or hide the easter egg for the probability now in storage. The die is
+     * the one drawn at construction, so calling this twice over on an unchanged
+     * probability settles on the same answer.
+     *
+     * A theme switch needs no work of its own: each theme names its own artwork,
+     * so the result of the standing roll simply changes shape.
      */
-    async rollEasterEgg() {
-        const probability = await model.read.getEasterEggProbability();
-        this.lastProbability = probability;
+    applyEasterEgg() {
+        const generation = ++this.#generation;
 
-        this.classList.toggle(EGG_CLASS, shouldShowEasterEgg({ probability, roll: Math.random() }));
+        model.read.getEasterEggProbability().then((probability) => {
+            // A later apply has overtaken this one, or the element has left the
+            // page while the read was in flight.
+            if (generation !== this.#generation || !this.isConnected) return;
+
+            this.classList.toggle(EGG_CLASS, shouldShowEasterEgg({ probability, roll: this.#roll }));
+        }).catch((error) => log('Could not read the easter egg probability:', error));
     }
 }
 
-customElements.define('page-background', PageBackground);
+if (!customElements.get('page-background')) {
+    customElements.define('page-background', PageBackground);
+}

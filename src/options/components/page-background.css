@@ -1,28 +1,34 @@
 /**
  * <page-background>: the artwork behind a page.
  *
- * Everything the element needs is here, including the two host-specific blocks at
- * the end -- none of it is shared with anything else, and page-background.js
- * loads this file itself, so a page gets the styling by importing the component
- * and nothing more. Colours still come from the tokens in theme.css.
+ * Every rule that styles the element is here, including the two host-specific
+ * blocks at the end -- none of it is shared with anything else, and
+ * page-background.js loads this file itself, so a page gets the styling by
+ * importing the component and nothing more. What the host page must do for itself
+ * is listed below. Colours still come from the tokens in theme.css.
  *
  * Image paths resolve against this file, which sits one level below images/.
- */
-
-/*
+ *
+ * ## What the host page owes the element
+ *
  * The element is taken out of flow and pushed behind the page with a negative
  * z-index. That only stays inside the host if the host is a stacking context of
- * its own; without `isolation` the element sinks behind the host's background
- * instead of sitting between it and the host's content.
+ * its own, so the host must set `isolation: isolate` -- without it the element
+ * sinks behind the host's background instead of sitting between it and the host's
+ * content. Where the element is `position: absolute`, the host must also be
+ * positioned. Both are rules about the host, not about this element, so they live
+ * in the page's own stylesheet: options.css for the options page, styles.css for
+ * the popup.
+ *
+ * ## Tuning
+ *
+ * The artwork is placed with six custom properties, and nothing else needs
+ * touching to move a piece:
+ *
+ *   --art-width, --art-height     the artwork's own pixel grid
+ *   --egg-width, --egg-height     the size of the easter egg on that grid
+ *   --egg-x, --egg-y              the top left corner of the easter egg on it
  */
-body,
-.content.main-content {
-    isolation: isolate;
-}
-
-.content.main-content {
-    position: relative;
-}
 
 /*
  * The photo and the easter egg share one plane (::before) instead of sitting on
@@ -151,7 +157,7 @@ body > page-background::after {
 
 @media (prefers-color-scheme: dark) {
     .main-content > page-background {
-        --egg-x: 560;
+        --egg-x: 720;
     }
 }
 

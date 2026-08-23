@@ -36,6 +36,25 @@ function runEasterEggTests() {
             shouldShowEasterEgg({ probability, roll: 0 }), false);
     }
 
+    // --- One held roll gives a plain threshold ---
+    // <page-background> draws its roll once and keeps it, so raising the probability
+    // may reveal the artwork but must never clear a sighting off the screen.
+    const roll = 0.42;
+    let wasShown = false;
+    let regressed = false;
+    for (let probability = 0; probability <= 1.0001; probability += 0.01) {
+        const shown = shouldShowEasterEgg({ probability, roll });
+        if (wasShown && !shown) regressed = true;
+        wasShown = shown;
+    }
+    check('raising the probability against one held roll never hides the egg', regressed, false);
+    check('the held roll is the threshold: below it, nothing shows',
+        shouldShowEasterEgg({ probability: roll, roll }), false);
+    check('the held roll is the threshold: just above it, the egg shows',
+        shouldShowEasterEgg({ probability: roll + Number.EPSILON, roll }), true);
+    check('asking twice over gives the same answer',
+        shouldShowEasterEgg({ probability: 0.5, roll }), shouldShowEasterEgg({ probability: 0.5, roll }));
+
     if (failed) {
         console.error('\n❌ Some easter egg tests failed.');
         process.exit(1);

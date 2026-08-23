@@ -19,6 +19,11 @@ body {
     /* The artwork over this colour is drawn by <page-background>, which brings its
      * own stylesheet -- see src/options/components/page-background.css. */
     background-color: var(--color-bg-body);
+
+    /* What that element asks of its host: a stacking context of its own. The
+     * element sits behind the page on a negative z-index, and without this it
+     * would sink past this background instead of resting on it. */
+    isolation: isolate;
 }
 
 .container {

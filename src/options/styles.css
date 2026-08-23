@@ -116,9 +116,16 @@ body {
     box-sizing: border-box;
 }
 
-/* Home view carries the sea artwork, drawn by its <page-background> child. The
- * rules for it, this box included, travel with the component -- see
- * src/options/components/page-background.css. */
+/* Home view carries the sea artwork, drawn by its <page-background> child. How the
+ * artwork looks travels with the component -- see
+ * src/options/components/page-background.css. What is left here is what that
+ * element asks of its host: a stacking context, so the child on its negative
+ * z-index rests on the well's background instead of sinking past it, and a
+ * positioned box for the absolutely positioned child to fill. */
+.content.main-content {
+    isolation: isolate;
+    position: relative;
+}
 
 #statsview {
     display: flex;
