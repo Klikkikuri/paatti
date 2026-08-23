@@ -11,3 +11,8 @@ test_data/data.json
 
 # Local build directory.
 build/
+
+# Functional test environment and caches.
+.venv/
+__pycache__/
+.pytest_cache/
