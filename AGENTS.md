@@ -16,6 +16,7 @@
 - If a simpler approach exists, say so. Push back when warranted.
 - Do NOT read sensitive files like `.env` – if information related to them is needed, ask.
 - Keep the documentation up to date.
+- Do not overly rely on comments to explain code. Verify. Code should be self-explanatory.
 - When responding or writing in English, use ASD-STE100 Simplified Technical English
 
 ### Code comments:
@@ -66,7 +67,9 @@ files ship at `src/` paths. Write their imports for that destination — `../bro
 lands in `src/options/` — not for where the file sits in the tree.
 
 `src/browser-api.js` exists only because Chrome below 148 has no `browser` namespace. Delete it once
-`minimum_chrome_version` reaches 148 — `manifest.json` still says `122.0`.
+`minimum_chrome_version` reaches 148 — `manifest.json` still says `122.0`. The lint rules then keep their two
+`chrome` entries and lose their two `browser` entries: a bare `browser` becomes the namespace, `chrome` stays
+rejected, and neither exemption is needed. `TODO.md` carries the rest of that checklist.
 
 Two traps around it:
 
@@ -76,9 +79,11 @@ Two traps around it:
   `manifest.json`. Nothing in `make test` checks this; a missing entry 404s the import and kills the content
   script on real pages only.
 
-In tests, mock `globalThis.browser` (or `globalThis.chrome`) **before** importing the module under test, which
-means a dynamic `await import(...)`. A static import is hoisted above any assignment in the module body, so
-`browser-api.js` would resolve the namespace before the mock exists.
+In tests, mock `globalThis.browser` **before** importing the module under test, which means a dynamic
+`await import(...)`. A static import is hoisted above any assignment in the module body, so `browser-api.js`
+would resolve the namespace before the mock exists. Mock `globalThis.chrome` only in
+`tests/browser-namespace.test.mjs`, which covers the fallback branch; every browser this project supports gives
+the module a `browser` to find, so a suite that mocks `chrome` tests a path none of them takes.
 
 ### web components
 
