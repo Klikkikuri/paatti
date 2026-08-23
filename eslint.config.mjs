@@ -2,7 +2,9 @@ const USE_WRAPPER = "Import the namespace: import browser from './browser-api.js
 
 export default [
     {
-        files: ["src/**/*.js"],
+        // assets/non-oss/*/src/ is overlaid onto src/ by `make dist NON_OSS=1`, so those
+        // files ship at src/ paths and need the same rules.
+        files: ["src/**/*.js", "assets/non-oss/*/src/**/*.js"],
         languageOptions: { ecmaVersion: 2024, sourceType: "module" },
         rules: {
             "no-restricted-globals": [
