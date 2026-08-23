@@ -4,6 +4,7 @@ import { displayProductInfo, getBrowserInfo, formatIsoWithTimezone, localizeDocu
 import { model } from '../model.js';
 import { controller } from '../controller.js';
 import { NON_OSS_CREDIT_HTML } from './non-oss-info.js';
+import { specialDayMessageKey } from './easter-egg.js';
 import './components/site-list-setting.js';
 import './components/visual-highlight-setting.js';
 import './components/master-switch-setting.js';
@@ -11,6 +12,8 @@ import './components/title-modifier-setting.js';
 import './components/database-status-setting.js';
 import './components/clickbait-level-vertical.js';
 import './components/favicon-img.js';
+import './components/page-background.js';
+import './components/easter-egg-setting.js';
 
 // Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {
@@ -284,6 +287,80 @@ function setAboutField(id, value) {
     if (el) el.textContent = value;
 }
 
+/**
+ * Tags an about line may keep: a link, and the inline emphasis a translator may
+ * reasonably reach for. Anything outside the list is unwrapped rather than dropped,
+ * so an unexpected tag costs the markup and never the sentence.
+ */
+const ABOUT_TAGS = new Set(['A', 'B', 'STRONG', 'I', 'EM', 'CODE', 'SPAN', 'BR']);
+
+/** Tags whose text is code, not prose: unwrapping these would print the code. */
+const ABOUT_DROP_TAGS = new Set(['SCRIPT', 'STYLE', 'TEMPLATE', 'NOSCRIPT']);
+
+/**
+ * Strips an about line down to text and the few tags in ABOUT_TAGS.
+ *
+ * Today's callers pass a bundled locale string or the build overlay, so there is
+ * nothing hostile to strip. The point is the next caller: a locale file is edited
+ * by translators and the overlay by whoever cuts the non-OSS build, and neither
+ * should be able to put an <img> beacon, an event handler or a javascript: link on
+ * the options page by accident. Attributes go entirely -- an <a> is given back the
+ * only three it needs.
+ *
+ * @param {DocumentFragment|HTMLElement} root - Parsed markup, edited in place.
+ */
+function sanitizeAbout(root) {
+    for (const el of [...root.querySelectorAll('*')]) {
+        // A parent may already have taken this node out of the tree.
+        if (!root.contains(el)) continue;
+
+        if (ABOUT_DROP_TAGS.has(el.tagName)) {
+            el.remove();
+            continue;
+        }
+
+        const href = el.tagName === 'A' ? el.getAttribute('href') : null;
+        for (const name of [...el.getAttributeNames()]) el.removeAttribute(name);
+
+        if (!ABOUT_TAGS.has(el.tagName)) {
+            el.replaceWith(...el.childNodes);
+            continue;
+        }
+
+        // The anchor resolves its own href, so .protocol is what the link would really
+        // open -- a relative or protocol-relative href is judged on that, and one that
+        // does not parse at all reports an empty protocol rather than throwing. The
+        // href goes back as written, because normalizing would percent-encode the
+        // non-ASCII paths some locales link to.
+        if (el.tagName !== 'A') continue;
+        el.setAttribute('href', href ?? '');
+        if (el.protocol === 'https:' || el.protocol === 'http:') {
+            el.setAttribute('target', '_blank');
+            el.setAttribute('rel', 'noopener noreferrer');
+        } else {
+            el.replaceWith(...el.childNodes);
+        }
+    }
+}
+
+/**
+ * Replaces the content of an about field with parsed markup.
+ * For the few fields whose text may carry a link; runtime values use setAboutField.
+ * @param {string} id - Element ID
+ * @param {string} html - Markup to show; sanitized by sanitizeAbout before insertion
+ */
+function setAboutHtml(id, html) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    sanitizeAbout(doc.body);
+
+    // renderAbout() runs again on every storage change, so replace rather than
+    // append: appending would stack a second copy of the line each time.
+    el.replaceChildren(...doc.body.childNodes);
+}
+
 
 /**
  * Populates the About section with runtime and config info useful for issue reports.
@@ -337,13 +414,17 @@ async function renderAbout() {
         setAboutField('about-sites', enabledSites.length ? enabledSites.join(', ') : noneText);
     }
 
+    // Today — a line on the days the easter egg calendar marks, hidden on the rest
+    const specialDay = document.getElementById('special-day');
+    const specialDayKey = specialDayMessageKey(new Date());
+    if (specialDay) {
+        if (specialDayKey) setAboutHtml('special-day-reason', browser().i18n.getMessage(specialDayKey));
+        specialDay.classList.toggle('visible', Boolean(specialDayKey));
+    }
+
     // Non-OSS credit (empty string in OSS builds -> no visible output)
-    const creditEl = document.getElementById('non-oss-credit');
-    if (creditEl && NON_OSS_CREDIT_HTML) {
-        const doc = new DOMParser().parseFromString(NON_OSS_CREDIT_HTML, 'text/html');
-        while (doc.body.firstChild) {
-            creditEl.appendChild(doc.body.firstChild);
-        }
+    if (NON_OSS_CREDIT_HTML) {
+        setAboutHtml('non-oss-credit', NON_OSS_CREDIT_HTML);
     }
 }
 

@@ -1,0 +1,177 @@
+/**
+ * <page-background>: the artwork behind a page.
+ *
+ * Every rule that styles the element is here, including the two host-specific
+ * blocks at the end -- none of it is shared with anything else, and
+ * page-background.js loads this file itself, so a page gets the styling by
+ * importing the component and nothing more. What the host page must do for itself
+ * is listed below. Colours still come from the tokens in theme.css.
+ *
+ * Image paths resolve against this file, which sits one level below images/.
+ *
+ * ## What the host page owes the element
+ *
+ * The element is taken out of flow and pushed behind the page with a negative
+ * z-index. That only stays inside the host if the host is a stacking context of
+ * its own, so the host must set `isolation: isolate` -- without it the element
+ * sinks behind the host's background instead of sitting between it and the host's
+ * content. Where the element is `position: absolute`, the host must also be
+ * positioned. Both are rules about the host, not about this element, so they live
+ * in the page's own stylesheet: options.css for the options page, styles.css for
+ * the popup.
+ *
+ * ## Tuning
+ *
+ * The artwork is placed with six custom properties, and nothing else needs
+ * touching to move a piece:
+ *
+ *   --art-width, --art-height     the artwork's own pixel grid
+ *   --egg-width, --egg-height     the size of the easter egg on that grid
+ *   --egg-x, --egg-y              the top left corner of the easter egg on it
+ */
+
+/*
+ * The photo and the easter egg share one plane (::before) instead of sitting on
+ * the element itself, because the egg belongs at a spot on the *artwork*: the
+ * boat is moored on a particular patch of water, not parked in a corner of the
+ * window. A plane sized the way `cover` would scale the photo keeps the two
+ * registered whatever shape the window takes, and reduces the placement to
+ * percentages of the artwork's own pixel grid.
+ */
+page-background {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+    /* Lets the plane below measure this box with cq units. */
+    container-type: size;
+
+    /* The artwork's own pixel grid. Both takes are drawn on the same canvas. */
+    --art-width: 1400;
+    --art-height: 764;
+
+    /* Where the easter egg sits on that grid: the size of the picture, and the
+     * position of its top left corner. These four numbers are the placement --
+     * to move a piece, change --egg-x / --egg-y and nothing else. */
+    --egg-width: 300;
+    --egg-height: 247;
+    --egg-x: 100;
+    --egg-y: 300;
+}
+
+/* The artwork plane: what `background-size: cover` would do to the photo, built
+ * as a real box so the easter egg can be pinned to it. The host anchors it, since
+ * only the page knows which edge of the composition should stay in view. */
+page-background::before {
+    content: "";
+    position: absolute;
+    width: max(100cqw, 100cqh * var(--art-width) / var(--art-height));
+    height: max(100cqh, 100cqw * var(--art-height) / var(--art-width));
+    background-image: url("../images/bg-light.webp");
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+}
+
+/*
+ * Easter egg: now and then a second piece of artwork joins the scene -- a boat
+ * moored off the shore by day, a meerman sunning herself on the rocks after dark.
+ * The component rolls the dice and adds the class; this only draws the result.
+ *
+ * Both layers are measured against the plane, which is the artwork, so the four
+ * placement numbers above are used as written. A percentage background-position
+ * lines up the same point of picture and box, hence the (grid - picture) divisor.
+ */
+page-background.has-easter-egg::before {
+    background-image: url("../images/boat.webp"), url("../images/bg-light.webp");
+    background-size:
+        calc(var(--egg-width) / var(--art-width) * 100%) auto,
+        100% 100%;
+    background-position:
+        calc(var(--egg-x) / (var(--art-width) - var(--egg-width)) * 100%)
+        calc(var(--egg-y) / (var(--art-height) - var(--egg-height)) * 100%),
+        0 0;
+}
+
+/* The scrim that keeps text over the artwork readable. The host says how heavy. */
+page-background::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+    page-background {
+        /* Bottom right of the grid, where the rocks are. Translated from her old
+         * corner placement -- adjust these two the way the boat's were set. */
+        --egg-width: 458;
+        --egg-height: 288;
+        --egg-x: 942;
+        --egg-y: 476;
+    }
+
+    page-background::before {
+        background-image: url("../images/bg-dark.webp");
+    }
+
+    page-background.has-easter-egg::before {
+        background-image: url("../images/meerman.webp"), url("../images/bg-dark.webp");
+    }
+}
+
+/* ------------------------------------------------------------------------- *
+ * Hosts. Each selector matches on one page only, so both can live here.
+ * ------------------------------------------------------------------------- */
+
+/* Options page. body is the scroll container and the page is long, so the element
+ * is pinned to the viewport rather than the far bottom of the document -- what
+ * `background-attachment: fixed` used to do for the photo. */
+body > page-background {
+    position: fixed;
+}
+
+/* Nothing there favours one edge of the composition, so the plane is centred. */
+body > page-background::before {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* A flat scrim, enough to keep the artwork from competing with the settings card. */
+body > page-background::after {
+    background: color-mix(in srgb, var(--color-bg-body) var(--scrim-page), transparent);
+}
+
+/*
+ * Popup home view. It is far narrower than the artwork, so `cover` keeps only the
+ * middle band -- about x 354-1046 of the 1400 grid at these proportions. The
+ * placements above sit outside that band, which would leave the easter egg
+ * cropped away here, so each piece is moved onto water the popup actually shows.
+ *
+ * Provisional numbers, chosen to sit either side of the artwork's centre line:
+ * replace them with the patch you want, the way --egg-x is set for the boat.
+ */
+.main-content > page-background {
+    --egg-x: 400;
+}
+
+@media (prefers-color-scheme: dark) {
+    .main-content > page-background {
+        --egg-x: 720;
+    }
+}
+
+/* Anchored to the bottom edge: that is where the composition puts the water, and
+ * where the easter egg sits. */
+.main-content > page-background::before {
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+}
+
+/* A top-to-bottom scrim, so the status text and buttons over it keep their contrast. */
+.main-content > page-background::after {
+    background: linear-gradient(to bottom,
+        color-mix(in srgb, var(--color-surface-well) var(--scrim-top), transparent),
+        color-mix(in srgb, var(--color-surface-well) var(--scrim-bottom), transparent));
+}

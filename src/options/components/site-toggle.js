@@ -80,14 +80,14 @@ detailedTemplate.innerHTML = `
         }
         .site-name {
             font-weight: bold;
-            color: #333;
+            color: var(--color-text-heading);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         .site-domain {
             font-size: 0.9rem;
-            color: #666;
+            color: var(--color-text-secondary);
             line-height: 1.2;
             white-space: nowrap;
             overflow: hidden;

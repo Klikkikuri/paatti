@@ -41,6 +41,27 @@
     "description": "Label for the extremely clickbaity title 'type' or 'severity'"
   },
 
+  "clickbaitBadgeLevel0": {
+    "message": "Neutraali",
+    "description": "Short badge label for clickbait level 0 shown on feedback view cards"
+  },
+  "clickbaitBadgeLevel1": {
+    "message": "Lievä",
+    "description": "Short badge label for clickbait level 1 shown on feedback view cards"
+  },
+  "clickbaitBadgeLevel2": {
+    "message": "Kohtalainen",
+    "description": "Short badge label for clickbait level 2 shown on feedback view cards"
+  },
+  "clickbaitBadgeLevel3": {
+    "message": "Korkea",
+    "description": "Short badge label for clickbait level 3 shown on feedback view cards"
+  },
+  "clickbaitBadgeLevel4": {
+    "message": "Äärimmäinen",
+    "description": "Short badge label for clickbait level 4 shown on feedback view cards"
+  },
+
   "siteTitleProcessingNotSupported": {
     "message": "Sivuston käsittelyä ei tueta",
     "description": "Message to show in 'main' title element when the visited site is not supported for processing"
@@ -515,6 +536,14 @@
     "message": "Näytä visuaaliset debug-merkit käsitellyistä elementeistä",
     "description": "Description for visual highlight setting in options"
   },
+  "devmodeEasterEggTitle": {
+    "message": "Pääsiäismunan todennäköisyys",
+    "description": "Title for the easter egg probability setting in options"
+  },
+  "devmodeEasterEggDesc": {
+    "message": "Todennäköisyys, jolla piilotettu kuva ilmestyy sivun taustalle päivän ajaksi. Kummallakin teemalla on omansa; 0 % ei koskaan, 100 % joka päivä.",
+    "description": "Description for the easter egg probability setting"
+  },
   "devTitleDataUrlsTitle": {
     "message": "Tietokannan osoitteet (titleDataUrls)",
     "description": "Title for development database URLs textarea"
@@ -658,6 +687,55 @@
   "aboutNone": {
     "message": "ei mitään",
     "description": "Text displayed in about section when list is empty"
+  },
+
+  "aboutSpecialDayTitle": {
+    "message": "Tänään",
+    "description": "Heading of the about section line shown on a special day"
+  },
+  "specialDayMinnaCanth": {
+    "message": "<a href=\"https://fi.wikipedia.org/wiki/Minna_Canth\" target=\"_blank\" rel=\"noopener noreferrer\">Minna Canthin päivä</a>, tasa-arvon päivä.",
+    "description": "Special day shown in the about section on 19 March. May contain a link."
+  },
+  "specialDayPressFreedom": {
+    "message": "<a href=\"https://fi.wikipedia.org/wiki/Maailman_lehdistönvapauden_päivä\" target=\"_blank\" rel=\"noopener noreferrer\">Maailman lehdistönvapauden päivä</a>.",
+    "description": "Special day shown in the about section on 3 May. May contain a link."
+  },
+  "specialDayMagnaCarta": {
+    "message": "<a href=\"https://fi.wikipedia.org/wiki/Magna_Carta\" target=\"_blank\" rel=\"noopener noreferrer\">Magna Carta</a>, 1215: kaikki, myös kuningas, ovat lain alaisia.",
+    "description": "Special day shown in the about section on 15 June. May contain a link."
+  },
+  "specialDayJaws": {
+    "message": "<a href=\"https://fi.wikipedia.org/wiki/Tappajahai_(elokuva)\" target=\"_blank\" rel=\"noopener noreferrer\">Tappajahai</a> tuli elokuvateattereihin vuonna 1975.",
+    "description": "Special day shown in the about section on 20 June. May contain a link."
+  },
+  "specialDayKlikkikuri": {
+    "message": "Klikkikurin ensimmäinen julkaisu, <a href=\"https://github.com/Klikkikuri/paatti/releases/tag/v0.0.1\" target=\"_blank\" rel=\"noopener noreferrer\">v0.0.1</a>.",
+    "description": "Special day shown in the about section on 10 July. May contain a link."
+  },
+  "specialDayDemocracyDay": {
+    "message": "Suomen demokratian päivä: <a href=\"https://fi.wikipedia.org/wiki/Vuoden_1919_hallitusmuoto\" target=\"_blank\" rel=\"noopener noreferrer\">vuoden 1919 hallitusmuoto</a> teki Suomesta oikeusvaltion ja tasavallan.",
+    "description": "Special day shown in the about section on 17 July. May contain a link."
+  },
+  "specialDayJyu": {
+    "message": "<a href=\"https://www.jyu.fi/fi\" target=\"_blank\" rel=\"noopener noreferrer\">Jyväskylän yliopisto</a> perustettiin.",
+    "description": "Special day shown in the about section on 14 August. May contain a link."
+  },
+  "specialDayTaija": {
+    "message": "Taijan päivä.",
+    "description": "Special day shown in the about section on 11 October. May contain a link."
+  },
+  "specialDayPressAct": {
+    "message": "Vuoden 1766 painovapausasetus, maailman ensimmäinen, <a href=\"https://fi.wikipedia.org/wiki/Anders_Chydenius\" target=\"_blank\" rel=\"noopener noreferrer\">Anders Chydeniuksen</a> ajamana.",
+    "description": "Special day shown in the about section on 2 December. May contain a link."
+  },
+  "specialDayJuho": {
+    "message": "Juhon päivä.",
+    "description": "Special day shown in the about section on 4 December. May contain a link."
+  },
+  "specialDayTeemu": {
+    "message": "Teemun päivä.",
+    "description": "Special day shown in the about section on 16 December. May contain a link."
   },
 
   "siteSettingSaved": {

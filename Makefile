@@ -116,6 +116,7 @@ test: test-wasm
 	node tests/modifiers.test.mjs
 	node tests/faviconCache.test.mjs
 	node tests/stats.test.mjs
+	node tests/easter-egg.test.mjs
 
 # suola's own smoke test for the browser module, run against the artifacts
 # staged in $(BUILD_DIR). It is the only check that js.wasm loads and signs

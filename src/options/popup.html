@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="popupPageTitle">Klikkikuri Paatti</title>
+    <link rel="stylesheet" href="theme.css">
+    <link rel="stylesheet" href="components.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -24,23 +26,24 @@
 
     <!-- CONTENT -->
     <div class="content main-content">
+        <page-background></page-background>
         <div id="homeview-content" style="display: flex; flex-direction: column; gap: 15px; width: 100%; text-align: center; justify-content: center; align-items: center; height: 100%;">
             <p id="homeview-status-text" style="font-weight: bold; font-size: 1.1em; margin: 0;"></p>
             <div id="gauge-container" class="hidden">
                 <svg viewBox="0 0 100 60">
                     <defs>
                         <linearGradient id="gauge-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stop-color="#4caf50" />
-                            <stop offset="35%" stop-color="#8bc34a" />
-                            <stop offset="65%" stop-color="#ffc107" />
-                            <stop offset="100%" stop-color="#f44336" />
+                            <stop offset="0%" stop-color="var(--severity-1)" />
+                            <stop offset="35%" stop-color="var(--severity-2)" />
+                            <stop offset="65%" stop-color="var(--severity-3)" />
+                            <stop offset="100%" stop-color="var(--severity-4)" />
                         </linearGradient>
                     </defs>
-                    <path d="M 15 50 A 35 35 0 0 1 85 50" fill="none" stroke="#e0e0e0" stroke-width="8" stroke-linecap="round"/>
+                    <path d="M 15 50 A 35 35 0 0 1 85 50" fill="none" stroke="var(--color-border-subtle)" stroke-width="8" stroke-linecap="round"/>
                     <path id="gauge-fill" d="M 15 50 A 35 35 0 0 1 85 50" fill="none" stroke="url(#gauge-grad)" stroke-width="8" stroke-linecap="round"
                           stroke-dasharray="110" stroke-dashoffset="110" style="transition: stroke-dashoffset 1.0s cubic-bezier(0.4, 0, 0.2, 1);"/>
-                    <text id="gauge-text" x="50" y="45" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#222">0%</text>
-                    <text id="gauge-label" x="50" y="58" font-family="Arial, sans-serif" font-size="5.5" font-weight="bold" text-anchor="middle" fill="#666"></text>
+                    <text id="gauge-text" x="50" y="45" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="var(--color-text-primary)">0%</text>
+                    <text id="gauge-label" x="50" y="58" font-family="Arial, sans-serif" font-size="5.5" font-weight="bold" text-anchor="middle" fill="var(--color-text-secondary)"></text>
                 </svg>
                 <dl id="homeview-page-stats-list" class="stats-list"></dl>
             </div>
@@ -57,7 +60,7 @@
 
     <div class="content feedbackview hidden">
         <div id="feedbackview-conversions-container" style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
-            <p id="feedbackview-no-conversions" style="text-align: center; color: #666; font-style: italic;" class="hidden"></p>
+            <p id="feedbackview-no-conversions" style="text-align: center; color: var(--color-text-secondary); font-style: italic;" class="hidden"></p>
             <ul id="feedbackview-conversions-list" style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; width: 100%;"></ul>
         </div>
 
@@ -146,12 +149,6 @@
             <!-- End of list -->
         </span>
         <span data-i18n="logoByKlikkikuri">by Klikkikuri</span>
-    </div>
-
-    <!-- VERSION INFO -->
-    <div id="version-info">
-        <span id="product-name"></span>
-        <span id="product-version"></span>
     </div>
 
     <script type="module" src="../utils.js"></script>

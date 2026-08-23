@@ -1,5 +1,4 @@
 import { browser, getCurrentTabHostname } from '../../utils.js';
-import { controller } from '../../controller.js';
 import { model } from '../../model.js';
 import { getConfig } from '../../config.js';
 import { isSiteEnabled } from '../utils.js';

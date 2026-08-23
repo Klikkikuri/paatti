@@ -3,8 +3,6 @@
 import { getLogger, browser, getActiveTab, getCurrentTabHostname } from "./utils.js";
 import { model, modelEvents } from "./model.js";
 
-import { getConfig } from "./config.js";
-
 const log = getLogger("controller");
 
 const _dispatchConversion = async () => {
@@ -62,6 +60,11 @@ const controller = {
     setDebugVisualsEnabled: async (value) => {
         log(`Setting debug visuals to ${value}`);
         await model.write.setDebugVisualsEnabled(value);
+    },
+
+    setEasterEggProbability: async (value) => {
+        log(`Setting easter egg probability to ${value}`);
+        await model.write.setEasterEggProbability(value);
     },
 
     setVisualHighlightEnabled: async (value) => {
