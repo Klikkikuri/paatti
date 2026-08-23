@@ -50,17 +50,13 @@ detailedTemplate.innerHTML = `
  * Custom element managing uutistietokanta (news database) status display and manual updates.
  * Supports layout="compact" (popup settings view) and layout="detailed" (options page).
  */
+/** The local keys the shown timestamps come from. Neither is part of the merged config. */
+const STATUS_KEYS = ['lastDatabaseUpdate', 'databaseGenerationDate'];
+
 class DatabaseStatusSetting extends HTMLElement {
-    constructor() {
-        super();
-        this.initialized = false;
-        this.storageListener = null;
-    }
+    #storageListener = null;
 
     connectedCallback() {
-        if (this.initialized) return;
-        this.initialized = true;
-
         const layout = this.getAttribute('layout') || 'detailed';
 
         if (layout === 'compact') {
@@ -75,15 +71,20 @@ class DatabaseStatusSetting extends HTMLElement {
 
         this.loadState(layout);
 
-        // Auto-sync database status when changed elsewhere
-        this.storageListener = () => this.sync(layout);
-        browser.storage.onChanged.addListener(this.storageListener);
+        // Filtered to the two keys shown: statistics are written constantly, and
+        // re-rendering the timestamps on every one of those writes is wasted work.
+        this.#storageListener = (changes, areaName) => {
+            if (areaName !== 'local' || !STATUS_KEYS.some((key) => key in changes)) return;
+            this.sync(layout);
+        };
+        browser.storage.onChanged.addListener(this.#storageListener);
     }
 
     disconnectedCallback() {
-        if (this.storageListener) {
-            browser.storage.onChanged.removeListener(this.storageListener);
-        }
+        if (!this.#storageListener) return;
+
+        browser.storage.onChanged.removeListener(this.#storageListener);
+        this.#storageListener = null;
     }
 
     /**
@@ -146,7 +147,8 @@ class DatabaseStatusSetting extends HTMLElement {
     async sync(layout) {
         try {
             const status = await model.read.getDatabaseStatus();
-            
+            if (!this.isConnected) return;
+
             if (layout === 'compact') {
                 const dbLastUpdatedEl = this.querySelector('#database-last-updated');
                 if (dbLastUpdatedEl) {
