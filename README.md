@@ -97,8 +97,8 @@ Klikkikuri Paatti browser extension is also available in [🛍️ Google Chrome 
 To install the pre-packaged browser extension in Firefox from github releases
 
 1. **Download the Release**: Go to the [Klikkikuri Paatti Releases](https://github.com/Klikkikuri/paatti/releases) page on GitHub and download the latest `klikkikuri-paatti` `.xpi` file.
-3. **Open Firefox Add-ons**: Navigate to `about:addons` in the Firefox address bar (or open the Menu and select **Add-ons and Themes**).
-4. **Install from File**:
+2. **Open Firefox Add-ons**: Navigate to `about:addons` in the Firefox address bar (or open the Menu and select **Add-ons and Themes**).
+3. **Install from File**:
    - Click the gear icon (⚙️) next to "Manage Your Add-ons" at the top-right.
    - Select **Install Add-on From File...** from the dropdown menu.
    - Choose the downloaded `klikkikuri` `.xpi` file.
@@ -112,6 +112,7 @@ Due to how Google Chrome has walled-garden approach to chrome extensions, there 
 
 - `make`
 - `bash`
+- Node.js (runs `make test` and the release task)
 - (optional) Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2)
 - (optional, for testing) Python 3
 - `suola` submodule (automatically initialized by `make` if missing)
@@ -180,6 +181,7 @@ web-ext run --devtools [--chromium-binary /usr/bin/chromium] -t chromium [--url 
 - `alarms`: The alarms API is used to periodically schedule background fetches for the latest headline correction database. This ensures the user has up-to-date corrections while allowing the background service worker to sleep, saving system resources.
 - `storage`: The storage API is used to cache the downloaded headline correction list locally to reduce network requests and improve page load performance. It is also used to save the user's personal settings, such as their preferred clickbait severity threshold and per-site enable/disable preferences.
 - `tabs`: The tabs API is required to detect when a user navigates to a supported news website or when a page dynamically updates its content (e.g., Single Page Applications), so the extension knows exactly when to trigger the headline replacement script.
+- `favicon`: Chromium exposes already-cached favicons through an internal `_favicon/` route, which this permission unlocks. The settings and popup site lists use it to show each site's own icon without any network request. It is Chromium-only; where it is unavailable the icon comes from a locally cached data URI instead, and failing that from a generated letter badge.
 - `scripting`: The scripting API is used to dynamically register and unregister the content scripts and styles on supported sites based on the user's preferences. This allows the extension to keep its initial required `host_permissions` footprint minimal, requesting optional host permissions and registering injection rules dynamically __only__ when the user explicitly enables support for a specific news site in the preferences.
 
 ## Development
@@ -200,6 +202,15 @@ Tests that touch the extension APIs use the in-memory fake in
 `storage.onChanged`. Assign it to `globalThis.browser` **before** a dynamic `await import(...)` of the module
 under test — `src/browser-api.js` resolves the namespace once, at module evaluation, so a static import would
 beat the assignment.
+
+Tests that need a DOM use [`tests/helpers/dom.mjs`](./tests/helpers/dom.mjs), which puts a jsdom document on
+`globalThis`. Install it before the dynamic import as well: a component module builds its templates and calls
+`customElements.define` at evaluation time. jsdom comes from the dev container image rather than a
+`package.json`, so `make test` needs the container — the `test` target points `NODE_PATH` at the global npm root,
+because ESM resolution ignores it and the helper reaches jsdom through the CJS resolver.
+
+jsdom does no layout and does not resolve the cascade, so it covers structure, lifecycle and events but says
+nothing about styling. Check CSS in a real browser instead.
 
 ### Local Test Data & Hashed Signatures
 

@@ -46,6 +46,7 @@ jobs:
 
       - name: "🧪 Run Tests"
         run: |
+          npm install -g jsdom@27
           make test
 
       - name: "⬆️ Upload Artifacts"

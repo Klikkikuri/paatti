@@ -3,6 +3,7 @@ import { controller } from '../../controller.js';
 import { model } from '../../model.js';
 import { getConfig } from '../../config.js';
 import { localizeDocument } from '../utils.js';
+import { ComponentBase, defineComponent } from './component-utils.js';
 
 const compactTemplate = document.createElement('template');
 compactTemplate.innerHTML = `
@@ -53,10 +54,8 @@ detailedTemplate.innerHTML = `
 /** The local keys the shown timestamps come from. Neither is part of the merged config. */
 const STATUS_KEYS = ['lastDatabaseUpdate', 'databaseGenerationDate'];
 
-class DatabaseStatusSetting extends HTMLElement {
-    #storageListener = null;
-
-    connectedCallback() {
+class DatabaseStatusSetting extends ComponentBase {
+    onConnect() {
         const layout = this.getAttribute('layout') || 'detailed';
 
         if (layout === 'compact') {
@@ -73,18 +72,12 @@ class DatabaseStatusSetting extends HTMLElement {
 
         // Filtered to the two keys shown: statistics are written constantly, and
         // re-rendering the timestamps on every one of those writes is wasted work.
-        this.#storageListener = (changes, areaName) => {
+        const onStorageChanged = (changes, areaName) => {
             if (areaName !== 'local' || !STATUS_KEYS.some((key) => key in changes)) return;
             this.sync(layout);
         };
-        browser.storage.onChanged.addListener(this.#storageListener);
-    }
-
-    disconnectedCallback() {
-        if (!this.#storageListener) return;
-
-        browser.storage.onChanged.removeListener(this.#storageListener);
-        this.#storageListener = null;
+        browser.storage.onChanged.addListener(onStorageChanged);
+        this.addTeardown(() => browser.storage.onChanged.removeListener(onStorageChanged));
     }
 
     /**
@@ -235,7 +228,7 @@ class DatabaseStatusSetting extends HTMLElement {
                                 }
                             }));
                         }
-                    });
+                    }, { signal: this.signal });
                 }
             } catch (err) {
                 console.error('Failed to load refresh interval:', err);
@@ -295,9 +288,9 @@ class DatabaseStatusSetting extends HTMLElement {
                     updateBtn.disabled = false;
                     updateBtn.textContent = originalText;
                 }
-            });
+            }, { signal: this.signal });
         }
     }
 }
 
-customElements.define('database-status-setting', DatabaseStatusSetting);
+defineComponent('database-status-setting', DatabaseStatusSetting);

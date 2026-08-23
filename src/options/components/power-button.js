@@ -4,6 +4,9 @@ import { model } from '../../model.js';
 import { getConfig, onConfigValue } from '../../config.js';
 import { isSiteEnabled } from '../utils.js';
 import { handleSiteToggleHelper } from './site-toggle.js';
+import { adoptComponentStyleSheet, ComponentBase, defineComponent } from './component-utils.js';
+
+adoptComponentStyleSheet(new URL('./power-button.css', import.meta.url));
 
 const template = document.createElement('template');
 template.innerHTML = `
@@ -20,19 +23,13 @@ template.innerHTML = `
  * Custom element representing the circular power button in the popup.
  * Manages its own state, permissions, and settings toggle logic.
  */
-export class PowerButton extends HTMLElement {
-    #unsubscribe = null;
-
+export class PowerButton extends ComponentBase {
     domain = null;
     origins = [];
     isSiteSupported = false;
     hasPermission = false;
 
-    /**
-     * Lifecycle callback when element is added to DOM.
-     */
-    connectedCallback() {
-        this.style.display = 'inline-block';
+    onConnect() {
 
         this.render();
         this.loadState();
@@ -40,20 +37,10 @@ export class PowerButton extends HTMLElement {
         // The selector reads this.domain, which loadState() fills in asynchronously. Until
         // it does, sync() returns early and the shape stays provisional; the first real
         // change corrects it. loadState()'s own sync() is what paints the initial state.
-        this.#unsubscribe = onConfigValue(
+        this.addTeardown(onConfigValue(
             (config) => [config.enabled, this.domain ? config.siteConfigs[this.domain]?.enabled : null],
             () => this.sync()
-        );
-    }
-
-    /**
-     * Lifecycle callback when element is removed from DOM.
-     */
-    disconnectedCallback() {
-        if (!this.#unsubscribe) return;
-
-        this.#unsubscribe();
-        this.#unsubscribe = null;
+        ));
     }
 
     /**
@@ -173,8 +160,8 @@ export class PowerButton extends HTMLElement {
                     }
                 }
             );
-        });
+        }, { signal: this.signal });
     }
 }
 
-customElements.define('power-button', PowerButton);
+defineComponent('power-button', PowerButton);

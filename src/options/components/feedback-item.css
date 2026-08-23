@@ -1,0 +1,155 @@
+/**
+ * <feedback-item> -- one conversion card in the popup's feedback list.
+ *
+ * These rules used to be a <style> element inside the template, so the document carried a
+ * copy per card. Scoped under the element name, which the unscoped <style> was not.
+ *
+ * Surface, border and shadow come from .feedback-card in components.css; the level colours
+ * resolve --severity-* from theme.css.
+ */
+
+/* Surface, border and shadow come from shared rules in
+ * components.css (including .feedback-card); only this card's own layout lives here. */
+feedback-item .feedback-card {
+    padding: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    list-style: none;
+    text-align: left;
+}
+
+feedback-item .feedback-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: 8px;
+}
+
+feedback-item .feedback-row.original {
+    border-left: 3px solid var(--color-warning);
+}
+
+feedback-item .feedback-row.converted {
+    border-left: 3px solid var(--color-success-strong);
+}
+
+feedback-item .feedback-label {
+    font-size: 0.7em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+}
+
+feedback-item .feedback-text {
+    font-size: 0.88em;
+    color: var(--color-text-primary);
+    line-height: 1.35;
+    font-weight: bold;
+}
+
+feedback-item .feedback-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+    min-height: 24px;
+}
+
+/* Smaller than a regular push button, so it casts and travels less. */
+feedback-item .feedback-action-btn {
+    --push-offset: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+feedback-item .feedback-action-btn.good:hover {
+    background: var(--feedback-vote-yes-bg) !important;
+    outline-color: var(--color-success-strong) !important;
+    color: var(--feedback-vote-yes-text) !important;
+}
+
+feedback-item .feedback-action-btn.bad:hover {
+    background: var(--feedback-vote-no-bg) !important;
+    outline-color: var(--color-danger-strong) !important;
+    color: var(--feedback-vote-no-text) !important;
+}
+
+feedback-item .feedback-input-container {
+    margin-top: 4px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+feedback-item .feedback-input-group {
+    display: flex;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--color-surface);
+    box-shadow: inset 0 1px 3px var(--shadow-ambient);
+}
+
+feedback-item .feedback-text-input {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 0.85em;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--color-text-primary);
+    box-sizing: border-box;
+}
+
+feedback-item .feedback-submit-button {
+    background: var(--push-bg);
+    border: none;
+    border-left: 1px solid var(--color-border-strong);
+    color: var(--color-text-primary);
+    padding: 6px 12px;
+    font-size: 0.8em;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+feedback-item .feedback-submit-button:hover {
+    background: var(--color-info);
+    color: var(--color-on-accent);
+}
+
+/* Colours per level come from theme.css via the [data-level] rules in
+ * styles.css; this element only carries layout. */
+feedback-item .clickbait-level-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.6em;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1;
+}
+
+/* Clickbait level badge. Each level supplies a hue; the badge mixes it against
+ * the surface for its fill and against the body text colour for its label, so
+ * one scale covers both themes (see --severity-* in theme.css). */
+feedback-item .clickbait-level-badge {
+    background: color-mix(in srgb, var(--severity) 16%, var(--color-surface));
+    color: color-mix(in srgb, var(--severity) 55%, var(--color-text-primary));
+    border: 1px solid color-mix(in srgb, var(--severity) 40%, var(--color-surface));
+}
+
+feedback-item .clickbait-level-badge[data-level="0"] { --severity: var(--severity-0); }
+feedback-item .clickbait-level-badge[data-level="1"] { --severity: var(--severity-1); }
+feedback-item .clickbait-level-badge[data-level="2"] { --severity: var(--severity-2); }
+feedback-item .clickbait-level-badge[data-level="3"] { --severity: var(--severity-3); }
+feedback-item .clickbait-level-badge[data-level="4"] { --severity: var(--severity-4); }

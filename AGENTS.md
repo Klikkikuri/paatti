@@ -87,26 +87,73 @@ the module a `browser` to find, so a suite that mocks `chrome` tests a path none
 
 ### web components
 
-This project uses web components, which usually use a combination of methods to keep code modular and clean:
+Three populations, taking different decisions. Pick by where the markup lands, not by what is fashionable
+elsewhere.
 
-1. Use shared CSS files for global design systems. Put CSS variables (colors, fonts, spacing), layout resets, and common utility classes in a shared file `components.css`.
-2. Use component-specific styles for unique component layouts. If a component has complex or unique styles, keep those styles near the component.
-  - For Web Components, mature projects usually use Shadow DOM and Constructable Stylesheets (new CSSStyleSheet()). This gives complete encapsulation without the performance cost of injecting text strings.
-  - If you do not use Shadow DOM, the method in `component-utils.js` (injecting a <link> tag) is a very good alternative. It keeps the JavaScript file clean and allows the browser to cache the CSS file.
-3. A component's stylesheet styles the component. Rules the *host* needs — a stacking context, a positioned ancestor —
-   are the page's job and belong in `options.css` or `styles.css`. Importing a component must not silently change the
-   host page's layout; state the requirement in the component's stylesheet header instead.
-4. Expose tuning as custom properties and say so in the stylesheet header. Do not promote a component's internals to
-   the host just to be pure about it — with two in-repo consumers that only buys indirection.
+**`src/components/` — shadow DOM.** The badges are injected into third-party pages listed in the manifest's
+`web_accessible_resources.matches`. Hostile CSS is a real threat there, so they attach a shadow root and adopt a
+constructable stylesheet (`badge-style.js`), and force `display: inline-flex` with an inline `!important` because a
+host rule outranks a `:host` rule. Every module a badge imports needs its own `web_accessible_resources` entry, so
+keep their dependencies inside `src/components/`.
 
-`src/options/components/page-background.js` is the reference implementation. Its lifecycle rules:
+**`src/options/components/` — light DOM.** These appear only on `index.html` and `popup.html`, where the only CSS in
+the document is ours. There is nothing to encapsulate against, and a shadow root would cost more than it buys: class
+utilities (`.push-button`, `.raised`, `.hidden`, `.visually-hidden`) do not cross the boundary although custom
+properties do; `<label for>` does not cross it either, and `site-toggle` points a label at a `toggle-button`; and
+`popup.js`, `options.js` and `localizeDocument()` reach into component subtrees on purpose. Do not migrate them.
 
-- `disconnectedCallback` must undo everything `connectedCallback` did. No lifetime-scoped `initialized` flag that
-  survives a detach — it leaves a re-attached element subscribed to nothing.
+**`src/contentStyle.css` — neither.** It is not a component. It styles the visited page's own elements, through a
+class on `document.documentElement`, `[data-klikkikuri-status]` attributes and `::after` badges on nodes the page
+owns. No shadow root can enclose someone else's element, so this is the one place blanket `!important` is correct.
+
+#### Where the CSS goes
+
+Four tiers, in this order of preference:
+
+1. **`theme.css`** — design tokens only.
+2. **`components.css`** — a class worn by more than one component, on either page.
+3. **`<component>.css` beside the module**, pulled in at module top with
+   `adoptComponentStyleSheet(new URL('./x.css', import.meta.url))`. This is the default for a component's own rules.
+   Scope every rule under the element name — `toggle-button .toggle-slider`, not `.toggle-slider` — so it cannot
+   reach anything else.
+4. **`options.css` / `styles.css`** — page layout, host contracts, and markup the page itself writes.
+
+Never put a component's own rules in a page sheet. It works on that page and breaks on the other one: `toggle-button`
+had its `switch` markup styled only in `options.css` and its `toggle` markup only in `styles.css`, so neither variant
+could render on the wrong page.
+
+Never put a `<style>` element inside a light-DOM template either — the template is cloned per instance, so ten site
+rows meant ten copies of the same rules in the document.
+
+`adoptComponentStyleSheet` appends its `<link>` at module evaluation, after the page's own. A component sheet
+therefore wins ties on source order; do not rely on a page sheet overriding a component rule.
+
+A component's stylesheet styles the component. Rules the *host* needs — a stacking context, a positioned ancestor —
+belong to the page; state the requirement in the stylesheet header, as `page-background.css` does. Expose tuning as
+custom properties and say so in that header, but do not promote a component's internals to the host just to be pure
+about it: with two in-repo consumers that only buys indirection.
+
+#### Ownership
+
+A component owns its subtree. A parent that needs to change a child's state uses an attribute, a property or a method
+on the child — `toggleBtn.toggle()`, not `toggleBtn.querySelector('input').click()`. Setting a child's id or class
+from outside means the child is missing an API.
+
+#### Lifecycle
+
+- **Extend `ComponentBase` from `component-utils.js` if the component subscribes to anything**; otherwise
+  `HTMLElement` is fine, and extending a base for symmetry is the abstraction "Simplicity First" warns about. The
+  base owns `connectedCallback`/`disconnectedCallback` — implement `onConnect()` and never call `super`.
+- **Teardown is the abort signal, not bookkeeping.** Pass `{ signal: this.signal }` to every `addEventListener`, and
+  hand anything else that needs undoing to `addTeardown(fn)` — what `onConfigValue` returns, a `storage.onChanged`
+  removal. The signal is per *connection*: `connectedCallback` runs again after a re-attach, so a lifetime-scoped
+  `initialized` flag leaves a re-attached element subscribed to nothing. Detached, `this.signal` is an
+  already-aborted signal, so a registration from a continuation that resolved too late is undone at once rather than
+  leaked.
 - Read settings with `onConfigValue(select, callback)` from `config.js`, not a `storage.onChanged` listener of your
   own. It calls back at once with the value in storage and then only when that value genuinely changes, and returns
-  the unsubscribe function `disconnectedCallback` owes it. Select narrowly — the value is compared by its JSON
-  shape, so a whole sub-tree re-fires whenever anything inside it moves. Return a primitive or a flat tuple.
+  the unsubscribe to give `addTeardown`. Select narrowly — the value is compared by its JSON shape, so a whole
+  sub-tree re-fires whenever anything inside it moves. Return a primitive or a flat tuple.
 - A raw `storage.onChanged` listener is for keys *outside* the merged config — `statistics`,
   `visualHighlightEnabled`, `lastDatabaseUpdate`. Filter it by `areaName` *and* changed key: statistics are written
   constantly, and nothing should re-render on every one of those writes.
@@ -119,9 +166,35 @@ This project uses web components, which usually use a combination of methods to 
   spec, a constructor may not touch attributes, children or the DOM.
 - Per-instance values that must not change with state (a random draw, a generated id) are initialized as fields, not
   in `connectedCallback`, which runs again after a re-attach.
-- Guard `customElements.define` with `customElements.get`, as the badges in `src/components` do.
-- Decision rules belong in a DOM-free, randomness-free module beside the component — see `src/options/easter-egg.js`
-  — so they can be tested under `make test`.
+- Register with `defineComponent(tag, class)`. The guard is load-bearing, not defensive: `make dist NON_OSS=1`
+  overlays `assets/non-oss/by-kagi/src/` onto `src/`, so two definitions of a tag can both be reachable. The badges
+  keep an inline `customElements.get` guard instead, because importing `component-utils.js` would need a
+  `web_accessible_resources` entry.
+- Announce a written setting with `emitSettingSaved(this, { key, value })`. The payload is built by
+  `settingSavedDetail` in `setting-message.js`, which is DOM-free and covered by `make test`.
+
+Three references, one per concern:
+
+- `src/options/components/page-background.js` — the co-located stylesheet and the async-lifecycle rules. It is
+  content-free, so it is the wrong reference for anything to do with markup or events.
+- `ComponentBase` in `component-utils.js` — lifecycle and teardown.
+- `createToggleSetting` in `src/options/components/toggle-setting.js`, and `createBadgeClass` in
+  `src/components/badge-base.js` — the class-factory idiom, for components that differ only in their data.
+
+#### Testing
+
+Decision rules belong in a DOM-free, randomness-free module beside the component — see `src/options/easter-egg.js`
+and `setting-message.js` — so they can be tested under `make test`.
+
+The components themselves get connect/disconnect tests through `tests/helpers/dom.mjs`, which puts a jsdom document
+on `globalThis`. Install it **before** the component module is imported — so `await import(...)`, never a static
+import — for the same reason the `browser` mock needs it: the module builds its templates and calls
+`customElements.define` at evaluation time.
+
+jsdom does no layout and does not resolve the cascade, so it says nothing about styling. Anything that moves CSS is
+verified in a real browser with the `paatti` skill, against screenshots taken before the change. The four popup views
+byte-compare; the options page does not, because its "last fetched" clock ticks and `page-background` draws its
+easter egg at random.
 
 ### Building component markup
 

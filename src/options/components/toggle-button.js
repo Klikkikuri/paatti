@@ -1,9 +1,15 @@
+import { adoptComponentStyleSheet, defineComponent } from './component-utils.js';
+
+// This element's CSS is nobody else's business, so it travels with the component: a page
+// gets the styling by importing this module and nothing more.
+adoptComponentStyleSheet(new URL('./toggle-button.css', import.meta.url));
+
 const toggleTemplate = document.createElement('template');
 toggleTemplate.innerHTML = `<input class="toggle conversion-switch" type="checkbox">`;
 
 const switchTemplate = document.createElement('template');
 switchTemplate.innerHTML = `
-    <label class="toggle-switch" style="display: block; width: 100%; height: 100%;">
+    <label class="toggle-switch">
         <input type="checkbox">
         <span class="toggle-slider"></span>
     </label>
@@ -90,6 +96,15 @@ export class ToggleButton extends HTMLElement {
     }
 
     /**
+     * Flip the control as a user click would, so the change and the toggle-change event
+     * come from the component itself rather than being hand-built by a caller.
+     */
+    toggle() {
+        this.render();
+        this.querySelector('input')?.click();
+    }
+
+    /**
      * Render the toggle HTML structure.
      */
     render() {
@@ -103,11 +118,6 @@ export class ToggleButton extends HTMLElement {
             this.replaceChildren(toggleTemplate.content.cloneNode(true));
         } else {
             // Standard switch layout with slider used in the options page
-            this.style.display = 'inline-block';
-            this.style.width = '50px';
-            this.style.height = '26px';
-            this.style.verticalAlign = 'middle';
-
             this.replaceChildren(switchTemplate.content.cloneNode(true));
         }
 
@@ -130,4 +140,4 @@ export class ToggleButton extends HTMLElement {
     }
 }
 
-customElements.define('toggle-button', ToggleButton);
+defineComponent('toggle-button', ToggleButton);

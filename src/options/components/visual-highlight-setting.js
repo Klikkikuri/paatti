@@ -2,150 +2,48 @@ import browser from '../../browser-api.js';
 import { controller } from '../../controller.js';
 import { onConfigValue } from '../../config.js';
 import { model } from '../../model.js';
-import { localizeDocument } from '../utils.js';
-import './toggle-button.js';
-
-const compactTemplate = document.createElement('template');
-compactTemplate.innerHTML = `
-    <span class="label-text" style="font-weight: bold;"></span>
-    <toggle-button type="toggle" id="devmode-setDebugVisuals"></toggle-button>
-`;
-
-const detailedTemplate = document.createElement('template');
-detailedTemplate.innerHTML = `
-    <div class="setting-group">
-        <div class="setting-label">
-            <div class="label-text">
-                <strong data-i18n="devmodeVisualHighlightTitle">Visual Highlight</strong>
-                <span data-i18n="devmodeVisualHighlightDesc">Show visual debug indicators on processed elements</span>
-            </div>
-            <toggle-button id="debugVisuals"></toggle-button>
-        </div>
-    </div>
-`;
+import { defineComponent } from './component-utils.js';
+import { createToggleSetting } from './toggle-setting.js';
 
 /**
- * Custom element managing the Visual Highlight / Debug Visuals setting.
- * Supports layout="compact" (popup settings list item) and layout="detailed" (options page).
+ * The Visual Highlight / Debug Visuals setting.
+ *
+ * Its state lives in a local key of its own with the config only as a fallback, so it
+ * takes both a config subscription and a listener for that key.
  */
-class VisualHighlightSetting extends HTMLElement {
-    #unsubscribe = null;
-    #storageListener = null;
+const VisualHighlightSetting = createToggleSetting({
+    settingKey: () => 'visualHighlightEnabled',
 
-    connectedCallback() {
-        const layout = this.getAttribute('layout') || 'detailed';
+    ids: () => ({ compact: 'devmode-setDebugVisuals', detailed: 'debugVisuals' }),
 
-        if (layout === 'compact') {
-            this.classList.add('compact-setting-row');
-            this.replaceChildren(compactTemplate.content.cloneNode(true));
+    labels: () => ({
+        compact: browser.i18n.getMessage('devmodeSetDebugVisualsLabel') || 'Visual Highlight',
+        title: browser.i18n.getMessage('devmodeVisualHighlightTitle') || 'Visual Highlight',
+        description: browser.i18n.getMessage('devmodeVisualHighlightDesc')
+            || 'Show visual debug indicators on processed elements',
+    }),
 
-            const labelText = browser.i18n.getMessage('devmodeSetDebugVisualsLabel') || 'Visual Highlight';
-            const labelEl = this.querySelector('.label-text');
-            if (labelEl) {
-                labelEl.textContent = labelText;
-            }
-        } else {
-            this.replaceChildren(detailedTemplate.content.cloneNode(true));
-            localizeDocument(this);
-        }
+    read: (el, apply) => {
+        const sync = async () => {
+            const enabled = await model.read.getVisualHighlightEnabled();
+            // The read resolves a turn later, by which time the element may be gone.
+            if (!el.isConnected) return;
 
-        const toggleBtn = this.querySelector('toggle-button');
-        this.loadState(toggleBtn, layout);
-
-        // The state lives in a local key of its own, with the config only as a fallback,
-        // so it takes both a config subscription and a listener for that key.
-        this.#unsubscribe = onConfigValue(
-            (config) => config.debugVisualsEnabled,
-            () => this.sync(toggleBtn)
-        );
-
-        this.#storageListener = (changes, areaName) => {
-            if (areaName !== 'local' || !('visualHighlightEnabled' in changes)) return;
-            this.sync(toggleBtn);
+            apply(enabled);
         };
-        browser.storage.onChanged.addListener(this.#storageListener);
-    }
 
-    disconnectedCallback() {
-        if (!this.#storageListener) return;
+        // Fires at once, which is what paints the initial state.
+        el.addTeardown(onConfigValue((config) => config.debugVisualsEnabled, sync));
 
-        this.#unsubscribe();
-        this.#unsubscribe = null;
-        browser.storage.onChanged.removeListener(this.#storageListener);
-        this.#storageListener = null;
-    }
+        const onStorageChanged = (changes, areaName) => {
+            if (areaName !== 'local' || !('visualHighlightEnabled' in changes)) return;
+            sync();
+        };
+        browser.storage.onChanged.addListener(onStorageChanged);
+        el.addTeardown(() => browser.storage.onChanged.removeListener(onStorageChanged));
+    },
 
-    /**
-     * Fetch and apply latest values.
-     */
-    async sync(toggleBtn) {
-        const isEnabled = await model.read.getVisualHighlightEnabled();
-        if (!this.isConnected) return;
+    write: (el, checked) => controller.setVisualHighlightEnabled(checked),
+});
 
-        toggleBtn.checked = isEnabled;
-    }
-
-    /**
-     * Perform initial state loading and event registration.
-     */
-    async loadState(toggleBtn, layout) {
-        await this.sync(toggleBtn);
-
-        const innerCheckbox = toggleBtn.querySelector('input');
-        if (innerCheckbox) {
-            innerCheckbox.id = layout === 'compact' ? 'devmode-setDebugVisuals' : 'debugVisuals';
-            if (layout === 'compact') {
-                innerCheckbox.classList.add('toggle');
-            } else {
-                innerCheckbox.classList.add('conversion-switch');
-            }
-        }
-
-        // Handle clicking anywhere in the card (layout !== 'compact')
-        const labelCard = this.querySelector('.setting-label');
-        if (labelCard && layout !== 'compact') {
-            labelCard.addEventListener('click', (e) => {
-                if (e.target.closest('toggle-button')) return;
-                toggleBtn.checked = !toggleBtn.checked;
-                toggleBtn.dispatchEvent(new CustomEvent('toggle-change', {
-                    bubbles: true,
-                    detail: { checked: toggleBtn.checked }
-                }));
-            });
-        }
-
-        toggleBtn.addEventListener('toggle-change', async (e) => {
-            const checked = e.detail.checked;
-            try {
-                await controller.setVisualHighlightEnabled(checked);
-                if (layout !== 'compact') {
-                    this.dispatchEvent(new CustomEvent('setting-saved', {
-                        bubbles: true,
-                        detail: {
-                            key: 'visualHighlightEnabled',
-                            value: checked,
-                            success: true,
-                            message: browser.i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
-                        }
-                    }));
-                }
-            } catch (err) {
-                console.error('Failed to save debug visuals setting:', err);
-                toggleBtn.checked = !checked;
-                if (layout !== 'compact') {
-                    this.dispatchEvent(new CustomEvent('setting-saved', {
-                        bubbles: true,
-                        detail: {
-                            key: 'visualHighlightEnabled',
-                            value: !checked,
-                            success: false,
-                            message: browser.i18n.getMessage('settingSavedError') || 'Error saving setting'
-                        }
-                    }));
-                }
-            }
-        });
-    }
-}
-
-customElements.define('visual-highlight-setting', VisualHighlightSetting);
+defineComponent('visual-highlight-setting', VisualHighlightSetting);

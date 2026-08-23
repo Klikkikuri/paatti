@@ -2,6 +2,7 @@
 
 import browser from '../../browser-api.js';
 import { getFaviconKey, isFaviconExpired } from '../../faviconCache.js';
+import { defineComponent } from './component-utils.js';
 
 /**
  * Curated accessible palette for deterministic domain letter badges.
@@ -269,4 +270,4 @@ export class FaviconImg extends HTMLElement {
     }
 }
 
-customElements.define('favicon-img', FaviconImg);
+defineComponent('favicon-img', FaviconImg);

@@ -1,3 +1,7 @@
+import { adoptComponentStyleSheet, defineComponent } from './component-utils.js';
+
+adoptComponentStyleSheet(new URL('./compact-button.css', import.meta.url));
+
 /**
  * Reusable, compact circular button Web Component.
  * Renders a small circular icon button using the shared .compact-button style.
@@ -20,9 +24,6 @@ export class CompactButton extends HTMLElement {
     }
 
     connectedCallback() {
-        this.style.display = 'inline-block';
-        this.style.width = '30px';
-        this.style.height = '30px';
         this.render();
     }
 
@@ -49,4 +50,4 @@ export class CompactButton extends HTMLElement {
     }
 }
 
-customElements.define('compact-button', CompactButton);
+defineComponent('compact-button', CompactButton);

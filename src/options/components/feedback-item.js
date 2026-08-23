@@ -2,144 +2,14 @@ import browser from '../../browser-api.js';
 import { getLogger, sanitizeUrlForFeedback } from '../../utils.js';
 import { getConfig } from '../../config.js';
 import { model, Clickbaitiness } from '../../model.js';
+import { adoptComponentStyleSheet, defineComponent } from './component-utils.js';
+
+adoptComponentStyleSheet(new URL('./feedback-item.css', import.meta.url));
 
 const log = getLogger('components/feedback-item');
 
 const template = document.createElement('template');
 template.innerHTML = `
-    <style>
-        /* Surface, border and shadow come from shared rules in
-         * components.css (including .feedback-card); only this card's own layout lives here. */
-        .feedback-card {
-            padding: 10px;
-            margin-bottom: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            list-style: none;
-            text-align: left;
-        }
-
-        .feedback-row {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            padding-left: 8px;
-        }
-
-        .feedback-row.original {
-            border-left: 3px solid var(--color-warning);
-        }
-
-        .feedback-row.converted {
-            border-left: 3px solid var(--color-success-strong);
-        }
-
-        .feedback-label {
-            font-size: 0.7em;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            color: var(--color-text-muted);
-        }
-
-        .feedback-text {
-            font-size: 0.88em;
-            color: var(--color-text-primary);
-            line-height: 1.35;
-            font-weight: bold;
-        }
-
-        .feedback-actions {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-top: 4px;
-            min-height: 24px;
-        }
-
-        /* Smaller than a regular push button, so it casts and travels less. */
-        .feedback-action-btn {
-            --push-offset: 2px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            cursor: pointer;
-            font-family: inherit;
-        }
-
-        .feedback-action-btn.good:hover {
-            background: var(--feedback-vote-yes-bg) !important;
-            outline-color: var(--color-success-strong) !important;
-            color: var(--feedback-vote-yes-text) !important;
-        }
-
-        .feedback-action-btn.bad:hover {
-            background: var(--feedback-vote-no-bg) !important;
-            outline-color: var(--color-danger-strong) !important;
-            color: var(--feedback-vote-no-text) !important;
-        }
-
-        .feedback-input-container {
-            margin-top: 4px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .feedback-input-group {
-            display: flex;
-            width: 100%;
-            box-sizing: border-box;
-            border: 1px solid var(--color-border-strong);
-            border-radius: 6px;
-            overflow: hidden;
-            background: var(--color-surface);
-            box-shadow: inset 0 1px 3px var(--shadow-ambient);
-        }
-
-        .feedback-text-input {
-            flex: 1;
-            padding: 6px 10px;
-            font-size: 0.85em;
-            border: none;
-            outline: none;
-            background: transparent;
-            color: var(--color-text-primary);
-            box-sizing: border-box;
-        }
-
-        .feedback-submit-button {
-            background: var(--push-bg);
-            border: none;
-            border-left: 1px solid var(--color-border-strong);
-            color: var(--color-text-primary);
-            padding: 6px 12px;
-            font-size: 0.8em;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .feedback-submit-button:hover {
-            background: var(--color-info);
-            color: var(--color-on-accent);
-        }
-
-        /* Colours per level come from theme.css via the [data-level] rules in
-         * styles.css; this element only carries layout. */
-        .clickbait-level-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 1px 6px;
-            border-radius: 4px;
-            font-size: 0.6em;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            line-height: 1;
-        }
-    </style>
-    
     <li class="feedback-card">
         <div class="current-page-container" style="display: flex; align-items: center; margin-bottom: 4px;">
             <span class="current-page-tag" style="font-size: 0.72em; color: var(--feedback-tag); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 4px;">
@@ -180,6 +50,9 @@ template.innerHTML = `
  * Features a modern, highly aesthetic card layout with left-border indicators.
  */
 class FeedbackItem extends HTMLElement {
+    /** Aborted on re-render and on detach, dropping every listener the last render added. */
+    #listeners = null;
+
     constructor() {
         super();
         this._item = null;
@@ -212,9 +85,8 @@ class FeedbackItem extends HTMLElement {
     }
 
     disconnectedCallback() {
-        if (this._outsideClickListener) {
-            document.removeEventListener("click", this._outsideClickListener);
-        }
+        this.#listeners?.abort();
+        this.#listeners = null;
     }
 
     /**
@@ -245,6 +117,11 @@ class FeedbackItem extends HTMLElement {
 
     render() {
         if (!this._item) return;
+
+        // Drop the previous render's listeners before wiring new ones: the document-level
+        // one below outlives the markup this replaces.
+        this.#listeners?.abort();
+        this.#listeners = new AbortController();
 
         this.replaceChildren(template.content.cloneNode(true));
 
@@ -302,6 +179,8 @@ class FeedbackItem extends HTMLElement {
 
 
     setupHandlers() {
+        const { signal } = this.#listeners;
+
         const buttonsDiv = this.querySelector(".feedback-actions");
         const formDiv = this.querySelector(".feedback-input-container");
         const feedbackInput = this.querySelector(".feedback-text-input");
@@ -433,7 +312,7 @@ class FeedbackItem extends HTMLElement {
             } else {
                 setFeedbackStatus(browser.i18n.getMessage("feedbackviewReportFailure") || "✗ Failed to send report.", "var(--color-danger-strong)", true);
             }
-        });
+        }, { signal });
 
         const cancelFlow = () => {
             formDiv.classList.add("hidden");
@@ -462,7 +341,7 @@ class FeedbackItem extends HTMLElement {
             buttonsDiv.style.display = "none";
             formDiv.classList.remove("hidden");
             feedbackInput.focus();
-        });
+        }, { signal });
 
         feedbackInput.addEventListener("keydown", async (e) => {
             if (e.key === "Enter") {
@@ -472,18 +351,15 @@ class FeedbackItem extends HTMLElement {
                 e.preventDefault();
                 cancelFlow();
             }
-        });
+        }, { signal });
 
-        submitBtn.addEventListener("click", triggerSubmit);
+        submitBtn.addEventListener("click", triggerSubmit, { signal });
 
-        // Click outside listener
-        const onOutsideClick = (e) => {
+        document.addEventListener("click", (e) => {
             if (!formDiv.classList.contains("hidden") && !this.contains(e.target)) {
                 cancelFlow();
             }
-        };
-        this._outsideClickListener = onOutsideClick;
-        document.addEventListener("click", onOutsideClick);
+        }, { signal });
 
         // Hover highlighting listener
         if (feedbackItemEl && this._item.highlightId) {
@@ -494,7 +370,7 @@ class FeedbackItem extends HTMLElement {
                         highlightId: this._item.highlightId
                     }).catch((err) => log("Failed to send highlight message:", err));
                 }
-            });
+            }, { signal });
             feedbackItemEl.addEventListener("mouseleave", () => {
                 if (this._tab) {
                     browser.tabs.sendMessage(this._tab.id, {
@@ -502,9 +378,9 @@ class FeedbackItem extends HTMLElement {
                         highlightId: this._item.highlightId
                     }).catch((err) => log("Failed to send unhighlight message:", err));
                 }
-            });
+            }, { signal });
         }
     }
 }
 
-customElements.define('feedback-item', FeedbackItem);
+defineComponent('feedback-item', FeedbackItem);

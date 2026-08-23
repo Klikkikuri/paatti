@@ -1,0 +1,127 @@
+/**
+ * <toggle-button>, both layouts.
+ *
+ * Loaded by toggle-button.js, so a page gets the styling by importing the component and
+ * nothing more. Before this file the switch layout was styled only in options.css and the
+ * toggle layout only in styles.css, so neither could render on the other page.
+ *
+ * adoptComponentStyleSheet appends this after the page's own <link>s, so these rules win
+ * ties on source order. Do not try to override them from options.css or styles.css.
+ *
+ * Every rule is scoped under the element name, so nothing here can reach markup the page
+ * writes itself. Colours come from the --toggle-* and --color-* tokens in theme.css.
+ */
+
+/* The host box, so the element has a size before script runs. */
+toggle-button {
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+    vertical-align: middle;
+}
+
+/* The compact layout is a bare checkbox that sizes itself. */
+toggle-button[type="toggle"] {
+    display: inline;
+    width: auto;
+    height: auto;
+}
+
+/* --- switch layout: a slider label wrapping a visually hidden checkbox --- */
+
+toggle-button .toggle-switch {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+toggle-button .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+toggle-button .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--toggle-bg-off);
+    transition: 0.3s;
+    border-radius: 26px;
+}
+
+toggle-button .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 4px;
+    background-color: var(--toggle-knob);
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+toggle-button input:checked + .toggle-slider {
+    background-color: var(--color-brand);
+}
+
+toggle-button input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+}
+
+/* --- toggle layout: the checkbox itself is the control --- */
+
+toggle-button .toggle {
+    appearance: none;
+    width: 2.5rem;
+    height: 1.25rem;
+    background: var(--toggle-bg-off);
+    border: none;
+    border-radius: 0.625rem;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s;
+    box-shadow: inset 0 1px 3px color-mix(in srgb, var(--color-surface) 60%, transparent), 0 1px 3px var(--shadow-color);
+}
+
+toggle-button .toggle:checked {
+    background: var(--toggle-bg-on);
+}
+
+toggle-button .toggle::before {
+    content: '';
+    position: absolute;
+    top: 0.125rem;
+    left: 0.125rem;
+    width: 1rem;
+    height: 1rem;
+    background: var(--toggle-knob);
+    border-radius: 50%;
+    transition: transform 0.3s;
+    box-shadow: 0 1px 3px var(--shadow-color);
+}
+
+toggle-button .toggle:checked::before {
+    transform: translateX(1.25rem);
+}
+
+/*
+ * Greyed out while conversion is off -- popup.js adds this alongside .toggle, so it has to
+ * come last: same specificity, and source order decides.
+ */
+toggle-button .toggle-readonly {
+    background: var(--toggle-bg-off);
+}
+
+toggle-button .toggle-readonly:checked {
+    background: var(--color-info);
+}
+
+toggle-button .toggle-readonly::before {
+    background: var(--toggle-bg-off);
+}

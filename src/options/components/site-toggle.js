@@ -4,37 +4,12 @@ import { isSiteEnabled } from '../utils.js';
 import { getConfig } from '../../config.js';
 import './toggle-button.js';
 import './favicon-img.js';
+import { adoptComponentStyleSheet, defineComponent } from './component-utils.js';
+
+// This element's CSS travels with it: a page gets the styling by importing the module.
+adoptComponentStyleSheet(new URL('./site-toggle.css', import.meta.url));
 const compactTemplate = document.createElement('template');
 compactTemplate.innerHTML = `
-    <style>
-        .compact-site-info {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            min-width: 0;
-            flex: 1;
-            margin-right: 10px;
-        }
-        .site-favicon {
-            border-radius: 4px;
-            flex-shrink: 0;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .site-favicon img,
-        .site-favicon .site-favicon-fallback {
-            border-radius: 4px;
-            display: block;
-        }
-        .site-label {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            cursor: pointer;
-            user-select: none;
-        }
-    </style>
     <div class="compact-site-info">
         <favicon-img class="site-favicon" size="18"></favicon-img>
         <label class="site-label"></label>
@@ -44,63 +19,6 @@ compactTemplate.innerHTML = `
 
 const detailedTemplate = document.createElement('template');
 detailedTemplate.innerHTML = `
-    <style>
-        .site-main-section {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            margin-right: 15px;
-            min-width: 0;
-        }
-        .site-details {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            min-width: 0;
-            flex: 1;
-        }
-        .site-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            width: 100%;
-            min-width: 0;
-        }
-        .site-favicon {
-            border-radius: 4px;
-            flex-shrink: 0;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .site-favicon img,
-        .site-favicon .site-favicon-fallback {
-            border-radius: 4px;
-            display: block;
-        }
-        .site-name {
-            font-weight: bold;
-            color: var(--color-text-heading);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .site-domain {
-            font-size: 0.9rem;
-            color: var(--color-text-secondary);
-            line-height: 1.2;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .site-details-container {
-            line-height: 1.2;
-            margin-top: 2px;
-        }
-        site-toggle-setting toggle-button {
-            flex-shrink: 0;
-        }
-    </style>
     <div class="site-main-section">
         <div class="site-info">
             <favicon-img class="site-favicon" size="24"></favicon-img>
@@ -323,4 +241,4 @@ export async function handleSiteToggleHelper(checked, domain, origins, currentHa
     }
 }
 
-customElements.define('site-toggle-setting', SiteToggleSetting);
+defineComponent('site-toggle-setting', SiteToggleSetting);

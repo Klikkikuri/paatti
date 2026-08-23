@@ -134,6 +134,9 @@ lint-webext: dist
 # An explicit glob, not a bare `node --test`: the latter sweeps the whole tree and would
 # pick up suola's own smoke test, which test-wasm below runs deliberately and with an
 # argument. Node resolves the pattern itself, so keep it quoted.
+# jsdom is a global install (see .devcontainer/Dockerfile), and ESM resolution ignores
+# NODE_PATH -- tests/helpers/dom.mjs reaches it through the CJS resolver, which does not.
+test: export NODE_PATH = $(shell npm root -g)
 test: test-wasm
 	node --test 'tests/**/*.test.mjs'
 

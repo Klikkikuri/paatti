@@ -1,4 +1,5 @@
 import { onConfigValue } from '../../config.js';
+import { ComponentBase } from './component-utils.js';
 
 /** What the slider shows when nothing is stored yet. */
 const DEFAULT_LEVEL = 2;
@@ -7,24 +8,15 @@ const DEFAULT_LEVEL = 2;
  * Abstract base class managing clickbait level options.
  * Owns the lifecycle and the config subscription; subclasses supply markup only.
  */
-export class ClickbaitLevelBase extends HTMLElement {
-    #unsubscribe = null;
-
-    connectedCallback() {
+export class ClickbaitLevelBase extends ComponentBase {
+    onConnect() {
         this.render();
 
         // Calls back at once with the stored level, then only when it moves.
-        this.#unsubscribe = onConfigValue(
+        this.addTeardown(onConfigValue(
             (config) => config.clickbaitLevel ?? DEFAULT_LEVEL,
             (level) => this.updateUI(level)
-        );
-    }
-
-    disconnectedCallback() {
-        if (!this.#unsubscribe) return;
-
-        this.#unsubscribe();
-        this.#unsubscribe = null;
+        ));
     }
 
     /**

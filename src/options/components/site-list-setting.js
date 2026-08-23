@@ -1,5 +1,8 @@
 import { getConfig } from '../../config.js';
 import './site-toggle.js';
+import { adoptComponentStyleSheet, defineComponent } from './component-utils.js';
+
+adoptComponentStyleSheet(new URL('./site-list-setting.css', import.meta.url));
 
 /**
  * Custom element managing the list of site-specific toggle settings in the options page.
@@ -7,7 +10,6 @@ import './site-toggle.js';
  */
 class SiteListSetting extends HTMLElement {
     connectedCallback() {
-        this.style.display = 'block';
 
         // No subscription: the list is the set of configured sites, which does not change
         // at runtime, and each site-toggle-setting owns its own enabled state. render()
@@ -39,4 +41,4 @@ class SiteListSetting extends HTMLElement {
     }
 }
 
-customElements.define('site-list-setting', SiteListSetting);
+defineComponent('site-list-setting', SiteListSetting);

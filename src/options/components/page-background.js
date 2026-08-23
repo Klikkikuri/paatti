@@ -2,7 +2,7 @@ import { getLogger } from '../../utils.js';
 import { onConfigValue } from '../../config.js';
 import { model } from '../../model.js';
 import { shouldShowEasterEgg, dayKey, unitHash, specialDayMessageKey } from '../easter-egg.js';
-import { adoptComponentStyleSheet } from './component-utils.js';
+import { adoptComponentStyleSheet, ComponentBase, defineComponent } from './component-utils.js';
 
 // None of this element's CSS is shared, so it travels with the component: a page
 // gets the styling by importing this module and nothing more.
@@ -23,28 +23,19 @@ const EGG_CLASS = 'has-easter-egg';
  * beside this module. The host page owes the element a stacking context -- see
  * the requirements at the top of page-background.css.
  */
-class PageBackground extends HTMLElement {
-    #unsubscribe = null;
-
+class PageBackground extends ComponentBase {
     /** Bumped per apply, so an earlier read that resolves late cannot win. */
     #generation = 0;
 
-    connectedCallback() {
+    onConnect() {
         // Decoration only: nothing here belongs in the accessibility tree.
         this.setAttribute('aria-hidden', 'true');
 
         // Calls back at once with the stored probability, then only when it moves.
-        this.#unsubscribe = onConfigValue(
+        this.addTeardown(onConfigValue(
             (config) => config.easterEggProbability,
             (probability) => this.applyEasterEgg(probability)
-        );
-    }
-
-    disconnectedCallback() {
-        if (!this.#unsubscribe) return;
-
-        this.#unsubscribe();
-        this.#unsubscribe = null;
+        ));
     }
 
     /**
@@ -81,6 +72,4 @@ class PageBackground extends HTMLElement {
     }
 }
 
-if (!customElements.get('page-background')) {
-    customElements.define('page-background', PageBackground);
-}
+defineComponent('page-background', PageBackground);
