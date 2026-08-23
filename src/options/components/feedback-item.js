@@ -180,6 +180,9 @@ template.innerHTML = `
  * Features a modern, highly aesthetic card layout with left-border indicators.
  */
 class FeedbackItem extends HTMLElement {
+    /** Aborted on re-render and on detach, dropping every listener the last render added. */
+    #listeners = null;
+
     constructor() {
         super();
         this._item = null;
@@ -212,9 +215,8 @@ class FeedbackItem extends HTMLElement {
     }
 
     disconnectedCallback() {
-        if (this._outsideClickListener) {
-            document.removeEventListener("click", this._outsideClickListener);
-        }
+        this.#listeners?.abort();
+        this.#listeners = null;
     }
 
     /**
@@ -245,6 +247,11 @@ class FeedbackItem extends HTMLElement {
 
     render() {
         if (!this._item) return;
+
+        // Drop the previous render's listeners before wiring new ones: the document-level
+        // one below outlives the markup this replaces.
+        this.#listeners?.abort();
+        this.#listeners = new AbortController();
 
         this.replaceChildren(template.content.cloneNode(true));
 
@@ -302,6 +309,8 @@ class FeedbackItem extends HTMLElement {
 
 
     setupHandlers() {
+        const { signal } = this.#listeners;
+
         const buttonsDiv = this.querySelector(".feedback-actions");
         const formDiv = this.querySelector(".feedback-input-container");
         const feedbackInput = this.querySelector(".feedback-text-input");
@@ -433,7 +442,7 @@ class FeedbackItem extends HTMLElement {
             } else {
                 setFeedbackStatus(browser.i18n.getMessage("feedbackviewReportFailure") || "✗ Failed to send report.", "var(--color-danger-strong)", true);
             }
-        });
+        }, { signal });
 
         const cancelFlow = () => {
             formDiv.classList.add("hidden");
@@ -462,7 +471,7 @@ class FeedbackItem extends HTMLElement {
             buttonsDiv.style.display = "none";
             formDiv.classList.remove("hidden");
             feedbackInput.focus();
-        });
+        }, { signal });
 
         feedbackInput.addEventListener("keydown", async (e) => {
             if (e.key === "Enter") {
@@ -472,18 +481,15 @@ class FeedbackItem extends HTMLElement {
                 e.preventDefault();
                 cancelFlow();
             }
-        });
+        }, { signal });
 
-        submitBtn.addEventListener("click", triggerSubmit);
+        submitBtn.addEventListener("click", triggerSubmit, { signal });
 
-        // Click outside listener
-        const onOutsideClick = (e) => {
+        document.addEventListener("click", (e) => {
             if (!formDiv.classList.contains("hidden") && !this.contains(e.target)) {
                 cancelFlow();
             }
-        };
-        this._outsideClickListener = onOutsideClick;
-        document.addEventListener("click", onOutsideClick);
+        }, { signal });
 
         // Hover highlighting listener
         if (feedbackItemEl && this._item.highlightId) {
@@ -494,7 +500,7 @@ class FeedbackItem extends HTMLElement {
                         highlightId: this._item.highlightId
                     }).catch((err) => log("Failed to send highlight message:", err));
                 }
-            });
+            }, { signal });
             feedbackItemEl.addEventListener("mouseleave", () => {
                 if (this._tab) {
                     browser.tabs.sendMessage(this._tab.id, {
@@ -502,7 +508,7 @@ class FeedbackItem extends HTMLElement {
                         highlightId: this._item.highlightId
                     }).catch((err) => log("Failed to send unhighlight message:", err));
                 }
-            });
+            }, { signal });
         }
     }
 }
