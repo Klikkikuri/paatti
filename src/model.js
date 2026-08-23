@@ -416,11 +416,6 @@ const model = (() => {
                 };
             },
 
-            getEasterEggProbability: async () => {
-                const config = await getConfig();
-                return clampProbability(config.easterEggProbability);
-            },
-
             /**
              * The salt that gives this install its own easter egg calendar.
              *
@@ -555,4 +550,4 @@ const model = (() => {
     };
 })();
 
-export { model, modelEvents, klikkikuriStatus, Clickbaitiness };
+export { model, modelEvents, klikkikuriStatus, Clickbaitiness, clampProbability };

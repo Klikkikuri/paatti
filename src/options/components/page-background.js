@@ -1,7 +1,7 @@
-import browser from '../../browser-api.js';
 import { getLogger } from '../../utils.js';
+import { onConfigValue } from '../../config.js';
 import { model } from '../../model.js';
-import { shouldShowEasterEgg, affectsEasterEgg, dayKey, unitHash, specialDayMessageKey } from '../easter-egg.js';
+import { shouldShowEasterEgg, dayKey, unitHash, specialDayMessageKey } from '../easter-egg.js';
 import { adoptComponentStyleSheet } from './component-utils.js';
 
 // None of this element's CSS is shared, so it travels with the component: a page
@@ -24,7 +24,7 @@ const EGG_CLASS = 'has-easter-egg';
  * the requirements at the top of page-background.css.
  */
 class PageBackground extends HTMLElement {
-    #storageListener = null;
+    #unsubscribe = null;
 
     /** Bumped per apply, so an earlier read that resolves late cannot win. */
     #generation = 0;
@@ -33,20 +33,18 @@ class PageBackground extends HTMLElement {
         // Decoration only: nothing here belongs in the accessibility tree.
         this.setAttribute('aria-hidden', 'true');
 
-        this.applyEasterEgg();
-
-        this.#storageListener = (changes, areaName) => {
-            if (!affectsEasterEgg(changes, areaName)) return;
-            this.applyEasterEgg();
-        };
-        browser.storage.onChanged.addListener(this.#storageListener);
+        // Calls back at once with the stored probability, then only when it moves.
+        this.#unsubscribe = onConfigValue(
+            (config) => config.easterEggProbability,
+            (probability) => this.applyEasterEgg(probability)
+        );
     }
 
     disconnectedCallback() {
-        if (!this.#storageListener) return;
+        if (!this.#unsubscribe) return;
 
-        browser.storage.onChanged.removeListener(this.#storageListener);
-        this.#storageListener = null;
+        this.#unsubscribe();
+        this.#unsubscribe = null;
     }
 
     /**
@@ -60,20 +58,16 @@ class PageBackground extends HTMLElement {
      *
      * A theme switch needs no work of its own: each theme names its own artwork,
      * so the result of the roll simply changes shape.
+     *
+     * @param {number} probability - Chance of a sighting, 0..1, from onConfigValue.
      */
-    applyEasterEgg() {
+    applyEasterEgg(probability) {
         const generation = ++this.#generation;
 
         // A page left open over midnight picks up the new day on its next apply.
         const today = new Date();
 
-        // Both reads are started here and awaited together. Starting one and
-        // awaiting it first would push the getConfig() that registers the cache
-        // invalidator behind the listener in connectedCallback.
-        Promise.all([
-            model.read.getEasterEggProbability(),
-            model.read.getEasterEggSalt()
-        ]).then(([probability, salt]) => {
+        model.read.getEasterEggSalt().then((salt) => {
             // A later apply has overtaken this one, or the element has left the
             // page while the read was in flight.
             if (generation !== this.#generation || !this.isConnected) return;
