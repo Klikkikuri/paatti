@@ -133,16 +133,15 @@ browser.storage.onChanged.addListener(async (changes, area) => {
 
 browser.runtime.onInstalled.addListener(async () => {
 
-    // Detect environment
-    const environment = await new Promise((resolve) => {
-        browser.management.getSelf((info) => {
-            if (info.installType === 'development') {
-                resolve("development");
-            } else {
-                resolve(DEFAULT_ENVIRONMENT);
-            }
-        });
-    });
+    let environment = DEFAULT_ENVIRONMENT;
+    try {
+        const self = await browser.management.getSelf();
+        if (self.installType === "development") {
+            environment = "development";
+        }
+    } catch (error) {
+        log("Error detecting environment on install:", error);
+    }
 
     try {
         // Set default environment on install
