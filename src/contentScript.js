@@ -182,35 +182,6 @@ let hrefSign;
     ////////////////////////////////////////////////////////////////////////////
     // Processing subroutines.
 
-    /*
-     * Parallelly iterate through all the title elements according to site's rules. 
-     * @param  {Function(siteRule, ruleContainer, ruleLink) -> Promise} f
-     * Function that processes a single title elem derivable from the
-     * parameters.
-     * @return {Array[Promise]} Array of all the calls to f.
-     */
-    const processTitleElems = async (f) => {
-        const siteRules = await model.read.getSiteRules(newsSite);
-        if (!siteRules) {
-            log(`No site rules found for '${newsSite}', aborting conversion.`);
-            return [];
-        }
-
-        const processingPromises = [];
-        for (const rule of siteRules) {
-            const containers = document.querySelectorAll(rule.container);
-            for (const container of containers) {
-                const links = (!rule.link || rule.link === "self" || rule.link === ":scope")
-                    ? [container]
-                    : container.querySelectorAll(rule.link);
-                for (const link of links) {
-                    processingPromises.push(f(rule, container, link));
-                }
-            }
-        }
-        return processingPromises;
-    };
-
     const processSite = async () => {
         const startTime = performance.now();
 

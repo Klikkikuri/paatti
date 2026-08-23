@@ -49,19 +49,7 @@
     "message": "Site processing is disabled",
     "description": "Message to show in 'main' title element when the visited site is disabled in settings"
   },
-  "statsErrorUserFixInstructions": {
-    "message": "Failed to load site data. Try refreshing the page",
-    "description": "Instruction text to show in the bottom of 'main' view to help user with an unexpected error"
-  },
 
-  "statsviewGroupedByClickbaitinessLabelClickbaitiness": {
-    "message": "Clickbaitiness",
-    "description": "Title of the stats section clickbaitiness grouping table for the 'type' or 'severity' of clickbait"
-  },
-  "statsviewGroupedByClickbaitinessLabelAmount": {
-    "message": "Amount",
-    "description": "Title of the stats section clickbaitiness grouping table for the amount of this type of clickbait"
-  },
   "statsviewGroupedByClickbaitinessLabelTotal": {
     "message": "Total",
     "description": "Title of the stats section clickbaitiness grouping table for the total amount of converted titles"
