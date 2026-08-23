@@ -13,7 +13,7 @@ let mockLocalData = {};
 let mockSyncData = {};
 
 // Mock the extension API before the dynamic import below.
-globalThis.chrome = {
+globalThis.browser = {
   storage: {
     local: {
       get: async () => {
@@ -40,7 +40,7 @@ const manifestPath = path.join(__dirname, '..', 'manifest.json');
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 
 // Imported dynamically: a static import is hoisted above the mock above, so browser-api.js
-// would resolve the namespace before globalThis.chrome exists.
+// would resolve the namespace before globalThis.browser exists.
 const { getConfig } = await import('../src/config.js');
 
 async function runTests() {

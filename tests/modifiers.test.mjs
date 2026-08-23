@@ -8,7 +8,7 @@ let mockModifiers = {
 let changeListeners = [];
 
 // Global browser API mock for testing
-globalThis.chrome = {
+globalThis.browser = {
     storage: {
         local: {
             get: async () => ({})

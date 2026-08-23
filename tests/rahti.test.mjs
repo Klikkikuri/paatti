@@ -1,7 +1,7 @@
 // Mock browser API globally before dynamically importing rahti.js
 let mockStorageData = {};
 
-const mockChrome = {
+const mockBrowser = {
   storage: {
     local: {
       get: async (keys) => {
@@ -36,14 +36,13 @@ const mockChrome = {
   }
 };
 
-globalThis.chrome = mockChrome;
-globalThis.browser = mockChrome;
+globalThis.browser = mockBrowser;
 
 async function runRahtiTests() {
   console.log('Running rahti retry wrapper verification tests...');
   let failed = false;
 
-  // Dynamically import rahti.js after globalThis.chrome and browser are set up
+  // Dynamically import rahti.js after globalThis.browser is set up
   const { fetchRahtiData, fetchRahtiDataWithRetry } = await import('../src/rahti.js');
 
   // Test 1: fetchRahtiDataWithRetry retries on initial failures and succeeds when a retry works
