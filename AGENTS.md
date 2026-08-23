@@ -103,11 +103,15 @@ This project uses web components, which usually use a combination of methods to 
 
 - `disconnectedCallback` must undo everything `connectedCallback` did. No lifetime-scoped `initialized` flag that
   survives a detach — it leaves a re-attached element subscribed to nothing.
-- Filter `storage.onChanged` by `areaName` *and* changed key. Statistics are written constantly; nothing should
-  re-read config on every write. `config.js` registers its cache invalidator on import and filters it against the
-  four keys `getConfig()` reads, so a listener added later never sees a stale cache — but it still runs on every
-  write until you filter it.
-- Never float an async lifecycle call. Catch it, and after any `await` re-check `isConnected` before touching the DOM.
+- Read settings with `onConfigValue(select, callback)` from `config.js`, not a `storage.onChanged` listener of your
+  own. It calls back at once with the value in storage and then only when that value genuinely changes, and returns
+  the unsubscribe function `disconnectedCallback` owes it. Select narrowly — the value is compared by its JSON
+  shape, so a whole sub-tree re-fires whenever anything inside it moves. Return a primitive or a flat tuple.
+- A raw `storage.onChanged` listener is for keys *outside* the merged config — `statistics`,
+  `visualHighlightEnabled`, `lastDatabaseUpdate`. Filter it by `areaName` *and* changed key: statistics are written
+  constantly, and nothing should re-render on every one of those writes.
+- Never float an async lifecycle call. Catch it, and after any `await` re-check `isConnected` before touching the DOM
+  — an `onConfigValue` callback always runs a turn after the subscription, so the element may already be gone.
   Where two updates can overlap, carry a generation counter so a late read cannot overwrite a newer one.
 - Draw randomness once and hold it; never re-draw on a state change, or an unrelated update visibly disturbs what is
   already on screen.
