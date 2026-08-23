@@ -1,29 +1,10 @@
 import browser from '../../browser-api.js';
 import { controller } from '../../controller.js';
 import { onConfigValue } from '../../config.js';
-import './toggle-button.js';
 import '../../components/klikkikuri-ai-badge.js';
 import '../../components/klikkikuri-video-badge.js';
-import { ComponentBase, defineComponent } from './component-utils.js';
-
-const compactTemplate = document.createElement('template');
-compactTemplate.innerHTML = `
-    <span class="label-text" style="font-weight: bold;"></span>
-    <toggle-button type="toggle"></toggle-button>
-`;
-
-const detailedTemplate = document.createElement('template');
-detailedTemplate.innerHTML = `
-    <div class="setting-group">
-        <div class="setting-label">
-            <div class="label-text">
-                <strong class="title-text"></strong>
-                <span class="description-text"></span>
-            </div>
-            <toggle-button></toggle-button>
-        </div>
-    </div>
-`;
+import { defineComponent } from './component-utils.js';
+import { createToggleSetting } from './toggle-setting.js';
 
 /**
  * Per-modifier metadata used to populate labels, descriptions, and badge previews.
@@ -52,111 +33,49 @@ const MODIFIER_META = {
     },
 };
 
-/**
- * Custom element managing title modifier options (e.g. Tekoälymerkintä / AI Slop, Videomerkintä / Video).
- * Supports layout="compact" (popup setting) and layout="detailed" (options page).
- */
-class TitleModifierSetting extends ComponentBase {
-    onConnect() {
-        const modifier = this.getAttribute('modifier') || 'aiSlop';
-        const layout = this.getAttribute('layout') || 'detailed';
+/** Which modifier an instance is for; the attribute is the only per-instance state. */
+const modifierOf = (el) => el.getAttribute('modifier') || 'aiSlop';
+
+/** Resolve one of the meta strings, falling back to the modifier name when it is unknown. */
+const text = (meta, key, fallback, whenUnknown) =>
+    (meta ? (browser.i18n.getMessage(meta[key]) || meta[fallback]) : whenUnknown);
+
+/** Title modifier options (Tekoälymerkintä / AI Slop, Videomerkintä / Video). */
+const TitleModifierSetting = createToggleSetting({
+    settingKey: (el) => `modifier-${modifierOf(el)}`,
+
+    ids: (el) => {
+        const id = `modifier-${modifierOf(el)}`;
+        return { compact: id, detailed: id };
+    },
+
+    labels: (el) => {
+        const modifier = modifierOf(el);
         const meta = MODIFIER_META[modifier];
+        return {
+            compact: text(meta, 'labelKey', 'labelFallback', modifier),
+            title: text(meta, 'titleKey', 'titleFallback', modifier),
+            description: text(meta, 'descKey', 'descFallback', ''),
+        };
+    },
 
-        if (layout === 'compact') {
-            this.classList.add('compact-setting-row');
-            this.replaceChildren(compactTemplate.content.cloneNode(true));
+    // The badge is a preview of what the modifier puts on a headline.
+    decorate: (el, titleEl) => {
+        const badgeTag = MODIFIER_META[modifierOf(el)]?.badgeTag;
+        if (!badgeTag) return;
 
-            const labelText = meta
-                ? (browser.i18n.getMessage(meta.labelKey) || meta.labelFallback)
-                : modifier;
+        const badge = document.createElement(badgeTag);
+        badge.style.marginLeft = '0.25em';
+        titleEl.append(' ', badge);
+    },
 
-            const labelEl = this.querySelector('.label-text');
-            if (labelEl) labelEl.textContent = labelText;
-        } else {
-            this.replaceChildren(detailedTemplate.content.cloneNode(true));
+    // Selects this modifier alone, so the other one's writes do not wake it.
+    read: (el, apply) => onConfigValue(
+        (config) => Boolean(config.modifiers?.[modifierOf(el)]),
+        apply
+    ),
 
-            const title = meta
-                ? (browser.i18n.getMessage(meta.titleKey) || meta.titleFallback)
-                : modifier;
-            const description = meta
-                ? (browser.i18n.getMessage(meta.descKey) || meta.descFallback)
-                : '';
-
-            const titleEl = this.querySelector('.title-text');
-            const descEl = this.querySelector('.description-text');
-            if (titleEl) {
-                titleEl.textContent = title + ' ';
-                if (meta?.badgeTag) {
-                    const badgeElem = document.createElement(meta.badgeTag);
-                    badgeElem.style.marginLeft = '0.25em';
-                    titleEl.appendChild(badgeElem);
-                }
-            }
-            if (descEl) descEl.textContent = description;
-        }
-
-        const toggleBtn = this.querySelector('toggle-button');
-        if (toggleBtn) {
-            toggleBtn.setAttribute('id', `modifier-${modifier}`);
-        }
-        this.loadState(toggleBtn, modifier, layout);
-
-        // Selects this modifier alone, so the other one's writes do not wake it.
-        this.addTeardown(onConfigValue(
-            (config) => Boolean(config.modifiers?.[modifier]),
-            (enabled) => { toggleBtn.checked = enabled; }
-        ));
-    }
-
-    /**
-     * Wire up the control. The checked state itself arrives from onConfigValue.
-     */
-    loadState(toggleBtn, modifier, layout) {
-        // Handle clicking anywhere in the card (layout !== 'compact')
-        const labelCard = this.querySelector('.setting-label');
-        if (labelCard && layout !== 'compact') {
-            labelCard.addEventListener('click', (e) => {
-                if (e.target.closest('toggle-button')) return;
-                toggleBtn.checked = !toggleBtn.checked;
-                toggleBtn.dispatchEvent(new CustomEvent('toggle-change', {
-                    bubbles: true,
-                    detail: { checked: toggleBtn.checked }
-                }));
-            }, { signal: this.signal });
-        }
-
-        toggleBtn.addEventListener('toggle-change', async (e) => {
-            const checked = e.detail.checked;
-            try {
-                await controller.setModifierEnabled(modifier, checked);
-                if (layout !== 'compact') {
-                    this.dispatchEvent(new CustomEvent('setting-saved', {
-                        bubbles: true,
-                        detail: {
-                            key: `modifier-${modifier}`,
-                            value: checked,
-                            success: true,
-                            message: browser.i18n.getMessage('settingSavedSuccess') || 'Setting saved!'
-                        }
-                    }));
-                }
-            } catch (err) {
-                console.error(`Failed to save title modifier ${modifier}:`, err);
-                toggleBtn.checked = !checked;
-                if (layout !== 'compact') {
-                    this.dispatchEvent(new CustomEvent('setting-saved', {
-                        bubbles: true,
-                        detail: {
-                            key: `modifier-${modifier}`,
-                            value: !checked,
-                            success: false,
-                            message: browser.i18n.getMessage('settingSavedError') || 'Error saving setting'
-                        }
-                    }));
-                }
-            }
-        }, { signal: this.signal });
-    }
-}
+    write: (el, checked) => controller.setModifierEnabled(modifierOf(el), checked),
+});
 
 defineComponent('title-modifier-setting', TitleModifierSetting);
