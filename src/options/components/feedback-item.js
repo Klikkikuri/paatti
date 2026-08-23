@@ -7,8 +7,8 @@ const log = getLogger('components/feedback-item');
 const template = document.createElement('template');
 template.innerHTML = `
     <style>
-        /* Surface, border and shadow come from the shared .raised rule in
-         * styles.css; only this card's own layout lives here. */
+        /* Surface, border and shadow come from shared rules in
+         * components.css (including .feedback-card); only this card's own layout lives here. */
         .feedback-card {
             padding: 10px;
             margin-bottom: 10px;
