@@ -2,8 +2,8 @@
 
 /**
  * @file easter-egg.js
- * The rule behind the rare artwork the page background may show, and the calendar
- * of days that always show it.
+ * The rule behind the rare artwork the page background may show, the calendar of
+ * days that always show it, and the test for a storage change that can move either.
  *
  * Kept apart from the <page-background> component that uses it, and free of both
  * DOM and randomness, so the rule can be read and tested on its own. The calendar
@@ -90,6 +90,26 @@ function specialDayMessageKey(date) {
 }
 
 /**
+ * Does this storage change carry a new easter egg probability?
+ *
+ * getConfig() merges the value from two places. The setter writes the sync
+ * environmentConfigs, and that layer wins. Under it sits the local userPreferences,
+ * which carries a lower-priority environmentConfigs of its own and the environment
+ * key that settles which environment is read at all. Everything else -- statistics
+ * above all, which are written constantly -- is none of this rule's business.
+ *
+ * @param {Object} changes - chrome.storage.onChanged changes.
+ * @param {string} areaName - Storage area the change came from.
+ * @returns {boolean}
+ */
+function affectsEasterEgg(changes, areaName) {
+    if (areaName === 'sync') return Boolean(changes.environmentConfigs);
+    if (areaName === 'local') return Boolean(changes.userPreferences);
+
+    return false;
+}
+
+/**
  * Decide whether the easter egg shows on this roll.
  *
  * Which artwork appears, and where on the sea it sits, is settled by the rules in
@@ -113,4 +133,4 @@ function shouldShowEasterEgg({ probability, roll }) {
     return roll < chance;
 }
 
-export { shouldShowEasterEgg, dayKey, unitHash, specialDayMessageKey, SPECIAL_DAYS };
+export { shouldShowEasterEgg, affectsEasterEgg, dayKey, unitHash, specialDayMessageKey, SPECIAL_DAYS };

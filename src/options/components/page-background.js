@@ -1,6 +1,6 @@
 import { browser, getLogger } from '../../utils.js';
 import { model } from '../../model.js';
-import { shouldShowEasterEgg, dayKey, unitHash, specialDayMessageKey } from '../easter-egg.js';
+import { shouldShowEasterEgg, affectsEasterEgg, dayKey, unitHash, specialDayMessageKey } from '../easter-egg.js';
 import { adoptComponentStyleSheet } from './component-utils.js';
 
 // None of this element's CSS is shared, so it travels with the component: a page
@@ -11,25 +11,6 @@ const log = getLogger('components/page-background');
 
 /** Class page-background.css hangs the easter egg artwork off. */
 const EGG_CLASS = 'has-easter-egg';
-
-/**
- * Does this storage change carry a new easter egg probability?
- *
- * The value is merged from two places by getConfig(): the sync environmentConfigs
- * the setter writes to, and the local userPreferences, which both overrides it and
- * names the environment to read it from. Everything else -- statistics above all,
- * which are written constantly -- is none of this element's business.
- *
- * @param {Object} changes - chrome.storage.onChanged changes.
- * @param {string} areaName - Storage area the change came from.
- * @returns {boolean}
- */
-function affectsEasterEgg(changes, areaName) {
-    if (areaName === 'sync') return Boolean(changes.environmentConfigs);
-    if (areaName === 'local') return Boolean(changes.userPreferences);
-
-    return false;
-}
 
 /**
  * Custom element that carries the page artwork: the sea photo for the active
