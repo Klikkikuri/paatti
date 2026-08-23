@@ -5,7 +5,7 @@ import { model, modelEvents, Clickbaitiness } from "../model.js";
 import { controller } from "../controller.js";
 import { getConfig } from "../config.js";
 import { computeGaugeValue } from "../stats.js";
-import { isSiteEnabled, displayProductInfo, getClickbaitLevelInfo, localizeDocument } from "./utils.js";
+import { isSiteEnabled, getClickbaitLevelInfo, localizeDocument } from "./utils.js";
 import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
 import "./components/master-switch-setting.js";
@@ -583,9 +583,6 @@ const refresh = async () => {
         cumulativeStats,
         clickbaitLevelThreshold,
     });
-
-    // Load product name and version from manifest
-    displayProductInfo();
 
     // Load conversions list in feedback view
 
