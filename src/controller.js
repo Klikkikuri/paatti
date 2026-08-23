@@ -20,15 +20,6 @@ const _setSiteEnabled = async (isEnabled, hostname) => {
  * Namespace for __controller__ of model-view-controller.
  */
 const controller = {
-    initialize: async () => {
-        console.log("Controller initializing...");
-        await model.write.initialize();
-        /* CONFIG: Configure your desired development thingies here. */
-        if (await model.read.isDevelopmentEnv()) {
-            log("Initializing in development mode");
-        }
-    },
-
     setEnabled: async (isEnabled) => {
         log("Turning paatti ", isEnabled ? "ON" : "OFF");
         await model.write.setEnabled(isEnabled);

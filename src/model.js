@@ -135,10 +135,6 @@ function matchesAnyOrigin(hostname, origins) {
 const model = (() => {
     return {
         write: {
-            initialize: async () => {
-                _eventListeners = {};
-            },
-
             setEnabled: async (value, hostname) => {
                 if (hostname) {
                     log(`Enabling '${hostname}' == ${value}`);
