@@ -103,11 +103,10 @@ This project uses web components, which usually use a combination of methods to 
 
 - `disconnectedCallback` must undo everything `connectedCallback` did. No lifetime-scoped `initialized` flag that
   survives a detach — it leaves a re-attached element subscribed to nothing.
-- Read state *before* subscribing to `storage.onChanged`. The first `getConfig()` registers the cache invalidator in
-  `config.js`, and storage listeners run in registration order: one that runs ahead of the invalidator reads a stale
-  cache.
 - Filter `storage.onChanged` by `areaName` *and* changed key. Statistics are written constantly; nothing should
-  re-read config on every write.
+  re-read config on every write. `config.js` registers its cache invalidator on import and filters it against the
+  four keys `getConfig()` reads, so a listener added later never sees a stale cache — but it still runs on every
+  write until you filter it.
 - Never float an async lifecycle call. Catch it, and after any `await` re-check `isConnected` before touching the DOM.
   Where two updates can overlap, carry a generation counter so a late read cannot overwrite a newer one.
 - Draw randomness once and hold it; never re-draw on a state change, or an unrelated update visibly disturbs what is

@@ -172,8 +172,6 @@ const model = (() => {
         },
     };
 
-    const config = getConfig();
-
     return {
         events,
 

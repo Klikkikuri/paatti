@@ -62,12 +62,50 @@ describe('the config cache', () => {
         assert.equal(first, second);
     });
 
-    test('a storage write invalidates the cache and forces a re-read', async () => {
+    test('a watched key invalidates the cache and forces a re-read', async () => {
         await local.set({ userPreferences: { environment: 'free' } });
         await getConfig();
 
         assert.equal(fake.reads.local, 2);
         assert.equal(fake.reads.sync, 2);
+    });
+
+    test('every key getConfig reads invalidates the cache', async () => {
+        const watched = [
+            ['local', { userPreferences: { environment: 'free' } }],
+            ['sync', { userSiteOverrides: {} }],
+            ['sync', { modifiers: {} }],
+            ['sync', { environmentConfigs: {} }],
+        ];
+
+        for (const [area, items] of watched) {
+            const before = fake.reads.local;
+            await fake.browser.storage[area].set(items);
+            await getConfig();
+
+            assert.equal(fake.reads.local, before + 1, `${Object.keys(items)[0]} in ${area}`);
+        }
+    });
+
+    test('a statistics write does not churn the cache', async () => {
+        await getConfig();
+        const before = { ...fake.reads };
+
+        // Written on every conversion batch, and read by nothing in getConfig().
+        await local.set({ statistics: { 'yle.fi': { convertedCount: 1 } } });
+        await getConfig();
+
+        assert.deepEqual({ ...fake.reads }, before);
+    });
+
+    test('an unwatched key in the sync area does not churn the cache either', async () => {
+        await getConfig();
+        const before = { ...fake.reads };
+
+        await sync.set({ somethingElse: true });
+        await getConfig();
+
+        assert.deepEqual({ ...fake.reads }, before);
     });
 });
 

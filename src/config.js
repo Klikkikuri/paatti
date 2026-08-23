@@ -320,28 +320,29 @@ const DEFAULT_CONFIG = {
     "statistics": {},
 };
 
+// The keys getConfig() reads below. Everything else -- statistics above all, which are
+// written on every conversion batch -- leaves the cache alone.
+const WATCHED_KEYS = {
+    local: ["userPreferences"],
+    sync: ["userSiteOverrides", "modifiers", "environmentConfigs"],
+};
+
 let cachedConfig = null;
 let pendingConfigPromise = null;
-let isListenerRegistered = false;
 
-function ensureListenerRegistered() {
-    if (isListenerRegistered) return;
-    isListenerRegistered = true;
-    const browserStorage = browser?.storage;
-    if (browserStorage && browserStorage.onChanged) {
-        browserStorage.onChanged.addListener((changes, areaName) => {
-            log("Storage changed in area:", areaName, ". Invalidating config cache.");
-            cachedConfig = null;
-            pendingConfigPromise = null;
-        });
-    }
-}
+// Registered on import, so it precedes every listener a module importing this one can add.
+browser.storage.onChanged.addListener((changes, areaName) => {
+    if (!WATCHED_KEYS[areaName]?.some((key) => key in changes)) return;
+
+    log("Watched key changed in", areaName, "- invalidating config cache.");
+    cachedConfig = null;
+    pendingConfigPromise = null;
+});
 
 /**
  * Gets the merged configuration for the current environment.
  */
 async function getConfig() {
-    ensureListenerRegistered();
     if (cachedConfig) {
         return cachedConfig;
     }

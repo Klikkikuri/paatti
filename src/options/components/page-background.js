@@ -33,10 +33,6 @@ class PageBackground extends HTMLElement {
         // Decoration only: nothing here belongs in the accessibility tree.
         this.setAttribute('aria-hidden', 'true');
 
-        // Read before subscribing. The first getConfig() registers the cache
-        // invalidator in config.js, which must sit ahead of the listener below --
-        // storage listeners run in registration order, and one that runs first
-        // reads a cache nobody has invalidated yet.
         this.applyEasterEgg();
 
         this.#storageListener = (changes, areaName) => {

@@ -48,10 +48,6 @@ class EasterEggSetting extends HTMLElement {
         input.max = String(SCALE);
         input.addEventListener('change', () => this.save(input));
 
-        // Read before subscribing. The first getConfig() registers the cache invalidator
-        // in config.js, which must sit ahead of the listener below -- storage listeners
-        // run in registration order, and one that runs first reads a cache nobody has
-        // invalidated yet.
         this.sync(input);
 
         // Filtered: statistics are written constantly, and re-reading config on every one
