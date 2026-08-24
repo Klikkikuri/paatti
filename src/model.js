@@ -3,6 +3,7 @@
 import browser from "./browser-api.js";
 import { getLogger } from "./utils.js";
 import { getConfig } from "./config.js";
+import { mergeStats } from "./stats.js";
 
 const log = getLogger("model");
 
@@ -236,16 +237,8 @@ const model = (() => {
                 const data = await browser.storage.local.get("statistics");
                 const statistics = data.statistics || {};
 
-                // Merge incoming clickbaitiness counts into the domain's cumulative totals.
-                const existing = statistics[domain] || {};
-                const merged = { groupedByClickbaitiness: { ...(existing.groupedByClickbaitiness || {}) } };
-                for (const [level, count] of Object.entries(delta.groupedByClickbaitiness || {})) {
-                    if (typeof count === "number") {
-                        merged.groupedByClickbaitiness[level] =
-                            (merged.groupedByClickbaitiness[level] || 0) + count;
-                    }
-                }
-                statistics[domain] = merged;
+                // Merge incoming clickbaitiness counts and the converted tally into the domain's totals.
+                statistics[domain] = mergeStats(statistics[domain], delta);
 
                 // Increment global running tally of converted titles
                 if (!statistics._global) {

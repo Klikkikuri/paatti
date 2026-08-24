@@ -185,10 +185,10 @@ const _createStatRow = (level, count, { clickbaitLevelThreshold } = {}) => {
 
 /**
  * Create a summary total row element.
- * @param {number} totalCount Total count of occurrences
+ * @param {number} convertedCount Number of titles actually converted on this domain
  * @returns {HTMLDivElement} Row element containing <dt> and <dd>
  */
-const _createTotalStatRow = (totalCount) => {
+const _createTotalStatRow = (convertedCount) => {
     const rowDiv = document.createElement("div");
     rowDiv.className = "stats-row stats-total-row";
 
@@ -201,7 +201,7 @@ const _createTotalStatRow = (totalCount) => {
 
     const dd = document.createElement("dd");
     dd.className = "stats-count";
-    dd.textContent = String(totalCount);
+    dd.textContent = String(convertedCount);
 
     mainDiv.appendChild(dt);
     mainDiv.appendChild(dd);
@@ -446,20 +446,28 @@ const _refreshHomeView = ({ site, pageStats, isSiteEnabled, clickbaitLevelThresh
     }
 };
 
-const _refreshStatsView = ({ cumulativeStats, clickbaitLevelThreshold }) => {
+const _refreshStatsView = ({ domain, cumulativeStats, clickbaitLevelThreshold }) => {
     const statsTableData = (cumulativeStats || {}).groupedByClickbaitiness || {};
+
+    const domainTitle = document.getElementById("statsview-domain-title");
+    if (domainTitle) {
+        domainTitle.textContent = domain
+            ? browser.i18n.getMessage("statsviewDomainTitle", [domain])
+            : browser.i18n.getMessage("homeviewStatusNotSupported");
+    }
+
     const statsList = document.getElementById("statistics-grouped-by-clickbaitiness");
     if (statsList) {
         statsList.replaceChildren();
 
-        let total = 0;
         for (const level of Clickbaitiness.LEVELS) {
             const count = statsTableData[level] || 0;
-            total += count;
             statsList.appendChild(_createStatRow(level, count, { clickbaitLevelThreshold }));
         }
 
-        statsList.appendChild(_createTotalStatRow(total));
+        // The rows count every title found in the database; the total counts only the ones
+        // actually swapped, so it is read from storage rather than summed from the rows.
+        statsList.appendChild(_createTotalStatRow((cumulativeStats || {}).convertedCount || 0));
     }
 };
 
@@ -582,6 +590,7 @@ const refresh = async () => {
         clickbaitLevelThreshold,
     });
     _refreshStatsView({
+        domain: matchingDomain,
         cumulativeStats,
         clickbaitLevelThreshold,
     });

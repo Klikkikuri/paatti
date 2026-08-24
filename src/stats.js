@@ -27,7 +27,8 @@
  *     "groupedByClickbaitiness": {
  *       "Extremely Clickbaity": 12,
  *       "Very Clickbaity": 8
- *     }
+ *     },
+ *     "convertedCount": 15
  *   },
  *   "_global": {
  *     "totalConversions": 42
@@ -38,8 +39,12 @@
  *   rather than arbitrary subdomains / raw hostnames.
  * - Written at most once per unique article element per page-load session (guarded by
  *   `SessionTracker`), preventing dynamic DOM mutation re-scans from inflating counts.
- * - `_global.totalConversions` tallies only elements whose status was `"converted"`
- *   (i.e. successfully modified clickbait titles), for future aggregate milestones.
+ * - `groupedByClickbaitiness` counts every title found in the database, whether or not it was
+ *   converted; titles under the threshold, on a disabled site, or without a replacement land in
+ *   it too. `convertedCount` tallies only the titles actually swapped on the page, so the two
+ *   are not expected to agree.
+ * - `_global.totalConversions` is the same converted tally across every domain, for future
+ *   aggregate milestones.
  * - Used to render the historical summary table on the Stats view.
  *
  * ## Data Flow Diagram
@@ -81,6 +86,7 @@ const LEVEL_VALUES = {
 /**
  * @typedef {Object} CumulativeStats
  * @property {ClickbaitinessMap} groupedByClickbaitiness - Aggregated historical counts per level.
+ * @property {number} convertedCount - Aggregated number of titles actually converted.
  * @property {{ totalConversions: number }} [_global] - Global tally across all sites.
  */
 
@@ -157,7 +163,8 @@ function computeGaugeValue(groupedByClickbaitiness) {
  */
 function mergeStats(existing = {}, incoming = {}) {
     const merged = {
-        groupedByClickbaitiness: { ...(existing.groupedByClickbaitiness || {}) }
+        groupedByClickbaitiness: { ...(existing.groupedByClickbaitiness || {}) },
+        convertedCount: (existing.convertedCount || 0) + (incoming.convertedCount || 0)
     };
 
     for (const [level, count] of Object.entries(incoming.groupedByClickbaitiness || {})) {

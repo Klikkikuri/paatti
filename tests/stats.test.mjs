@@ -96,6 +96,17 @@ describe('mergeStats', () => {
 
         assert.equal(existing.groupedByClickbaitiness[Clickbaitiness.LEVEL_HIGH], 2);
     });
+
+    test('accumulates convertedCount separately from the level counts', () => {
+        const merged = mergeStats({ ...makeExisting(), convertedCount: 7 }, incoming);
+
+        assert.equal(merged.convertedCount, 11);
+    });
+
+    test('convertedCount starts from zero when the stored stats predate it', () => {
+        assert.equal(mergeStats(makeExisting(), incoming).convertedCount, 4);
+        assert.equal(mergeStats(makeExisting(), { groupedByClickbaitiness: {} }).convertedCount, 0);
+    });
 });
 
 describe('createSessionTracker', () => {

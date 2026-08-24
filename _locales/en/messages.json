@@ -75,6 +75,16 @@
     "description": "Instruction text to show in the bottom of 'main' view to help user with an unexpected error"
   },
 
+  "statsviewDomainTitle": {
+    "message": "Statistics for $DOMAIN$",
+    "description": "Heading of the stats view, saying the tally below is for this one site",
+    "placeholders": {
+      "domain": {
+        "content": "$1",
+        "example": "hs.fi"
+      }
+    }
+  },
   "statsviewGroupedByClickbaitinessLabelClickbaitiness": {
     "message": "Clickbaitiness",
     "description": "Title of the stats section clickbaitiness grouping table for the 'type' or 'severity' of clickbait"
@@ -84,7 +94,7 @@
     "description": "Title of the stats section clickbaitiness grouping table for the amount of this type of clickbait"
   },
   "statsviewGroupedByClickbaitinessLabelTotal": {
-    "message": "Total",
+    "message": "Converted titles",
     "description": "Title of the stats section clickbaitiness grouping table for the total amount of converted titles"
   },
   "statsviewInfoBtnAriaLabel": {
