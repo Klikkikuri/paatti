@@ -5,7 +5,8 @@ import { createFakeBrowser } from './helpers/fake-browser.mjs';
 
 globalThis.browser = createFakeBrowser().browser;
 
-const { buildPageSnapshot, computeGaugeValue, mergeStats, createSessionTracker } = await import('../src/stats.js');
+const { buildPageSnapshot, computeGaugeValue, computeCollectingPeriod, mergeStats, createSessionTracker } =
+    await import('../src/stats.js');
 const { Clickbaitiness } = await import('../src/model.js');
 
 describe('buildPageSnapshot', () => {
@@ -106,6 +107,108 @@ describe('mergeStats', () => {
     test('convertedCount starts from zero when the stored stats predate it', () => {
         assert.equal(mergeStats(makeExisting(), incoming).convertedCount, 4);
         assert.equal(mergeStats(makeExisting(), { groupedByClickbaitiness: {} }).convertedCount, 0);
+    });
+
+    test('firstSeen is stamped on a brand new domain', () => {
+        assert.equal(mergeStats(undefined, incoming, 1700).firstSeen, 1700);
+    });
+
+    test('firstSeen is stamped on stored stats that predate it', () => {
+        assert.equal(mergeStats(makeExisting(), incoming, 1700).firstSeen, 1700);
+    });
+
+    test('firstSeen survives later merges', () => {
+        const existing = { ...makeExisting(), firstSeen: 900 };
+
+        assert.equal(mergeStats(existing, incoming, 1700).firstSeen, 900);
+    });
+});
+
+describe('computeCollectingPeriod', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    // Anchored on a fixed date so no assertion depends on the wall clock.
+    const at = (year, month, day) => new Date(year, month - 1, day, 12).getTime();
+    const since = (firstSeen, now) => computeCollectingPeriod(firstSeen, now);
+    const key = (suffix) => `statsviewCollectingPeriod${suffix}`;
+
+    test('returns null without a recorded start time', () => {
+        assert.equal(since(undefined, at(2026, 1, 1)), null);
+        assert.equal(since(null, at(2026, 1, 1)), null);
+        assert.equal(since('yesterday', at(2026, 1, 1)), null);
+    });
+
+    test('the first day reads as today', () => {
+        const start = at(2026, 1, 1);
+
+        assert.deepEqual(since(start, start), { count: 0, labelI18nKey: key('Today') });
+        assert.deepEqual(since(start, start + DAY - 60_000), { count: 0, labelI18nKey: key('Today') });
+    });
+
+    test('days run from one to thirteen', () => {
+        const start = at(2026, 1, 1);
+
+        assert.deepEqual(since(start, start + DAY), { count: 1, labelI18nKey: key('Day') });
+        assert.deepEqual(since(start, start + 2 * DAY), { count: 2, labelI18nKey: key('Days') });
+        assert.deepEqual(since(start, start + 13 * DAY), { count: 13, labelI18nKey: key('Days') });
+    });
+
+    test('weeks take over at fourteen days', () => {
+        const start = at(2026, 1, 1);
+
+        assert.deepEqual(since(start, start + 14 * DAY), { count: 2, labelI18nKey: key('Weeks') });
+        assert.deepEqual(since(start, start + 20 * DAY), { count: 3, labelI18nKey: key('Weeks') });
+    });
+
+    test('two calendar months still read as weeks', () => {
+        // 70 days. Reporting "2 months" here would drop precision a reader can still use.
+        assert.deepEqual(since(at(2026, 1, 1), at(2026, 3, 12)), { count: 10, labelI18nKey: key('Weeks') });
+    });
+
+    test('months take over at the third calendar month', () => {
+        assert.deepEqual(since(at(2026, 1, 1), at(2026, 4, 1)), { count: 3, labelI18nKey: key('Months') });
+        // A shorter three-month span, over the turn of the year.
+        assert.deepEqual(since(at(2025, 11, 1), at(2026, 2, 1)), { count: 3, labelI18nKey: key('Months') });
+    });
+
+    test('thirteen is the largest week count the ladder can produce', () => {
+        assert.deepEqual(since(at(2025, 12, 1), at(2026, 2, 28)), { count: 13, labelI18nKey: key('Weeks') });
+    });
+
+    test('a day short of the anniversary stays on the lower unit', () => {
+        assert.deepEqual(since(at(2026, 1, 15), at(2026, 4, 14)), { count: 13, labelI18nKey: key('Weeks') });
+        assert.deepEqual(since(at(2026, 1, 15), at(2026, 4, 15)), { count: 3, labelI18nKey: key('Months') });
+    });
+
+    test('years take over at eighteen months, rounded to the nearest', () => {
+        assert.deepEqual(since(at(2026, 1, 1), at(2027, 5, 1)), { count: 16, labelI18nKey: key('Months') });
+        assert.deepEqual(since(at(2026, 1, 1), at(2027, 6, 1)), { count: 17, labelI18nKey: key('Months') });
+        assert.deepEqual(since(at(2026, 1, 1), at(2027, 7, 1)), { count: 2, labelI18nKey: key('Years') });
+        assert.deepEqual(since(at(2026, 1, 1), at(2028, 5, 1)), { count: 2, labelI18nKey: key('Years') });
+        assert.deepEqual(since(at(2026, 1, 1), at(2028, 7, 1)), { count: 3, labelI18nKey: key('Years') });
+    });
+
+    test('no rung but days ever reports a count of one', () => {
+        const now = at(2026, 6, 15);
+
+        for (let day = 0; day < 5 * 365; day++) {
+            const period = since(now - day * DAY, now);
+            if (period.count !== 1) continue;
+            assert.equal(period.labelI18nKey, key('Day'), `day ${day} reported a count of 1`);
+        }
+    });
+
+    test('the reported period never shrinks as time passes', () => {
+        const now = at(2026, 6, 15);
+        // Rough span of each unit, only for checking the sequence never steps backwards.
+        const spans = { Today: 0, Day: 1, Days: 1, Weeks: 7, Months: 30.44, Years: 365.25 };
+        let previous = 0;
+
+        for (let day = 0; day < 5 * 365; day++) {
+            const period = since(now - day * DAY, now);
+            const span = period.count * spans[period.labelI18nKey.replace('statsviewCollectingPeriod', '')];
+            assert.ok(span >= previous, `day ${day} reported a shorter period than day ${day - 1}`);
+            previous = span;
+        }
     });
 });
 

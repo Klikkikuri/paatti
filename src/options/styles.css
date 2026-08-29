@@ -134,6 +134,12 @@ body {
     width: 100%;
 }
 
+.statsview-period {
+    margin: 0;
+    font-size: 0.8em;
+    color: var(--color-text-secondary);
+}
+
 #gauge-container {
     margin: 0.9375rem 0;
     display: flex;

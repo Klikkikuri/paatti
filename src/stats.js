@@ -28,7 +28,8 @@
  *       "Extremely Clickbaity": 12,
  *       "Very Clickbaity": 8
  *     },
- *     "convertedCount": 15
+ *     "convertedCount": 15,
+ *     "firstSeen": 1755000000000
  *   },
  *   "_global": {
  *     "totalConversions": 42
@@ -45,6 +46,9 @@
  *   are not expected to agree.
  * - `_global.totalConversions` is the same converted tally across every domain, for future
  *   aggregate milestones.
+ * - `firstSeen` is stamped on the first write for the domain and never moves after that, so the
+ *   Stats view can say how long the tally took to build. Records written before the field existed
+ *   get it on their next write, which starts their period short.
  * - Used to render the historical summary table on the Stats view.
  *
  * ## Data Flow Diagram
@@ -87,6 +91,8 @@ const LEVEL_VALUES = {
  * @typedef {Object} CumulativeStats
  * @property {ClickbaitinessMap} groupedByClickbaitiness - Aggregated historical counts per level.
  * @property {number} convertedCount - Aggregated number of titles actually converted.
+ * @property {number} [firstSeen] - Epoch ms of the first write for this domain. Absent on records
+ *   stored before the field existed, until their next write.
  * @property {{ totalConversions: number }} [_global] - Global tally across all sites.
  */
 
@@ -159,12 +165,14 @@ function computeGaugeValue(groupedByClickbaitiness) {
  *
  * @param {CumulativeStats} [existing={}] - Existing cumulative statistics object for the domain.
  * @param {PageSnapshot} [incoming={}] - Incoming delta snapshot to merge.
+ * @param {number} [now=Date.now()] - Epoch ms to stamp a first write with.
  * @returns {CumulativeStats} Newly merged cumulative statistics object.
  */
-function mergeStats(existing = {}, incoming = {}) {
+function mergeStats(existing = {}, incoming = {}, now = Date.now()) {
     const merged = {
         groupedByClickbaitiness: { ...(existing.groupedByClickbaitiness || {}) },
-        convertedCount: (existing.convertedCount || 0) + (incoming.convertedCount || 0)
+        convertedCount: (existing.convertedCount || 0) + (incoming.convertedCount || 0),
+        firstSeen: existing.firstSeen ?? now
     };
 
     for (const [level, count] of Object.entries(incoming.groupedByClickbaitiness || {})) {
@@ -175,6 +183,55 @@ function mergeStats(existing = {}, incoming = {}) {
     }
 
     return merged;
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Whole calendar months between two dates, in local time so the count follows the user's own
+ * calendar. Calendar months rather than 30-day blocks keep "3 months" the same span across February.
+ *
+ * @param {Date} from
+ * @param {Date} to
+ * @returns {number}
+ */
+function countCalendarMonths(from, to) {
+    const months = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+    return to.getDate() < from.getDate() ? months - 1 : months;
+}
+
+/**
+ * @typedef {Object} CollectingPeriod
+ * @property {number} count - Amount of the chosen unit.
+ * @property {string} labelI18nKey - Message key naming the unit; takes the count as its substitution.
+ */
+
+/**
+ * Describes how long statistics have been collected, on a scale that stays legible as it grows:
+ * days, then weeks, then months, then years.
+ *
+ * A unit holds until its count passes roughly a dozen, and a coarser unit is taken up only once
+ * there are several of it — "10 weeks" says more than "2 months", "14 months" more than "1 year".
+ * No rung can therefore report a count of 1 except days, which is why only days need a singular
+ * message.
+ *
+ * @param {number} [firstSeen] - Epoch ms collection started.
+ * @param {number} [now=Date.now()] - Epoch ms to measure to.
+ * @returns {CollectingPeriod|null} Null when no start time is recorded.
+ */
+function computeCollectingPeriod(firstSeen, now = Date.now()) {
+    if (!Number.isFinite(firstSeen)) return null;
+
+    const days = Math.floor((now - firstSeen) / MS_PER_DAY);
+    const months = countCalendarMonths(new Date(firstSeen), new Date(now));
+
+    if (days < 1) return { count: 0, labelI18nKey: "statsviewCollectingPeriodToday" };
+    // Months rank above days so that 70 days, which is two calendar months, still reads "10 weeks".
+    if (months >= 18) return { count: Math.round(months / 12), labelI18nKey: "statsviewCollectingPeriodYears" };
+    if (months >= 3) return { count: months, labelI18nKey: "statsviewCollectingPeriodMonths" };
+    if (days >= 14) return { count: Math.round(days / 7), labelI18nKey: "statsviewCollectingPeriodWeeks" };
+    if (days >= 2) return { count: days, labelI18nKey: "statsviewCollectingPeriodDays" };
+    return { count: 1, labelI18nKey: "statsviewCollectingPeriodDay" };
 }
 
 /**
@@ -210,6 +267,7 @@ function createSessionTracker() {
 export {
     buildPageSnapshot,
     computeGaugeValue,
+    computeCollectingPeriod,
     mergeStats,
     createSessionTracker
 };

@@ -85,6 +85,54 @@
       }
     }
   },
+  "statsviewCollectingPeriodToday": {
+    "message": "Collecting since today",
+    "description": "Caption under the stats view heading, when collection for this site started today"
+  },
+  "statsviewCollectingPeriodDay": {
+    "message": "Collecting for 1 day",
+    "description": "Caption under the stats view heading, when collection for this site started one day ago"
+  },
+  "statsviewCollectingPeriodDays": {
+    "message": "Collecting for $COUNT$ days",
+    "description": "Caption under the stats view heading, saying for how many days the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "statsviewCollectingPeriodWeeks": {
+    "message": "Collecting for $COUNT$ weeks",
+    "description": "Caption under the stats view heading, saying for how many weeks the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "6"
+      }
+    }
+  },
+  "statsviewCollectingPeriodMonths": {
+    "message": "Collecting for $COUNT$ months",
+    "description": "Caption under the stats view heading, saying for how many months the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "7"
+      }
+    }
+  },
+  "statsviewCollectingPeriodYears": {
+    "message": "Collecting for $COUNT$ years",
+    "description": "Caption under the stats view heading, saying for how many years the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
   "statsviewGroupedByClickbaitinessLabelClickbaitiness": {
     "message": "Clickbaitiness",
     "description": "Title of the stats section clickbaitiness grouping table for the 'type' or 'severity' of clickbait"

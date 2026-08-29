@@ -85,6 +85,54 @@
       }
     }
   },
+  "statsviewCollectingPeriodToday": {
+    "message": "Kerätty tästä päivästä",
+    "description": "Caption under the stats view heading, when collection for this site started today"
+  },
+  "statsviewCollectingPeriodDay": {
+    "message": "Kerätty 1 päivän ajan",
+    "description": "Caption under the stats view heading, when collection for this site started one day ago"
+  },
+  "statsviewCollectingPeriodDays": {
+    "message": "Kerätty $COUNT$ päivän ajan",
+    "description": "Caption under the stats view heading, saying for how many days the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "statsviewCollectingPeriodWeeks": {
+    "message": "Kerätty $COUNT$ viikon ajan",
+    "description": "Caption under the stats view heading, saying for how many weeks the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "6"
+      }
+    }
+  },
+  "statsviewCollectingPeriodMonths": {
+    "message": "Kerätty $COUNT$ kuukauden ajan",
+    "description": "Caption under the stats view heading, saying for how many months the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "7"
+      }
+    }
+  },
+  "statsviewCollectingPeriodYears": {
+    "message": "Kerätty $COUNT$ vuoden ajan",
+    "description": "Caption under the stats view heading, saying for how many years the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
   "statsviewGroupedByClickbaitinessLabelClickbaitiness": {
     "message": "Klikkiotsikkoisuus",
     "description": "Title of the stats section clickbaitiness grouping table for the 'type' or 'severity' of clickbait"

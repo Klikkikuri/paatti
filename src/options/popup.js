@@ -5,7 +5,7 @@ import { getLogger, getActiveTab, getCurrentTabHostname } from "../utils.js";
 import { model, Clickbaitiness } from "../model.js";
 import { controller } from "../controller.js";
 import { getConfig, onConfigValue } from "../config.js";
-import { computeGaugeValue } from "../stats.js";
+import { computeGaugeValue, computeCollectingPeriod } from "../stats.js";
 import { isSiteEnabled, getClickbaitLevelInfo, localizeDocument } from "./utils.js";
 import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
@@ -454,6 +454,21 @@ const _refreshStatsView = ({ domain, cumulativeStats, clickbaitLevelThreshold })
         domainTitle.textContent = domain
             ? browser.i18n.getMessage("statsviewDomainTitle", [domain])
             : browser.i18n.getMessage("homeviewStatusNotSupported");
+    }
+
+    const periodEl = document.getElementById("statsview-collecting-period");
+    if (periodEl) {
+        const firstSeen = (cumulativeStats || {}).firstSeen;
+        const period = computeCollectingPeriod(firstSeen);
+        if (period) {
+            periodEl.textContent = browser.i18n.getMessage(period.labelI18nKey, [String(period.count)]);
+            // The rounded phrase is the headline; the exact start date stays reachable on hover.
+            periodEl.title = new Date(firstSeen).toLocaleString();
+        } else {
+            periodEl.textContent = "";
+            periodEl.removeAttribute("title");
+        }
+        periodEl.classList.toggle("hidden", !period);
     }
 
     const statsList = document.getElementById("statistics-grouped-by-clickbaitiness");
