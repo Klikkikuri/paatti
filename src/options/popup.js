@@ -6,7 +6,7 @@ import { model, Clickbaitiness } from "../model.js";
 import { controller } from "../controller.js";
 import { getConfig, onConfigValue } from "../config.js";
 import { computeGaugeValue, computeCollectingPeriod, summarizeLevels } from "../stats.js";
-import { isSiteEnabled, getClickbaitLevelInfo, localizeDocument } from "./utils.js";
+import { isSiteEnabled, getClickbaitLevelInfo, levelToI18nKey, localizeDocument } from "./utils.js";
 import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
 import "./components/master-switch-setting.js";
@@ -71,8 +71,6 @@ const _setSettingsviewCheckboxesReadonly = (isConversionEnabled) => {
 
 // Cached page stats pushed live from the content script.
 let cachedPageStats = null;
-
-const levelToI18nKey = (level) => `clickbaitinessLabel_${level.replaceAll(" ", "_")}`;
 
 /**
  * Create a stat row element for a given clickbait level and count.

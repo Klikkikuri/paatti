@@ -302,6 +302,12 @@ function readingFor(groupedByClickbaitiness) {
  * @property {number} found - Titles found on the site, over every level.
  * @property {number} rewritten - Titles actually swapped there.
  * @property {boolean} rewrittenIsShare - Whether `rewritten` may be drawn as a part of `found`.
+ * @property {ClickbaitinessMap} foundByLevel - The titles behind `found`, level by level, as stored.
+ * @property {ClickbaitinessMap} rewrittenByLevel - The swapped subset of them, level by level.
+ * @property {boolean} rewrittenByLevelIsKnown - Whether the two maps describe the same stretch of
+ *   history. A different question from `rewrittenIsShare`: that one asks whether two populations
+ *   overlap, this one whether two histories line up. False on a record carrying no split at all,
+ *   and on one stamped `convertedByClickbaitinessSince`, whose split starts later than the rest.
  * @property {number} [firstSeen] - Epoch ms collection started for the domain.
  */
 
@@ -336,6 +342,10 @@ function readingFor(groupedByClickbaitiness) {
  * tally reaches. Records stored before `firstSeen` existed have none until their next write, and
  * are simply not candidates for it.
  *
+ * A row also carries its record's two level maps untouched, so a view can break the row down with
+ * `summarizeLevels`. They are passed on rather than read here: naming the levels would need their
+ * order, and that is what would tie this module to `model.js`.
+ *
  * @returns {{ sites: SiteSummary[], maxFound: number, clickbaitiest: SiteSummary|null,
  *   overall: Reading|null, totals: { rewritten: number, found: number, rewrittenIsShare: boolean },
  *   since: number|null }}
@@ -364,9 +374,15 @@ function summarizeSites(statistics) {
         // A domain the tracker has touched but never counted anything on is not a row.
         if (found === 0 && rewritten === 0) continue;
 
+        const rewrittenByLevel = record.convertedByClickbaitiness;
+
         sites.push({
             domain, found, rewritten,
             rewrittenIsShare: found > 0 && rewritten <= found,
+            // References into the record rather than copies; nothing here writes through them.
+            foundByLevel: grouped,
+            rewrittenByLevel: rewrittenByLevel || {},
+            rewrittenByLevelIsKnown: rewrittenByLevel != null && record.convertedByClickbaitinessSince == null,
             firstSeen: record.firstSeen,
             ...readingFor(grouped)
         });

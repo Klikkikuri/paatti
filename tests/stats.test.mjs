@@ -528,6 +528,68 @@ describe('summarizeSites', () => {
         });
     });
 
+    describe('the level maps behind a row', () => {
+        test('a row carries the levels behind it for a view to break it down', () => {
+            const [busiest] = summarizeSites(statistics).sites;
+
+            assert.deepEqual(busiest.foundByLevel, statistics['is.fi'].groupedByClickbaitiness);
+        });
+
+        test('summarizeLevels reads a row straight off', () => {
+            const [site] = summarizeSites({
+                'is.fi': {
+                    groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 8, [Clickbaitiness.LEVEL_EXTREME]: 2 },
+                    convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 5 },
+                    convertedCount: 5
+                }
+            }).sites;
+
+            const { shown, maxCount } = summarizeLevels(
+                site.foundByLevel, site.rewrittenByLevel, Clickbaitiness.LEVELS);
+
+            assert.deepEqual(shown, [
+                { level: Clickbaitiness.LEVEL_HIGH, index: 3, count: 8, rewritten: 5 },
+                { level: Clickbaitiness.LEVEL_EXTREME, index: 4, count: 2, rewritten: 0 }
+            ]);
+            assert.equal(maxCount, 8);
+        });
+
+        test('a split collected from the start is known', () => {
+            const [site] = summarizeSites({
+                'is.fi': {
+                    groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 8 },
+                    convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 5 },
+                    convertedCount: 5
+                }
+            }).sites;
+
+            assert.deepEqual(site.rewrittenByLevel, { [Clickbaitiness.LEVEL_HIGH]: 5 });
+            assert.equal(site.rewrittenByLevelIsKnown, true);
+        });
+
+        test('a record predating the split states none', () => {
+            const [site] = summarizeSites({
+                'old.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 8 }, convertedCount: 5 }
+            }).sites;
+
+            assert.deepEqual(site.rewrittenByLevel, {});
+            assert.equal(site.rewrittenByLevelIsKnown, false);
+        });
+
+        test('a split that started late is not known, map or no map', () => {
+            const [site] = summarizeSites({
+                'late.fi': {
+                    groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 8 },
+                    convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 2 },
+                    convertedByClickbaitinessSince: 1755000000000,
+                    convertedCount: 5
+                }
+            }).sites;
+
+            assert.equal(site.rewrittenByLevelIsKnown, false);
+        });
+    });
+
     describe('since', () => {
         test('is the earliest start any record carries', () => {
             const { since } = summarizeSites({

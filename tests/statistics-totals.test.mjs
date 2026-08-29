@@ -15,8 +15,13 @@ const fake = createFakeBrowser({
         statsTotalsOfFound: 'of $1',
         statsviewConvertedOfFound: 'of $1 ($2 %)',
         statsTotalsEmpty: 'Nothing counted yet.',
+        statsTotalsSiteLevelsAriaLabel: 'Breakdown for $1',
+        statsviewBreakdownCaption: 'All titles found, before rewriting.',
+        statsviewRowRewritten: '$1 of $2 rewritten',
+        clickbaitinessLabel_Extremely_Clickbaity: 'Extremely Clickbaity',
         clickbaitinessLabel_Very_Clickbaity: 'Very Clickbaity',
         clickbaitinessLabel_Moderately_Clickbaity: 'Moderately Clickbaity',
+        clickbaitinessLabel_Slightly_Clickbaity: 'Slightly Clickbaity',
         clickbaitinessLabel_Not_Clickbait_at_all: 'Not Clickbait at all'
     }
 });
@@ -30,6 +35,8 @@ after(() => dom.teardown());
 const POPULATED = {
     'is.fi': {
         groupedByClickbaitiness: { 'Very Clickbaity': 800, 'Extremely Clickbaity': 404 },
+        // yle.fi deliberately carries none, so one fixture covers a known split and a missing one.
+        convertedByClickbaitiness: { 'Very Clickbaity': 400, 'Extremely Clickbaity': 101 },
         convertedCount: 612,
         firstSeen: Date.UTC(2026, 2, 12)
     },
@@ -192,6 +199,146 @@ describe('statistics-totals', () => {
         assert.equal(ok.querySelector('.totals-site-bar-rewritten').style.width, '30%');
         assert.ok(!ok.classList.contains('is-plain'));
         assert.equal(rows['ok.fi'].querySelector('.totals-site-amount').textContent, '60 of 200');
+    });
+
+    describe('the per-site level breakdown', () => {
+        /** The row for one domain, whichever place the sort has put it in. */
+        const rowFor = (domain) => element.querySelector(`.totals-site[data-domain="${domain}"]`);
+
+        test('the site name opens the breakdown', async () => {
+            await mount();
+
+            const toggle = rowFor('is.fi').querySelector('.totals-site-toggle');
+            assert.equal(toggle.tagName, 'BUTTON');
+            assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+            assert.equal(toggle.getAttribute('aria-label'), 'Breakdown for is.fi');
+            assert.equal(toggle.getAttribute('aria-controls'),
+                rowFor('is.fi').querySelector('.totals-site-levels').id);
+        });
+
+        test('a site with nothing found has nothing to open', async () => {
+            await browser.storage.local.set({
+                statistics: {
+                    'none.fi': { groupedByClickbaitiness: {}, convertedCount: 4 },
+                    _global: { totalConversions: 4 }
+                }
+            });
+            await mount();
+
+            assert.equal(rowFor('none.fi').querySelector('.totals-site-name').tagName, 'SPAN');
+            assert.equal(rowFor('none.fi').querySelector('.totals-site-levels'), null);
+        });
+
+        test('the levels are drawn while the panel is still closed', async () => {
+            await mount();
+
+            const panel = rowFor('is.fi').querySelector('.totals-site-levels');
+            assert.ok(panel.classList.contains('hidden'));
+            assert.equal(panel.querySelector('.totals-levels-caption').textContent,
+                'All titles found, before rewriting.');
+            assert.equal(panel.querySelectorAll('.totals-level').length, 2);
+        });
+
+        test('pressing it opens the panel, and pressing it again closes it', async () => {
+            await mount();
+            const row = rowFor('is.fi');
+
+            row.querySelector('.totals-site-toggle').click();
+            assert.equal(row.querySelector('.totals-site-toggle').getAttribute('aria-expanded'), 'true');
+            assert.ok(!row.querySelector('.totals-site-levels').classList.contains('hidden'));
+
+            row.querySelector('.totals-site-toggle').click();
+            assert.equal(row.querySelector('.totals-site-toggle').getAttribute('aria-expanded'), 'false');
+            assert.ok(row.querySelector('.totals-site-levels').classList.contains('hidden'));
+        });
+
+        test('lists the levels found, in severity order, against the busiest of them', async () => {
+            await mount();
+
+            const levels = [...rowFor('is.fi').querySelectorAll('.totals-level')];
+            assert.deepEqual(levels.map((level) => level.querySelector('.totals-level-name').textContent),
+                ['Very Clickbaity', 'Extremely Clickbaity']);
+            assert.deepEqual(levels.map((level) => level.querySelector('.totals-level-amount').textContent),
+                [(800).toLocaleString(), (404).toLocaleString()]);
+            assert.deepEqual(levels.map((level) => level.dataset.severity), ['3', '4']);
+            // Against is.fi's busiest level, 800, rather than against its 1204 found.
+            assert.equal(levels[0].querySelector('.totals-site-bar-fill').style.width, '100%');
+            assert.equal(levels[1].querySelector('.totals-site-bar-fill').style.width, '50.5%');
+        });
+
+        test('a known split is drawn inside the level bar', async () => {
+            await mount();
+
+            const [level] = rowFor('is.fi').querySelectorAll('.totals-level');
+            assert.equal(level.querySelector('.totals-site-bar-rewritten').style.width, '50%');
+            assert.equal(level.getAttribute('title'), '400 of 800 rewritten');
+        });
+
+        test('a record with no split states magnitude alone', async () => {
+            await mount();
+
+            const [level] = rowFor('yle.fi').querySelectorAll('.totals-level');
+            const fill = level.querySelector('.totals-site-bar-fill');
+            assert.ok(fill.classList.contains('is-plain'));
+            assert.equal(fill.querySelector('.totals-site-bar-rewritten'), null);
+            assert.equal(level.getAttribute('title'), null);
+        });
+
+        test('a split that started late is no share either', async () => {
+            const late = structuredClone(POPULATED);
+            late['is.fi'].convertedByClickbaitinessSince = Date.UTC(2026, 5, 1);
+            await browser.storage.local.set({ statistics: late });
+            await mount();
+
+            const [level] = rowFor('is.fi').querySelectorAll('.totals-level');
+            assert.ok(level.querySelector('.totals-site-bar-fill').classList.contains('is-plain'));
+            assert.equal(level.getAttribute('title'), null);
+        });
+
+        test('an open panel survives a statistics write', async () => {
+            await mount();
+            rowFor('yle.fi').querySelector('.totals-site-toggle').click();
+
+            // Enough to overtake is.fi, so the row moves as well as being replaced.
+            const grown = structuredClone(POPULATED);
+            grown['yle.fi'].groupedByClickbaitiness['Not Clickbait at all'] = 4000;
+            grown['yle.fi'].convertedCount = 3000;
+            await browser.storage.local.set({ statistics: grown });
+            await flush();
+
+            assert.equal(element.querySelector('.totals-site').dataset.domain, 'yle.fi');
+            assert.equal(rowFor('yle.fi').querySelector('.totals-site-toggle').getAttribute('aria-expanded'), 'true');
+            assert.ok(!rowFor('yle.fi').querySelector('.totals-site-levels').classList.contains('hidden'));
+            assert.equal(rowFor('is.fi').querySelector('.totals-site-toggle').getAttribute('aria-expanded'), 'false');
+
+            const [level] = rowFor('yle.fi').querySelectorAll('.totals-level');
+            assert.equal(level.querySelector('.totals-level-amount').textContent, (4000).toLocaleString());
+        });
+
+        test('an open panel survives a re-attach', async () => {
+            await mount();
+            rowFor('is.fi').querySelector('.totals-site-toggle').click();
+
+            element.remove();
+            document.body.appendChild(element);
+            await flush();
+
+            assert.equal(rowFor('is.fi').querySelector('.totals-site-toggle').getAttribute('aria-expanded'), 'true');
+        });
+
+        test('a domain that leaves the list is forgotten', async () => {
+            await mount();
+            rowFor('is.fi').querySelector('.totals-site-toggle').click();
+
+            await browser.storage.local.set({
+                statistics: { 'yle.fi': POPULATED['yle.fi'], _global: { totalConversions: 38 } }
+            });
+            await flush();
+            await browser.storage.local.set({ statistics: structuredClone(POPULATED) });
+            await flush();
+
+            assert.equal(rowFor('is.fi').querySelector('.totals-site-toggle').getAttribute('aria-expanded'), 'false');
+        });
     });
 
     test('a statistics write redraws the section', async () => {

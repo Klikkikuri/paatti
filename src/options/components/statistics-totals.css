@@ -15,6 +15,13 @@ statistics-totals {
     /* Fixed rather than auto: the totals row and the site rows are separate grids, so a column
      * that sized to its own content would land in a different place in each. */
     --totals-amount-col: 8.5em;
+
+    /* The reading that follows a bar, and the gap before it. A level row states no reading of its
+     * own, so it reserves the same space rather than running its bar out to the column edge --
+     * two bars of different lengths could not be read against the same scale. In the reading's
+     * own ems, which is why whoever reserves the space takes its font size. */
+    --totals-reading-col: 15em;
+    --totals-reading-gap: 10px;
 }
 
 /* --- Headline and meter --- */
@@ -24,10 +31,15 @@ statistics-totals {
  * panel of its own: a card's own padding pushed its contents out of line with the columns, and
  * no amount of matching padding can align two grids whose last column sizes to its content.
  * Hence the fixed amount column, and the same horizontal padding on every row.
+ *
+ * A site's level rows sit on the same columns from a grid of their own, nested inside the site
+ * row. That works only because the panel holding them spans the full row and adds no horizontal
+ * padding, so both grids resolve the same template over the same width.
  */
 statistics-totals .totals-hero,
 statistics-totals .totals-sites-head,
-statistics-totals .totals-site {
+statistics-totals .totals-site,
+statistics-totals .totals-level {
     display: grid;
     grid-template-columns: minmax(0, 0.6fr) minmax(180px, 2fr) var(--totals-amount-col);
     align-items: center;
@@ -87,7 +99,7 @@ statistics-totals .totals-meter,
 statistics-totals .totals-site-reading {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--totals-reading-gap);
     min-width: 0;
 }
 
@@ -101,7 +113,7 @@ statistics-totals .totals-site-bar {
 statistics-totals .totals-meter-caption,
 statistics-totals .totals-site-level {
     flex: 0 0 auto;
-    width: 15em;
+    width: var(--totals-reading-col);
     margin: 0;
     font-size: 0.75em;
     color: var(--color-text-muted);
@@ -210,6 +222,37 @@ statistics-totals .totals-site-name > span {
     white-space: nowrap;
 }
 
+/* The name cell is the control that opens the site's breakdown, so it is stripped back to the
+ * cell it already was. */
+statistics-totals .totals-site-toggle {
+    appearance: none;
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+
+/* A marker rather than an element, so the name stays the cell's last child. */
+statistics-totals .totals-site-toggle::after {
+    content: "\25B8";
+    flex: 0 0 auto;
+    color: var(--color-text-muted);
+    transition: transform 0.15s ease;
+}
+
+statistics-totals .totals-site-toggle[aria-expanded="true"]::after {
+    transform: rotate(90deg);
+}
+
+statistics-totals .totals-site-toggle:focus-visible {
+    outline: 2px solid var(--color-text-secondary);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
 statistics-totals .totals-site-amount {
     font-family: var(--font-display);
     font-variant-numeric: tabular-nums;
@@ -221,6 +264,70 @@ statistics-totals .totals-site-of {
     font-size: 0.85em;
     color: var(--color-text-muted);
 }
+
+/* --- A site's level breakdown --- */
+
+/* The whole width of the row it opens under, and no padding of its own: the level rows inside it
+ * repeat the row's own grid, which lands on the same columns only over the same width. */
+statistics-totals .totals-site-levels {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+    padding-block: 4px 6px;
+    border-top: 1px dashed var(--color-border-subtle);
+}
+
+statistics-totals .totals-level-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* The site row's padding already insets this grid; repeating it would shift the columns. */
+statistics-totals .totals-level {
+    padding-inline: 0;
+}
+
+/* Indented as text rather than as a column, which would move the bar out from under the site's.
+ * The inset clears the favicon and its gap above. */
+statistics-totals .totals-levels-caption,
+statistics-totals .totals-level-name {
+    padding-inline-start: 24px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+statistics-totals .totals-levels-caption {
+    margin: 0 0 6px;
+    font-size: 0.75em;
+    color: var(--color-text-muted);
+}
+
+statistics-totals .totals-level-name {
+    font-size: 0.85em;
+    color: var(--color-text-secondary);
+}
+
+/* Ends where the site's bar ends, so the two are read against the same width. The reading column
+ * is stated in the reading's own ems, so this cell takes the reading's font size to measure it --
+ * nothing else in here is text. */
+statistics-totals .totals-level-bar {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    font-size: 0.75em;
+    padding-inline-end: calc(var(--totals-reading-col) + var(--totals-reading-gap));
+}
+
+statistics-totals .totals-level-amount {
+    text-align: right;
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.9em;
+    color: var(--color-text-secondary);
+}
+
+/* --- Bars, worn by a site row and by its level rows alike --- */
 
 statistics-totals .totals-site-bar {
     height: 6px;
@@ -255,12 +362,19 @@ statistics-totals .totals-site-bar-rewritten {
     background: var(--row-accent);
 }
 
-/* How clickbaity the site reads, on the popup stats view's single "sky" ramp. */
-statistics-totals .totals-site[data-severity="0"] { --row-accent: var(--dot-sky-1-bg); }
-statistics-totals .totals-site[data-severity="1"] { --row-accent: var(--dot-sky-2-bg); }
-statistics-totals .totals-site[data-severity="2"] { --row-accent: var(--dot-sky-3-bg); }
-statistics-totals .totals-site[data-severity="3"] { --row-accent: var(--dot-sky-4-bg); }
-statistics-totals .totals-site[data-severity="4"] { --row-accent: var(--dot-sky-5-bg); }
+/* How clickbaity the site reads, on the popup stats view's single "sky" ramp. A level row states
+ * its own level rather than the site's reading, so it re-declares the property the site row set
+ * and would otherwise pass down to it. */
+statistics-totals .totals-site[data-severity="0"],
+statistics-totals .totals-level[data-severity="0"] { --row-accent: var(--dot-sky-1-bg); }
+statistics-totals .totals-site[data-severity="1"],
+statistics-totals .totals-level[data-severity="1"] { --row-accent: var(--dot-sky-2-bg); }
+statistics-totals .totals-site[data-severity="2"],
+statistics-totals .totals-level[data-severity="2"] { --row-accent: var(--dot-sky-3-bg); }
+statistics-totals .totals-site[data-severity="3"],
+statistics-totals .totals-level[data-severity="3"] { --row-accent: var(--dot-sky-4-bg); }
+statistics-totals .totals-site[data-severity="4"],
+statistics-totals .totals-level[data-severity="4"] { --row-accent: var(--dot-sky-5-bg); }
 
 statistics-totals .totals-empty {
     margin: 0;
@@ -273,7 +387,8 @@ statistics-totals .totals-empty {
 @media (max-width: 480px) {
     statistics-totals .totals-hero,
     statistics-totals .totals-sites-head,
-    statistics-totals .totals-site {
+    statistics-totals .totals-site,
+    statistics-totals .totals-level {
         grid-template-columns: minmax(0, 1fr) auto;
     }
 
@@ -284,9 +399,15 @@ statistics-totals .totals-empty {
     /* Placed rather than flowed: the reading spans the row, so auto-placement would push the
      * amount onto a third line of its own instead of keeping it beside the site name. */
     statistics-totals .totals-site-name,
+    statistics-totals .totals-level-name,
     statistics-totals .totals-hero-label { grid-area: 1 / 1; }
     statistics-totals .totals-site-amount,
+    statistics-totals .totals-level-amount,
     statistics-totals .totals-count { grid-area: 1 / 2; }
     statistics-totals .totals-site-reading,
+    statistics-totals .totals-level-bar,
     statistics-totals .totals-meter { grid-area: 2 / 1 / 3 / -1; }
+
+    /* The site row's own two lines are placed, so the panel needs the third named for it. */
+    statistics-totals .totals-site-levels { grid-area: 3 / 1 / 4 / -1; }
 }

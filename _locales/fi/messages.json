@@ -225,6 +225,16 @@
     "message": "Sivusto",
     "description": "Column heading naming the site, in the options page per-site statistics list"
   },
+  "statsTotalsSiteLevelsAriaLabel": {
+    "message": "Klikkiotsikkoisuuden erittely: $SITE$",
+    "description": "Accessible label of the control that opens a site's per-level breakdown, in the options page per-site statistics list",
+    "placeholders": {
+      "site": {
+        "content": "$1",
+        "example": "Yle"
+      }
+    }
+  },
   "statsTotalsOfFound": {
     "message": "/ $FOUND$",
     "description": "The found tally beside a rewritten one, in the options page per-site list",

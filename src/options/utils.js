@@ -49,6 +49,13 @@ const getClickbaitLevelInfo = (level) => {
 };
 
 /**
+ * The message key naming a clickbaitiness level, from the level itself.
+ * @param {string} level - A Clickbaitiness.LEVELS entry
+ * @returns {string}
+ */
+const levelToI18nKey = (level) => `clickbaitinessLabel_${level.replaceAll(" ", "_")}`;
+
+/**
  * Gets a human-readable browser name + version using native structured APIs.
  * Avoids User-Agent string parsing entirely.
  * @returns {Promise<string>}
@@ -202,4 +209,12 @@ const localizeDocument = (root = document) => {
     }
 };
 
-export { isSiteEnabled, displayProductInfo, getClickbaitLevelInfo, getBrowserInfo, formatIsoWithTimezone, localizeDocument };
+export {
+    isSiteEnabled,
+    displayProductInfo,
+    getClickbaitLevelInfo,
+    levelToI18nKey,
+    getBrowserInfo,
+    formatIsoWithTimezone,
+    localizeDocument
+};
