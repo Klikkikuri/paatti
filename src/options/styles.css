@@ -454,9 +454,9 @@ img.icon {
     height: 1.5em;
 }
 
-/* Show that navi buttons cannot be untoggled */
+/* A navi button cannot be untoggled, so the active one does not invite a click. */
 #navi input:checked+.push-button:hover {
-    cursor: not-allowed;
+    cursor: default;
 }
 
 /* Push button */
