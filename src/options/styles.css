@@ -134,9 +134,81 @@ body {
     width: 100%;
 }
 
-.statsview-period {
+/* Eyebrow: how long the tally has been running, small and quiet above it. Wraps rather than
+ * truncating, since the phrase grows with the locale. */
+.statsview-eyebrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 6px;
     margin: 0;
-    font-size: 0.8em;
+    font-family: var(--font-body);
+    font-size: 0.7em;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-align: left;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
+
+
+/* The blocks the stats view is built from: a plain surface with a hairline edge. */
+.statsview-panel {
+    box-sizing: border-box;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 6px;
+}
+
+/* The one figure the view is here to state, given its own block. */
+.statsview-total {
+    margin: 10px 0 12px 0;
+    padding: 10px 12px;
+}
+
+.statsview-headline {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0 8px;
+    margin: 0;
+}
+
+.statsview-headline-number {
+    font-family: var(--font-display);
+    font-size: 2.2em;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--color-text-primary);
+}
+
+.statsview-headline-of {
+    font-size: 0.95em;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
+.statsview-headline-label {
+    margin: 3px 0 0 0;
+    font-size: 0.7em;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
+
+.statsview-note {
+    margin: 0;
+    font-size: 0.78em;
+    color: var(--color-text-secondary);
+}
+
+
+
+.statsview-empty {
+    margin: 24px 0;
+    text-align: center;
+    font-style: italic;
     color: var(--color-text-secondary);
 }
 
@@ -176,22 +248,20 @@ body {
     width: 100%;
     box-sizing: border-box;
     padding: 6px 10px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 6px;
     color: var(--color-text-secondary);
     font-weight: 500;
     transition: background-color 0.15s ease, border-color 0.15s ease;
 }
+
 
 .stats-row.is-open {
     background: var(--color-surface-hover);
     border-color: var(--color-border);
 }
 
-.stats-row.stats-total-row {
-    margin-top: 4px;
-    background: var(--color-surface-hover);
-    font-weight: 600;
-    color: var(--color-text-primary);
-}
 
 .stats-row-main {
     display: flex;
@@ -294,6 +364,69 @@ body {
     color: var(--color-on-accent);
 }
 
+/* Stats view only: a divided list rather than a stack of cards. The border stays in the box model
+ * and only its colour moves, so the rows keep the height the Home view gives them. The Home view
+ * keeps its gaps, its card edges and its count pill. */
+#statsview .stats-list {
+    gap: 0;
+    padding: 0;
+    /* Clips the first and last row's own corners to the panel's. */
+    overflow: hidden;
+}
+
+#statsview .stats-row {
+    border-color: transparent;
+    border-radius: 0;
+}
+
+#statsview .stats-row + .stats-row {
+    border-top-color: var(--color-border-subtle);
+}
+
+/* The dot and the bar already carry the level; a pill around the number is a third signal. */
+#statsview .stats-count {
+    background-color: transparent;
+    padding: 1px 0;
+}
+
+/* Proportion bar. A track under the label rather than a fill behind it: the row's own background
+ * is already spoken for by the open, hover and focus states. */
+.stats-bar {
+    margin-top: 6px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--color-border-subtle);
+    overflow: hidden;
+}
+
+/* Length is this level against the busiest one. Mixed towards the surface rather than tinted with
+ * alpha: over the track, a translucent tint of a pale level comes out the same value as the track
+ * itself, and the bar loses its end. */
+.stats-bar-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--row-accent) 40%, var(--color-surface));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--row-accent) 75%, var(--color-surface));
+}
+
+/* Nothing is known about the rewritten share, so the bar states magnitude alone. */
+.stats-bar-fill.is-plain {
+    background: var(--row-accent);
+}
+
+.stats-bar-rewritten {
+    height: 100%;
+    border-radius: inherit;
+    background: var(--row-accent);
+}
+
+/* The bar takes the hue of the row's dot. The stats view has no threshold, so it is the one ramp. */
+.stats-row[data-level="not-clickbait-at-all"] { --row-accent: var(--dot-sky-1-bg); }
+.stats-row[data-level="slightly-clickbaity"] { --row-accent: var(--dot-sky-2-bg); }
+.stats-row[data-level="moderately-clickbaity"] { --row-accent: var(--dot-sky-3-bg); }
+.stats-row[data-level="very-clickbaity"] { --row-accent: var(--dot-sky-4-bg); }
+.stats-row[data-level="extremely-clickbaity"] { --row-accent: var(--dot-sky-5-bg); }
+
 .stats-row-details {
     margin-top: 6px;
     padding: 6px 8px;
@@ -378,10 +511,6 @@ body {
     flex-shrink: 0;
 }
 
-.stats-total-row .stats-count {
-    background-color: var(--color-border);
-    color: var(--color-text-primary);
-}
 
 #navi {
     flex-shrink: 0;

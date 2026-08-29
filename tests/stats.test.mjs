@@ -5,7 +5,7 @@ import { createFakeBrowser } from './helpers/fake-browser.mjs';
 
 globalThis.browser = createFakeBrowser().browser;
 
-const { buildPageSnapshot, computeGaugeValue, computeCollectingPeriod, mergeStats, createSessionTracker } =
+const { buildPageSnapshot, computeGaugeValue, computeCollectingPeriod, mergeStats, summarizeLevels, createSessionTracker } =
     await import('../src/stats.js');
 const { Clickbaitiness } = await import('../src/model.js');
 
@@ -36,6 +36,37 @@ describe('buildPageSnapshot', () => {
 
         assert.equal(snapshot.convertedCount, 0);
         assert.deepEqual(snapshot.groupedByClickbaitiness, {});
+        assert.deepEqual(snapshot.convertedByClickbaitiness, {});
+    });
+
+    test('a converted item lands in both maps', () => {
+        const converted = buildPageSnapshot(reasons).convertedByClickbaitiness;
+
+        assert.equal(converted[Clickbaitiness.LEVEL_HIGH], 1);
+        assert.equal(converted[Clickbaitiness.LEVEL_EXTREME], 1);
+    });
+
+    test('an unconverted item lands in the found map only', () => {
+        const snapshot = buildPageSnapshot(reasons);
+
+        assert.equal(snapshot.groupedByClickbaitiness[Clickbaitiness.LEVEL_NONE], 1);
+        assert.ok(!snapshot.convertedByClickbaitiness[Clickbaitiness.LEVEL_NONE]);
+    });
+
+    test('a converted item without a level counts in the total only', () => {
+        const snapshot = buildPageSnapshot([{ what: 'converted', clickbaitiness: null }]);
+
+        assert.equal(snapshot.convertedCount, 1);
+        assert.deepEqual(snapshot.convertedByClickbaitiness, {});
+        assert.deepEqual(snapshot.groupedByClickbaitiness, {});
+    });
+
+    test('the converted counts never exceed the found counts', () => {
+        const snapshot = buildPageSnapshot(reasons);
+
+        for (const [level, count] of Object.entries(snapshot.convertedByClickbaitiness)) {
+            assert.ok(count <= snapshot.groupedByClickbaitiness[level]);
+        }
     });
 });
 
@@ -121,6 +152,158 @@ describe('mergeStats', () => {
         const existing = { ...makeExisting(), firstSeen: 900 };
 
         assert.equal(mergeStats(existing, incoming, 1700).firstSeen, 900);
+    });
+
+    test('accumulates the converted counts per level across merges', () => {
+        const existing = {
+            groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 4 },
+            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 },
+            convertedCount: 1
+        };
+        const merged = mergeStats(existing, {
+            groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 3, [Clickbaitiness.LEVEL_EXTREME]: 1 },
+            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 2, [Clickbaitiness.LEVEL_EXTREME]: 1 },
+            convertedCount: 3
+        });
+
+        assert.equal(merged.convertedByClickbaitiness[Clickbaitiness.LEVEL_HIGH], 3);
+        assert.equal(merged.convertedByClickbaitiness[Clickbaitiness.LEVEL_EXTREME], 1);
+    });
+
+    test('does not mutate the existing converted counts', () => {
+        const existing = {
+            groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 4 },
+            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 },
+            convertedCount: 1
+        };
+        mergeStats(existing, {
+            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 2 },
+            convertedCount: 2
+        });
+
+        assert.equal(existing.convertedByClickbaitiness[Clickbaitiness.LEVEL_HIGH], 1);
+    });
+
+    test('stored stats predating the per-level converted counts merge cleanly', () => {
+        const merged = mergeStats(makeExisting(), {
+            groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 },
+            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 },
+            convertedCount: 1
+        });
+
+        assert.equal(merged.convertedByClickbaitiness[Clickbaitiness.LEVEL_HIGH], 1);
+    });
+
+    test('a brand new domain collects the split from the start', () => {
+        const merged = mergeStats(undefined, incoming, 1700);
+
+        assert.equal(merged.convertedByClickbaitinessSince, undefined);
+        assert.ok(!('convertedByClickbaitinessSince' in merged));
+    });
+
+    test('a record that predates the split is stamped as starting late', () => {
+        // Its history is already counted in the other two tallies, which the split will never catch up to.
+        assert.equal(mergeStats(makeExisting(), incoming, 1700).convertedByClickbaitinessSince, 1700);
+        assert.equal(
+            mergeStats({ convertedCount: 3 }, incoming, 1700).convertedByClickbaitinessSince,
+            1700
+        );
+    });
+
+    test('the late-start stamp never moves once set', () => {
+        const existing = {
+            groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 4 },
+            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 },
+            convertedCount: 1,
+            convertedByClickbaitinessSince: 900
+        };
+
+        assert.equal(mergeStats(existing, incoming, 1700).convertedByClickbaitinessSince, 900);
+    });
+});
+
+describe('summarizeLevels', () => {
+    const LEVELS = Clickbaitiness.LEVELS;
+
+    test('empty and undefined input show nothing and count nothing', () => {
+        for (const input of [undefined, {}]) {
+            const summary = summarizeLevels(input, input, LEVELS);
+
+            assert.deepEqual(summary.shown, []);
+            assert.equal(summary.maxCount, 0);
+            assert.equal(summary.totalFound, 0);
+        }
+    });
+
+    test('a sparse tally follows the levels order, not the key order', () => {
+        const summary = summarizeLevels(
+            { [Clickbaitiness.LEVEL_EXTREME]: 2, [Clickbaitiness.LEVEL_LOW]: 7 },
+            {},
+            LEVELS
+        );
+
+        assert.deepEqual(summary.shown.map((row) => row.level),
+            [Clickbaitiness.LEVEL_LOW, Clickbaitiness.LEVEL_EXTREME]);
+        assert.deepEqual(summary.shown.map((row) => row.index), [1, 4]);
+    });
+
+    test('a level index is its severity', () => {
+        const summary = summarizeLevels({ [Clickbaitiness.LEVEL_HIGH]: 1 }, {}, LEVELS);
+
+        assert.equal(summary.shown[0].index, Clickbaitiness.stringToNumber(Clickbaitiness.LEVEL_HIGH));
+    });
+
+    test('a missing converted map reads as zero rewritten, not NaN', () => {
+        const summary = summarizeLevels({ [Clickbaitiness.LEVEL_HIGH]: 3 }, undefined, LEVELS);
+
+        assert.equal(summary.shown[0].rewritten, 0);
+    });
+
+    test('rewritten counts come from the converted map', () => {
+        const summary = summarizeLevels(
+            { [Clickbaitiness.LEVEL_HIGH]: 3, [Clickbaitiness.LEVEL_EXTREME]: 4 },
+            { [Clickbaitiness.LEVEL_EXTREME]: 4 },
+            LEVELS
+        );
+
+        assert.deepEqual(summary.shown.map((row) => row.rewritten), [0, 4]);
+    });
+
+    test('maxCount is the largest shown count, not the total', () => {
+        const summary = summarizeLevels(
+            { [Clickbaitiness.LEVEL_LOW]: 9, [Clickbaitiness.LEVEL_HIGH]: 23 },
+            {},
+            LEVELS
+        );
+
+        assert.equal(summary.maxCount, 23);
+    });
+
+    test('a single populated level is its own maximum', () => {
+        assert.equal(summarizeLevels({ [Clickbaitiness.LEVEL_LOW]: 9 }, {}, LEVELS).maxCount, 9);
+    });
+
+    test('totalFound sums every level, hidden zeros included', () => {
+        const summary = summarizeLevels(
+            { [Clickbaitiness.LEVEL_LOW]: 9, [Clickbaitiness.LEVEL_NONE]: 0, [Clickbaitiness.LEVEL_HIGH]: 23 },
+            {},
+            LEVELS
+        );
+
+        assert.equal(summary.totalFound, 32);
+    });
+
+    test('a level with no titles gets no row', () => {
+        const summary = summarizeLevels({ [Clickbaitiness.LEVEL_MODERATE]: 1 }, {}, LEVELS);
+
+        assert.deepEqual(summary.shown.map((row) => row.level), [Clickbaitiness.LEVEL_MODERATE]);
+    });
+
+    test('a level absent from the levels list is ignored entirely', () => {
+        const summary = summarizeLevels({ 'Made Up Level': 5 }, {}, LEVELS);
+
+        assert.deepEqual(summary.shown, []);
+        assert.equal(summary.totalFound, 0);
     });
 });
 

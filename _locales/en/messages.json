@@ -75,13 +75,39 @@
     "description": "Instruction text to show in the bottom of 'main' view to help user with an unexpected error"
   },
 
-  "statsviewDomainTitle": {
-    "message": "Statistics for $DOMAIN$",
-    "description": "Heading of the stats view, saying the tally below is for this one site",
+  "statsviewConvertedOfFound": {
+    "message": "of $FOUND$ ($PERCENT$%)",
+    "description": "Follows the converted title count in the stats view, giving it as a share of every title found on the site",
     "placeholders": {
-      "domain": {
+      "found": {
         "content": "$1",
-        "example": "hs.fi"
+        "example": "39"
+      },
+      "percent": {
+        "content": "$2",
+        "example": "38"
+      }
+    }
+  },
+  "statsviewBreakdownCaption": {
+    "message": "All titles found, before rewriting.",
+    "description": "Caption above the stats view level breakdown, saying the counts below are of found titles rather than rewritten ones"
+  },
+  "statsviewNoData": {
+    "message": "No titles counted on this site yet.",
+    "description": "Message shown in place of the stats view tally when the site is supported but nothing has been counted on it"
+  },
+  "statsviewRowRewritten": {
+    "message": "$DONE$ of $FOUND$ rewritten",
+    "description": "Tooltip on a stats view level row, saying how many of the titles found at this level were rewritten",
+    "placeholders": {
+      "done": {
+        "content": "$1",
+        "example": "6"
+      },
+      "found": {
+        "content": "$2",
+        "example": "23"
       }
     }
   },
@@ -223,7 +249,7 @@
     "description": "Label of the navigation menu main view button"
   },
   "navigationStatsLabel": {
-    "message": "Statistics",
+    "message": "Site Statistics",
     "description": "Label of the navigation menu statistics view button"
   },
   "navigationFeedbackLabel": {

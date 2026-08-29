@@ -28,6 +28,9 @@
  *       "Extremely Clickbaity": 12,
  *       "Very Clickbaity": 8
  *     },
+ *     "convertedByClickbaitiness": {
+ *       "Extremely Clickbaity": 9
+ *     },
  *     "convertedCount": 15,
  *     "firstSeen": 1755000000000
  *   },
@@ -44,6 +47,13 @@
  *   converted; titles under the threshold, on a disabled site, or without a replacement land in
  *   it too. `convertedCount` tallies only the titles actually swapped on the page, so the two
  *   are not expected to agree.
+ * - `convertedByClickbaitiness` is the swapped subset of `groupedByClickbaitiness`, level by level,
+ *   and is the only tally that can honestly be stated as a share: within one level the rewritten
+ *   titles are a subset of the found ones. It stays below `convertedCount`, which also counts
+ *   swapped titles carrying no clickbaitiness at all, so the grand total of the two never reconciles.
+ * - `convertedByClickbaitinessSince` marks a record that started counting the split late: it is
+ *   stamped when a record stored before the field existed is first written to. While it is present
+ *   the split covers only part of the record's history, and the view must not state a share from it.
  * - `_global.totalConversions` is the same converted tally across every domain, for future
  *   aggregate milestones.
  * - `firstSeen` is stamped on the first write for the domain and never moves after that, so the
@@ -84,15 +94,21 @@ const LEVEL_VALUES = {
 /**
  * @typedef {Object} PageSnapshot
  * @property {ClickbaitinessMap} groupedByClickbaitiness - Counts per clickbaitiness level.
+ * @property {ClickbaitinessMap} convertedByClickbaitiness - Counts per level of the ones converted.
  * @property {number} convertedCount - Number of elements with status 'converted'.
  */
 
 /**
  * @typedef {Object} CumulativeStats
  * @property {ClickbaitinessMap} groupedByClickbaitiness - Aggregated historical counts per level.
+ * @property {ClickbaitinessMap} convertedByClickbaitiness - Aggregated historical counts per level
+ *   of the titles actually converted.
  * @property {number} convertedCount - Aggregated number of titles actually converted.
  * @property {number} [firstSeen] - Epoch ms of the first write for this domain. Absent on records
  *   stored before the field existed, until their next write.
+ * @property {number} [convertedByClickbaitinessSince] - Epoch ms from which the per-level converted
+ *   counts are complete. Present only on records that predate the field, where the earlier history
+ *   is missing from it.
  * @property {{ totalConversions: number }} [_global] - Global tally across all sites.
  */
 
@@ -104,22 +120,28 @@ const LEVEL_VALUES = {
  */
 function buildPageSnapshot(reasons) {
     const groupedByClickbaitiness = {};
+    const convertedByClickbaitiness = {};
     let convertedCount = 0;
 
     if (Array.isArray(reasons)) {
         for (const item of reasons) {
             if (!item) continue;
-            if (item.what === "converted") {
+            const wasConverted = item.what === "converted";
+            if (wasConverted) {
                 convertedCount++;
             }
             if (item.clickbaitiness != null && item.clickbaitiness !== "") {
                 groupedByClickbaitiness[item.clickbaitiness] =
                     (groupedByClickbaitiness[item.clickbaitiness] || 0) + 1;
+                if (wasConverted) {
+                    convertedByClickbaitiness[item.clickbaitiness] =
+                        (convertedByClickbaitiness[item.clickbaitiness] || 0) + 1;
+                }
             }
         }
     }
 
-    return { groupedByClickbaitiness, convertedCount };
+    return { groupedByClickbaitiness, convertedByClickbaitiness, convertedCount };
 }
 
 /**
@@ -169,11 +191,24 @@ function computeGaugeValue(groupedByClickbaitiness) {
  * @returns {CumulativeStats} Newly merged cumulative statistics object.
  */
 function mergeStats(existing = {}, incoming = {}, now = Date.now()) {
+    // A record that already carries history but no per-level converted counts started collecting
+    // them here, so they will forever describe less than the other tallies do. Stamp when they
+    // began, so the view can decline to state a share it cannot back.
+    const startsSplitLate = existing.convertedByClickbaitiness == null &&
+        ((existing.convertedCount || 0) > 0 ||
+            Object.keys(existing.groupedByClickbaitiness || {}).length > 0);
+
     const merged = {
         groupedByClickbaitiness: { ...(existing.groupedByClickbaitiness || {}) },
+        convertedByClickbaitiness: { ...(existing.convertedByClickbaitiness || {}) },
         convertedCount: (existing.convertedCount || 0) + (incoming.convertedCount || 0),
         firstSeen: existing.firstSeen ?? now
     };
+
+    const splitSince = existing.convertedByClickbaitinessSince ?? (startsSplitLate ? now : undefined);
+    if (splitSince !== undefined) {
+        merged.convertedByClickbaitinessSince = splitSince;
+    }
 
     for (const [level, count] of Object.entries(incoming.groupedByClickbaitiness || {})) {
         if (typeof count === "number") {
@@ -182,7 +217,54 @@ function mergeStats(existing = {}, incoming = {}, now = Date.now()) {
         }
     }
 
+    for (const [level, count] of Object.entries(incoming.convertedByClickbaitiness || {})) {
+        if (typeof count === "number") {
+            merged.convertedByClickbaitiness[level] =
+                (merged.convertedByClickbaitiness[level] || 0) + count;
+        }
+    }
+
     return merged;
+}
+
+/**
+ * @typedef {Object} LevelSummary
+ * @property {string} level - The clickbaitiness level name.
+ * @property {number} index - Its position in the levels list, i.e. its severity.
+ * @property {number} count - Titles found at this level.
+ * @property {number} rewritten - How many of those were actually converted.
+ */
+
+/**
+ * Reduces a tally to the levels worth a row, and measures the scale those rows are drawn against.
+ *
+ * `maxCount` is the largest count among the shown levels rather than the total, so a bar shows a
+ * level against the busiest level, not against a sum it can never approach.
+ *
+ * @param {ClickbaitinessMap} [groupedByClickbaitiness] - Titles found per level.
+ * @param {ClickbaitinessMap} [convertedByClickbaitiness] - Titles converted per level.
+ * @param {string[]} [levels] - Level names, in severity order; the output follows it.
+ * @returns {{ shown: LevelSummary[], maxCount: number, totalFound: number }}
+ */
+function summarizeLevels(groupedByClickbaitiness, convertedByClickbaitiness, levels = []) {
+    const found = groupedByClickbaitiness || {};
+    const converted = convertedByClickbaitiness || {};
+
+    const shown = [];
+    let maxCount = 0;
+    let totalFound = 0;
+
+    levels.forEach((level, index) => {
+        const count = found[level] || 0;
+        totalFound += count;
+
+        if (count > 0) {
+            shown.push({ level, index, count, rewritten: converted[level] || 0 });
+            maxCount = Math.max(maxCount, count);
+        }
+    });
+
+    return { shown, maxCount, totalFound };
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -269,5 +351,6 @@ export {
     computeGaugeValue,
     computeCollectingPeriod,
     mergeStats,
+    summarizeLevels,
     createSessionTracker
 };

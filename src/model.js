@@ -229,7 +229,8 @@ const model = (() => {
              * Accumulate a page snapshot delta into persisted cumulative statistics.
              * Also increments the global conversion count at statistics._global.
              *
-             * @param {{ groupedByClickbaitiness: Object.<string,number>, convertedCount: number }} delta
+             * @param {{ groupedByClickbaitiness: Object.<string,number>,
+             *   convertedByClickbaitiness: Object.<string,number>, convertedCount: number }} delta
              * @param {{ domain: string }} options - Target site domain key.
              */
             addStatistics: async (delta, { domain }) => {
