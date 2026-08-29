@@ -12,6 +12,7 @@ import './components/title-modifier-setting.js';
 import './components/database-status-setting.js';
 import './components/clickbait-level-vertical.js';
 import './components/favicon-img.js';
+import './components/statistics-totals.js';
 import './components/page-background.js';
 import './components/easter-egg-setting.js';
 

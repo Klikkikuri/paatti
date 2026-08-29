@@ -54,12 +54,16 @@
  * - `convertedByClickbaitinessSince` marks a record that started counting the split late: it is
  *   stamped when a record stored before the field existed is first written to. While it is present
  *   the split covers only part of the record's history, and the view must not state a share from it.
- * - `_global.totalConversions` is the same converted tally across every domain, for future
- *   aggregate milestones.
+ * - `_global.totalConversions` is the same converted tally across every domain, and is what the
+ *   options page states as its headline. It is incremented beside the per-domain records rather
+ *   than derived from them, and it predates `convertedCount`, so on a record stored before that
+ *   field existed it carries the longer history. The per-site column therefore does not sum to it,
+ *   and no view may present it as a total of the rows beneath it.
  * - `firstSeen` is stamped on the first write for the domain and never moves after that, so the
  *   Stats view can say how long the tally took to build. Records written before the field existed
  *   get it on their next write, which starts their period short.
- * - Used to render the historical summary table on the Stats view.
+ * - Used to render the historical summary table on the popup's Stats view, and — every domain at
+ *   once, through `summarizeSites` — the totals section on the options page.
  *
  * ## Data Flow Diagram
  *
@@ -267,6 +271,139 @@ function summarizeLevels(groupedByClickbaitiness, convertedByClickbaitiness, lev
     return { shown, maxCount, totalFound };
 }
 
+/** Reserved sibling of the domain records, holding the tally across all of them. */
+const GLOBAL_KEY = "_global";
+
+/**
+ * @typedef {Object} Reading
+ * @property {number} percentage - How clickbaity the tally reads, 0..100.
+ * @property {number} severity - The same reading as a level index, 0..4, for colouring.
+ * @property {string} labelI18nKey - Message key naming the reading.
+ */
+
+/**
+ * The gauge reading for a tally, in the shape a view needs it.
+ *
+ * The gauge bands on the same boundaries rounding does, so `severity` indexes the level whose
+ * label `computeGaugeValue` just chose; the colour and the words can never disagree.
+ *
+ * @param {ClickbaitinessMap} groupedByClickbaitiness
+ * @returns {Reading}
+ */
+function readingFor(groupedByClickbaitiness) {
+    const { averageValue, percentage, labelI18nKey } = computeGaugeValue(groupedByClickbaitiness);
+
+    return { percentage, severity: Math.round(averageValue), labelI18nKey };
+}
+
+/**
+ * @typedef {Reading} SiteSummary
+ * @property {string} domain - The siteConfig domain the record is keyed by.
+ * @property {number} found - Titles found on the site, over every level.
+ * @property {number} rewritten - Titles actually swapped there.
+ * @property {boolean} rewrittenIsShare - Whether `rewritten` may be drawn as a part of `found`.
+ * @property {number} [firstSeen] - Epoch ms collection started for the domain.
+ */
+
+/**
+ * Reduces the whole statistics map to one row per domain, plus the reading across all of them,
+ * for the options page totals.
+ *
+ * `overall` is measured over every domain's levels pooled together, so a site read a thousand
+ * times weighs more in it than one read twice. It is the reading of what you were served, not the
+ * average of the per-site readings, and it is null until something has been found somewhere.
+ *
+ * `maxFound` scales the rows against the busiest site rather than against their sum, for the same
+ * reason `summarizeLevels` scales against the busiest level: a share of the sum says nothing once
+ * there are more than a handful of sites.
+ *
+ * `clickbaitiest` needs at least two sites with titles found — an award over a single candidate
+ * states nothing about it — and is decided on the gauge reading, ties going to the site with more
+ * titles behind that reading.
+ *
+ * `rewrittenIsShare` says whether the two tallies can be drawn one inside the other. They are
+ * counted over different populations: `convertedCount` also counts swapped titles that carry no
+ * clickbaitiness at all, and those never reach `groupedByClickbaitiness`, so it can exceed the
+ * total found. Where it does, the view must state magnitude alone rather than a share above 100 %.
+ *
+ * @param {Object.<string, CumulativeStats>} [statistics] - The stored map, `_global` included.
+ * `totals` pools the rows the same way, so the headline states what the table sums to. It is not
+ * taken from `_global.totalConversions`: that reaches further back and also counts swapped titles
+ * carrying no clickbaitiness, so setting it against the found total would put two populations on
+ * either side of one "of".
+ *
+ * `since` is the earliest start any record carries, so the section can say how far back the whole
+ * tally reaches. Records stored before `firstSeen` existed have none until their next write, and
+ * are simply not candidates for it.
+ *
+ * @returns {{ sites: SiteSummary[], maxFound: number, clickbaitiest: SiteSummary|null,
+ *   overall: Reading|null, totals: { rewritten: number, found: number, rewrittenIsShare: boolean },
+ *   since: number|null }}
+ */
+function summarizeSites(statistics) {
+    const sites = [];
+    const pooled = {};
+    let maxFound = 0;
+    let pooledFound = 0;
+    let pooledRewritten = 0;
+    let since = null;
+
+    for (const [domain, record] of Object.entries(statistics || {})) {
+        if (domain === GLOBAL_KEY || !record) continue;
+
+        const grouped = record.groupedByClickbaitiness || {};
+        let found = 0;
+        for (const [level, count] of Object.entries(grouped)) {
+            if (typeof count !== "number") continue;
+
+            found += count;
+            pooled[level] = (pooled[level] || 0) + count;
+        }
+
+        const rewritten = record.convertedCount || 0;
+        // A domain the tracker has touched but never counted anything on is not a row.
+        if (found === 0 && rewritten === 0) continue;
+
+        sites.push({
+            domain, found, rewritten,
+            rewrittenIsShare: found > 0 && rewritten <= found,
+            firstSeen: record.firstSeen,
+            ...readingFor(grouped)
+        });
+        maxFound = Math.max(maxFound, found);
+        pooledFound += found;
+        pooledRewritten += rewritten;
+
+        if (Number.isFinite(record.firstSeen) && (since === null || record.firstSeen < since)) {
+            since = record.firstSeen;
+        }
+    }
+
+    // Busiest first, and the domain as the last key so the order cannot shuffle between renders.
+    sites.sort((a, b) => b.rewritten - a.rewritten || b.found - a.found || a.domain.localeCompare(b.domain));
+
+    const candidates = sites.filter((site) => site.found > 0);
+    const clickbaitiest = candidates.length >= 2
+        ? candidates.reduce((worst, site) =>
+            (site.percentage > worst.percentage || (site.percentage === worst.percentage && site.found > worst.found))
+                ? site
+                : worst)
+        : null;
+
+    return {
+        sites,
+        maxFound,
+        clickbaitiest,
+        overall: pooledFound > 0 ? readingFor(pooled) : null,
+        totals: {
+            rewritten: pooledRewritten,
+            found: pooledFound,
+            rewrittenIsShare: pooledFound > 0 && pooledRewritten <= pooledFound
+        },
+        since
+    };
+}
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
@@ -347,10 +484,12 @@ function createSessionTracker() {
 }
 
 export {
+    GLOBAL_KEY,
     buildPageSnapshot,
     computeGaugeValue,
     computeCollectingPeriod,
     mergeStats,
     summarizeLevels,
+    summarizeSites,
     createSessionTracker
 };

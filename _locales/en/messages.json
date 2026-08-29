@@ -181,6 +181,64 @@
       }
     }
   },
+  "legendStatistics": {
+    "message": "📊 Statistics",
+    "description": "Legend for the options page statistics section"
+  },
+  "descStatistics": {
+    "message": "Cumulative statistics for all supported sites",
+    "description": "Description for the options page statistics section"
+  },
+  "statsTotalsHeadlineLabel": {
+    "message": "clickbaits converted",
+    "description": "Label under the running total on the options page statistics section"
+  },
+  "statsTotalsReading": {
+    "message": "$PERCENT$ % · $LABEL$",
+    "description": "A gauge reading: how clickbaity a tally is, as a percentage and the level it lands on",
+    "placeholders": {
+      "percent": {
+        "content": "$1",
+        "example": "64"
+      },
+      "label": {
+        "content": "$2",
+        "example": "Very Clickbaity"
+      }
+    }
+  },
+  "statsTotalsAwardTitle": {
+    "message": "Clickbaitiest site",
+    "description": "Title of the award naming the site with the highest clickbaitiness reading"
+  },
+  "statsTotalsSince": {
+    "message": "Since $DATE$",
+    "description": "Caption under the options page statistics headline, giving the date the earliest tally started",
+    "placeholders": {
+      "date": {
+        "content": "$1",
+        "example": "12/03/2026"
+      }
+    }
+  },
+  "statsTotalsPerSiteTitle": {
+    "message": "Site",
+    "description": "Column heading naming the site, in the options page per-site statistics list"
+  },
+  "statsTotalsOfFound": {
+    "message": "of $FOUND$",
+    "description": "The found tally beside a rewritten one, in the options page per-site list",
+    "placeholders": {
+      "found": {
+        "content": "$1",
+        "example": "1,204"
+      }
+    }
+  },
+  "statsTotalsEmpty": {
+    "message": "Nothing counted yet. Visit a supported site to start the tally.",
+    "description": "Message shown in place of the options page statistics when no site has been counted yet"
+  },
   "statsThresholdDividerLabel": {
     "message": "Threshold",
     "description": "Label for the clickbait threshold divider line shown in home view stats list"

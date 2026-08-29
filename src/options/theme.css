@@ -93,6 +93,10 @@
     --severity-4: #ef4444;
     --gradient-severity-vertical: linear-gradient(to top,
         var(--severity-1) 0%, var(--severity-2) 50%, var(--severity-4) 100%);
+    /* The same ramp laid flat, for a reading marked along it. Its stops match the popup gauge's
+     * arc (see #gauge-grad in popup.html), so one percentage lands on one colour in both. */
+    --gradient-severity-horizontal: linear-gradient(to right,
+        var(--severity-1) 0%, var(--severity-2) 35%, var(--severity-3) 65%, var(--severity-4) 100%);
 
     /* Popup stats chips. Two scales: "sky" above the threshold (calm -> alarming)
      * and "water" below it (shallow -> deep). Each level is a bg/fg pair so the
