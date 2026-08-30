@@ -134,25 +134,33 @@ browser.storage.onChanged.addListener(async (changes, area) => {
     }
 });
 
-browser.runtime.onInstalled.addListener(async () => {
+browser.runtime.onInstalled.addListener(async ({ reason }) => {
 
-    let environment = DEFAULT_ENVIRONMENT;
-    try {
-        const self = await browser.management.getSelf();
-        if (self.installType === "development") {
-            environment = "development";
+    // An extension update and a browser update fire here as well, and by then the stored
+    // preferences are the user's own. Only a first install has a default to write.
+    if (reason === "install") {
+        let environment = DEFAULT_ENVIRONMENT;
+        try {
+            const self = await browser.management.getSelf();
+            if (self.installType === "development") {
+                environment = "development";
+            }
+        } catch (error) {
+            log("Error detecting environment on install:", error);
         }
-    } catch (error) {
-        log("Error detecting environment on install:", error);
+
+        try {
+            // Merged rather than replaced: this handler owns the environment, not the siblings
+            // beside it.
+            const data = await browser.storage.local.get("userPreferences");
+            const userPreferences = { ...data.userPreferences, environment };
+            await browser.storage.local.set({ userPreferences });
+            log(`Set default environment to '${environment}' on install.`);
+        } catch (error) {
+            log("Error setting default environment on install:", error);
+        }
     }
 
-    try {
-        // Set default environment on install
-        await browser.storage.local.set({ userPreferences: { environment: environment } });
-        log(`Set default environment to '${environment}' on install.`);
-    } catch (error) {
-        log("Error setting default environment on install:", error);
-    }
     // Run an initial Rahti data fetch on install so the extension has data immediately.
     // Initial fetch of Rahti data
     try {
