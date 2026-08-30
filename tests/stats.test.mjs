@@ -5,7 +5,7 @@ import { createFakeBrowser } from './helpers/fake-browser.mjs';
 
 globalThis.browser = createFakeBrowser().browser;
 
-const { buildPageSnapshot, computeGaugeValue, computeCollectingPeriod, mergeStats,
+const { buildPageSnapshot, computeGaugeValue, computeCollectingPeriod, mergeStats, sharePercent,
     summarizeLevels, summarizeSites, createSessionTracker } =
     await import('../src/stats.js');
 const { Clickbaitiness } = await import('../src/model.js');
@@ -426,6 +426,27 @@ describe('createSessionTracker', () => {
     });
 });
 
+describe('sharePercent', () => {
+    test('states a part of its whole', () => {
+        assert.equal(sharePercent(60, 200), 30);
+        assert.equal(sharePercent(200, 200), 100);
+    });
+
+    test('rounds to a whole percent', () => {
+        assert.equal(sharePercent(1, 3), 33);
+        assert.equal(sharePercent(2, 3), 67);
+    });
+
+    test('an empty whole has no share', () => {
+        assert.equal(sharePercent(0, 0), null);
+        assert.equal(sharePercent(4, 0), null);
+    });
+
+    test('a part counted wider than its whole has no share', () => {
+        assert.equal(sharePercent(150, 100), null);
+    });
+});
+
 describe('summarizeSites', () => {
     const statistics = {
         'is.fi': {
@@ -460,8 +481,16 @@ describe('summarizeSites', () => {
         assert.equal(busiest.firstSeen, 1755000000000);
     });
 
-    test('maxFound is the busiest site, not the sum', () => {
-        assert.equal(summarizeSites(statistics).maxFound, 1204);
+    test('a level the gauge cannot weigh is counted nowhere', () => {
+        const { sites, overallByLevel } = summarizeSites({
+            'is.fi': {
+                groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 8, 'Utterly Baffling': 500 },
+                convertedCount: 5
+            }
+        });
+
+        assert.equal(sites[0].found, 8);
+        assert.deepEqual(overallByLevel, { [Clickbaitiness.LEVEL_HIGH]: 8 });
     });
 
     test('severity indexes the level the gauge label names', () => {
@@ -501,13 +530,13 @@ describe('summarizeSites', () => {
         assert.deepEqual(sites.map((site) => site.domain), ['c.fi', 'a.fi', 'b.fi']);
     });
 
-    describe('rewrittenIsShare', () => {
-        test('a rewritten tally within the found one may be drawn as a share', () => {
+    describe('sharePercent on a row', () => {
+        test('a rewritten tally within the found one states a share', () => {
             const [site] = summarizeSites({
                 'ok.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 200 }, convertedCount: 60 }
             }).sites;
 
-            assert.equal(site.rewrittenIsShare, true);
+            assert.equal(site.sharePercent, 30);
         });
 
         test('a converted tally counting level-less titles cannot be a share of the found ones', () => {
@@ -515,7 +544,7 @@ describe('summarizeSites', () => {
                 'odd.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 100 }, convertedCount: 150 }
             }).sites;
 
-            assert.equal(site.rewrittenIsShare, false);
+            assert.equal(site.sharePercent, null);
         });
 
         test('a record that found nothing states no share either', () => {
@@ -524,7 +553,7 @@ describe('summarizeSites', () => {
             }).sites;
 
             assert.equal(site.found, 0);
-            assert.equal(site.rewrittenIsShare, false);
+            assert.equal(site.sharePercent, null);
         });
     });
 
@@ -616,10 +645,10 @@ describe('summarizeSites', () => {
         });
     });
 
-    test('an empty map yields no rows, no scale and no reading', () => {
+    test('an empty map yields no rows, no award and no mix', () => {
         assert.deepEqual(summarizeSites({}), {
-            sites: [], maxFound: 0, clickbaitiest: null, overall: null,
-            totals: { rewritten: 0, found: 0, rewrittenIsShare: false }, since: null
+            sites: [], clickbaitiest: null, overallByLevel: {},
+            totals: { rewritten: 0, found: 0, sharePercent: null }, since: null
         });
         assert.deepEqual(summarizeSites(undefined).sites, []);
     });
@@ -628,7 +657,7 @@ describe('summarizeSites', () => {
         test('pool the rows the headline sits above', () => {
             const { totals } = summarizeSites(statistics);
 
-            assert.deepEqual(totals, { rewritten: 650, found: 1624, rewrittenIsShare: true });
+            assert.deepEqual(totals, { rewritten: 650, found: 1624, sharePercent: 40 });
         });
 
         test('the global tally is no part of them', () => {
@@ -647,50 +676,51 @@ describe('summarizeSites', () => {
                 'odd.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 10 }, convertedCount: 40 }
             });
 
-            assert.equal(totals.rewrittenIsShare, false);
+            assert.equal(totals.sharePercent, null);
         });
     });
 
-    describe('overall', () => {
-        test('pools every domain rather than averaging their readings', () => {
-            // One extreme title beside 99 calm ones reads calm, which averaging the two sites' own
-            // readings would not: that would put this halfway up the scale.
-            const { overall } = summarizeSites({
+    describe('overallByLevel', () => {
+        test('pools every domain rather than weighing their sites equally', () => {
+            // One extreme title beside 99 calm ones stays one title in the mix, which weighing the
+            // two sites equally would not: that would give it half the width.
+            const { overallByLevel } = summarizeSites({
                 'calm.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_NONE]: 99 } },
                 'loud.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_EXTREME]: 1 } }
             });
 
-            assert.equal(overall.percentage, 1);
-            assert.equal(overall.severity, 0);
-            assert.equal(overall.labelI18nKey, 'clickbaitinessLabel_Not_Clickbait_at_all');
+            assert.deepEqual(overallByLevel, {
+                [Clickbaitiness.LEVEL_NONE]: 99,
+                [Clickbaitiness.LEVEL_EXTREME]: 1
+            });
         });
 
-        test('a single site reads exactly as that site does', () => {
-            const summary = summarizeSites({
+        test('one site pools to that site alone', () => {
+            const { overallByLevel } = summarizeSites({
                 'is.fi': statistics['is.fi'],
                 _global: { totalConversions: 612 }
             });
 
-            assert.equal(summary.overall.percentage, summary.sites[0].percentage);
-            assert.equal(summary.overall.labelI18nKey, summary.sites[0].labelI18nKey);
+            assert.deepEqual(overallByLevel, statistics['is.fi'].groupedByClickbaitiness);
         });
 
-        test('the global tally does not reach the reading', () => {
-            const { overall } = summarizeSites({
-                'loud.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_EXTREME]: 4 } },
+        test('the same level on two sites adds up', () => {
+            const { overallByLevel } = summarizeSites({
+                'a.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 4 } },
+                'b.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 6 } },
                 _global: { totalConversions: 9999 }
             });
 
-            assert.equal(overall.percentage, 100);
+            assert.deepEqual(overallByLevel, { [Clickbaitiness.LEVEL_HIGH]: 10 });
         });
 
-        test('a record that only ever converted level-less titles leaves no reading', () => {
-            const { sites, overall } = summarizeSites({
+        test('a record that only ever converted level-less titles pools nothing', () => {
+            const { sites, overallByLevel } = summarizeSites({
                 'none.fi': { groupedByClickbaitiness: {}, convertedCount: 4 }
             });
 
             assert.equal(sites.length, 1);
-            assert.equal(overall, null);
+            assert.deepEqual(overallByLevel, {});
         });
     });
 

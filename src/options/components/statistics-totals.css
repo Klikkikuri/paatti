@@ -5,193 +5,263 @@
  * Colours come from theme.css: the severity ramp is the popup stats view's "sky" scale, so a site
  * reading "Very Clickbaity" here carries the same hue it would there.
  *
+ * The section is three blocks, each laying itself out: a strip of summary tiles, the mix of what
+ * was found, and the per-site table. They share no grid, so none of them can pull another out of
+ * line.
+ *
+ * Every track in the table is a fixed px or `minmax(px, fr)`. Nothing sizes to its content, and no
+ * track is measured in em -- the head sets a font-size of its own, so the same em would resolve
+ * narrower there. That is what lets the column head and each row resolve the same template over
+ * the same width. The chip and the tally take fixed columns, wide enough for the longest level
+ * name in either locale and the longest tally; the slack goes to the name and the bar, which are
+ * the two that can use it.
+ *
+ * A site's level rows sit on columns of their own and deliberately do not line up with the site
+ * rows: a level bar is drawn against that site's busiest level and a site bar is a share of what
+ * was found there, so lining the two up would invite reading across scales that do not meet.
+ *
  * The host owes the element nothing but a place to sit; it lays itself out as a block.
  */
 
 statistics-totals {
     display: block;
     width: 100%;
-
-    /* Fixed rather than auto: the totals row and the site rows are separate grids, so a column
-     * that sized to its own content would land in a different place in each. */
-    --totals-amount-col: 8.5em;
-
-    /* The reading that follows a bar, and the gap before it. A level row states no reading of its
-     * own, so it reserves the same space rather than running its bar out to the column edge --
-     * two bars of different lengths could not be read against the same scale. In the reading's
-     * own ems, which is why whoever reserves the space takes its font size. */
-    --totals-reading-col: 15em;
-    --totals-reading-gap: 10px;
 }
 
-/* --- Headline and meter --- */
+/* --- Summary tiles --- */
 
-/*
- * The headline is the table's totals row, so it shares the grid below rather than sitting in a
- * panel of its own: a card's own padding pushed its contents out of line with the columns, and
- * no amount of matching padding can align two grids whose last column sizes to its content.
- * Hence the fixed amount column, and the same horizontal padding on every row.
- *
- * A site's level rows sit on the same columns from a grid of their own, nested inside the site
- * row. That works only because the panel holding them spans the full row and adds no horizontal
- * padding, so both grids resolve the same template over the same width.
- */
-statistics-totals .totals-hero,
-statistics-totals .totals-sites-head,
-statistics-totals .totals-site,
-statistics-totals .totals-level {
+/* auto-fit rather than a fixed count: the period tile needs a record that stamped a start, and
+ * the award needs two sites to judge between, so either can be withheld and the survivors take
+ * the room. It is also what drops the strip to one column on a narrow window. */
+statistics-totals .totals-summary {
     display: grid;
-    grid-template-columns: minmax(0, 0.6fr) minmax(180px, 2fr) var(--totals-amount-col);
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+/* Raised off the fieldset, which paints --color-surface-muted behind them. */
+statistics-totals .totals-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 12px 14px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 8px;
+    background: var(--color-surface);
+}
+
+statistics-totals .totals-tile-label {
+    display: flex;
     align-items: center;
-    gap: 12px;
-    padding-inline: 4px;
-}
-
-statistics-totals .totals-hero {
-    padding-block: 4px 10px;
-}
-
-statistics-totals .totals-hero-label {
+    gap: 6px;
     margin: 0;
     font-size: 0.85em;
     color: var(--color-text-secondary);
 }
 
-statistics-totals .totals-since {
-    margin: 2px 0 0;
-    font-size: 0.75em;
-    color: var(--color-text-muted);
-}
-
-/* Stacked and right-aligned, so the tally sits over the per-site amounts below it. */
-statistics-totals .totals-count {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
+statistics-totals .totals-tile-note {
     margin: 0;
-    line-height: 1.15;
+    font-size: 0.8em;
+    color: var(--color-text-muted);
 }
 
 statistics-totals .totals-number {
+    margin: 0;
     font-family: var(--font-display);
-    font-size: 1.6em;
+    font-size: 1.8em;
     font-weight: bold;
+    line-height: 1.1;
     color: var(--color-text-primary);
 }
 
-statistics-totals .totals-of {
-    font-size: 0.8em;
-    color: var(--color-text-secondary);
-}
-
-/* A fixed scale with the reading marked on it. The ramp is the whole range, always drawn in
- * full, so the marker's position is the only thing that carries meaning. */
-statistics-totals .totals-meter-scale {
-    position: relative;
-    height: 8px;
-    border-radius: 4px;
-    background: var(--gradient-severity-horizontal);
-}
-
-/* The scale sits where the site bars sit and its reading where their level names sit, so the
- * totals row reads as one of the rows below it. */
-statistics-totals .totals-meter,
-statistics-totals .totals-site-reading {
-    display: flex;
-    align-items: center;
-    gap: var(--totals-reading-gap);
-    min-width: 0;
-}
-
-statistics-totals .totals-meter-scale,
-statistics-totals .totals-site-bar {
-    flex: 1 1 auto;
-    min-width: 0;
-}
-
-/* Wide enough for the longest of either column: a level name, or a reading with its percentage. */
-statistics-totals .totals-meter-caption,
-statistics-totals .totals-site-level {
-    flex: 0 0 auto;
-    width: var(--totals-reading-col);
+statistics-totals .totals-period-value {
     margin: 0;
-    font-size: 0.75em;
-    color: var(--color-text-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* Centred on its reading, and allowed to overhang the ends so 0 % and 100 % still sit on the
- * mark rather than being pulled inside the scale. */
-statistics-totals .totals-meter-marker {
-    position: absolute;
-    top: 50%;
-    width: 4px;
-    height: 16px;
-    border-radius: 2px;
-    transform: translate(-50%, -50%);
-    background: var(--color-text-primary);
-    box-shadow: 0 0 0 2px var(--color-surface);
-    transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 1.05em;
+    color: var(--color-text-primary);
 }
 
 /* --- Clickbaitiest site award --- */
 
-/* The section's opening statement, and its one panel. `.raised` rather than `.setting-info-card`:
- * that class paints --color-surface-muted, which is the fieldset's own background here, so the
- * card would not read as one. It sits outside the shared grid, so it is free to carry its own
- * padding without pulling the columns below out of line. */
-statistics-totals .totals-award {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 16px;
-    padding: 12px 15px;
-}
-
-statistics-totals .totals-award-trophy {
-    font-size: 1.8em;
-    line-height: 1;
-}
-
-statistics-totals .totals-award-title {
-    margin: 0 0 8px;
-    font-weight: bold;
-    color: var(--color-text-heading);
-}
-
+/* A tile like its neighbours, told apart by the trophy in its label and the reading it carries.
+ * As the section's loudest panel it said no more than the first row of the table already does. */
 statistics-totals .totals-award-site {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     margin: 0;
-    flex-wrap: wrap;
+    min-width: 0;
+    /* The tile packs its children to the start, which sizes each to its content: the row has to be
+     * held to the tile before the name inside it can be told to ellipsise. */
+    max-width: 100%;
 }
 
 statistics-totals .totals-award-domain {
     font-size: 1.15em;
     font-weight: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-statistics-totals .totals-award-reading {
+/* --- The mix of what was found --- */
+
+/* Its own block below the strip: five segments and their legend need the full width to stay
+ * legible, and a tile in the strip would have had a third of it. */
+statistics-totals .totals-mix {
+    align-self: stretch;
+    margin-bottom: 14px;
+}
+
+statistics-totals .totals-mix-bar,
+statistics-totals .totals-mix-legend {
+    width: 100%;
+}
+
+/* The segments tile the whole width, so the bar states shares rather than magnitude. Hairlines
+ * between them keep the two palest levels apart where they meet. */
+statistics-totals .totals-mix-bar {
+    display: flex;
+    height: 14px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--color-border-subtle);
+}
+
+statistics-totals .totals-mix-segment {
+    flex: 0 0 auto;
+    min-width: 2px;
+    background: var(--row-accent);
+    box-shadow: inset -1px 0 0 var(--color-surface);
+}
+
+statistics-totals .totals-mix-segment:last-child {
+    box-shadow: none;
+}
+
+statistics-totals .totals-mix-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.85em;
+}
+
+statistics-totals .totals-mix-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+statistics-totals .totals-mix-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: var(--row-accent);
+}
+
+statistics-totals .totals-mix-name {
     color: var(--color-text-secondary);
 }
 
-/* --- Per-site list --- */
+statistics-totals .totals-mix-share {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-primary);
+}
+
+/* --- What the table's columns mean --- */
+
+/* Closed by default: the columns are a question you ask once, and the answer would otherwise sit
+ * between the mix and the rows every time you open the page. */
+statistics-totals .totals-about {
+    margin-bottom: 8px;
+    font-size: 0.85em;
+    color: var(--color-text-secondary);
+}
+
+/* The badge replaces the disclosure triangle rather than sitting beside it. */
+statistics-totals .totals-about summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    list-style: none;
+    cursor: pointer;
+    color: var(--color-text-muted);
+}
+
+statistics-totals .totals-about summary::-webkit-details-marker {
+    display: none;
+}
+
+/* The popup's .stats-dot-btn, in the one colour it wears where no level names it: this opens onto
+ * the whole table rather than onto one level. */
+statistics-totals .totals-about-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background-color: var(--color-neutral);
+    color: var(--color-on-accent);
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1;
+    user-select: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+statistics-totals .totals-about summary:hover .totals-about-icon,
+statistics-totals .totals-about summary:focus-visible .totals-about-icon,
+statistics-totals .totals-about[open] .totals-about-icon {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-info) 40%, transparent);
+}
+
+statistics-totals .totals-about summary:focus-visible {
+    outline: 2px solid var(--color-text-secondary);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+statistics-totals .totals-about p {
+    margin: 6px 0 0;
+}
+
+/* --- Per-site table --- */
+
+statistics-totals .totals-table {
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 8px;
+    background: var(--color-surface);
+}
+
+statistics-totals .totals-sites-head,
+statistics-totals .totals-site-main {
+    display: grid;
+    grid-template-columns: minmax(140px, 2.6fr) 176px minmax(115px, 2fr) 104px;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 10px 12px;
+}
 
 statistics-totals .totals-sites-head {
-    padding-bottom: 6px;
+    padding-block: 8px;
     border-bottom: 1px solid var(--color-border-subtle);
-    font-size: 0.8em;
+    font-size: 0.75em;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--color-text-muted);
 }
 
-statistics-totals .totals-sites-head span:last-child,
-statistics-totals .totals-site-amount {
+/* The two tallies are read down their columns, so they align on the right; the name and the
+ * reading are read across and stay where the text starts. */
+statistics-totals .totals-sites-head span:nth-child(n+3) {
     text-align: right;
 }
 
@@ -201,12 +271,12 @@ statistics-totals .totals-site-list {
     list-style: none;
 }
 
-statistics-totals .totals-site {
-    padding-block: 5px;
-}
-
 statistics-totals .totals-site + .totals-site {
     border-top: 1px solid var(--color-border-subtle);
+}
+
+statistics-totals .totals-site-main {
+    min-height: 40px;
 }
 
 statistics-totals .totals-site-name {
@@ -216,16 +286,20 @@ statistics-totals .totals-site-name {
     min-width: 0;
 }
 
-statistics-totals .totals-site-name > span {
+statistics-totals .totals-site-domain {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-/* The name cell is the control that opens the site's breakdown, so it is stripped back to the
- * cell it already was. */
+/* The name is the control that opens the site's breakdown, so it is stripped back to the cell it
+ * already was. The chip sits outside it: pressing the reading must not open the panel.
+ *
+ * The flex reset is load-bearing: options.css gives every button on the page `flex: 1`, which
+ * would grow this one across its cell and push the chip to the far edge. */
 statistics-totals .totals-site-toggle {
     appearance: none;
+    flex: 0 1 auto;
     background: none;
     border: 0;
     padding: 0;
@@ -253,48 +327,84 @@ statistics-totals .totals-site-toggle:focus-visible {
     border-radius: 4px;
 }
 
-statistics-totals .totals-site-amount {
-    font-family: var(--font-display);
-    font-variant-numeric: tabular-nums;
+/* --- Amount cells, worn by a site row and by its level rows alike --- */
+
+statistics-totals .totals-amount {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
 }
 
-/* The found tally is context for the rewritten one, so it recedes -- the same relation the
- * totals row states by stacking its own "of" line under the count. */
-statistics-totals .totals-site-of {
+/* The column heading, repeated per cell for the narrow layout that has no heading row to read. */
+statistics-totals .totals-amount-label {
+    display: none;
     font-size: 0.85em;
     color: var(--color-text-muted);
 }
 
+statistics-totals .totals-amount-value {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-primary);
+}
+
+/* The share is context for the tally beside it, so it recedes. */
+statistics-totals .totals-amount-note {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85em;
+    color: var(--color-text-muted);
+}
+
+/* A column of its own, ahead of the tally it draws: the track is the whole of what was found on
+ * the site, the way the mix bar's track is the whole of what was found anywhere. */
+statistics-totals .totals-share-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--color-border-subtle);
+    overflow: hidden;
+}
+
+statistics-totals .totals-share-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--row-accent);
+}
+
+/* A row with no share to state keeps the column and draws nothing in it. */
+statistics-totals .totals-share-bar.is-unknown {
+    background: none;
+}
+
+statistics-totals .totals-bar {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--color-border-subtle);
+    overflow: hidden;
+}
+
+/* Length alone: this tally against the largest of its kind. Nothing is nested inside it, so it
+ * cannot imply a share the numbers beside it do not back. */
+statistics-totals .totals-bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--row-accent);
+}
+
 /* --- A site's level breakdown --- */
 
-/* The whole width of the row it opens under, and no padding of its own: the level rows inside it
- * repeat the row's own grid, which lands on the same columns only over the same width. */
+/* Tinted back to the fieldset's own surface, so the nesting shows without indenting the rows. */
 statistics-totals .totals-site-levels {
-    grid-column: 1 / -1;
-    margin-top: 4px;
-    padding-block: 4px 6px;
-    border-top: 1px dashed var(--color-border-subtle);
-}
-
-statistics-totals .totals-level-list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-/* The site row's padding already insets this grid; repeating it would shift the columns. */
-statistics-totals .totals-level {
-    padding-inline: 0;
-}
-
-/* Indented as text rather than as a column, which would move the bar out from under the site's.
- * The inset clears the favicon and its gap above. */
-statistics-totals .totals-levels-caption,
-statistics-totals .totals-level-name {
-    padding-inline-start: 24px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    margin: 0 12px 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: var(--color-surface-muted);
 }
 
 statistics-totals .totals-levels-caption {
@@ -303,78 +413,52 @@ statistics-totals .totals-levels-caption {
     color: var(--color-text-muted);
 }
 
-statistics-totals .totals-level-name {
-    font-size: 0.85em;
-    color: var(--color-text-secondary);
+statistics-totals .totals-level-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 
-/* Ends where the site's bar ends, so the two are read against the same width. The reading column
- * is stated in the reading's own ems, so this cell takes the reading's font size to measure it --
- * nothing else in here is text. */
-statistics-totals .totals-level-bar {
-    display: flex;
+statistics-totals .totals-level {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(110px, 2fr) minmax(6em, 1fr);
     align-items: center;
-    min-width: 0;
-    font-size: 0.75em;
-    padding-inline-end: calc(var(--totals-reading-col) + var(--totals-reading-gap));
+    gap: 12px;
+    padding-block: 5px;
 }
 
-statistics-totals .totals-level-amount {
-    text-align: right;
-    font-family: var(--font-display);
-    font-variant-numeric: tabular-nums;
+statistics-totals .totals-level .totals-amount-value {
     font-size: 0.9em;
     color: var(--color-text-secondary);
 }
 
-/* --- Bars, worn by a site row and by its level rows alike --- */
+/* --- Reading chips --- */
 
-statistics-totals .totals-site-bar {
-    height: 6px;
-    border-radius: 3px;
-    background: var(--color-border-subtle);
+/* A grid item of its own, so justify-self keeps it hugging its text rather than stretching across
+ * the column. The ellipsis is a floor, not a layout: the column is wide enough for the longest
+ * level name in either locale, and only a much narrower window can reach it. */
+statistics-totals .totals-chip {
+    justify-self: start;
+    max-width: 100%;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--row-accent);
+    color: var(--row-ink);
+    font-size: 0.8em;
+    white-space: nowrap;
     overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-/* Length is this site against the busiest one. Mixed towards the surface rather than tinted with
- * alpha, for the reason the popup's bars are: over the track, a translucent tint of a pale level
- * comes out the same value as the track itself and the bar loses its end. */
-statistics-totals .totals-site-bar-fill {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: color-mix(in srgb, var(--row-accent) 40%, var(--color-surface));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--row-accent) 75%, var(--color-surface));
-}
-
-/* The rewritten tally is not a part of the found one here, so the bar states magnitude alone
- * rather than implying a share it cannot back. Mirrors .stats-bar-fill.is-plain in the popup. */
-statistics-totals .totals-site-bar-fill.is-plain {
-    background: var(--row-accent);
-    box-shadow: none;
-}
-
-/* The rewritten share of what was found on that site. */
-statistics-totals .totals-site-bar-rewritten {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: var(--row-accent);
-}
-
-/* How clickbaity the site reads, on the popup stats view's single "sky" ramp. A level row states
- * its own level rather than the site's reading, so it re-declares the property the site row set
- * and would otherwise pass down to it. */
-statistics-totals .totals-site[data-severity="0"],
-statistics-totals .totals-level[data-severity="0"] { --row-accent: var(--dot-sky-1-bg); }
-statistics-totals .totals-site[data-severity="1"],
-statistics-totals .totals-level[data-severity="1"] { --row-accent: var(--dot-sky-2-bg); }
-statistics-totals .totals-site[data-severity="2"],
-statistics-totals .totals-level[data-severity="2"] { --row-accent: var(--dot-sky-3-bg); }
-statistics-totals .totals-site[data-severity="3"],
-statistics-totals .totals-level[data-severity="3"] { --row-accent: var(--dot-sky-4-bg); }
-statistics-totals .totals-site[data-severity="4"],
-statistics-totals .totals-level[data-severity="4"] { --row-accent: var(--dot-sky-5-bg); }
+/* How clickbaity something reads, on the popup stats view's single "sky" ramp. Set on whichever
+ * element carries the severity, so one declaration serves the chip, the bar, the mix segment and
+ * its swatch alike. The two loudest levels have no paired foreground of their own; styles.css
+ * pairs them with --color-on-accent, and this follows it. */
+statistics-totals [data-severity="0"] { --row-accent: var(--dot-sky-1-bg); --row-ink: var(--dot-sky-1-fg); }
+statistics-totals [data-severity="1"] { --row-accent: var(--dot-sky-2-bg); --row-ink: var(--dot-sky-2-fg); }
+statistics-totals [data-severity="2"] { --row-accent: var(--dot-sky-3-bg); --row-ink: var(--dot-sky-3-fg); }
+statistics-totals [data-severity="3"] { --row-accent: var(--dot-sky-4-bg); --row-ink: var(--color-on-accent); }
+statistics-totals [data-severity="4"] { --row-accent: var(--dot-sky-5-bg); --row-ink: var(--color-on-accent); }
 
 statistics-totals .totals-empty {
     margin: 0;
@@ -382,32 +466,63 @@ statistics-totals .totals-empty {
     color: var(--color-text-secondary);
 }
 
-/* The three columns stop earning their width on a narrow window: the reading moves under the
- * name and the amount keeps the right edge. */
-@media (max-width: 480px) {
-    statistics-totals .totals-hero,
-    statistics-totals .totals-sites-head,
-    statistics-totals .totals-site,
-    statistics-totals .totals-level {
-        grid-template-columns: minmax(0, 1fr) auto;
+/* The columns need about 600px between them, which is what the floors above add up to; below
+ * that the reading would have to truncate, and a level name reads in full or not at all. So each
+ * site becomes a card of its own instead: name, then reading, then the tally, then the bar across
+ * the width they were read on. */
+@media (max-width: 640px) {
+    statistics-totals .totals-mix-legend {
+        flex-direction: column;
+        gap: 4px;
     }
 
-    statistics-totals .totals-sites-head span:nth-child(2) {
+    /* The heading row goes; each amount states its own column instead. */
+    statistics-totals .totals-sites-head {
         display: none;
     }
 
-    /* Placed rather than flowed: the reading spans the row, so auto-placement would push the
-     * amount onto a third line of its own instead of keeping it beside the site name. */
-    statistics-totals .totals-site-name,
-    statistics-totals .totals-level-name,
-    statistics-totals .totals-hero-label { grid-area: 1 / 1; }
-    statistics-totals .totals-site-amount,
-    statistics-totals .totals-level-amount,
-    statistics-totals .totals-count { grid-area: 1 / 2; }
-    statistics-totals .totals-site-reading,
-    statistics-totals .totals-level-bar,
-    statistics-totals .totals-meter { grid-area: 2 / 1 / 3 / -1; }
+    statistics-totals .totals-amount-label {
+        display: inline;
+    }
 
-    /* The site row's own two lines are placed, so the panel needs the third named for it. */
-    statistics-totals .totals-site-levels { grid-area: 3 / 1 / 4 / -1; }
+    statistics-totals .totals-table {
+        border: 0;
+        background: none;
+    }
+
+    statistics-totals .totals-site {
+        margin-bottom: 8px;
+        border: 1px solid var(--color-border-subtle);
+        border-radius: 8px;
+        background: var(--color-surface);
+    }
+
+    statistics-totals .totals-site + .totals-site {
+        border-top: 1px solid var(--color-border-subtle);
+    }
+
+    /* The name and the reading each span the row, so the two amounts flow onto the line below
+     * rather than each taking a line of its own. */
+    statistics-totals .totals-site-main,
+    statistics-totals .totals-level {
+        grid-template-columns: 1fr auto;
+        row-gap: 8px;
+    }
+
+    statistics-totals .totals-site-name,
+    statistics-totals .totals-site-main > .totals-chip,
+    statistics-totals .totals-level > .totals-chip {
+        grid-column: 1 / -1;
+    }
+
+    /* Ordered last rather than moved: at this width the bar has no column to sit in, and a full
+     * row under the tallies is the only place its track still means the width of the row. */
+    statistics-totals .totals-share-bar {
+        grid-column: 1 / -1;
+        order: 1;
+    }
+
+    statistics-totals .totals-share-bar.is-unknown {
+        display: none;
+    }
 }

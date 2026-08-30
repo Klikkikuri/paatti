@@ -159,14 +159,6 @@
       }
     }
   },
-  "statsviewGroupedByClickbaitinessLabelClickbaitiness": {
-    "message": "Clickbaitiness",
-    "description": "Title of the stats section clickbaitiness grouping table for the 'type' or 'severity' of clickbait"
-  },
-  "statsviewGroupedByClickbaitinessLabelAmount": {
-    "message": "Amount",
-    "description": "Title of the stats section clickbaitiness grouping table for the amount of this type of clickbait"
-  },
   "statsviewGroupedByClickbaitinessLabelTotal": {
     "message": "Converted titles",
     "description": "Title of the stats section clickbaitiness grouping table for the total amount of converted titles"
@@ -186,7 +178,7 @@
     "description": "Legend for the options page statistics section"
   },
   "descStatistics": {
-    "message": "Cumulative statistics for all supported sites",
+    "message": "Cumulative statistics for all enabled sites",
     "description": "Description for the options page statistics section"
   },
   "statsTotalsHeadlineLabel": {
@@ -235,13 +227,83 @@
       }
     }
   },
-  "statsTotalsOfFound": {
-    "message": "of $FOUND$",
-    "description": "The found tally beside a rewritten one, in the options page per-site list",
+  "statsTotalsAboutSummary": {
+    "message": "How to read this",
+    "description": "Label of the disclosure above the options page per-site statistics list, opening onto what its columns mean"
+  },
+  "statsTotalsAboutReading": {
+    "message": "Clickbaitiness is the average level of every title found on the site, from Not Clickbait at all to Extremely Clickbaity, stated as a share of the highest level and named by the level it rounds to. It says nothing about how many titles that was.",
+    "description": "First line of that disclosure, on how a site's clickbaitiness reading is arrived at"
+  },
+  "statsTotalsAboutAmounts": {
+    "message": "The bar beside a site's converted tally fills to the percentage next to it: the whole width is everything found there, and the fill is what was rewritten — hover the tally for how many that was. Open a site and its level bars read differently: each is that level against the site's busiest level, so it states an amount rather than a share.",
+    "description": "Second line of that disclosure, on what the bar and the converted percentage show"
+  },
+  "statsTotalsColumnReading": {
+    "message": "Clickbaitiness",
+    "description": "Column heading over the level a site reads at, in the options page per-site statistics list"
+  },
+  "statsTotalsShareOfFound": {
+    "message": "$PERCENT$ % of $FOUND$ found",
+    "description": "Tooltip on a site's converted tally, giving the share and the found tally it is a share of",
+    "placeholders": {
+      "percent": {
+        "content": "$1",
+        "example": "51"
+      },
+      "found": {
+        "content": "$2",
+        "example": "1,204"
+      }
+    }
+  },
+  "statsTotalsFoundTitle": {
+    "message": "$FOUND$ found",
+    "description": "Tooltip on a site's converted tally where no share can be stated, giving the found tally alone",
     "placeholders": {
       "found": {
         "content": "$1",
         "example": "1,204"
+      }
+    }
+  },
+  "statsTotalsColumnFound": {
+    "message": "Found",
+    "description": "Column heading over the titles found on a site, in the options page per-site statistics list"
+  },
+  "statsTotalsColumnConverted": {
+    "message": "Converted",
+    "description": "Column heading over the titles converted on a site, in the options page per-site statistics list"
+  },
+  "statsTotalsSharePercent": {
+    "message": "$PERCENT$%",
+    "description": "A converted tally as a share of the titles found beside it, in the options page per-site statistics list",
+    "placeholders": {
+      "percent": {
+        "content": "$1",
+        "example": "51"
+      }
+    }
+  },
+  "statsTotalsMixLabel": {
+    "message": "What you were served",
+    "description": "Heading of the options page bar showing how the titles found split across the clickbaitiness levels"
+  },
+  "statsTotalsMixSegment": {
+    "message": "$LEVEL$: $COUNT$ ($PERCENT$%)",
+    "description": "Tooltip of one segment of that bar, naming its level, its tally and its share",
+    "placeholders": {
+      "level": {
+        "content": "$1",
+        "example": "Very Clickbaity"
+      },
+      "count": {
+        "content": "$2",
+        "example": "800"
+      },
+      "percent": {
+        "content": "$3",
+        "example": "26"
       }
     }
   },

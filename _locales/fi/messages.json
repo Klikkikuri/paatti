@@ -159,14 +159,6 @@
       }
     }
   },
-  "statsviewGroupedByClickbaitinessLabelClickbaitiness": {
-    "message": "Klikkiotsikkoisuus",
-    "description": "Title of the stats section clickbaitiness grouping table for the 'type' or 'severity' of clickbait"
-  },
-  "statsviewGroupedByClickbaitinessLabelAmount": {
-    "message": "Määrä",
-    "description": "Title of the stats section clickbaitiness grouping table for the amount of this type of clickbait"
-  },
   "statsviewGroupedByClickbaitinessLabelTotal": {
     "message": "Oikaistuja otsikoita",
     "description": "Title of the stats section clickbaitiness grouping table for the total amount of converted titles"
@@ -186,7 +178,7 @@
     "description": "Legend for the options page statistics section"
   },
   "descStatistics": {
-    "message": "Kertyneet tilastot kaikilta tuetuilta sivustoilta",
+    "message": "Kertyneet tilastot kaikilta käytössä olevilta sivustoilta",
     "description": "Description for the options page statistics section"
   },
   "statsTotalsHeadlineLabel": {
@@ -235,13 +227,83 @@
       }
     }
   },
-  "statsTotalsOfFound": {
-    "message": "/ $FOUND$",
-    "description": "The found tally beside a rewritten one, in the options page per-site list",
+  "statsTotalsAboutSummary": {
+    "message": "Miten tätä luetaan",
+    "description": "Label of the disclosure above the options page per-site statistics list, opening onto what its columns mean"
+  },
+  "statsTotalsAboutReading": {
+    "message": "Klikkiotsikkoisuus on sivustolta löydettyjen otsikoiden tasojen keskiarvo väliltä Ei lainkaan klikkiotsikko – Erittäin klikkiotsikko, osuutena korkeimmasta tasosta ja nimettynä sen tason mukaan, johon keskiarvo pyöristyy. Se ei kerro, montako otsikkoa niitä oli.",
+    "description": "First line of that disclosure, on how a site's clickbaitiness reading is arrived at"
+  },
+  "statsTotalsAboutAmounts": {
+    "message": "Oikaistujen vieressä oleva palkki täyttyy sen prosenttiin: koko leveys on kaikki sivustolta löydetyt otsikot ja täyttö se osa, joka oikaistiin — vie osoitin luvun päälle nähdäksesi, montako niitä löytyi. Avatun sivuston tasopalkit luetaan toisin: kukin taso on suhteessa sivuston suurimpaan tasoon, eli ne kertovat määrän eivätkä osuutta.",
+    "description": "Second line of that disclosure, on what the bar and the converted percentage show"
+  },
+  "statsTotalsColumnReading": {
+    "message": "Klikkiotsikkoisuus",
+    "description": "Column heading over the level a site reads at, in the options page per-site statistics list"
+  },
+  "statsTotalsShareOfFound": {
+    "message": "$PERCENT$ % kaikista $FOUND$ löydetystä",
+    "description": "Tooltip on a site's converted tally, giving the share and the found tally it is a share of",
+    "placeholders": {
+      "percent": {
+        "content": "$1",
+        "example": "51"
+      },
+      "found": {
+        "content": "$2",
+        "example": "1,204"
+      }
+    }
+  },
+  "statsTotalsFoundTitle": {
+    "message": "$FOUND$ löydettyä",
+    "description": "Tooltip on a site's converted tally where no share can be stated, giving the found tally alone",
     "placeholders": {
       "found": {
         "content": "$1",
-        "example": "1 204"
+        "example": "1,204"
+      }
+    }
+  },
+  "statsTotalsColumnFound": {
+    "message": "Löydetyt",
+    "description": "Column heading over the titles found on a site, in the options page per-site statistics list"
+  },
+  "statsTotalsColumnConverted": {
+    "message": "Oikaistut",
+    "description": "Column heading over the titles converted on a site, in the options page per-site statistics list"
+  },
+  "statsTotalsSharePercent": {
+    "message": "$PERCENT$ %",
+    "description": "A converted tally as a share of the titles found beside it, in the options page per-site statistics list",
+    "placeholders": {
+      "percent": {
+        "content": "$1",
+        "example": "51"
+      }
+    }
+  },
+  "statsTotalsMixLabel": {
+    "message": "Mitä sinulle tarjottiin",
+    "description": "Heading of the options page bar showing how the titles found split across the clickbaitiness levels"
+  },
+  "statsTotalsMixSegment": {
+    "message": "$LEVEL$: $COUNT$ ($PERCENT$ %)",
+    "description": "Tooltip of one segment of that bar, naming its level, its tally and its share",
+    "placeholders": {
+      "level": {
+        "content": "$1",
+        "example": "Very Clickbaity"
+      },
+      "count": {
+        "content": "$2",
+        "example": "800"
+      },
+      "percent": {
+        "content": "$3",
+        "example": "26"
       }
     }
   },

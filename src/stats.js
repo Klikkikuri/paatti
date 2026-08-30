@@ -275,6 +275,18 @@ function summarizeLevels(groupedByClickbaitiness, convertedByClickbaitiness, lev
 const GLOBAL_KEY = "_global";
 
 /**
+ * A part as a whole-number percentage of its whole, or null where the two cannot be set against
+ * each other -- an empty whole, or a part counted over a wider population than the whole.
+ *
+ * @param {number} part
+ * @param {number} whole
+ * @returns {number|null}
+ */
+function sharePercent(part, whole) {
+    return whole > 0 && part <= whole ? Math.round((part / whole) * 100) : null;
+}
+
+/**
  * @typedef {Object} Reading
  * @property {number} percentage - How clickbaity the tally reads, 0..100.
  * @property {number} severity - The same reading as a level index, 0..4, for colouring.
@@ -299,13 +311,14 @@ function readingFor(groupedByClickbaitiness) {
 /**
  * @typedef {Reading} SiteSummary
  * @property {string} domain - The siteConfig domain the record is keyed by.
- * @property {number} found - Titles found on the site, over every level.
+ * @property {number} found - Titles found on the site, over every level the gauge knows.
  * @property {number} rewritten - Titles actually swapped there.
- * @property {boolean} rewrittenIsShare - Whether `rewritten` may be drawn as a part of `found`.
+ * @property {number|null} sharePercent - `rewritten` as a percentage of `found`, or null where the
+ *   two cannot be set against each other.
  * @property {ClickbaitinessMap} foundByLevel - The titles behind `found`, level by level, as stored.
  * @property {ClickbaitinessMap} rewrittenByLevel - The swapped subset of them, level by level.
  * @property {boolean} rewrittenByLevelIsKnown - Whether the two maps describe the same stretch of
- *   history. A different question from `rewrittenIsShare`: that one asks whether two populations
+ *   history. A different question from `sharePercent`: that one asks whether two populations
  *   overlap, this one whether two histories line up. False on a record carrying no split at all,
  *   and on one stamped `convertedByClickbaitinessSince`, whose split starts later than the rest.
  * @property {number} [firstSeen] - Epoch ms collection started for the domain.
@@ -315,22 +328,19 @@ function readingFor(groupedByClickbaitiness) {
  * Reduces the whole statistics map to one row per domain, plus the reading across all of them,
  * for the options page totals.
  *
- * `overall` is measured over every domain's levels pooled together, so a site read a thousand
- * times weighs more in it than one read twice. It is the reading of what you were served, not the
- * average of the per-site readings, and it is null until something has been found somewhere.
- *
- * `maxFound` scales the rows against the busiest site rather than against their sum, for the same
- * reason `summarizeLevels` scales against the busiest level: a share of the sum says nothing once
- * there are more than a handful of sites.
+ * `overallByLevel` pools every domain's levels together, so a site read a thousand times weighs
+ * more in it than one read twice. It is what you were served, level by level, rather than an
+ * average over it: a view states the mix from it, and `summarizeLevels` is what orders and scales
+ * it. Empty until something has been found somewhere.
  *
  * `clickbaitiest` needs at least two sites with titles found — an award over a single candidate
  * states nothing about it — and is decided on the gauge reading, ties going to the site with more
  * titles behind that reading.
  *
- * `rewrittenIsShare` says whether the two tallies can be drawn one inside the other. They are
- * counted over different populations: `convertedCount` also counts swapped titles that carry no
+ * `sharePercent` is null where the two tallies cannot be set against each other. They are counted
+ * over different populations: `convertedCount` also counts swapped titles that carry no
  * clickbaitiness at all, and those never reach `groupedByClickbaitiness`, so it can exceed the
- * total found. Where it does, the view must state magnitude alone rather than a share above 100 %.
+ * total found. Where it does, the view must state the tallies alone rather than a share above 100 %.
  *
  * @param {Object.<string, CumulativeStats>} [statistics] - The stored map, `_global` included.
  * `totals` pools the rows the same way, so the headline states what the table sums to. It is not
@@ -346,14 +356,13 @@ function readingFor(groupedByClickbaitiness) {
  * `summarizeLevels`. They are passed on rather than read here: naming the levels would need their
  * order, and that is what would tie this module to `model.js`.
  *
- * @returns {{ sites: SiteSummary[], maxFound: number, clickbaitiest: SiteSummary|null,
- *   overall: Reading|null, totals: { rewritten: number, found: number, rewrittenIsShare: boolean },
- *   since: number|null }}
+ * @returns {{ sites: SiteSummary[], clickbaitiest: SiteSummary|null,
+ *   overallByLevel: ClickbaitinessMap,
+ *   totals: { rewritten: number, found: number, sharePercent: number|null }, since: number|null }}
  */
 function summarizeSites(statistics) {
     const sites = [];
     const pooled = {};
-    let maxFound = 0;
     let pooledFound = 0;
     let pooledRewritten = 0;
     let since = null;
@@ -364,7 +373,10 @@ function summarizeSites(statistics) {
         const grouped = record.groupedByClickbaitiness || {};
         let found = 0;
         for (const [level, count] of Object.entries(grouped)) {
-            if (typeof count !== "number") continue;
+            // A level the gauge cannot weigh is one no view names either, so it stays out of the
+            // total as well: the row's tally, its reading and its breakdown then count the same
+            // titles, whatever a backend one day stores beside the levels known here.
+            if (typeof count !== "number" || LEVEL_VALUES[level] === undefined) continue;
 
             found += count;
             pooled[level] = (pooled[level] || 0) + count;
@@ -378,7 +390,7 @@ function summarizeSites(statistics) {
 
         sites.push({
             domain, found, rewritten,
-            rewrittenIsShare: found > 0 && rewritten <= found,
+            sharePercent: sharePercent(rewritten, found),
             // References into the record rather than copies; nothing here writes through them.
             foundByLevel: grouped,
             rewrittenByLevel: rewrittenByLevel || {},
@@ -386,7 +398,6 @@ function summarizeSites(statistics) {
             firstSeen: record.firstSeen,
             ...readingFor(grouped)
         });
-        maxFound = Math.max(maxFound, found);
         pooledFound += found;
         pooledRewritten += rewritten;
 
@@ -408,13 +419,12 @@ function summarizeSites(statistics) {
 
     return {
         sites,
-        maxFound,
         clickbaitiest,
-        overall: pooledFound > 0 ? readingFor(pooled) : null,
+        overallByLevel: pooled,
         totals: {
             rewritten: pooledRewritten,
             found: pooledFound,
-            rewrittenIsShare: pooledFound > 0 && pooledRewritten <= pooledFound
+            sharePercent: sharePercent(pooledRewritten, pooledFound)
         },
         since
     };
@@ -505,6 +515,7 @@ export {
     computeGaugeValue,
     computeCollectingPeriod,
     mergeStats,
+    sharePercent,
     summarizeLevels,
     summarizeSites,
     createSessionTracker
