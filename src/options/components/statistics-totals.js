@@ -52,8 +52,14 @@ template.innerHTML = `
                 <span class="totals-about-icon" aria-hidden="true">i</span>
                 <span data-i18n="statsTotalsAboutSummary"></span>
             </summary>
-            <p data-i18n="statsTotalsAboutReading"></p>
-            <p data-i18n="statsTotalsAboutAmounts"></p>
+            <dl class="totals-about-list">
+                <dt data-i18n="statsTotalsColumnReading"></dt>
+                <dd data-i18n="statsTotalsAboutReading"></dd>
+                <dt data-i18n="statsTotalsColumnConverted"></dt>
+                <dd data-i18n="statsTotalsAboutAmounts"></dd>
+                <dt data-i18n="statsTotalsAboutLevelsTerm"></dt>
+                <dd data-i18n="statsTotalsAboutLevels"></dd>
+            </dl>
         </details>
 
         <div class="totals-table">

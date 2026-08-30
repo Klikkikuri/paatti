@@ -18,9 +18,11 @@ const fake = createFakeBrowser({
         statsTotalsSharePercent: '$1 %',
         statsTotalsShareOfFound: '$1 % of $2 found',
         statsTotalsFoundTitle: '$1 found',
-        statsTotalsAboutSummary: 'How to read this',
+        statsTotalsAboutSummary: 'How to read this table',
         statsTotalsAboutReading: 'Clickbaitiness is the average level of every title found.',
         statsTotalsAboutAmounts: 'The bar under a site fills to the converted share.',
+        statsTotalsAboutLevelsTerm: 'Level breakdown',
+        statsTotalsAboutLevels: 'A level bar is that level against the busiest one.',
         statsTotalsMixLabel: 'What you were served',
         statsTotalsMixSegment: '$1: $2 ($3 %)',
         statsviewConvertedOfFound: 'of $1 ($2 %)',
@@ -120,10 +122,15 @@ describe('statistics-totals', () => {
         const about = element.querySelector('.totals-about');
         assert.equal(about.open, false);
         assert.equal(about.querySelector('.totals-about-icon').textContent, 'i');
-        assert.equal(about.querySelector('summary [data-i18n]').textContent, 'How to read this');
-        assert.deepEqual([...about.querySelectorAll('p')].map((p) => p.textContent), [
+        assert.equal(about.querySelector('summary [data-i18n]').textContent, 'How to read this table');
+        // Each column of the table, answered under the heading it carries.
+        assert.deepEqual([...about.querySelectorAll('.totals-about-list > *')].map((el) => el.textContent), [
+            'Clickbaitiness',
             'Clickbaitiness is the average level of every title found.',
-            'The bar under a site fills to the converted share.'
+            'Converted',
+            'The bar under a site fills to the converted share.',
+            'Level breakdown',
+            'A level bar is that level against the busiest one.'
         ]);
     });
 

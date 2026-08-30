@@ -178,7 +178,7 @@
     "description": "Legend for the options page statistics section"
   },
   "descStatistics": {
-    "message": "Kertyneet tilastot kaikilta käytössä olevilta sivustoilta",
+    "message": "Kaikkien käytössä olevien sivustojen yhteistilastot: mitä Paatti löysi ja kuinka paljon siitä oikaistiin",
     "description": "Description for the options page statistics section"
   },
   "statsTotalsHeadlineLabel": {
@@ -228,16 +228,24 @@
     }
   },
   "statsTotalsAboutSummary": {
-    "message": "Miten tätä luetaan",
+    "message": "Miten taulukkoa luetaan",
     "description": "Label of the disclosure above the options page per-site statistics list, opening onto what its columns mean"
   },
   "statsTotalsAboutReading": {
-    "message": "Klikkiotsikkoisuus on sivustolta löydettyjen otsikoiden tasojen keskiarvo väliltä Ei lainkaan klikkiotsikko – Erittäin klikkiotsikko, osuutena korkeimmasta tasosta ja nimettynä sen tason mukaan, johon keskiarvo pyöristyy. Se ei kerro, montako otsikkoa niitä oli.",
-    "description": "First line of that disclosure, on how a site's clickbaitiness reading is arrived at"
+    "message": "Sivustolta löydettyjen otsikoiden keskimääräinen taso, osuutena korkeimmasta tasosta ja nimettynä sen tason mukaan, johon se pyöristyy. Se ei kerro, montako otsikkoa niitä oli.",
+    "description": "Explanation of the Clickbaitiness column, in the disclosure above the options page per-site statistics list"
   },
   "statsTotalsAboutAmounts": {
-    "message": "Oikaistujen vieressä oleva palkki täyttyy sen prosenttiin: koko leveys on kaikki sivustolta löydetyt otsikot ja täyttö se osa, joka oikaistiin — vie osoitin luvun päälle nähdäksesi, montako niitä löytyi. Avatun sivuston tasopalkit luetaan toisin: kukin taso on suhteessa sivuston suurimpaan tasoon, eli ne kertovat määrän eivätkä osuutta.",
-    "description": "Second line of that disclosure, on what the bar and the converted percentage show"
+    "message": "Montako otsikkoa sivustolla oikaistiin ja kuinka suuri osuus se on kaikista sieltä löydetyistä otsikoista. Palkki täyttyy tähän osuuteen. Vie osoitin luvun päälle nähdäksesi, montako otsikkoa löytyi.",
+    "description": "Explanation of the Converted column, in that disclosure"
+  },
+  "statsTotalsAboutLevelsTerm": {
+    "message": "Tasoerittely",
+    "description": "Term in that disclosure, naming the per-level breakdown that a site row opens onto"
+  },
+  "statsTotalsAboutLevels": {
+    "message": "Avaa sivuston tasot napsauttamalla sen nimeä. Kukin palkki vertaa siellä yhtä tasoa saman sivuston suurimpaan tasoon, eli se kertoo määrän eikä osuutta.",
+    "description": "Explanation of that term, on what the bars in an opened site's level rows compare"
   },
   "statsTotalsColumnReading": {
     "message": "Klikkiotsikkoisuus",

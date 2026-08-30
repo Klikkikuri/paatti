@@ -178,7 +178,7 @@
     "description": "Legend for the options page statistics section"
   },
   "descStatistics": {
-    "message": "Cumulative statistics for all enabled sites",
+    "message": "Totals for every enabled site: what Paatti found, and how much of it was rewritten",
     "description": "Description for the options page statistics section"
   },
   "statsTotalsHeadlineLabel": {
@@ -228,16 +228,24 @@
     }
   },
   "statsTotalsAboutSummary": {
-    "message": "How to read this",
+    "message": "How to read this table",
     "description": "Label of the disclosure above the options page per-site statistics list, opening onto what its columns mean"
   },
   "statsTotalsAboutReading": {
-    "message": "Clickbaitiness is the average level of every title found on the site, from Not Clickbait at all to Extremely Clickbaity, stated as a share of the highest level and named by the level it rounds to. It says nothing about how many titles that was.",
-    "description": "First line of that disclosure, on how a site's clickbaitiness reading is arrived at"
+    "message": "The average level of the titles found on the site, as a share of the highest level and named by the level it rounds to. It does not tell how many titles there were.",
+    "description": "Explanation of the Clickbaitiness column, in the disclosure above the options page per-site statistics list"
   },
   "statsTotalsAboutAmounts": {
-    "message": "The bar beside a site's converted tally fills to the percentage next to it: the whole width is everything found there, and the fill is what was rewritten — hover the tally for how many that was. Open a site and its level bars read differently: each is that level against the site's busiest level, so it states an amount rather than a share.",
-    "description": "Second line of that disclosure, on what the bar and the converted percentage show"
+    "message": "How many titles were rewritten on the site, and what share that is of all the titles found there. The bar fills to that share. Point at the number to see how many were found.",
+    "description": "Explanation of the Converted column, in that disclosure"
+  },
+  "statsTotalsAboutLevelsTerm": {
+    "message": "Level breakdown",
+    "description": "Term in that disclosure, naming the per-level breakdown that a site row opens onto"
+  },
+  "statsTotalsAboutLevels": {
+    "message": "Select a site name to open its levels. Each bar there compares one level with the busiest level of the same site, so it shows an amount, not a share.",
+    "description": "Explanation of that term, on what the bars in an opened site's level rows compare"
   },
   "statsTotalsColumnReading": {
     "message": "Clickbaitiness",

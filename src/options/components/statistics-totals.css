@@ -229,8 +229,30 @@ statistics-totals .totals-about summary:focus-visible {
     border-radius: 4px;
 }
 
-statistics-totals .totals-about p {
-    margin: 6px 0 0;
+/* Term and answer on two columns: the term is set as the column head it names, so the eye pairs
+ * the two without reading, and the answers line up as one column to scan down. The card is the
+ * table's own, so an open explanation reads as belonging to the rows below it. */
+statistics-totals .totals-about-list {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 8px 14px;
+    margin: 8px 0 0;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 8px;
+    background: var(--color-surface);
+}
+
+statistics-totals .totals-about-list dt {
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-primary);
+}
+
+statistics-totals .totals-about-list dd {
+    margin: 0;
+    line-height: 1.5;
 }
 
 /* --- Per-site table --- */
@@ -471,6 +493,16 @@ statistics-totals .totals-empty {
  * site becomes a card of its own instead: name, then reading, then the tally, then the bar across
  * the width they were read on. */
 @media (max-width: 640px) {
+    /* No column is wide enough for both, so each term sits above the answer it names. */
+    statistics-totals .totals-about-list {
+        grid-template-columns: 1fr;
+        gap: 2px;
+    }
+
+    statistics-totals .totals-about-list dd:not(:last-child) {
+        margin-bottom: 8px;
+    }
+
     statistics-totals .totals-mix-legend {
         flex-direction: column;
         gap: 4px;
