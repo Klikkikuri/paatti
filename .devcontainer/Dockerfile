@@ -55,11 +55,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         # Emoji glyphs, or popup screenshots render tofu boxes
         fonts-noto-color-emoji \
         # Agent tools
-        ripgrep \
+        ripgrep bat \
         fd-find \
         jq yq \
     # Link fd-find to fd, so that coding agents can find it in the PATH
-    && ln -sf "$(command -v fdfind)" /usr/local/bin/fd
+    && ln -sf "$(command -v fdfind)" /usr/local/bin/fd \
+    && ln -sf "$(command -v batcat)" /usr/local/bin/bat
 
 # Linters behind `make lint`: eslint enforces the browser-namespace import rule,
 # web-ext the AMO checks. run.sh uses web-ext too. jsdom is imported rather than run --
