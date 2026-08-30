@@ -33,9 +33,6 @@
  *     },
  *     "convertedCount": 15,
  *     "firstSeen": 1755000000000
- *   },
- *   "_global": {
- *     "totalConversions": 42
  *   }
  * }
  * ```
@@ -54,11 +51,6 @@
  * - `convertedByClickbaitinessSince` marks a record that started counting the split late: it is
  *   stamped when a record stored before the field existed is first written to. While it is present
  *   the split covers only part of the record's history, and the view must not state a share from it.
- * - `_global.totalConversions` is the same converted tally across every domain, and is what the
- *   options page states as its headline. It is incremented beside the per-domain records rather
- *   than derived from them, and it predates `convertedCount`, so on a record stored before that
- *   field existed it carries the longer history. The per-site column therefore does not sum to it,
- *   and no view may present it as a total of the rows beneath it.
  * - `firstSeen` is stamped on the first write for the domain and never moves after that, so the
  *   Stats view can say how long the tally took to build. Records written before the field existed
  *   get it on their next write, which starts their period short.
@@ -113,7 +105,6 @@ const LEVEL_VALUES = {
  * @property {number} [convertedByClickbaitinessSince] - Epoch ms from which the per-level converted
  *   counts are complete. Present only on records that predate the field, where the earlier history
  *   is missing from it.
- * @property {{ totalConversions: number }} [_global] - Global tally across all sites.
  */
 
 /**
@@ -271,7 +262,10 @@ function summarizeLevels(groupedByClickbaitiness, convertedByClickbaitiness, lev
     return { shown, maxCount, totalFound };
 }
 
-/** Reserved sibling of the domain records, holding the tally across all of them. */
+/**
+ * A sibling of the domain records that older versions kept a cross-domain tally under. Nothing
+ * writes it now, but a stored map can still carry one, and it is not a site.
+ */
 const GLOBAL_KEY = "_global";
 
 /**

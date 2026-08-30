@@ -388,8 +388,8 @@ const _refreshHomeView = ({ site, pageStats, isSiteEnabled, clickbaitLevelThresh
     if (pageStatsList) {
         pageStatsList.replaceChildren();
 
-        const { shown } = summarizeLevels(
-            statsTableData, (pageStats || {}).convertedByClickbaitiness, Clickbaitiness.LEVELS);
+        // Levels only: this list draws no bars, so it has no use for the converted split.
+        const { shown } = summarizeLevels(statsTableData, undefined, Clickbaitiness.LEVELS);
         const visibleLevels = shown.map((row) => row.level);
 
         const hasExtremeLast = visibleLevels.length > 0 &&
@@ -515,7 +515,6 @@ const _refreshStatsView = ({ domain, cumulativeStats }) => {
             }));
         }
     }
-
 };
 
 const _refreshSettingsView = ({ isConversionEnabled, isDevelopmentEnv, config }) => {

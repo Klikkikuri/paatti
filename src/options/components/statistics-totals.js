@@ -17,7 +17,7 @@ const template = document.createElement('template');
 template.innerHTML = `
     <div class="totals-body">
         <div class="totals-summary">
-            <div class="totals-tile totals-headline">
+            <div class="totals-tile">
                 <p class="totals-tile-label" data-i18n="statsTotalsHeadlineLabel"></p>
                 <p class="totals-number">—</p>
                 <p class="totals-of totals-tile-note hidden"></p>
@@ -30,7 +30,7 @@ template.innerHTML = `
 
             <div class="totals-tile totals-award hidden">
                 <p class="totals-tile-label">
-                    <span class="totals-award-trophy" aria-hidden="true">🏆</span>
+                    <span aria-hidden="true">🏆</span>
                     <span data-i18n="statsTotalsAwardTitle"></span>
                 </p>
                 <p class="totals-award-site">
