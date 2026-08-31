@@ -265,16 +265,6 @@
       }
     }
   },
-  "statsTotalsFoundTitle": {
-    "message": "$FOUND$ found",
-    "description": "Tooltip on a site's converted tally where no share can be stated, giving the found tally alone",
-    "placeholders": {
-      "found": {
-        "content": "$1",
-        "example": "1,204"
-      }
-    }
-  },
   "statsTotalsColumnFound": {
     "message": "Found",
     "description": "Column heading over the titles found on a site, in the options page per-site statistics list"
