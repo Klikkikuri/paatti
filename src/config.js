@@ -130,8 +130,8 @@ const DEFAULT_CONFIG = {
                     "title": "header h2"
                 },
                 {
-                    // Lyhyesti -scroller
-                    "container": "aside[aria-labelledby=newsbriefly-heading] li a",
+                    // Lyhyesti -scroller without the last item that is just a "see more" -button.
+                    "container": "aside[aria-labelledby=newsbriefly-heading] li:not(:last-child) a",
                     "link": "self",
                     "title": "self"
                 },
