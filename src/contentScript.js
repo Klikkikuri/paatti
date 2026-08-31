@@ -414,7 +414,7 @@ let hrefSign;
         if (matchingDomain) {
             const unseenReasons = sessionTracker.getDelta(reasons);
             const delta = buildPageSnapshot(unseenReasons);
-            if (delta.convertedCount > 0 || Object.keys(delta.groupedByClickbaitiness).length > 0) {
+            if (Object.keys(delta.groupedByClickbaitiness).length > 0) {
                 await controller.updateStatistics({
                     domain: matchingDomain,
                     delta

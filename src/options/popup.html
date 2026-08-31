@@ -54,7 +54,22 @@
     <!-- STATS VIEW -->
     <div class="content statsview hidden">
         <div id="statsview">
-            <dl id="statistics-grouped-by-clickbaitiness" class="stats-list"></dl>
+            <h2 class="statsview-eyebrow">
+                <span id="statsview-collecting-period" class="hidden"></span>
+            </h2>
+            <div id="statsview-body">
+                <div class="statsview-total statsview-panel">
+                    <p class="statsview-headline">
+                        <span id="statsview-converted-count" class="statsview-headline-number"></span>
+                        <span id="statsview-converted-of" class="statsview-headline-of hidden"></span>
+                    </p>
+                    <p class="statsview-headline-label"
+                       data-i18n="statsviewGroupedByClickbaitinessLabelTotal"></p>
+                </div>
+                <p class="statsview-note" data-i18n="statsviewBreakdownCaption"></p>
+                <dl id="statistics-grouped-by-clickbaitiness" class="stats-list statsview-panel"></dl>
+            </div>
+            <p id="statsview-empty" class="statsview-empty hidden"></p>
         </div>
     </div>
 

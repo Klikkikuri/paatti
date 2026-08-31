@@ -5,8 +5,8 @@ import { getLogger, getActiveTab, getCurrentTabHostname } from "../utils.js";
 import { model, Clickbaitiness } from "../model.js";
 import { controller } from "../controller.js";
 import { getConfig, onConfigValue } from "../config.js";
-import { computeGaugeValue } from "../stats.js";
-import { isSiteEnabled, getClickbaitLevelInfo, localizeDocument } from "./utils.js";
+import { computeGaugeValue, computeCollectingPeriod, sharePercent, summarizeLevels } from "../stats.js";
+import { isSiteEnabled, getClickbaitLevelInfo, levelToI18nKey, localizeDocument } from "./utils.js";
 import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
 import "./components/master-switch-setting.js";
@@ -72,17 +72,18 @@ const _setSettingsviewCheckboxesReadonly = (isConversionEnabled) => {
 // Cached page stats pushed live from the content script.
 let cachedPageStats = null;
 
-const levelToI18nKey = (level) => `clickbaitinessLabel_${level.replaceAll(" ", "_")}`;
-
 /**
  * Create a stat row element for a given clickbait level and count.
  * @param {string} level Clickbaitiness level
  * @param {number} count Count of occurrences
  * @param {Object} [options] Optional configuration
  * @param {number} [options.clickbaitLevelThreshold] Current active threshold level (0-4)
+ * @param {number} [options.maxCount] Largest count in the list; adds a proportion bar when given
+ * @param {number} [options.rewritten] How many of the count were rewritten. Omit where the list
+ *   states no split, as the home view does, and the bar shows magnitude alone
  * @returns {HTMLDivElement} Row element containing <dt> and <dd>
  */
-const _createStatRow = (level, count, { clickbaitLevelThreshold } = {}) => {
+const _createStatRow = (level, count, { clickbaitLevelThreshold, maxCount, rewritten } = {}) => {
     const rowDiv = document.createElement("div");
     rowDiv.className = "stats-row";
 
@@ -102,110 +103,96 @@ const _createStatRow = (level, count, { clickbaitLevelThreshold } = {}) => {
 
     // Add combined color dot and info indicator button and inline details
     const levelIndex = Clickbaitiness.stringToNumber(level);
-    if (levelIndex >= 0) {
-        const levelInfo = getClickbaitLevelInfo(levelIndex);
+    const levelInfo = getClickbaitLevelInfo(levelIndex);
 
-        const dotBtn = document.createElement("button");
-        dotBtn.type = "button";
-        dotBtn.className = "stats-dot-btn";
-        dotBtn.dataset.level = level.toLowerCase().replaceAll(" ", "-");
+    rowDiv.dataset.level = level.toLowerCase().replaceAll(" ", "-");
 
-        if (typeof clickbaitLevelThreshold === "number") {
-            dotBtn.dataset.zone = levelIndex >= clickbaitLevelThreshold ? "water" : "sky";
-        }
+    const dotBtn = document.createElement("button");
+    dotBtn.type = "button";
+    dotBtn.className = "stats-dot-btn";
+    dotBtn.dataset.level = rowDiv.dataset.level;
 
-        dotBtn.textContent = "i";
-        dotBtn.setAttribute("aria-label", browser.i18n.getMessage("statsviewInfoBtnAriaLabel", [labelText.textContent]));
-        dotBtn.setAttribute("aria-expanded", "false");
-        dotBtn.setAttribute("title", levelInfo.description || "");
-
-        dt.appendChild(dotBtn);
-        dt.appendChild(labelText);
-
-        // Create inline details container with description only
-        const detailsDiv = document.createElement("div");
-        detailsDiv.className = "stats-row-details hidden";
-
-        const descSpan = document.createElement("span");
-        descSpan.className = "stats-details-desc";
-        descSpan.textContent = levelInfo.description || "";
-        detailsDiv.appendChild(descSpan);
-
-        const toggleDetails = (e) => {
-            e?.stopPropagation();
-            const willOpen = detailsDiv.classList.contains("hidden");
-
-            // Close other open details rows
-            document.querySelectorAll(".stats-row.is-open").forEach((row) => {
-                if (row !== rowDiv) {
-                    row.classList.remove("is-open");
-                    const otherBtn = row.querySelector(".stats-dot-btn");
-                    if (otherBtn) otherBtn.setAttribute("aria-expanded", "false");
-                    const otherDetails = row.querySelector(".stats-row-details");
-                    if (otherDetails) otherDetails.classList.add("hidden");
-                }
-            });
-
-            if (willOpen) {
-                detailsDiv.classList.remove("hidden");
-                rowDiv.classList.add("is-open");
-                dotBtn.setAttribute("aria-expanded", "true");
-            } else {
-                detailsDiv.classList.add("hidden");
-                rowDiv.classList.remove("is-open");
-                dotBtn.setAttribute("aria-expanded", "false");
-            }
-        };
-
-        dotBtn.addEventListener("click", toggleDetails);
-        mainDiv.addEventListener("click", (e) => {
-            if (e.target !== dotBtn) {
-                toggleDetails(e);
-            }
-        });
-        mainDiv.style.cursor = "pointer";
-
-        mainDiv.appendChild(dt);
-        mainDiv.appendChild(dd);
-        rowDiv.appendChild(mainDiv);
-        rowDiv.appendChild(detailsDiv);
-    } else {
-        const dot = document.createElement("span");
-        dot.className = "stats-dot";
-        dt.appendChild(dot);
-        dt.appendChild(labelText);
-
-        mainDiv.appendChild(dt);
-        mainDiv.appendChild(dd);
-        rowDiv.appendChild(mainDiv);
+    if (typeof clickbaitLevelThreshold === "number") {
+        dotBtn.dataset.zone = levelIndex >= clickbaitLevelThreshold ? "water" : "sky";
     }
 
-    return rowDiv;
-};
+    dotBtn.textContent = "i";
+    dotBtn.setAttribute("aria-label", browser.i18n.getMessage("statsviewInfoBtnAriaLabel", [labelText.textContent]));
+    dotBtn.setAttribute("aria-expanded", "false");
+    dotBtn.setAttribute("title", levelInfo.description || "");
 
-/**
- * Create a summary total row element.
- * @param {number} totalCount Total count of occurrences
- * @returns {HTMLDivElement} Row element containing <dt> and <dd>
- */
-const _createTotalStatRow = (totalCount) => {
-    const rowDiv = document.createElement("div");
-    rowDiv.className = "stats-row stats-total-row";
+    dt.appendChild(dotBtn);
+    dt.appendChild(labelText);
 
-    const mainDiv = document.createElement("div");
-    mainDiv.className = "stats-row-main";
+    // Create inline details container with description only
+    const detailsDiv = document.createElement("div");
+    detailsDiv.className = "stats-row-details hidden";
 
-    const dt = document.createElement("dt");
-    dt.className = "stats-label";
-    dt.textContent = browser.i18n.getMessage("statsviewGroupedByClickbaitinessLabelTotal");
+    const descSpan = document.createElement("span");
+    descSpan.className = "stats-details-desc";
+    descSpan.textContent = levelInfo.description || "";
+    detailsDiv.appendChild(descSpan);
 
-    const dd = document.createElement("dd");
-    dd.className = "stats-count";
-    dd.textContent = String(totalCount);
+    const toggleDetails = (e) => {
+        e?.stopPropagation();
+        const willOpen = detailsDiv.classList.contains("hidden");
+
+        // Close other open details rows
+        document.querySelectorAll(".stats-row.is-open").forEach((row) => {
+            if (row !== rowDiv) {
+                row.classList.remove("is-open");
+                const otherBtn = row.querySelector(".stats-dot-btn");
+                if (otherBtn) otherBtn.setAttribute("aria-expanded", "false");
+                const otherDetails = row.querySelector(".stats-row-details");
+                if (otherDetails) otherDetails.classList.add("hidden");
+            }
+        });
+
+        if (willOpen) {
+            detailsDiv.classList.remove("hidden");
+            rowDiv.classList.add("is-open");
+            dotBtn.setAttribute("aria-expanded", "true");
+        } else {
+            detailsDiv.classList.add("hidden");
+            rowDiv.classList.remove("is-open");
+            dotBtn.setAttribute("aria-expanded", "false");
+        }
+    };
+
+    dotBtn.addEventListener("click", toggleDetails);
 
     mainDiv.appendChild(dt);
     mainDiv.appendChild(dd);
     rowDiv.appendChild(mainDiv);
+
+    if (typeof maxCount === "number" && maxCount > 0) {
+        const bar = document.createElement("div");
+        bar.className = "stats-bar";
+
+        // Set as a style rather than templated into markup, which web-ext lint reads as an unsafe
+        // assignment.
+        const fill = document.createElement("div");
+        fill.className = "stats-bar-fill";
+        fill.style.width = `${(count / maxCount) * 100}%`;
+
+        if (typeof rewritten === "number") {
+            const rewrittenEl = document.createElement("div");
+            rewrittenEl.className = "stats-bar-rewritten";
+            rewrittenEl.style.width = count > 0 ? `${(rewritten / count) * 100}%` : "0%";
+            fill.appendChild(rewrittenEl);
+
+            rowDiv.setAttribute("title", browser.i18n.getMessage(
+                "statsviewRowRewritten", [String(rewritten), String(count)]));
+        } else {
+            fill.classList.add("is-plain");
+        }
+
+        bar.appendChild(fill);
+        rowDiv.appendChild(bar);
+    }
+
+    rowDiv.appendChild(detailsDiv);
+
     return rowDiv;
 };
 
@@ -401,9 +388,9 @@ const _refreshHomeView = ({ site, pageStats, isSiteEnabled, clickbaitLevelThresh
     if (pageStatsList) {
         pageStatsList.replaceChildren();
 
-        const visibleLevels = Clickbaitiness.LEVELS.filter((level) => {
-            return (statsTableData[level] || 0) > 0;
-        });
+        // Levels only: this list draws no bars, so it has no use for the converted split.
+        const { shown } = summarizeLevels(statsTableData, undefined, Clickbaitiness.LEVELS);
+        const visibleLevels = shown.map((row) => row.level);
 
         const hasExtremeLast = visibleLevels.length > 0 &&
             visibleLevels[visibleLevels.length - 1] === Clickbaitiness.LEVEL_EXTREME;
@@ -446,20 +433,78 @@ const _refreshHomeView = ({ site, pageStats, isSiteEnabled, clickbaitLevelThresh
     }
 };
 
-const _refreshStatsView = ({ cumulativeStats, clickbaitLevelThreshold }) => {
-    const statsTableData = (cumulativeStats || {}).groupedByClickbaitiness || {};
+/**
+ * Fills the stats view eyebrow: how long the tally has been running. The site it belongs to is
+ * already named in the popup header.
+ * @param {number} [firstSeen] Epoch ms collection started
+ */
+const _refreshStatsHeader = (firstSeen) => {
+    const periodEl = document.getElementById("statsview-collecting-period");
+    if (!periodEl) return;
+
+    const period = computeCollectingPeriod(firstSeen);
+    if (period) {
+        periodEl.textContent = browser.i18n.getMessage(period.labelI18nKey, [String(period.count)]);
+        // The rounded phrase is the headline; the exact start date stays reachable on hover.
+        periodEl.title = new Date(firstSeen).toLocaleString();
+    } else {
+        periodEl.textContent = "";
+        periodEl.removeAttribute("title");
+    }
+    periodEl.classList.toggle("hidden", !period);
+};
+
+/**
+ * Renders the historical tally for one site. The rows carry no threshold zone: the tally spans the
+ * whole life of the record, over which the threshold can have moved any number of times, so
+ * colouring it by today's setting would claim something about the past that was never true.
+ */
+const _refreshStatsView = ({ domain, cumulativeStats }) => {
+    const stats = cumulativeStats || {};
+    const { shown, maxCount, totalFound, totalRewritten } = summarizeLevels(
+        stats.groupedByClickbaitiness, stats.convertedByClickbaitiness, Clickbaitiness.LEVELS);
+
+    _refreshStatsHeader(stats.firstSeen);
+
+    const hasData = totalFound > 0;
+    const body = document.getElementById("statsview-body");
+    if (body) {
+        body.classList.toggle("hidden", !hasData);
+    }
+
+    const emptyEl = document.getElementById("statsview-empty");
+    if (emptyEl) {
+        // An unsupported site is a dead end; a supported one with nothing counted just needs time.
+        emptyEl.textContent = browser.i18n.getMessage(
+            domain ? "statsviewNoData" : "homeviewStatusNotSupported");
+        emptyEl.classList.toggle("hidden", hasData);
+    }
+
+    const convertedEl = document.getElementById("statsview-converted-count");
+    if (convertedEl) {
+        convertedEl.textContent = String(totalRewritten);
+    }
+
+    // Both tallies count the same stream of found titles, so the share between them is real.
+    const ofEl = document.getElementById("statsview-converted-of");
+    if (ofEl) {
+        ofEl.textContent = hasData
+            ? browser.i18n.getMessage("statsviewConvertedOfFound",
+                [String(totalFound), String(sharePercent(totalRewritten, totalFound))])
+            : "";
+        ofEl.classList.toggle("hidden", !hasData);
+    }
+
     const statsList = document.getElementById("statistics-grouped-by-clickbaitiness");
     if (statsList) {
         statsList.replaceChildren();
 
-        let total = 0;
-        for (const level of Clickbaitiness.LEVELS) {
-            const count = statsTableData[level] || 0;
-            total += count;
-            statsList.appendChild(_createStatRow(level, count, { clickbaitLevelThreshold }));
+        for (const row of shown) {
+            statsList.appendChild(_createStatRow(row.level, row.count, {
+                maxCount,
+                rewritten: row.rewritten
+            }));
         }
-
-        statsList.appendChild(_createTotalStatRow(total));
     }
 };
 
@@ -582,8 +627,8 @@ const refresh = async () => {
         clickbaitLevelThreshold,
     });
     _refreshStatsView({
+        domain: matchingDomain,
         cumulativeStats,
-        clickbaitLevelThreshold,
     });
 
     // Load conversions list in feedback view

@@ -7,7 +7,6 @@
 /* Raised container: lifts a block off a sunken surface. Add the class, or extend
  * this selector list, rather than restating the surface/border/shadow trio. */
 .raised,
-.stats-row,
 .feedback-card {
     background: var(--color-surface);
     border: 1px solid var(--color-border-strong);

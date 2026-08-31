@@ -75,16 +75,92 @@
     "description": "Instruction text to show in the bottom of 'main' view to help user with an unexpected error"
   },
 
-  "statsviewGroupedByClickbaitinessLabelClickbaitiness": {
-    "message": "Klikkiotsikkoisuus",
-    "description": "Title of the stats section clickbaitiness grouping table for the 'type' or 'severity' of clickbait"
+  "statsviewConvertedOfFound": {
+    "message": "/ $FOUND$ ($PERCENT$ %)",
+    "description": "Follows the converted title count in the stats view, giving it as a share of every title found on the site",
+    "placeholders": {
+      "found": {
+        "content": "$1",
+        "example": "39"
+      },
+      "percent": {
+        "content": "$2",
+        "example": "38"
+      }
+    }
   },
-  "statsviewGroupedByClickbaitinessLabelAmount": {
-    "message": "Määrä",
-    "description": "Title of the stats section clickbaitiness grouping table for the amount of this type of clickbait"
+  "statsviewBreakdownCaption": {
+    "message": "Kaikki löydetyt otsikot, ennen oikaisua.",
+    "description": "Caption above the stats view level breakdown, saying the counts below are of found titles rather than rewritten ones"
+  },
+  "statsviewNoData": {
+    "message": "Tältä sivustolta ei ole vielä laskettu otsikoita.",
+    "description": "Message shown in place of the stats view tally when the site is supported but nothing has been counted on it"
+  },
+  "statsviewRowRewritten": {
+    "message": "$DONE$/$FOUND$ oikaistu",
+    "description": "Tooltip on a stats view level row, saying how many of the titles found at this level were rewritten",
+    "placeholders": {
+      "done": {
+        "content": "$1",
+        "example": "6"
+      },
+      "found": {
+        "content": "$2",
+        "example": "23"
+      }
+    }
+  },
+  "statsviewCollectingPeriodToday": {
+    "message": "Kerätty tästä päivästä",
+    "description": "Caption under the stats view heading, when collection for this site started today"
+  },
+  "statsviewCollectingPeriodDay": {
+    "message": "Kerätty 1 päivän ajan",
+    "description": "Caption under the stats view heading, when collection for this site started one day ago"
+  },
+  "statsviewCollectingPeriodDays": {
+    "message": "Kerätty $COUNT$ päivän ajan",
+    "description": "Caption under the stats view heading, saying for how many days the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "statsviewCollectingPeriodWeeks": {
+    "message": "Kerätty $COUNT$ viikon ajan",
+    "description": "Caption under the stats view heading, saying for how many weeks the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "6"
+      }
+    }
+  },
+  "statsviewCollectingPeriodMonths": {
+    "message": "Kerätty $COUNT$ kuukauden ajan",
+    "description": "Caption under the stats view heading, saying for how many months the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "7"
+      }
+    }
+  },
+  "statsviewCollectingPeriodYears": {
+    "message": "Kerätty $COUNT$ vuoden ajan",
+    "description": "Caption under the stats view heading, saying for how many years the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
   },
   "statsviewGroupedByClickbaitinessLabelTotal": {
-    "message": "Yhteensä",
+    "message": "Oikaistuja otsikoita",
     "description": "Title of the stats section clickbaitiness grouping table for the total amount of converted titles"
   },
   "statsviewInfoBtnAriaLabel": {
@@ -96,6 +172,142 @@
         "example": "Kohtalaisesti klikkimäiset"
       }
     }
+  },
+  "legendStatistics": {
+    "message": "📊 Tilastot",
+    "description": "Legend for the options page statistics section"
+  },
+  "descStatistics": {
+    "message": "Kaikkien käytössä olevien sivustojen yhteistilastot: mitä Paatti löysi ja kuinka paljon siitä oikaistiin",
+    "description": "Description for the options page statistics section"
+  },
+  "statsTotalsHeadlineLabel": {
+    "message": "oikaistuja klikkiotsikoita",
+    "description": "Label under the running total on the options page statistics section"
+  },
+  "statsTotalsReading": {
+    "message": "$PERCENT$ % · $LABEL$",
+    "description": "A gauge reading: how clickbaity a tally is, as a percentage and the level it lands on",
+    "placeholders": {
+      "percent": {
+        "content": "$1",
+        "example": "64"
+      },
+      "label": {
+        "content": "$2",
+        "example": "Very Clickbaity"
+      }
+    }
+  },
+  "statsTotalsAwardTitle": {
+    "message": "Klikkiotsikkoisin sivusto",
+    "description": "Title of the award naming the site with the highest clickbaitiness reading"
+  },
+  "statsTotalsSince": {
+    "message": "Alkaen $DATE$",
+    "description": "Caption under the options page statistics headline, giving the date the earliest tally started",
+    "placeholders": {
+      "date": {
+        "content": "$1",
+        "example": "12.3.2026"
+      }
+    }
+  },
+  "statsTotalsPerSiteTitle": {
+    "message": "Sivusto",
+    "description": "Column heading naming the site, in the options page per-site statistics list"
+  },
+  "statsTotalsSiteLevelsAriaLabel": {
+    "message": "Klikkiotsikkoisuuden erittely: $SITE$",
+    "description": "Accessible label of the control that opens a site's per-level breakdown, in the options page per-site statistics list",
+    "placeholders": {
+      "site": {
+        "content": "$1",
+        "example": "Yle"
+      }
+    }
+  },
+  "statsTotalsAboutSummary": {
+    "message": "Miten taulukkoa luetaan",
+    "description": "Label of the disclosure above the options page per-site statistics list, opening onto what its columns mean"
+  },
+  "statsTotalsAboutReading": {
+    "message": "Sivustolta löydettyjen otsikoiden keskimääräinen taso, osuutena korkeimmasta tasosta ja nimettynä sen tason mukaan, johon se pyöristyy. Se ei kerro, montako otsikkoa niitä oli.",
+    "description": "Explanation of the Clickbaitiness column, in the disclosure above the options page per-site statistics list"
+  },
+  "statsTotalsAboutAmounts": {
+    "message": "Montako otsikkoa sivustolla oikaistiin ja kuinka suuri osuus se on kaikista sieltä löydetyistä otsikoista. Palkki täyttyy tähän osuuteen. Vie osoitin luvun päälle nähdäksesi, montako otsikkoa löytyi.",
+    "description": "Explanation of the Converted column, in that disclosure"
+  },
+  "statsTotalsAboutLevelsTerm": {
+    "message": "Tasoerittely",
+    "description": "Term in that disclosure, naming the per-level breakdown that a site row opens onto"
+  },
+  "statsTotalsAboutLevels": {
+    "message": "Avaa sivuston tasot napsauttamalla sen nimeä. Kukin palkki vertaa siellä yhtä tasoa saman sivuston suurimpaan tasoon, eli se kertoo määrän eikä osuutta.",
+    "description": "Explanation of that term, on what the bars in an opened site's level rows compare"
+  },
+  "statsTotalsColumnReading": {
+    "message": "Klikkiotsikkoisuus",
+    "description": "Column heading over the level a site reads at, in the options page per-site statistics list"
+  },
+  "statsTotalsShareOfFound": {
+    "message": "$PERCENT$ % kaikista $FOUND$ löydetystä",
+    "description": "Tooltip on a site's converted tally, giving the share and the found tally it is a share of",
+    "placeholders": {
+      "percent": {
+        "content": "$1",
+        "example": "51"
+      },
+      "found": {
+        "content": "$2",
+        "example": "1,204"
+      }
+    }
+  },
+  "statsTotalsColumnFound": {
+    "message": "Löydetyt",
+    "description": "Column heading over the titles found on a site, in the options page per-site statistics list"
+  },
+  "statsTotalsColumnConverted": {
+    "message": "Oikaistut",
+    "description": "Column heading over the titles converted on a site, in the options page per-site statistics list"
+  },
+  "statsTotalsSharePercent": {
+    "message": "$PERCENT$ %",
+    "description": "A converted tally as a share of the titles found beside it, in the options page per-site statistics list",
+    "placeholders": {
+      "percent": {
+        "content": "$1",
+        "example": "51"
+      }
+    }
+  },
+  "statsTotalsMixLabel": {
+    "message": "Mitä sinulle tarjottiin",
+    "description": "Heading of the options page bar showing how the titles found split across the clickbaitiness levels"
+  },
+  "statsTotalsMixSegment": {
+    "message": "$LEVEL$: $COUNT$ ($PERCENT$ %)",
+    "description": "Tooltip of one segment of that bar, naming its level, its tally and its share",
+    "placeholders": {
+      "level": {
+        "content": "$1",
+        "example": "Very Clickbaity"
+      },
+      "count": {
+        "content": "$2",
+        "example": "800"
+      },
+      "percent": {
+        "content": "$3",
+        "example": "26"
+      }
+    }
+  },
+  "statsTotalsEmpty": {
+    "message": "Ei vielä laskettuja otsikoita. Käy tuetulla sivustolla.",
+    "description": "Message shown in place of the options page statistics when no site has been counted yet"
   },
   "statsThresholdDividerLabel": {
     "message": "Raja-arvo",
@@ -165,7 +377,7 @@
     "description": "Label of the navigation menu main view button"
   },
   "navigationStatsLabel": {
-    "message": "Tilastot",
+    "message": "Sivuston tilastot",
     "description": "Label of the navigation menu statistics view button"
   },
   "navigationFeedbackLabel": {

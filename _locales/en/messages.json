@@ -75,16 +75,92 @@
     "description": "Instruction text to show in the bottom of 'main' view to help user with an unexpected error"
   },
 
-  "statsviewGroupedByClickbaitinessLabelClickbaitiness": {
-    "message": "Clickbaitiness",
-    "description": "Title of the stats section clickbaitiness grouping table for the 'type' or 'severity' of clickbait"
+  "statsviewConvertedOfFound": {
+    "message": "of $FOUND$ ($PERCENT$%)",
+    "description": "Follows the converted title count in the stats view, giving it as a share of every title found on the site",
+    "placeholders": {
+      "found": {
+        "content": "$1",
+        "example": "39"
+      },
+      "percent": {
+        "content": "$2",
+        "example": "38"
+      }
+    }
   },
-  "statsviewGroupedByClickbaitinessLabelAmount": {
-    "message": "Amount",
-    "description": "Title of the stats section clickbaitiness grouping table for the amount of this type of clickbait"
+  "statsviewBreakdownCaption": {
+    "message": "All titles found, before rewriting.",
+    "description": "Caption above the stats view level breakdown, saying the counts below are of found titles rather than rewritten ones"
+  },
+  "statsviewNoData": {
+    "message": "No titles counted on this site yet.",
+    "description": "Message shown in place of the stats view tally when the site is supported but nothing has been counted on it"
+  },
+  "statsviewRowRewritten": {
+    "message": "$DONE$ of $FOUND$ rewritten",
+    "description": "Tooltip on a stats view level row, saying how many of the titles found at this level were rewritten",
+    "placeholders": {
+      "done": {
+        "content": "$1",
+        "example": "6"
+      },
+      "found": {
+        "content": "$2",
+        "example": "23"
+      }
+    }
+  },
+  "statsviewCollectingPeriodToday": {
+    "message": "Collecting since today",
+    "description": "Caption under the stats view heading, when collection for this site started today"
+  },
+  "statsviewCollectingPeriodDay": {
+    "message": "Collecting for 1 day",
+    "description": "Caption under the stats view heading, when collection for this site started one day ago"
+  },
+  "statsviewCollectingPeriodDays": {
+    "message": "Collecting for $COUNT$ days",
+    "description": "Caption under the stats view heading, saying for how many days the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "5"
+      }
+    }
+  },
+  "statsviewCollectingPeriodWeeks": {
+    "message": "Collecting for $COUNT$ weeks",
+    "description": "Caption under the stats view heading, saying for how many weeks the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "6"
+      }
+    }
+  },
+  "statsviewCollectingPeriodMonths": {
+    "message": "Collecting for $COUNT$ months",
+    "description": "Caption under the stats view heading, saying for how many months the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "7"
+      }
+    }
+  },
+  "statsviewCollectingPeriodYears": {
+    "message": "Collecting for $COUNT$ years",
+    "description": "Caption under the stats view heading, saying for how many years the tally below has been collected",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
   },
   "statsviewGroupedByClickbaitinessLabelTotal": {
-    "message": "Total",
+    "message": "Converted titles",
     "description": "Title of the stats section clickbaitiness grouping table for the total amount of converted titles"
   },
   "statsviewInfoBtnAriaLabel": {
@@ -96,6 +172,142 @@
         "example": "Moderately Clickbaity"
       }
     }
+  },
+  "legendStatistics": {
+    "message": "📊 Statistics",
+    "description": "Legend for the options page statistics section"
+  },
+  "descStatistics": {
+    "message": "Totals for every enabled site: what Paatti found, and how much of it was rewritten",
+    "description": "Description for the options page statistics section"
+  },
+  "statsTotalsHeadlineLabel": {
+    "message": "clickbaits converted",
+    "description": "Label under the running total on the options page statistics section"
+  },
+  "statsTotalsReading": {
+    "message": "$PERCENT$ % · $LABEL$",
+    "description": "A gauge reading: how clickbaity a tally is, as a percentage and the level it lands on",
+    "placeholders": {
+      "percent": {
+        "content": "$1",
+        "example": "64"
+      },
+      "label": {
+        "content": "$2",
+        "example": "Very Clickbaity"
+      }
+    }
+  },
+  "statsTotalsAwardTitle": {
+    "message": "Clickbaitiest site",
+    "description": "Title of the award naming the site with the highest clickbaitiness reading"
+  },
+  "statsTotalsSince": {
+    "message": "Since $DATE$",
+    "description": "Caption under the options page statistics headline, giving the date the earliest tally started",
+    "placeholders": {
+      "date": {
+        "content": "$1",
+        "example": "12/03/2026"
+      }
+    }
+  },
+  "statsTotalsPerSiteTitle": {
+    "message": "Site",
+    "description": "Column heading naming the site, in the options page per-site statistics list"
+  },
+  "statsTotalsSiteLevelsAriaLabel": {
+    "message": "Clickbaitiness breakdown for $SITE$",
+    "description": "Accessible label of the control that opens a site's per-level breakdown, in the options page per-site statistics list",
+    "placeholders": {
+      "site": {
+        "content": "$1",
+        "example": "Yle"
+      }
+    }
+  },
+  "statsTotalsAboutSummary": {
+    "message": "How to read this table",
+    "description": "Label of the disclosure above the options page per-site statistics list, opening onto what its columns mean"
+  },
+  "statsTotalsAboutReading": {
+    "message": "The average level of the titles found on the site, as a share of the highest level and named by the level it rounds to. It does not tell how many titles there were.",
+    "description": "Explanation of the Clickbaitiness column, in the disclosure above the options page per-site statistics list"
+  },
+  "statsTotalsAboutAmounts": {
+    "message": "How many titles were rewritten on the site, and what share that is of all the titles found there. The bar fills to that share. Point at the number to see how many were found.",
+    "description": "Explanation of the Converted column, in that disclosure"
+  },
+  "statsTotalsAboutLevelsTerm": {
+    "message": "Level breakdown",
+    "description": "Term in that disclosure, naming the per-level breakdown that a site row opens onto"
+  },
+  "statsTotalsAboutLevels": {
+    "message": "Select a site name to open its levels. Each bar there compares one level with the busiest level of the same site, so it shows an amount, not a share.",
+    "description": "Explanation of that term, on what the bars in an opened site's level rows compare"
+  },
+  "statsTotalsColumnReading": {
+    "message": "Clickbaitiness",
+    "description": "Column heading over the level a site reads at, in the options page per-site statistics list"
+  },
+  "statsTotalsShareOfFound": {
+    "message": "$PERCENT$ % of $FOUND$ found",
+    "description": "Tooltip on a site's converted tally, giving the share and the found tally it is a share of",
+    "placeholders": {
+      "percent": {
+        "content": "$1",
+        "example": "51"
+      },
+      "found": {
+        "content": "$2",
+        "example": "1,204"
+      }
+    }
+  },
+  "statsTotalsColumnFound": {
+    "message": "Found",
+    "description": "Column heading over the titles found on a site, in the options page per-site statistics list"
+  },
+  "statsTotalsColumnConverted": {
+    "message": "Converted",
+    "description": "Column heading over the titles converted on a site, in the options page per-site statistics list"
+  },
+  "statsTotalsSharePercent": {
+    "message": "$PERCENT$%",
+    "description": "A converted tally as a share of the titles found beside it, in the options page per-site statistics list",
+    "placeholders": {
+      "percent": {
+        "content": "$1",
+        "example": "51"
+      }
+    }
+  },
+  "statsTotalsMixLabel": {
+    "message": "What you were served",
+    "description": "Heading of the options page bar showing how the titles found split across the clickbaitiness levels"
+  },
+  "statsTotalsMixSegment": {
+    "message": "$LEVEL$: $COUNT$ ($PERCENT$%)",
+    "description": "Tooltip of one segment of that bar, naming its level, its tally and its share",
+    "placeholders": {
+      "level": {
+        "content": "$1",
+        "example": "Very Clickbaity"
+      },
+      "count": {
+        "content": "$2",
+        "example": "800"
+      },
+      "percent": {
+        "content": "$3",
+        "example": "26"
+      }
+    }
+  },
+  "statsTotalsEmpty": {
+    "message": "Nothing counted yet. Visit a supported site to start the tally.",
+    "description": "Message shown in place of the options page statistics when no site has been counted yet"
   },
   "statsThresholdDividerLabel": {
     "message": "Threshold",
@@ -165,7 +377,7 @@
     "description": "Label of the navigation menu main view button"
   },
   "navigationStatsLabel": {
-    "message": "Statistics",
+    "message": "Site Statistics",
     "description": "Label of the navigation menu statistics view button"
   },
   "navigationFeedbackLabel": {
