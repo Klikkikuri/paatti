@@ -55,14 +55,13 @@ const DAY = 24 * 60 * 60 * 1000;
 const POPULATED = {
     'is.fi': {
         groupedByClickbaitiness: { 'Very Clickbaity': 800, 'Extremely Clickbaity': 404 },
-        // yle.fi deliberately carries none, so one fixture covers a known split and a missing one.
-        convertedByClickbaitiness: { 'Very Clickbaity': 400, 'Extremely Clickbaity': 101 },
-        convertedCount: 612,
+        // yle.fi deliberately carries none, so one fixture covers a record with the split and one
+        // stored before it existed.
+        convertedByClickbaitiness: { 'Very Clickbaity': 400, 'Extremely Clickbaity': 212 },
         firstSeen: Date.now() - 5 * DAY
     },
     'yle.fi': {
-        groupedByClickbaitiness: { 'Not Clickbait at all': 400, 'Slightly Clickbaity': 20 },
-        convertedCount: 38
+        groupedByClickbaitiness: { 'Not Clickbait at all': 400, 'Slightly Clickbaity': 20 }
     },
     _global: { totalConversions: 1842 }
 };
@@ -95,25 +94,13 @@ describe('statistics-totals', () => {
     test('states the rewritten tally as a share of everything found', async () => {
         await mount();
 
-        // 612 + 38 rewritten, of 1204 + 420 found -- the same rows the table lists.
-        assert.equal(element.querySelector('.totals-number').textContent, (650).toLocaleString());
+        // 612 rewritten from is.fi and none from yle.fi, which predates the split, of 1204 + 420
+        // found -- the same rows the table lists.
+        assert.equal(element.querySelector('.totals-number').textContent, (612).toLocaleString());
         assert.equal(element.querySelector('.totals-of').textContent,
-            `of ${(1624).toLocaleString()} (40 %)`);
+            `of ${(1624).toLocaleString()} (38 %)`);
         assert.ok(!element.querySelector('.totals-body').classList.contains('hidden'));
         assert.ok(element.querySelector('.totals-empty').classList.contains('hidden'));
-    });
-
-    test('states the tally alone when nothing was found to compare it against', async () => {
-        await browser.storage.local.set({
-            statistics: {
-                'none.fi': { groupedByClickbaitiness: {}, convertedCount: 4 },
-                _global: { totalConversions: 4 }
-            }
-        });
-        await mount();
-
-        assert.ok(!element.querySelector('.totals-body').classList.contains('hidden'));
-        assert.ok(element.querySelector('.totals-of').classList.contains('hidden'));
     });
 
     test('what the columns mean is there to open, and closed until it is', async () => {
@@ -176,7 +163,7 @@ describe('statistics-totals', () => {
         test('is withheld until something has been found', async () => {
             await browser.storage.local.set({
                 statistics: {
-                    'none.fi': { groupedByClickbaitiness: {}, convertedCount: 4 },
+                    'none.fi': { groupedByClickbaitiness: {} },
                     _global: { totalConversions: 4 }
                 }
             });
@@ -213,20 +200,6 @@ describe('statistics-totals', () => {
             assert.equal(chip.textContent, 'Very Clickbaity');
             assert.equal(chip.dataset.severity, '3');
             assert.equal(chip.getAttribute('title'), '83 % - Very Clickbaity');
-        });
-
-        test('a site that found nothing still reads at a level', async () => {
-            await browser.storage.local.set({
-                statistics: {
-                    'none.fi': { groupedByClickbaitiness: {}, convertedCount: 4 },
-                    _global: { totalConversions: 4 }
-                }
-            });
-            await mount();
-
-            const chip = element.querySelector('.totals-site[data-domain="none.fi"] .totals-chip');
-            assert.equal(chip.dataset.severity, '0');
-            assert.equal(chip.textContent, 'Not Clickbait at all');
         });
 
         test('sits outside the control, so pressing it opens nothing', async () => {
@@ -272,7 +245,12 @@ describe('statistics-totals', () => {
 
     test('names a site by its configured name where it has one', async () => {
         await browser.storage.local.set({
-            statistics: { 'yle.fi': { groupedByClickbaitiness: { 'Very Clickbaity': 8 }, convertedCount: 3 } }
+            statistics: {
+                'yle.fi': {
+                    groupedByClickbaitiness: { 'Very Clickbaity': 8 },
+                    convertedByClickbaitiness: { 'Very Clickbaity': 3 }
+                }
+            }
         });
         await mount();
 
@@ -309,34 +287,6 @@ describe('statistics-totals', () => {
         assert.ok(!element.querySelector('.totals-empty').classList.contains('hidden'));
     });
 
-    test('a rewritten tally larger than the found one states no share', async () => {
-        await browser.storage.local.set({
-            statistics: {
-                'odd.fi': { groupedByClickbaitiness: { 'Very Clickbaity': 100 }, convertedCount: 150 },
-                'ok.fi': { groupedByClickbaitiness: { 'Very Clickbaity': 200 }, convertedCount: 60 },
-                _global: { totalConversions: 210 }
-            }
-        });
-        await mount();
-
-        const rows = Object.fromEntries([...element.querySelectorAll('.totals-site')]
-            .map((row) => [row.dataset.domain, row]));
-
-        // 150 rewritten is not a part of 100 found, so the converted cell states the tally alone.
-        assert.equal(rows['odd.fi'].querySelector('.totals-site-converted .totals-amount-value').textContent, '150');
-        assert.equal(rows['odd.fi'].querySelector('.totals-site-converted .totals-amount-note'), null);
-        // The bar draws that share, so it keeps its column and draws nothing in it, and the
-        // tooltip states the found tally alone.
-        assert.ok(rows['odd.fi'].querySelector('.totals-share-bar').classList.contains('is-unknown'));
-        assert.equal(rows['odd.fi'].querySelector('.totals-share-fill'), null);
-        assert.equal(rows['odd.fi'].querySelector('.totals-site-converted').getAttribute('title'),
-            '100 found');
-
-        assert.equal(rows['ok.fi'].querySelector('.totals-site-converted .totals-amount-value').textContent, '60');
-        assert.equal(rows['ok.fi'].querySelector('.totals-site-converted .totals-amount-note').textContent, '30 %');
-        assert.equal(rows['ok.fi'].querySelector('.totals-share-fill').style.width, '30%');
-    });
-
     describe('the per-site level breakdown', () => {
         /** The row for one domain, whichever place the sort has put it in. */
         const rowFor = (domain) => element.querySelector(`.totals-site[data-domain="${domain}"]`);
@@ -350,19 +300,6 @@ describe('statistics-totals', () => {
             assert.equal(toggle.getAttribute('aria-label'), 'Breakdown for is.fi');
             assert.equal(toggle.getAttribute('aria-controls'),
                 rowFor('is.fi').querySelector('.totals-site-levels').id);
-        });
-
-        test('a site with nothing found has nothing to open', async () => {
-            await browser.storage.local.set({
-                statistics: {
-                    'none.fi': { groupedByClickbaitiness: {}, convertedCount: 4 },
-                    _global: { totalConversions: 4 }
-                }
-            });
-            await mount();
-
-            assert.equal(rowFor('none.fi').querySelector('.totals-site-name').tagName, 'SPAN');
-            assert.equal(rowFor('none.fi').querySelector('.totals-site-levels'), null);
         });
 
         test('the levels are drawn while the panel is still closed', async () => {
@@ -410,7 +347,7 @@ describe('statistics-totals', () => {
             assert.equal(levels[0].querySelector('.totals-level-converted .totals-amount-value').textContent,
                 (400).toLocaleString());
             assert.equal(levels[0].querySelector('.totals-level-converted .totals-amount-note').textContent, '50 %');
-            assert.equal(levels[1].querySelector('.totals-level-converted .totals-amount-note').textContent, '25 %');
+            assert.equal(levels[1].querySelector('.totals-level-converted .totals-amount-note').textContent, '52 %');
         });
 
         test('a level whose titles were all left alone still states its nothing', async () => {
@@ -424,23 +361,16 @@ describe('statistics-totals', () => {
             assert.equal(levels[1].querySelector('.totals-level-converted .totals-amount-note').textContent, '0 %');
         });
 
-        test('a record with no split states the found tally alone', async () => {
+        // Nothing can divide a record stored before the split into levels after the fact, so it
+        // states what it found and nothing rewritten.
+        test('a record predating the split reads zero rewritten', async () => {
             await mount();
 
             const [level] = rowFor('yle.fi').querySelectorAll('.totals-level');
             assert.equal(level.querySelector('.totals-level-found .totals-amount-value').textContent,
                 (400).toLocaleString());
-            assert.equal(level.querySelector('.totals-level-converted'), null);
-        });
-
-        test('a split that started late is withheld too', async () => {
-            const late = structuredClone(POPULATED);
-            late['is.fi'].convertedByClickbaitinessSince = Date.now() - 2 * DAY;
-            await browser.storage.local.set({ statistics: late });
-            await mount();
-
-            const [level] = rowFor('is.fi').querySelectorAll('.totals-level');
-            assert.equal(level.querySelector('.totals-level-converted'), null);
+            assert.equal(level.querySelector('.totals-level-converted .totals-amount-value').textContent, '0');
+            assert.equal(level.querySelector('.totals-level-converted .totals-amount-note').textContent, '0 %');
         });
 
         test('an open panel survives a statistics write', async () => {
@@ -450,7 +380,7 @@ describe('statistics-totals', () => {
             // Enough to overtake is.fi, so the row moves as well as being replaced.
             const grown = structuredClone(POPULATED);
             grown['yle.fi'].groupedByClickbaitiness['Not Clickbait at all'] = 4000;
-            grown['yle.fi'].convertedCount = 3000;
+            grown['yle.fi'].convertedByClickbaitiness = { 'Not Clickbait at all': 3000 };
             await browser.storage.local.set({ statistics: grown });
             await flush();
 
@@ -494,11 +424,11 @@ describe('statistics-totals', () => {
         await mount();
 
         const grown = structuredClone(POPULATED);
-        grown['is.fi'].convertedCount = 900;
+        grown['is.fi'].convertedByClickbaitiness['Extremely Clickbaity'] = 300;
         await browser.storage.local.set({ statistics: grown });
         await flush();
 
-        assert.equal(element.querySelector('.totals-number').textContent, (938).toLocaleString());
+        assert.equal(element.querySelector('.totals-number').textContent, (700).toLocaleString());
     });
 
     test('a write to another key leaves it alone', async () => {
@@ -528,6 +458,6 @@ describe('statistics-totals', () => {
         await flush();
 
         assert.equal(browser.storage.onChanged.listeners.length, 1);
-        assert.equal(element.querySelector('.totals-number').textContent, (650).toLocaleString());
+        assert.equal(element.querySelector('.totals-number').textContent, (612).toLocaleString());
     });
 });

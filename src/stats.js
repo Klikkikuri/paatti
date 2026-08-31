@@ -31,7 +31,6 @@
  *     "convertedByClickbaitiness": {
  *       "Extremely Clickbaity": 9
  *     },
- *     "convertedCount": 15,
  *     "firstSeen": 1755000000000
  *   }
  * }
@@ -42,15 +41,13 @@
  *   `SessionTracker`), preventing dynamic DOM mutation re-scans from inflating counts.
  * - `groupedByClickbaitiness` counts every title found in the database, whether or not it was
  *   converted; titles under the threshold, on a disabled site, or without a replacement land in
- *   it too. `convertedCount` tallies only the titles actually swapped on the page, so the two
- *   are not expected to agree.
- * - `convertedByClickbaitiness` is the swapped subset of `groupedByClickbaitiness`, level by level,
- *   and is the only tally that can honestly be stated as a share: within one level the rewritten
- *   titles are a subset of the found ones. It stays below `convertedCount`, which also counts
- *   swapped titles carrying no clickbaitiness at all, so the grand total of the two never reconciles.
- * - `convertedByClickbaitinessSince` marks a record that started counting the split late: it is
- *   stamped when a record stored before the field existed is first written to. While it is present
- *   the split covers only part of the record's history, and the view must not state a share from it.
+ *   it too.
+ * - `convertedByClickbaitiness` is the swapped subset of it, level by level, and the whole record
+ *   of what was rewritten: nothing is swapped below the threshold, so nothing is swapped without a
+ *   level, and a total is always a sum over these. Within a level the swapped titles are a subset
+ *   of the found ones, so a share between the two is real wherever it is stated.
+ * - Records written before the split existed carry no swapped counts, and no later write can
+ *   divide their history into levels: they keep their found counts and read zero rewritten.
  * - `firstSeen` is stamped on the first write for the domain and never moves after that, so the
  *   Stats view can say how long the tally took to build. Records written before the field existed
  *   get it on their next write, which starts their period short.
@@ -91,7 +88,6 @@ const LEVEL_VALUES = {
  * @typedef {Object} PageSnapshot
  * @property {ClickbaitinessMap} groupedByClickbaitiness - Counts per clickbaitiness level.
  * @property {ClickbaitinessMap} convertedByClickbaitiness - Counts per level of the ones converted.
- * @property {number} convertedCount - Number of elements with status 'converted'.
  */
 
 /**
@@ -99,12 +95,8 @@ const LEVEL_VALUES = {
  * @property {ClickbaitinessMap} groupedByClickbaitiness - Aggregated historical counts per level.
  * @property {ClickbaitinessMap} convertedByClickbaitiness - Aggregated historical counts per level
  *   of the titles actually converted.
- * @property {number} convertedCount - Aggregated number of titles actually converted.
  * @property {number} [firstSeen] - Epoch ms of the first write for this domain. Absent on records
  *   stored before the field existed, until their next write.
- * @property {number} [convertedByClickbaitinessSince] - Epoch ms from which the per-level converted
- *   counts are complete. Present only on records that predate the field, where the earlier history
- *   is missing from it.
  */
 
 /**
@@ -116,15 +108,11 @@ const LEVEL_VALUES = {
 function buildPageSnapshot(reasons) {
     const groupedByClickbaitiness = {};
     const convertedByClickbaitiness = {};
-    let convertedCount = 0;
 
     if (Array.isArray(reasons)) {
         for (const item of reasons) {
             if (!item) continue;
             const wasConverted = item.what === "converted";
-            if (wasConverted) {
-                convertedCount++;
-            }
             if (item.clickbaitiness != null && item.clickbaitiness !== "") {
                 groupedByClickbaitiness[item.clickbaitiness] =
                     (groupedByClickbaitiness[item.clickbaitiness] || 0) + 1;
@@ -136,7 +124,7 @@ function buildPageSnapshot(reasons) {
         }
     }
 
-    return { groupedByClickbaitiness, convertedByClickbaitiness, convertedCount };
+    return { groupedByClickbaitiness, convertedByClickbaitiness };
 }
 
 /**
@@ -186,24 +174,11 @@ function computeGaugeValue(groupedByClickbaitiness) {
  * @returns {CumulativeStats} Newly merged cumulative statistics object.
  */
 function mergeStats(existing = {}, incoming = {}, now = Date.now()) {
-    // A record that already carries history but no per-level converted counts started collecting
-    // them here, so they will forever describe less than the other tallies do. Stamp when they
-    // began, so the view can decline to state a share it cannot back.
-    const startsSplitLate = existing.convertedByClickbaitiness == null &&
-        ((existing.convertedCount || 0) > 0 ||
-            Object.keys(existing.groupedByClickbaitiness || {}).length > 0);
-
     const merged = {
         groupedByClickbaitiness: { ...(existing.groupedByClickbaitiness || {}) },
         convertedByClickbaitiness: { ...(existing.convertedByClickbaitiness || {}) },
-        convertedCount: (existing.convertedCount || 0) + (incoming.convertedCount || 0),
         firstSeen: existing.firstSeen ?? now
     };
-
-    const splitSince = existing.convertedByClickbaitinessSince ?? (startsSplitLate ? now : undefined);
-    if (splitSince !== undefined) {
-        merged.convertedByClickbaitinessSince = splitSince;
-    }
 
     for (const [level, count] of Object.entries(incoming.groupedByClickbaitiness || {})) {
         if (typeof count === "number") {
@@ -236,10 +211,13 @@ function mergeStats(existing = {}, incoming = {}, now = Date.now()) {
  * `maxCount` is the largest count among the shown levels rather than the total, so a bar shows a
  * level against the busiest level, not against a sum it can never approach.
  *
+ * The two totals sum every level, the empty ones included, so a caller can state what a tally comes
+ * to without counting the maps a second time.
+ *
  * @param {ClickbaitinessMap} [groupedByClickbaitiness] - Titles found per level.
  * @param {ClickbaitinessMap} [convertedByClickbaitiness] - Titles converted per level.
  * @param {string[]} [levels] - Level names, in severity order; the output follows it.
- * @returns {{ shown: LevelSummary[], maxCount: number, totalFound: number }}
+ * @returns {{ shown: LevelSummary[], maxCount: number, totalFound: number, totalRewritten: number }}
  */
 function summarizeLevels(groupedByClickbaitiness, convertedByClickbaitiness, levels = []) {
     const found = groupedByClickbaitiness || {};
@@ -248,18 +226,21 @@ function summarizeLevels(groupedByClickbaitiness, convertedByClickbaitiness, lev
     const shown = [];
     let maxCount = 0;
     let totalFound = 0;
+    let totalRewritten = 0;
 
     levels.forEach((level, index) => {
         const count = found[level] || 0;
+        const rewritten = converted[level] || 0;
         totalFound += count;
+        totalRewritten += rewritten;
 
         if (count > 0) {
-            shown.push({ level, index, count, rewritten: converted[level] || 0 });
+            shown.push({ level, index, count, rewritten });
             maxCount = Math.max(maxCount, count);
         }
     });
 
-    return { shown, maxCount, totalFound };
+    return { shown, maxCount, totalFound, totalRewritten };
 }
 
 /**
@@ -269,15 +250,15 @@ function summarizeLevels(groupedByClickbaitiness, convertedByClickbaitiness, lev
 const GLOBAL_KEY = "_global";
 
 /**
- * A part as a whole-number percentage of its whole, or null where the two cannot be set against
- * each other -- an empty whole, or a part counted over a wider population than the whole.
+ * A part as a whole-number percentage of its whole, or null where there is no whole to be a part
+ * of. Every caller counts its part out of the whole it passes, so the two always belong together.
  *
  * @param {number} part
  * @param {number} whole
  * @returns {number|null}
  */
 function sharePercent(part, whole) {
-    return whole > 0 && part <= whole ? Math.round((part / whole) * 100) : null;
+    return whole > 0 ? Math.round((part / whole) * 100) : null;
 }
 
 /**
@@ -307,14 +288,10 @@ function readingFor(groupedByClickbaitiness) {
  * @property {string} domain - The siteConfig domain the record is keyed by.
  * @property {number} found - Titles found on the site, over every level the gauge knows.
  * @property {number} rewritten - Titles actually swapped there.
- * @property {number|null} sharePercent - `rewritten` as a percentage of `found`, or null where the
- *   two cannot be set against each other.
+ * @property {number} sharePercent - `rewritten` as a percentage of `found`. Always there to state:
+ *   a record with nothing found is not a row.
  * @property {ClickbaitinessMap} foundByLevel - The titles behind `found`, level by level, as stored.
  * @property {ClickbaitinessMap} rewrittenByLevel - The swapped subset of them, level by level.
- * @property {boolean} rewrittenByLevelIsKnown - Whether the two maps describe the same stretch of
- *   history. A different question from `sharePercent`: that one asks whether two populations
- *   overlap, this one whether two histories line up. False on a record carrying no split at all,
- *   and on one stamped `convertedByClickbaitinessSince`, whose split starts later than the rest.
  * @property {number} [firstSeen] - Epoch ms collection started for the domain.
  */
 
@@ -331,16 +308,15 @@ function readingFor(groupedByClickbaitiness) {
  * states nothing about it — and is decided on the gauge reading, ties going to the site with more
  * titles behind that reading.
  *
- * `sharePercent` is null where the two tallies cannot be set against each other. They are counted
- * over different populations: `convertedCount` also counts swapped titles that carry no
- * clickbaitiness at all, and those never reach `groupedByClickbaitiness`, so it can exceed the
- * total found. Where it does, the view must state the tallies alone rather than a share above 100 %.
+ * `rewritten` and `found` are counted over the same levels of the same record, so the share between
+ * them always holds: a level too old to weigh drops out of both, and within a level the swapped
+ * titles are a subset of the found ones.
  *
  * @param {Object.<string, CumulativeStats>} [statistics] - The stored map, `_global` included.
  * `totals` pools the rows the same way, so the headline states what the table sums to. It is not
- * taken from `_global.totalConversions`: that reaches further back and also counts swapped titles
- * carrying no clickbaitiness, so setting it against the found total would put two populations on
- * either side of one "of".
+ * taken from `_global.totalConversions`: that was accumulated beside the per-domain records and
+ * reaches further back than they do, so setting it against the found total would put two stretches
+ * of history on either side of one "of". Nothing has written it for some versions now.
  *
  * `since` is the earliest start any record carries, so the section can say how far back the whole
  * tally reaches. Records stored before `firstSeen` existed have none until their next write, and
@@ -365,30 +341,32 @@ function summarizeSites(statistics) {
         if (domain === GLOBAL_KEY || !record) continue;
 
         const grouped = record.groupedByClickbaitiness || {};
+        const rewrittenByLevel = record.convertedByClickbaitiness || {};
         let found = 0;
+        let rewritten = 0;
         for (const [level, count] of Object.entries(grouped)) {
-            // A level the gauge cannot weigh is one no view names either, so it stays out of the
-            // total as well: the row's tally, its reading and its breakdown then count the same
-            // titles, whatever a backend one day stores beside the levels known here.
+            // A level the gauge cannot weigh is one no view names either, so it stays out of both
+            // totals: the row's tallies, its reading and its breakdown then count the same titles,
+            // whatever a backend one day stores beside the levels known here.
             if (typeof count !== "number" || LEVEL_VALUES[level] === undefined) continue;
 
             found += count;
             pooled[level] = (pooled[level] || 0) + count;
+
+            const swapped = rewrittenByLevel[level];
+            if (typeof swapped === "number") rewritten += swapped;
         }
 
-        const rewritten = record.convertedCount || 0;
-        // A domain the tracker has touched but never counted anything on is not a row.
-        if (found === 0 && rewritten === 0) continue;
-
-        const rewrittenByLevel = record.convertedByClickbaitiness;
+        // A domain the tracker has touched but never counted anything on is not a row. Records
+        // predating the split are rows on their found counts alone, reading zero rewritten.
+        if (found === 0) continue;
 
         sites.push({
             domain, found, rewritten,
             sharePercent: sharePercent(rewritten, found),
             // References into the record rather than copies; nothing here writes through them.
             foundByLevel: grouped,
-            rewrittenByLevel: rewrittenByLevel || {},
-            rewrittenByLevelIsKnown: rewrittenByLevel != null && record.convertedByClickbaitinessSince == null,
+            rewrittenByLevel,
             firstSeen: record.firstSeen,
             ...readingFor(grouped)
         });

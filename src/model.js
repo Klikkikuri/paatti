@@ -229,7 +229,7 @@ const model = (() => {
              * Accumulate a page snapshot delta into persisted cumulative statistics.
              *
              * @param {{ groupedByClickbaitiness: Object.<string,number>,
-             *   convertedByClickbaitiness: Object.<string,number>, convertedCount: number }} delta
+             *   convertedByClickbaitiness: Object.<string,number> }} delta
              * @param {{ domain: string }} options - Target site domain key.
              */
             addStatistics: async (delta, { domain }) => {
@@ -237,7 +237,7 @@ const model = (() => {
                 const data = await browser.storage.local.get("statistics");
                 const statistics = data.statistics || {};
 
-                // Merge incoming clickbaitiness counts and the converted tally into the domain's totals.
+                // Merge the incoming clickbaitiness counts into the domain's totals.
                 statistics[domain] = mergeStats(statistics[domain], delta);
 
                 await browser.storage.local.set({ statistics });

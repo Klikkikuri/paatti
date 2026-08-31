@@ -5,7 +5,7 @@ import { getLogger, getActiveTab, getCurrentTabHostname } from "../utils.js";
 import { model, Clickbaitiness } from "../model.js";
 import { controller } from "../controller.js";
 import { getConfig, onConfigValue } from "../config.js";
-import { computeGaugeValue, computeCollectingPeriod, summarizeLevels } from "../stats.js";
+import { computeGaugeValue, computeCollectingPeriod, sharePercent, summarizeLevels } from "../stats.js";
 import { isSiteEnabled, getClickbaitLevelInfo, levelToI18nKey, localizeDocument } from "./utils.js";
 import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
@@ -79,8 +79,8 @@ let cachedPageStats = null;
  * @param {Object} [options] Optional configuration
  * @param {number} [options.clickbaitLevelThreshold] Current active threshold level (0-4)
  * @param {number} [options.maxCount] Largest count in the list; adds a proportion bar when given
- * @param {number} [options.rewritten] How many of the count were rewritten. Omit when unknown,
- *   and the bar shows magnitude alone rather than implying a share of zero
+ * @param {number} [options.rewritten] How many of the count were rewritten. Omit where the list
+ *   states no split, as the home view does, and the bar shows magnitude alone
  * @returns {HTMLDivElement} Row element containing <dt> and <dd>
  */
 const _createStatRow = (level, count, { clickbaitLevelThreshold, maxCount, rewritten } = {}) => {
@@ -461,18 +461,12 @@ const _refreshStatsHeader = (firstSeen) => {
  */
 const _refreshStatsView = ({ domain, cumulativeStats }) => {
     const stats = cumulativeStats || {};
-    const { shown, maxCount, totalFound } = summarizeLevels(
+    const { shown, maxCount, totalFound, totalRewritten } = summarizeLevels(
         stats.groupedByClickbaitiness, stats.convertedByClickbaitiness, Clickbaitiness.LEVELS);
 
     _refreshStatsHeader(stats.firstSeen);
 
-    // A record that started counting the per-level converted titles after it started counting the
-    // rest describes less history in them, so any share drawn from it would read low. Such a record
-    // gets bars of plain magnitude until one collects both from the start.
-    const rewrittenIsKnown = stats.convertedByClickbaitiness != null &&
-        stats.convertedByClickbaitinessSince == null;
-
-    const hasData = totalFound > 0 || (stats.convertedCount || 0) > 0;
+    const hasData = totalFound > 0;
     const body = document.getElementById("statsview-body");
     if (body) {
         body.classList.toggle("hidden", !hasData);
@@ -488,20 +482,17 @@ const _refreshStatsView = ({ domain, cumulativeStats }) => {
 
     const convertedEl = document.getElementById("statsview-converted-count");
     if (convertedEl) {
-        convertedEl.textContent = String(stats.convertedCount || 0);
+        convertedEl.textContent = String(totalRewritten);
     }
 
-    // Both tallies count the same stream of found titles, so the share between them is real. It is
-    // still only stated when the arithmetic holds, rather than trusting that it always will.
+    // Both tallies count the same stream of found titles, so the share between them is real.
     const ofEl = document.getElementById("statsview-converted-of");
     if (ofEl) {
-        const converted = stats.convertedCount || 0;
-        const comparable = totalFound > 0 && converted <= totalFound;
-        ofEl.textContent = comparable
+        ofEl.textContent = hasData
             ? browser.i18n.getMessage("statsviewConvertedOfFound",
-                [String(totalFound), String(Math.round((converted / totalFound) * 100))])
+                [String(totalFound), String(sharePercent(totalRewritten, totalFound))])
             : "";
-        ofEl.classList.toggle("hidden", !comparable);
+        ofEl.classList.toggle("hidden", !hasData);
     }
 
     const statsList = document.getElementById("statistics-grouped-by-clickbaitiness");
@@ -511,7 +502,7 @@ const _refreshStatsView = ({ domain, cumulativeStats }) => {
         for (const row of shown) {
             statsList.appendChild(_createStatRow(row.level, row.count, {
                 maxCount,
-                rewritten: rewrittenIsKnown ? row.rewritten : undefined
+                rewritten: row.rewritten
             }));
         }
     }

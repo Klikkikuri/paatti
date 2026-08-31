@@ -19,10 +19,6 @@ describe('buildPageSnapshot', () => {
         { what: 'error', clickbaitiness: undefined }
     ];
 
-    test('convertedCount counts only converted items', () => {
-        assert.equal(buildPageSnapshot(reasons).convertedCount, 2);
-    });
-
     test('groupedByClickbaitiness aggregates valid levels', () => {
         const grouped = buildPageSnapshot(reasons).groupedByClickbaitiness;
 
@@ -35,7 +31,6 @@ describe('buildPageSnapshot', () => {
     test('empty input returns zero counts', () => {
         const snapshot = buildPageSnapshot([]);
 
-        assert.equal(snapshot.convertedCount, 0);
         assert.deepEqual(snapshot.groupedByClickbaitiness, {});
         assert.deepEqual(snapshot.convertedByClickbaitiness, {});
     });
@@ -54,10 +49,11 @@ describe('buildPageSnapshot', () => {
         assert.ok(!snapshot.convertedByClickbaitiness[Clickbaitiness.LEVEL_NONE]);
     });
 
-    test('a converted item without a level counts in the total only', () => {
+    // Nothing is swapped below the threshold, so the content script cannot report one without a
+    // level. A snapshot that somehow carries one counts it nowhere rather than in a tally of its own.
+    test('a converted item without a level is counted nowhere', () => {
         const snapshot = buildPageSnapshot([{ what: 'converted', clickbaitiness: null }]);
 
-        assert.equal(snapshot.convertedCount, 1);
         assert.deepEqual(snapshot.convertedByClickbaitiness, {});
         assert.deepEqual(snapshot.groupedByClickbaitiness, {});
     });
@@ -112,7 +108,7 @@ describe('mergeStats', () => {
             [Clickbaitiness.LEVEL_HIGH]: 3,
             [Clickbaitiness.LEVEL_EXTREME]: 1
         },
-        convertedCount: 4
+        convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 2 }
     };
 
     test('combines counts per level accurately', () => {
@@ -128,17 +124,6 @@ describe('mergeStats', () => {
         mergeStats(existing, incoming);
 
         assert.equal(existing.groupedByClickbaitiness[Clickbaitiness.LEVEL_HIGH], 2);
-    });
-
-    test('accumulates convertedCount separately from the level counts', () => {
-        const merged = mergeStats({ ...makeExisting(), convertedCount: 7 }, incoming);
-
-        assert.equal(merged.convertedCount, 11);
-    });
-
-    test('convertedCount starts from zero when the stored stats predate it', () => {
-        assert.equal(mergeStats(makeExisting(), incoming).convertedCount, 4);
-        assert.equal(mergeStats(makeExisting(), { groupedByClickbaitiness: {} }).convertedCount, 0);
     });
 
     test('firstSeen is stamped on a brand new domain', () => {
@@ -158,13 +143,11 @@ describe('mergeStats', () => {
     test('accumulates the converted counts per level across merges', () => {
         const existing = {
             groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 4 },
-            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 },
-            convertedCount: 1
+            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 }
         };
         const merged = mergeStats(existing, {
             groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 3, [Clickbaitiness.LEVEL_EXTREME]: 1 },
-            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 2, [Clickbaitiness.LEVEL_EXTREME]: 1 },
-            convertedCount: 3
+            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 2, [Clickbaitiness.LEVEL_EXTREME]: 1 }
         });
 
         assert.equal(merged.convertedByClickbaitiness[Clickbaitiness.LEVEL_HIGH], 3);
@@ -174,52 +157,25 @@ describe('mergeStats', () => {
     test('does not mutate the existing converted counts', () => {
         const existing = {
             groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 4 },
-            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 },
-            convertedCount: 1
+            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 }
         };
         mergeStats(existing, {
-            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 2 },
-            convertedCount: 2
+            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 2 }
         });
 
         assert.equal(existing.convertedByClickbaitiness[Clickbaitiness.LEVEL_HIGH], 1);
     });
 
+    // A record stored before the split existed keeps its found counts and starts the swapped ones
+    // from nothing; no later write can divide its history into levels.
     test('stored stats predating the per-level converted counts merge cleanly', () => {
         const merged = mergeStats(makeExisting(), {
             groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 },
-            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 },
-            convertedCount: 1
+            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 }
         });
 
+        assert.equal(merged.groupedByClickbaitiness[Clickbaitiness.LEVEL_HIGH], 3);
         assert.equal(merged.convertedByClickbaitiness[Clickbaitiness.LEVEL_HIGH], 1);
-    });
-
-    test('a brand new domain collects the split from the start', () => {
-        const merged = mergeStats(undefined, incoming, 1700);
-
-        assert.equal(merged.convertedByClickbaitinessSince, undefined);
-        assert.ok(!('convertedByClickbaitinessSince' in merged));
-    });
-
-    test('a record that predates the split is stamped as starting late', () => {
-        // Its history is already counted in the other two tallies, which the split will never catch up to.
-        assert.equal(mergeStats(makeExisting(), incoming, 1700).convertedByClickbaitinessSince, 1700);
-        assert.equal(
-            mergeStats({ convertedCount: 3 }, incoming, 1700).convertedByClickbaitinessSince,
-            1700
-        );
-    });
-
-    test('the late-start stamp never moves once set', () => {
-        const existing = {
-            groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 4 },
-            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 },
-            convertedCount: 1,
-            convertedByClickbaitinessSince: 900
-        };
-
-        assert.equal(mergeStats(existing, incoming, 1700).convertedByClickbaitinessSince, 900);
     });
 });
 
@@ -233,6 +189,7 @@ describe('summarizeLevels', () => {
             assert.deepEqual(summary.shown, []);
             assert.equal(summary.maxCount, 0);
             assert.equal(summary.totalFound, 0);
+            assert.equal(summary.totalRewritten, 0);
         }
     });
 
@@ -294,6 +251,16 @@ describe('summarizeLevels', () => {
         assert.equal(summary.totalFound, 32);
     });
 
+    test('totalRewritten sums the swapped levels the same way', () => {
+        const summary = summarizeLevels(
+            { [Clickbaitiness.LEVEL_LOW]: 9, [Clickbaitiness.LEVEL_HIGH]: 23 },
+            { [Clickbaitiness.LEVEL_LOW]: 2, [Clickbaitiness.LEVEL_HIGH]: 20 },
+            LEVELS
+        );
+
+        assert.equal(summary.totalRewritten, 22);
+    });
+
     test('a level with no titles gets no row', () => {
         const summary = summarizeLevels({ [Clickbaitiness.LEVEL_MODERATE]: 1 }, {}, LEVELS);
 
@@ -301,10 +268,11 @@ describe('summarizeLevels', () => {
     });
 
     test('a level absent from the levels list is ignored entirely', () => {
-        const summary = summarizeLevels({ 'Made Up Level': 5 }, {}, LEVELS);
+        const summary = summarizeLevels({ 'Made Up Level': 5 }, { 'Made Up Level': 5 }, LEVELS);
 
         assert.deepEqual(summary.shown, []);
         assert.equal(summary.totalFound, 0);
+        assert.equal(summary.totalRewritten, 0);
     });
 });
 
@@ -441,10 +409,6 @@ describe('sharePercent', () => {
         assert.equal(sharePercent(0, 0), null);
         assert.equal(sharePercent(4, 0), null);
     });
-
-    test('a part counted wider than its whole has no share', () => {
-        assert.equal(sharePercent(150, 100), null);
-    });
 });
 
 describe('summarizeSites', () => {
@@ -454,7 +418,10 @@ describe('summarizeSites', () => {
                 [Clickbaitiness.LEVEL_HIGH]: 800,
                 [Clickbaitiness.LEVEL_EXTREME]: 404
             },
-            convertedCount: 612,
+            convertedByClickbaitiness: {
+                [Clickbaitiness.LEVEL_HIGH]: 400,
+                [Clickbaitiness.LEVEL_EXTREME]: 212
+            },
             firstSeen: 1755000000000
         },
         'yle.fi': {
@@ -462,7 +429,10 @@ describe('summarizeSites', () => {
                 [Clickbaitiness.LEVEL_NONE]: 400,
                 [Clickbaitiness.LEVEL_LOW]: 20
             },
-            convertedCount: 38
+            convertedByClickbaitiness: {
+                [Clickbaitiness.LEVEL_NONE]: 20,
+                [Clickbaitiness.LEVEL_LOW]: 18
+            }
         },
         _global: { totalConversions: 1842 }
     };
@@ -473,7 +443,7 @@ describe('summarizeSites', () => {
         assert.deepEqual(sites.map((site) => site.domain), ['is.fi', 'yle.fi']);
     });
 
-    test('found sums every level, rewritten reads convertedCount', () => {
+    test('found sums every level, rewritten sums the swapped ones', () => {
         const [busiest] = summarizeSites(statistics).sites;
 
         assert.equal(busiest.found, 1204);
@@ -485,11 +455,12 @@ describe('summarizeSites', () => {
         const { sites, overallByLevel } = summarizeSites({
             'is.fi': {
                 groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 8, 'Utterly Baffling': 500 },
-                convertedCount: 5
+                convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 5, 'Utterly Baffling': 300 }
             }
         });
 
         assert.equal(sites[0].found, 8);
+        assert.equal(sites[0].rewritten, 5);
         assert.deepEqual(overallByLevel, { [Clickbaitiness.LEVEL_HIGH]: 8 });
     });
 
@@ -504,14 +475,14 @@ describe('summarizeSites', () => {
 
     test('a domain with nothing counted is not a row', () => {
         const { sites } = summarizeSites({
-            'empty.fi': { groupedByClickbaitiness: {}, convertedCount: 0 },
+            'empty.fi': { groupedByClickbaitiness: {} },
             'yle.fi': statistics['yle.fi']
         });
 
         assert.deepEqual(sites.map((site) => site.domain), ['yle.fi']);
     });
 
-    test('a record predating convertedCount still lists what it found', () => {
+    test('a record predating the split still lists what it found', () => {
         const [site] = summarizeSites({
             'old.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_LOW]: 12 } }
         }).sites;
@@ -521,39 +492,36 @@ describe('summarizeSites', () => {
     });
 
     test('rows fall back from rewritten to found to the domain', () => {
+        const rewroteThree = { convertedByClickbaitiness: { [Clickbaitiness.LEVEL_LOW]: 3 } };
         const { sites } = summarizeSites({
-            'b.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_LOW]: 5 }, convertedCount: 3 },
-            'a.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_LOW]: 5 }, convertedCount: 3 },
-            'c.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_LOW]: 9 }, convertedCount: 3 }
+            'b.fi': { ...rewroteThree, groupedByClickbaitiness: { [Clickbaitiness.LEVEL_LOW]: 5 } },
+            'a.fi': { ...rewroteThree, groupedByClickbaitiness: { [Clickbaitiness.LEVEL_LOW]: 5 } },
+            'c.fi': { ...rewroteThree, groupedByClickbaitiness: { [Clickbaitiness.LEVEL_LOW]: 9 } }
         });
 
         assert.deepEqual(sites.map((site) => site.domain), ['c.fi', 'a.fi', 'b.fi']);
     });
 
     describe('sharePercent on a row', () => {
-        test('a rewritten tally within the found one states a share', () => {
+        test('the swapped titles are a share of the found ones', () => {
             const [site] = summarizeSites({
-                'ok.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 200 }, convertedCount: 60 }
+                'ok.fi': {
+                    groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 200 },
+                    convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 60 }
+                }
             }).sites;
 
             assert.equal(site.sharePercent, 30);
         });
 
-        test('a converted tally counting level-less titles cannot be a share of the found ones', () => {
+        // Both tallies count the same levels of the same record, so there is always a share to
+        // state on a row: a record with nothing found is not one.
+        test('a record predating the split states a share of zero', () => {
             const [site] = summarizeSites({
-                'odd.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 100 }, convertedCount: 150 }
+                'old.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 100 } }
             }).sites;
 
-            assert.equal(site.sharePercent, null);
-        });
-
-        test('a record that found nothing states no share either', () => {
-            const [site] = summarizeSites({
-                'none.fi': { groupedByClickbaitiness: {}, convertedCount: 4 }
-            }).sites;
-
-            assert.equal(site.found, 0);
-            assert.equal(site.sharePercent, null);
+            assert.equal(site.sharePercent, 0);
         });
     });
 
@@ -568,8 +536,7 @@ describe('summarizeSites', () => {
             const [site] = summarizeSites({
                 'is.fi': {
                     groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 8, [Clickbaitiness.LEVEL_EXTREME]: 2 },
-                    convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 5 },
-                    convertedCount: 5
+                    convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 5 }
                 }
             }).sites;
 
@@ -583,39 +550,24 @@ describe('summarizeSites', () => {
             assert.equal(maxCount, 8);
         });
 
-        test('a split collected from the start is known', () => {
+        test('a row carries the swapped counts as stored', () => {
             const [site] = summarizeSites({
                 'is.fi': {
                     groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 8 },
-                    convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 5 },
-                    convertedCount: 5
+                    convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 5 }
                 }
             }).sites;
 
             assert.deepEqual(site.rewrittenByLevel, { [Clickbaitiness.LEVEL_HIGH]: 5 });
-            assert.equal(site.rewrittenByLevelIsKnown, true);
         });
 
-        test('a record predating the split states none', () => {
+        test('a record predating the split carries an empty map', () => {
             const [site] = summarizeSites({
-                'old.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 8 }, convertedCount: 5 }
+                'old.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 8 } }
             }).sites;
 
             assert.deepEqual(site.rewrittenByLevel, {});
-            assert.equal(site.rewrittenByLevelIsKnown, false);
-        });
-
-        test('a split that started late is not known, map or no map', () => {
-            const [site] = summarizeSites({
-                'late.fi': {
-                    groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 8 },
-                    convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 2 },
-                    convertedByClickbaitinessSince: 1755000000000,
-                    convertedCount: 5
-                }
-            }).sites;
-
-            assert.equal(site.rewrittenByLevelIsKnown, false);
+            assert.equal(site.rewritten, 0);
         });
     });
 
@@ -661,22 +613,14 @@ describe('summarizeSites', () => {
         });
 
         test('the global tally is no part of them', () => {
-            // _global reaches further back than convertedCount and counts level-less swaps, so it
-            // cannot sit on either side of the headline's "of".
+            // _global reaches further back than the per-domain records, so it cannot sit on either
+            // side of the headline's "of".
             const { totals } = summarizeSites({
                 'is.fi': statistics['is.fi'],
                 _global: { totalConversions: 99999 }
             });
 
             assert.equal(totals.rewritten, 612);
-        });
-
-        test('a pooled tally larger than the pooled find states no share', () => {
-            const { totals } = summarizeSites({
-                'odd.fi': { groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 10 }, convertedCount: 40 }
-            });
-
-            assert.equal(totals.sharePercent, null);
         });
     });
 
@@ -714,12 +658,12 @@ describe('summarizeSites', () => {
             assert.deepEqual(overallByLevel, { [Clickbaitiness.LEVEL_HIGH]: 10 });
         });
 
-        test('a record that only ever converted level-less titles pools nothing', () => {
+        test('a record that found nothing is no row and pools nothing', () => {
             const { sites, overallByLevel } = summarizeSites({
-                'none.fi': { groupedByClickbaitiness: {}, convertedCount: 4 }
+                'none.fi': { groupedByClickbaitiness: {} }
             });
 
-            assert.equal(sites.length, 1);
+            assert.deepEqual(sites, []);
             assert.deepEqual(overallByLevel, {});
         });
     });

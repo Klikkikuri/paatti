@@ -396,11 +396,6 @@ statistics-totals .totals-share-fill {
     background: var(--row-accent);
 }
 
-/* A row with no share to state keeps the column and draws nothing in it. */
-statistics-totals .totals-share-bar.is-unknown {
-    background: none;
-}
-
 statistics-totals .totals-bar {
     flex: 1 1 auto;
     min-width: 0;
@@ -552,9 +547,5 @@ statistics-totals .totals-empty {
     statistics-totals .totals-share-bar {
         grid-column: 1 / -1;
         order: 1;
-    }
-
-    statistics-totals .totals-share-bar.is-unknown {
-        display: none;
     }
 }

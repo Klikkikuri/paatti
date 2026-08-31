@@ -223,17 +223,12 @@ class StatisticsTotals extends ComponentBase {
      * share: the track is the whole of the found tally, so the fill's length is the percentage
      * stated beside it rather than this row measured against another.
      *
-     * A row with no share to state still gets the element, empty and untracked: it holds the
-     * column the rows beside it draw in, and a track there would offer a scale that row has
-     * nothing to put on.
-     *
-     * @param {number|null} share - Percent, or null where there is no share to state.
+     * @param {number} share - Percent of the found tally that was rewritten.
      * @returns {HTMLSpanElement}
      */
     createShareBar(share) {
         const bar = document.createElement('span');
-        bar.className = share === null ? 'totals-share-bar is-unknown' : 'totals-share-bar';
-        if (share === null) return bar;
+        bar.className = 'totals-share-bar';
 
         const fill = document.createElement('span');
         fill.className = 'totals-share-fill';
@@ -281,16 +276,16 @@ class StatisticsTotals extends ComponentBase {
     /**
      * The running total, and what share of everything found it is.
      *
-     * @param {{ rewritten: number, found: number, sharePercent: number|null }} totals
+     * @param {{ rewritten: number, found: number, sharePercent: number }} totals - Only ever
+     *   rendered for a table with rows behind it, so the share is always there to state.
      */
     renderTotalTile({ rewritten, found, sharePercent: share }) {
         this.querySelector('.totals-number').textContent = rewritten.toLocaleString();
 
         const of = this.querySelector('.totals-of');
-        of.textContent = share === null
-            ? ''
-            : browser.i18n.getMessage('statsviewConvertedOfFound', [found.toLocaleString(), String(share)]);
-        of.classList.toggle('hidden', share === null);
+        of.textContent = browser.i18n.getMessage('statsviewConvertedOfFound',
+            [found.toLocaleString(), String(share)]);
+        of.classList.remove('hidden');
     }
 
     /**
@@ -422,16 +417,15 @@ class StatisticsTotals extends ComponentBase {
         const isOpen = this.#expanded.has(site.domain);
         const panelId = `totals-levels-${index}`;
 
-        const name = document.createElement(site.found > 0 ? 'button' : 'span');
-        name.className = 'totals-site-name';
-        if (site.found > 0) {
-            name.type = 'button';
-            name.classList.add('totals-site-toggle');
-            name.setAttribute('aria-expanded', String(isOpen));
-            name.setAttribute('aria-controls', panelId);
-            name.setAttribute('aria-label', browser.i18n.getMessage(
-                'statsTotalsSiteLevelsAriaLabel', [this.siteName(site.domain)]));
-        }
+        // Every row has levels behind it -- a record with nothing found is not a row -- so every
+        // row's name opens them.
+        const name = document.createElement('button');
+        name.className = 'totals-site-name totals-site-toggle';
+        name.type = 'button';
+        name.setAttribute('aria-expanded', String(isOpen));
+        name.setAttribute('aria-controls', panelId);
+        name.setAttribute('aria-label', browser.i18n.getMessage(
+            'statsTotalsSiteLevelsAriaLabel', [this.siteName(site.domain)]));
         const icon = document.createElement('favicon-img');
         icon.setAttribute('domain', site.domain);
         icon.setAttribute('size', '16');
@@ -444,10 +438,8 @@ class StatisticsTotals extends ComponentBase {
         // rather than in a column of its own: a number the row does not otherwise use.
         const converted = this.createAmount('totals-site-converted', 'statsTotalsColumnConverted',
             site.rewritten, site.sharePercent);
-        converted.setAttribute('title', site.sharePercent === null
-            ? browser.i18n.getMessage('statsTotalsFoundTitle', [site.found.toLocaleString()])
-            : browser.i18n.getMessage('statsTotalsShareOfFound',
-                [String(site.sharePercent), site.found.toLocaleString()]));
+        converted.setAttribute('title', browser.i18n.getMessage('statsTotalsShareOfFound',
+            [String(site.sharePercent), site.found.toLocaleString()]));
 
         const main = document.createElement('div');
         main.className = 'totals-site-main';
@@ -458,9 +450,7 @@ class StatisticsTotals extends ComponentBase {
             converted);
 
         row.appendChild(main);
-        if (site.found > 0) {
-            row.appendChild(this.createLevelPanel(site, panelId, isOpen));
-        }
+        row.appendChild(this.createLevelPanel(site, panelId, isOpen));
 
         return row;
     }
@@ -492,8 +482,7 @@ class StatisticsTotals extends ComponentBase {
 
         const list = document.createElement('ul');
         list.className = 'totals-level-list';
-        list.append(...shown.map((entry) =>
-            this.createLevelRow(entry, maxCount, site.rewrittenByLevelIsKnown)));
+        list.append(...shown.map((entry) => this.createLevelRow(entry, maxCount)));
 
         panel.append(caption, list);
         return panel;
@@ -509,10 +498,9 @@ class StatisticsTotals extends ComponentBase {
      *
      * @param {Object} entry - One entry from summarizeLevels.
      * @param {number} maxCount - Titles found at the site's busiest level.
-     * @param {boolean} rewrittenIsKnown - Whether the rewritten counts cover the same history.
      * @returns {HTMLLIElement}
      */
-    createLevelRow({ level, index, count, rewritten }, maxCount, rewrittenIsKnown) {
+    createLevelRow({ level, index, count, rewritten }, maxCount) {
         const row = document.createElement('li');
         row.className = 'totals-level';
         row.dataset.severity = String(index);
@@ -520,14 +508,11 @@ class StatisticsTotals extends ComponentBase {
         const found = this.createAmount('totals-level-found', 'statsTotalsColumnFound', count, null);
         found.prepend(this.createBar(count, maxCount));
 
-        row.append(this.createChip(index, browser.i18n.getMessage(levelToI18nKey(level))), found);
-
-        // A record that started counting the rewritten titles per level later than the rest
-        // describes less history in them, so it states the found tally alone.
-        if (rewrittenIsKnown) {
-            row.appendChild(this.createAmount('totals-level-converted',
-                'statsTotalsColumnConverted', rewritten, sharePercent(rewritten, count)));
-        }
+        row.append(
+            this.createChip(index, browser.i18n.getMessage(levelToI18nKey(level))),
+            found,
+            this.createAmount('totals-level-converted', 'statsTotalsColumnConverted',
+                rewritten, sharePercent(rewritten, count)));
 
         return row;
     }
