@@ -149,17 +149,17 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     }
 
     /**
-     * Position the dialog beside the element it is about, flipping above and clamping to the viewport so it is
-     * always fully on screen whatever the page's layout.
+     * Position the dialog beside the element it is about, flipping above and clamping to the viewport so a
+     * partly visible headline still gets a card that is fully on screen.
      *
      * The anchor is read from the element every time rather than captured when the dialog opened, so the card
-     * stays with its headline while the page scrolls or reflows. Clamped rather than closed when the element
-     * leaves the viewport: a half-typed comment must not vanish because the page moved.
+     * stays with its headline while the page scrolls or reflows. Once the headline is gone -- scrolled fully
+     * out of view, hidden, or dropped from the page -- the dialog goes with it rather than floating at the
+     * viewport edge, detached from the thing it reports on.
      */
     function place() {
         if (!current) return;
 
-        // The page recycled the headline out from under us; there is nothing left to report on.
         if (!current.isConnected) {
             close();
             return;
@@ -167,6 +167,15 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
 
         const margin = 8;
         const anchor = current.getBoundingClientRect();
+
+        const gone = anchor.width === 0 || anchor.height === 0
+            || anchor.bottom <= 0 || anchor.top >= window.innerHeight
+            || anchor.right <= 0 || anchor.left >= window.innerWidth;
+        if (gone) {
+            close();
+            return;
+        }
+
         const { width, height } = dialog.getBoundingClientRect();
 
         let top = anchor.bottom + margin;
