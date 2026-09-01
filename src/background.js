@@ -53,9 +53,6 @@ async function updateDynamicContentScripts() {
                 js: [
                     "src/contentScript.js"
                 ],
-                css: [
-                    "src/contentStyle.css"
-                ],
                 matches: enabledOrigins,
                 runAt: "document_idle"
             }]);

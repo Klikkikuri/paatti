@@ -19,6 +19,8 @@ let hrefSign;
     const { controller } = await import(browser.runtime.getURL("src/controller.js"));
     const { getLogger, debounce, canAppendSpan } = await import(browser.runtime.getURL("src/utils.js"));
 
+    const { createHighlightOverlay } = await import(browser.runtime.getURL("src/components/highlight-overlay.js"));
+
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
     const { applyModifiers } = await import(browser.runtime.getURL("src/modifiers.js"));
     const { buildPageSnapshot, createSessionTracker } = await import(browser.runtime.getURL("src/stats.js"));
@@ -41,6 +43,9 @@ let hrefSign;
     }
 
     const log = getLogger("content_script");
+
+    // Draws the debug outlines and the popup's hover highlight, in a shadow root of its own.
+    const highlightOverlay = createHighlightOverlay();
 
     /**
      * Returns the favicon URL the browser would use for this page:
@@ -104,6 +109,8 @@ let hrefSign;
                 } else {
                     documentElement.classList.remove("klikkikuri-visual-hilight");
                 }
+                // The class drives no styling any more; it stays as a signal that the mode is on.
+                highlightOverlay.setStatusVisible(enabled || isPopupOpen);
             }
         } catch (e) {
             log("Failed to update visual highlight class", e);
@@ -163,10 +170,7 @@ let hrefSign;
                 updateVisualHighlightClass();
 
                 // Clear any hover highlights when popup is closed
-                const highlightedElements = document.querySelectorAll(".klikkikuri-hover-highlight");
-                for (const el of highlightedElements) {
-                    el.classList.remove("klikkikuri-hover-highlight");
-                }
+                highlightOverlay.clearHovered();
             });
         }
     });
@@ -193,9 +197,11 @@ let hrefSign;
 
         // Scan and collect elements to process
         const linksToProcess = [];
+        const matchedContainers = new Set();
         for (const rule of siteRules) {
             const containers = document.querySelectorAll(rule.container);
             for (const container of containers) {
+                matchedContainers.add(container);
                 const links = (!rule.link || rule.link === "self" || rule.link === ":scope")
                     ? [container]
                     : container.querySelectorAll(rule.link);
@@ -422,6 +428,17 @@ let hrefSign;
             }
         }
 
+        // Statuses are sticky — nothing else ever removes one — so a container the page has recycled for new
+        // content would keep a status that no longer describes it. Drop the ones this pass did not match.
+        // Deliberately not klikkikuriHighlightId: getConversions mints it and a hover in flight reads it.
+        for (const element of document.querySelectorAll("[data-klikkikuri-status]")) {
+            if (matchedContainers.has(element)) continue;
+            delete element.dataset.klikkikuriStatus;
+            delete element.dataset.klikkikuriReason;
+        }
+
+        highlightOverlay.refresh();
+
         log(`Finished conversion procedure on '${newsSite}' in ${duration.toFixed(2)}ms. Stats:`, stats);
 
         const matchesCount = stats.converted + stats.original;
@@ -595,24 +612,15 @@ let hrefSign;
                 return true;
             }
             case "highlightElement": {
-                const els = document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`);
-                for (const el of els) {
-                    el.classList.add("klikkikuri-hover-highlight");
-                }
+                highlightOverlay.addHovered(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`));
                 break;
             }
             case "unhighlightElement": {
-                const els = document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`);
-                for (const el of els) {
-                    el.classList.remove("klikkikuri-hover-highlight");
-                }
+                highlightOverlay.removeHovered(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`));
                 break;
             }
             case "clearAllHighlights": {
-                const els = document.querySelectorAll(".klikkikuri-hover-highlight");
-                for (const el of els) {
-                    el.classList.remove("klikkikuri-hover-highlight");
-                }
+                highlightOverlay.clearHovered();
                 break;
             }
             default:
