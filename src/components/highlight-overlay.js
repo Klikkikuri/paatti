@@ -27,9 +27,6 @@ const STATUS_LABELS = {
     error: "⚠️ Error"
 };
 
-/** Room a label needs above its box. Below this it flips inside, so it cannot be clipped by the viewport. */
-const LABEL_CLEARANCE = 24;
-
 /** Tooltip on a label that opens the feedback dialog. English, as the status labels beside it are. */
 const LABEL_ACTION = "Report this conversion";
 
@@ -101,15 +98,16 @@ const OVERLAY_CSS = `
     box-shadow: 0 0 10px color-mix(in srgb, var(--kk-error) 30%, transparent);
 }
 
-/* The label sits above its box rather than over the content it names, which a small target has no room for.
+/* The label sits in the box's top-right corner, so it reads as belonging to the element it names rather than
+ * to whatever happens to sit above it.
+ *
  * It is the only part of the overlay that takes clicks: a descendant may re-enable hits under a
  * pointer-events:none host, and giving the box itself auto would stop every highlighted headline from being
  * a link. */
 .label {
     position: absolute;
-    bottom: 100%;
-    right: 0;
-    margin-bottom: 2px;
+    top: 6px;
+    right: 6px;
     padding: 3px 8px;
     border: 0;
     appearance: none;
@@ -125,12 +123,6 @@ const OVERLAY_CSS = `
     color: var(--kk-badge-text);
     border-radius: 20px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.box.label-inside .label {
-    bottom: auto;
-    top: 2px;
-    margin-bottom: 0;
 }
 
 .label:disabled {
@@ -352,7 +344,6 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
             }
 
             box.classList.toggle("hover", hovered.has(element));
-            box.classList.toggle("label-inside", rect.top < LABEL_CLEARANCE);
         }
 
         setListening(targets.size > 0);
