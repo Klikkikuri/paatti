@@ -30,6 +30,9 @@ const STATUS_LABELS = {
 /** Room a label needs above its box. Below this it flips inside, so it cannot be clipped by the viewport. */
 const LABEL_CLEARANCE = 24;
 
+/** Tooltip on a label that opens the feedback dialog. English, as the status labels beside it are. */
+const LABEL_ACTION = "Report this conversion";
+
 /** Inline on the host, all `!important`: a page author rule cannot outrank an inline important declaration. */
 const HOST_STYLE = {
     position: "absolute",
@@ -96,13 +99,20 @@ const OVERLAY_CSS = `
     box-shadow: 0 0 10px color-mix(in srgb, var(--kk-error) 30%, transparent);
 }
 
-/* The label sits above its box rather than over the content it names, which a small target has no room for. */
+/* The label sits above its box rather than over the content it names, which a small target has no room for.
+ * It is the only part of the overlay that takes clicks: a descendant may re-enable hits under a
+ * pointer-events:none host, and giving the box itself auto would stop every highlighted headline from being
+ * a link. */
 .label {
     position: absolute;
     bottom: 100%;
     right: 0;
     margin-bottom: 2px;
     padding: 3px 8px;
+    border: 0;
+    appearance: none;
+    pointer-events: auto;
+    cursor: pointer;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-size: 10px;
     font-weight: 700;
@@ -119,6 +129,19 @@ const OVERLAY_CSS = `
     bottom: auto;
     top: 2px;
     margin-bottom: 0;
+}
+
+.label:disabled {
+    cursor: default;
+}
+
+.label:not(:disabled):hover {
+    filter: brightness(1.15);
+}
+
+.label:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 1px;
 }
 
 .box:not([data-status]) .label {
@@ -169,11 +192,8 @@ const OVERLAY_CSS = `
  *   refresh: () => void
  * }}
  */
-export function createHighlightOverlay() {
+export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
     const host = document.createElement("klikkikuri-highlight-overlay");
-    // Decoration only. Without this the labels, which used to be CSS `content:` strings, would be announced
-    // over every headline once they became real nodes.
-    host.setAttribute("aria-hidden", "true");
     for (const [property, value] of Object.entries(HOST_STYLE)) {
         host.style.setProperty(property, value, "important");
     }
@@ -244,13 +264,36 @@ export function createHighlightOverlay() {
         return targets;
     }
 
-    function createBox() {
+    /**
+     * The ring is pure decoration and says so; the label is a real button, so it must stay out of any
+     * `aria-hidden` subtree -- a focusable control inside one is unreachable.
+     *
+     * @param {Element} element - The page element this box is drawn over.
+     */
+    function createBox(element) {
         const box = document.createElement("div");
         box.className = "box";
+
         const ring = document.createElement("div");
         ring.className = "ring";
-        const label = document.createElement("span");
+        ring.setAttribute("aria-hidden", "true");
+
+        const label = document.createElement("button");
+        label.type = "button";
         label.className = "label";
+
+        if (onLabelActivate) {
+            label.title = LABEL_ACTION;
+            label.addEventListener("click", (event) => {
+                // The box sits on top of a link. Without both of these the click would navigate, and the
+                // page's own document listeners would see a click they cannot explain.
+                event.preventDefault();
+                event.stopPropagation();
+                onLabelActivate(element, box.getBoundingClientRect());
+            });
+        }
+        label.disabled = true;
+
         box.append(ring, label);
         return box;
     }
@@ -267,7 +310,7 @@ export function createHighlightOverlay() {
 
         for (const element of targets) {
             if (boxes.has(element)) continue;
-            const box = createBox();
+            const box = createBox(element);
             shadow.appendChild(box);
             boxes.set(element, box);
             // Catches what scroll and resize miss: a lazy <img> growing a card, a webfont rewrapping a headline.
@@ -299,7 +342,11 @@ export function createHighlightOverlay() {
                 } else {
                     delete box.dataset.status;
                 }
-                box.querySelector(".label").textContent = STATUS_LABELS[status] || "";
+                const label = box.querySelector(".label");
+                label.textContent = STATUS_LABELS[status] || "";
+                // A skipped or paywalled entry has no conversion to report on, so its label stays a plain
+                // status chip rather than a button that opens an empty dialog.
+                label.disabled = !onLabelActivate || (canActivate ? !canActivate(element) : false);
             }
 
             box.classList.toggle("hover", hovered.has(element));

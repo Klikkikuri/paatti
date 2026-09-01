@@ -20,6 +20,8 @@ let hrefSign;
     const { getLogger, debounce, canAppendSpan } = await import(browser.runtime.getURL("src/utils.js"));
 
     const { createHighlightOverlay } = await import(browser.runtime.getURL("src/components/highlight-overlay.js"));
+    const { createFeedbackDialog } = await import(browser.runtime.getURL("src/components/feedback-dialog.js"));
+    const { getConfig } = await import(browser.runtime.getURL("src/config.js"));
 
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
     const { applyModifiers } = await import(browser.runtime.getURL("src/modifiers.js"));
@@ -44,8 +46,34 @@ let hrefSign;
 
     const log = getLogger("content_script");
 
+    /** The converted title lives on the container's title element, or on the container itself. */
+    const convertedTitleOf = (element) =>
+        (element.querySelector("[data-klikkikuri-original-title]") || element).dataset.klikkikuriConvertedTitle;
+
+    // Reports on a conversion, in the page, in a shadow root of its own. The popup cannot be opened from here.
+    const feedbackDialog = createFeedbackDialog({
+        browser,
+        log,
+        getFeedbackServerUrl: async () => {
+            try {
+                const config = await getConfig();
+                if (config?.feedbackServerUrl) return config.feedbackServerUrl;
+            } catch (err) {
+                log("Error loading config for feedback server URL:", err);
+            }
+            return "https://api.klikkikuri.fi/v1/feedback";
+        },
+        getDatabaseUpdated: async () => {
+            const status = await model.read.getDatabaseStatus();
+            return status.lastDatabaseUpdate ? new Date(status.lastDatabaseUpdate).toISOString() : "Unknown";
+        }
+    });
+
     // Draws the debug outlines and the popup's hover highlight, in a shadow root of its own.
-    const highlightOverlay = createHighlightOverlay();
+    const highlightOverlay = createHighlightOverlay({
+        canActivate: (element) => Boolean(convertedTitleOf(element)),
+        onLabelActivate: (element, anchor) => feedbackDialog.open(element, anchor)
+    });
 
     /**
      * Returns the favicon URL the browser would use for this page:
@@ -110,7 +138,12 @@ let hrefSign;
                     documentElement.classList.remove("klikkikuri-visual-hilight");
                 }
                 // The class drives no styling any more; it stays as a signal that the mode is on.
-                highlightOverlay.setStatusVisible(enabled || isPopupOpen);
+                const visible = enabled || isPopupOpen;
+                highlightOverlay.setStatusVisible(visible);
+                // The dialog is opened from a status label, so it must not outlive the labels.
+                if (!visible) {
+                    feedbackDialog.close();
+                }
             }
         } catch (e) {
             log("Failed to update visual highlight class", e);
