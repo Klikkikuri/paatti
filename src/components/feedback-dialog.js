@@ -130,13 +130,20 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     /** Torn down every time the dialog closes, so a reopened dialog never carries the last one's listeners. */
     let listeners = null;
     let current = null;
+    let frame = 0;
+
+    // Catches what scroll and resize miss: the card's own headline reflowing as the page settles.
+    const resizeObserver = new ResizeObserver(() => schedulePlace());
 
     const message = (key, fallback) => browser.i18n.getMessage(key) || fallback;
 
     function close() {
         listeners?.abort();
         listeners = null;
+        if (current) resizeObserver.unobserve(current);
         current = null;
+        cancelAnimationFrame(frame);
+        frame = 0;
         dialog.hidden = true;
         dialog.replaceChildren();
     }
@@ -144,9 +151,22 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     /**
      * Position the dialog beside the element it is about, flipping above and clamping to the viewport so it is
      * always fully on screen whatever the page's layout.
+     *
+     * The anchor is read from the element every time rather than captured when the dialog opened, so the card
+     * stays with its headline while the page scrolls or reflows. Clamped rather than closed when the element
+     * leaves the viewport: a half-typed comment must not vanish because the page moved.
      */
-    function place(anchor) {
+    function place() {
+        if (!current) return;
+
+        // The page recycled the headline out from under us; there is nothing left to report on.
+        if (!current.isConnected) {
+            close();
+            return;
+        }
+
         const margin = 8;
+        const anchor = current.getBoundingClientRect();
         const { width, height } = dialog.getBoundingClientRect();
 
         let top = anchor.bottom + margin;
@@ -155,6 +175,15 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
         }
         dialog.style.top = `${Math.max(margin, Math.min(top, window.innerHeight - height - margin))}px`;
         dialog.style.left = `${Math.max(margin, Math.min(anchor.left, window.innerWidth - width - margin))}px`;
+    }
+
+    /** Coalesced to one reposition per frame, however many scroll events arrive. */
+    function schedulePlace() {
+        if (frame) return;
+        frame = requestAnimationFrame(() => {
+            frame = 0;
+            place();
+        });
     }
 
     function setStatus(container, text, colour) {
@@ -301,9 +330,8 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     return {
         /**
          * @param {Element} target - The highlighted element being reported on.
-         * @param {DOMRect} anchor - Viewport rect to sit beside.
          */
-        open(target, anchor) {
+        open(target) {
             close();
             listeners = new AbortController();
             current = target;
@@ -311,7 +339,13 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
 
             render(readTarget(target));
             dialog.hidden = false;
-            place(anchor);
+            place();
+
+            // Follow the headline while the page moves under it. Capture, so a scrolling container that stops
+            // the event still reaches us; passive, because none of this cancels anything.
+            window.addEventListener("scroll", schedulePlace, { capture: true, passive: true, signal });
+            window.addEventListener("resize", schedulePlace, { signal });
+            resizeObserver.observe(target);
 
             // Capture phase, so the page cannot swallow the key before it reaches us.
             window.addEventListener("keydown", (event) => {

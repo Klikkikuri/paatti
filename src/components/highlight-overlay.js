@@ -44,7 +44,9 @@ const HOST_STYLE = {
     border: "0",
     padding: "0",
     display: "block",
-    "z-index": "2147483647",
+    // One below the maximum, which the feedback dialog takes: the two hosts are siblings, so an equal z-index
+    // would leave DOM order to decide and the overlay would paint over the dialog it opens.
+    "z-index": "2147483646",
     "pointer-events": "none"
 };
 
@@ -289,7 +291,7 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
                 // page's own document listeners would see a click they cannot explain.
                 event.preventDefault();
                 event.stopPropagation();
-                onLabelActivate(element, box.getBoundingClientRect());
+                onLabelActivate(element);
             });
         }
         label.disabled = true;

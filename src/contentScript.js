@@ -72,7 +72,7 @@ let hrefSign;
     // Draws the debug outlines and the popup's hover highlight, in a shadow root of its own.
     const highlightOverlay = createHighlightOverlay({
         canActivate: (element) => Boolean(convertedTitleOf(element)),
-        onLabelActivate: (element, anchor) => feedbackDialog.open(element, anchor)
+        onLabelActivate: (element) => feedbackDialog.open(element)
     });
 
     /**
