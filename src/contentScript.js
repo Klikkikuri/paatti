@@ -621,36 +621,6 @@ let hrefSign;
         }
     });
 
-    // Expose developer debug helpers on window object.
-    window.__klikkikuri_debug = {
-        newsSite,
-        processSite,
-        rahti,
-        getStats: () => {
-            const elements = document.querySelectorAll("[data-klikkikuri-status]");
-            const stats = { converted: 0, original: 0, skipped: 0, error: 0 };
-            elements.forEach(el => {
-                const status = el.dataset.klikkikuriStatus;
-                if (status in stats) {
-                    stats[status]++;
-                }
-            });
-            return stats;
-        },
-        getElements: (statusFilter) => {
-            const elements = Array.from(document.querySelectorAll("[data-klikkikuri-status]"));
-            return elements
-                .filter(el => !statusFilter || el.dataset.klikkikuriStatus === statusFilter)
-                .map(el => ({
-                    element: el,
-                    status: el.dataset.klikkikuriStatus,
-                    reason: el.dataset.klikkikuriReason,
-                    hash: el.dataset.klikkikuriUrlSign || el.dataset.klikkikuriUrlHash || el.querySelector("a")?.dataset.klikkikuriUrlSign || el.querySelector("a")?.dataset.klikkikuriUrlHash,
-                    text: el.textContent
-                }));
-        }
-    };
-
     // Run the conversion on reload.
     try {
         await processSite();
