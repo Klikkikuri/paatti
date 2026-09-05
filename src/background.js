@@ -53,9 +53,6 @@ async function updateDynamicContentScripts() {
                 js: [
                     "src/contentScript.js"
                 ],
-                css: [
-                    "src/contentStyle.css"
-                ],
                 matches: enabledOrigins,
                 runAt: "document_idle"
             }]);
@@ -262,6 +259,19 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }).catch((err) => {
             sendResponse({ success: false, error: err.message || String(err) });
         });
+        return true; // Keep message channel open for async response
+    }
+
+    if (message.action === "submitFeedback") {
+        // The worker owns this fetch so the popup and the in-page dialog submit through one path, and so no
+        // submission depends on the visited page's context at all.
+        // `mode: "no-cors"` makes the response opaque, so success here means the request left, nothing more.
+        fetch(message.url, message.init)
+            .then(() => sendResponse({ success: true }))
+            .catch((err) => {
+                log("Failed to submit feedback:", err);
+                sendResponse({ success: false, error: err.message || String(err) });
+            });
         return true; // Keep message channel open for async response
     }
 

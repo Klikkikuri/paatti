@@ -342,6 +342,10 @@
     "message": "Kuvaile ongelmaa...",
     "description": "Placeholder for comments in reporting form"
   },
+  "feedbackviewCloseBtn": {
+    "message": "Sulje",
+    "description": "Accessible name for the in-page feedback dialog's close button"
+  },
   "feedbackviewReportSubmitBtn": {
     "message": "Lähetä",
     "description": "Label for submit button in reporting form"

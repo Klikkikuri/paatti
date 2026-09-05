@@ -342,6 +342,10 @@
     "message": "Describe the issue...",
     "description": "Placeholder for comments in reporting form"
   },
+  "feedbackviewCloseBtn": {
+    "message": "Close",
+    "description": "Accessible name for the in-page feedback dialog's close button"
+  },
   "feedbackviewReportSubmitBtn": {
     "message": "Submit",
     "description": "Label for submit button in reporting form"
