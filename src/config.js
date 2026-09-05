@@ -159,7 +159,7 @@ const DEFAULT_CONFIG = {
                     title: "h3 a"
                 },
                 { // Aiheesta enemmän cards
-                    container: "[class*='yle__article__links']",
+                    container: "[class*='yle__article__links'] [role=listitem]",
                     link: "a[data-card-heading-content-id], a[href*='/a/']",
                     title: "h3 a"
                 }
