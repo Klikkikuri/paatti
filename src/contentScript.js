@@ -184,6 +184,9 @@ let hrefSign;
     browser.runtime.onConnect.addListener((port) => {
         if (port.name === "paatti-popup-direct") {
             log("Popup connection established, adding visible class.");
+            // The popup carries the same card in its feedback view, so the in-page one stands down rather
+            // than leaving the user two of them, one of which they cannot see behind the popup.
+            feedbackDialog.close();
             activePort = port;
             document.body.classList.add("paatti-popup-visible");
             isPopupOpen = true;
