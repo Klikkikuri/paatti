@@ -18,13 +18,13 @@
  * module its only import, and with it a `web_accessible_resources` dependency.
  */
 
-/** Label per `klikkikuriStatus` value from model.js. */
+/** Label per `klikkikuriStatus` value from model.js. The icon is kept apart so CSS can swap it on hover. */
 const STATUS_LABELS = {
-    skipped: "⏭️ Skipped",
-    converted: "✅ Converted",
-    original: "🔄 Original",
-    paywalled: "🔒 Paywalled",
-    error: "⚠️ Error"
+    skipped: { icon: "⏭️", text: "Skipped" },
+    converted: { icon: "✅", text: "Converted" },
+    original: { icon: "🔄", text: "Original" },
+    paywalled: { icon: "🔒", text: "Paywalled" },
+    error: { icon: "⚠️", text: "Error" }
 };
 
 /** Tooltip on a label that opens the feedback dialog. English, as the status labels beside it are. */
@@ -138,6 +138,42 @@ const OVERLAY_CSS = `
     outline-offset: 1px;
 }
 
+/* A fixed-size slot: the pill is anchored to the right, so an icon swap that changed its width would slide
+ * the left edge out from under the pointer, drop the hover, and flicker. The status emoji and the feedback
+ * emoji are stacked inside it and the slot clips to one row, so a hover scrolls the stack up a row. */
+.icon {
+    display: inline-block;
+    width: 1.3em;
+    height: 1.3em;
+    margin-right: 3px;
+    overflow: hidden;
+    vertical-align: middle;
+    text-align: center;
+    line-height: 1.3em;
+}
+
+.icon::before,
+.icon::after {
+    display: block;
+    transition: transform 200ms ease;
+}
+
+.icon::before {
+    content: attr(data-icon);
+}
+
+.icon::after {
+    content: "💬";
+}
+
+/* Says what a click does. Only an enabled pill opens the dialog, so only it gets the hint. */
+.label:not(:disabled):hover .icon::before,
+.label:not(:disabled):hover .icon::after,
+.label:focus-visible .icon::before,
+.label:focus-visible .icon::after {
+    transform: translateY(-100%);
+}
+
 .box:not([data-status]) .label {
     display: none;
 }
@@ -171,6 +207,11 @@ const OVERLAY_CSS = `
 @media (prefers-reduced-motion: reduce) {
     .box.hover .ring {
         animation: none;
+    }
+
+    .icon::before,
+    .icon::after {
+        transition: none;
     }
 }
 `;
@@ -276,6 +317,11 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
         label.type = "button";
         label.className = "label";
 
+        const icon = document.createElement("span");
+        icon.className = "icon";
+        icon.setAttribute("aria-hidden", "true");
+        label.append(icon, "");
+
         if (onLabelActivate) {
             label.title = LABEL_ACTION;
             label.addEventListener("click", (event) => {
@@ -338,7 +384,9 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
                 } else {
                     delete box.dataset.status;
                 }
-                label.textContent = STATUS_LABELS[status] || "";
+                const { icon = "", text = "" } = STATUS_LABELS[status] || {};
+                label.querySelector(".icon").dataset.icon = icon;
+                label.lastChild.textContent = text;
             }
 
             // A skipped or paywalled entry has no conversion to report on, so its label stays a plain status
