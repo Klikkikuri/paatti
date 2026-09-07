@@ -66,6 +66,12 @@ let hrefSign;
         getDatabaseUpdated: async () => {
             const status = await model.read.getDatabaseStatus();
             return status.lastDatabaseUpdate ? new Date(status.lastDatabaseUpdate).toISOString() : "Unknown";
+        },
+        // The same ring the popup raises over an item it hovers. Reached through the overlay declared below,
+        // which exists by the time a pill can be clicked.
+        setHighlighted: (element, on) => {
+            if (on) highlightOverlay.addHovered([element]);
+            else highlightOverlay.removeHovered([element]);
         }
     });
 

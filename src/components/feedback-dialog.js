@@ -157,9 +157,12 @@ function readTarget(target) {
  * @param {() => Promise<string>} deps.getFeedbackServerUrl
  * @param {() => Promise<string>} deps.getDatabaseUpdated
  * @param {(...args: unknown[]) => void} deps.log
+ * @param {(element: Element, on: boolean) => void} [deps.setHighlighted] - Marks the article the card reports
+ *   on, so it stands out for as long as the card is up. The content script points this at the same overlay
+ *   call the popup's <feedback-item> reaches over a message when it is hovered.
  * @returns {{ open: (target: Element) => void, close: () => void }}
  */
-export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabaseUpdated, log }) {
+export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabaseUpdated, log, setHighlighted = () => {} }) {
     const host = document.createElement("klikkikuri-feedback-dialog");
     for (const [property, value] of Object.entries(HOST_STYLE)) {
         host.style.setProperty(property, value, "important");
@@ -212,7 +215,10 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     function teardown() {
         listeners?.abort();
         listeners = null;
-        if (current) resizeObserver.unobserve(current);
+        if (current) {
+            resizeObserver.unobserve(current);
+            setHighlighted(current, false);
+        }
         current = null;
         cancelAnimationFrame(frame);
         frame = 0;
@@ -472,6 +478,7 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
 
             listeners = new AbortController();
             current = target;
+            setHighlighted(target, true);
             const { signal } = listeners;
 
             // Under <html> rather than <body>, so the content script's body-scoped MutationObserver never
