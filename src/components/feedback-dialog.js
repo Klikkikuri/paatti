@@ -105,7 +105,7 @@ function readTarget(target) {
  * @param {() => Promise<string>} deps.getFeedbackServerUrl
  * @param {() => Promise<string>} deps.getDatabaseUpdated
  * @param {(...args: unknown[]) => void} deps.log
- * @returns {{ open: (target: Element, anchor: DOMRect) => void, close: () => void }}
+ * @returns {{ open: (target: Element) => void, close: () => void }}
  */
 export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabaseUpdated, log }) {
     const host = document.createElement("klikkikuri-feedback-dialog");
