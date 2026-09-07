@@ -161,44 +161,6 @@ ${scope}.clickbait-level-badge[data-level="4"] { --severity: var(--severity-4); 
 }
 
 /**
- * Tokens the card reads, for the shadow root only -- the extension pages already have theme.css.
- *
- * Fixed light values, with no `prefers-color-scheme` block. That query reports the OS preference while injected
- * markup lives in the page's theme, so a dark site on a light-mode OS would get the wrong one. The badges solve
- * this by inheriting the page's colours (see badge-style.js), but a dialog is an opaque panel with nothing to
- * inherit from, so it carries one palette and stays legible on any page -- the same call the overlay's status
- * colours make.
- */
-export const FEEDBACK_TOKENS = `
-    --color-surface: #ffffff;
-    --color-text-primary: #222;
-    --color-text-muted: #888;
-    --color-border-strong: #555;
-    --shadow-ambient: rgba(0, 0, 0, 0.05);
-    --color-success-strong: #10b981;
-    --color-danger-strong: #ef4444;
-    --color-warning: #ff9f43;
-    --color-info: #53b9ff;
-    --color-on-accent: #ffffff;
-    --severity-0: #64748b;
-    --severity-1: #4caf50;
-    --severity-2: #eab308;
-    --severity-3: #f97316;
-    --severity-4: #ef4444;
-    --push-offset: 0.25rem;
-    --push-bg: #e3e3e3;
-    --push-bg-active: #fbfbfb;
-    --push-shadow: #777;
-    --push-text: #222;
-    --push-accent: #1a1a1a;
-    --feedback-vote-yes-bg: #ecfdf5;
-    --feedback-vote-yes-text: #065f46;
-    --feedback-vote-no-bg: #fef2f2;
-    --feedback-vote-no-text: #991b1b;
-    --feedback-tag: #6366f1;
-`;
-
-/**
  * The page utilities the card leans on, for the shadow root only: `.feedback-card`'s surface from
  * components.css, `.hidden` from the same, and `.push-button` from styles.css. Copied rather than shared,
  * because they are general utilities owned by the extension pages -- the card's own rules above are the part

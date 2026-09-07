@@ -52,6 +52,7 @@
         "src/stats.js",
         "src/feedback.js",
         "src/feedback-style.js",
+        "src/options/theme.css",
         "src/components/badge-base.js",
         "src/components/highlight-overlay.js",
         "src/components/feedback-dialog.js",

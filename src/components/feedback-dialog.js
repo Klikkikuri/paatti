@@ -16,7 +16,7 @@
  */
 
 import { buildFeedbackPayload, buildFeedbackRequest, clickbaitBadgeIndex } from "../feedback.js";
-import { FEEDBACK_BASE, FEEDBACK_TOKENS, feedbackRules } from "../feedback-style.js";
+import { FEEDBACK_BASE, feedbackRules } from "../feedback-style.js";
 
 /** Inline on the host, all `!important`: an inline important declaration outranks any page author rule. */
 const HOST_STYLE = {
@@ -34,7 +34,6 @@ const HOST_STYLE = {
 
 const DIALOG_CSS = `
 :host {
-${FEEDBACK_TOKENS}
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     font-size: 14px;
     color: var(--color-text-primary);
@@ -117,6 +116,17 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     const style = document.createElement("style");
     style.textContent = DIALOG_CSS;
     shadow.appendChild(style);
+
+    // The colours the rules below read, from the one file that defines them. Its blocks are scoped
+    // `:root, :host`, so the sheet the extension pages link resolves against this shadow host too -- fetched
+    // rather than linked, because a page stylesheet never crosses a shadow boundary. Started at construction
+    // rather than on open, so it has landed long before the first click on a pill.
+    const themeSheet = new CSSStyleSheet();
+    shadow.adoptedStyleSheets = [themeSheet];
+    fetch(browser.runtime.getURL("src/options/theme.css"))
+        .then((response) => response.text())
+        .then((css) => themeSheet.replaceSync(css))
+        .catch((err) => log("Failed to load the theme:", err));
 
     // Under <html> rather than <body>, so the content script's body-scoped MutationObserver never sees it.
     document.documentElement.appendChild(host);
