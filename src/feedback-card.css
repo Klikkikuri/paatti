@@ -43,6 +43,22 @@ feedback-item .feedback-row.converted {
     border-left: 3px solid var(--color-success-strong);
 }
 
+/* The label and its badge sit on one line above the text they introduce. */
+:host .feedback-row-head,
+feedback-item .feedback-row-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+:host .feedback-separator,
+feedback-item .feedback-separator {
+    border: 0;
+    border-top: 1px solid var(--color-border-strong);
+    margin: 4px 0;
+}
+
 :host .feedback-label,
 feedback-item .feedback-label {
     font-size: 0.7em;
@@ -79,6 +95,10 @@ feedback-item .feedback-action-btn {
     gap: 4px;
     cursor: pointer;
     font-family: inherit;
+    margin: 0;
+    padding: 4px 8px;
+    font-size: 0.8em;
+    min-width: 80px;
 }
 
 :host .feedback-action-btn.good:hover,

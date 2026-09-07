@@ -21,7 +21,7 @@ template.innerHTML = `
         </div>
 
         <div class="feedback-row original">
-            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+            <div class="feedback-row-head">
                 <span class="feedback-label original-label-text"></span>
                 <span class="clickbait-level-badge"></span>
             </div>
@@ -32,11 +32,11 @@ template.innerHTML = `
             <span class="feedback-text converted-title-text"></span>
         </div>
         
-        <hr style="border: 0; border-top: 1px solid var(--color-border-strong); margin: 4px 0;">
+        <hr class="feedback-separator">
         
         <div class="feedback-actions">
-            <button class="push-button feedback-action-btn good" style="margin: 0; padding: 4px 8px; font-size: 0.8em; min-width: 80px;"></button>
-            <button class="push-button feedback-action-btn bad" style="margin: 0; padding: 4px 8px; font-size: 0.8em; min-width: 80px;"></button>
+            <button class="push-button feedback-action-btn good"></button>
+            <button class="push-button feedback-action-btn bad"></button>
         </div>
         
         <div class="feedback-input-container hidden">

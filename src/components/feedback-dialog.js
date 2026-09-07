@@ -78,21 +78,12 @@ const DIALOG_CSS = `
     font-weight: bold;
 }
 
-/* The page utilities the card's markup leans on: .feedback-card's surface and .hidden from components.css,
- * .push-button from styles.css. Copied rather than shared, because they are general utilities owned by the
- * extension pages -- the card's own rules, in feedback-card.css, are the part that must not drift.
+/* .push-button, trimmed for the card: the page's original in styles.css also sets --font-display and gives a
+ * pressed button a pulsing glow, neither of which belongs on a two-button card inside someone else's page. It
+ * is the one rule here that cannot simply be adopted -- styles.css fuses .push-button with #navi and
+ * input:checked selectors this root has no use for, and drags 710 lines of page layout with it. The card's
+ * surface and .hidden come from components.css, which this root adopts alongside the other two sheets.
  * No backticks in here: this is inside a template literal, and a pair of them silently turns CSS into JS. */
-.feedback-card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border-strong);
-    border-radius: 6px;
-    box-shadow: var(--push-shadow) var(--raised-offset) var(--raised-offset);
-}
-
-.hidden {
-    display: none !important;
-}
-
 .push-button {
     display: inline-block;
     cursor: pointer;
@@ -223,11 +214,11 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     style.textContent = DIALOG_CSS;
     shadow.appendChild(style);
 
-    // The two sheets the extension pages link: theme.css for the colours, feedback-card.css for the card
-    // itself. Both are scoped to reach a shadow host as well as a document, and both are fetched rather than
-    // linked, because a page stylesheet never crosses a shadow boundary. Started at construction rather than
-    // on open, so they have landed long before the first click on a pill.
-    for (const path of ["src/options/theme.css", "src/feedback-card.css"]) {
+    // The sheets the extension pages link: theme.css for the colours, components.css for the card's surface
+    // and .hidden, feedback-card.css for the card itself. All are fetched rather than linked, because a page
+    // stylesheet never crosses a shadow boundary. Started at construction rather than on open, so they have
+    // landed long before the first click on a pill.
+    for (const path of ["src/options/theme.css", "src/options/components.css", "src/feedback-card.css"]) {
         const sheet = new CSSStyleSheet();
         shadow.adoptedStyleSheets = [...shadow.adoptedStyleSheets, sheet];
         fetch(browser.runtime.getURL(path))
@@ -396,7 +387,7 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
         wrapper.className = `feedback-row ${variant}`;
 
         const head = document.createElement("div");
-        head.style.cssText = "display: flex; align-items: center; gap: 6px; margin-bottom: 4px;";
+        head.className = "feedback-row-head";
         const label = document.createElement("span");
         label.className = "feedback-label";
         label.textContent = labelText;
@@ -430,17 +421,15 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
         const converted = row("converted", message("feedbackviewRateTitleConvertedTitleLabel", "Aligned:"), values.convertedTitle);
 
         const separator = document.createElement("hr");
-        separator.style.cssText = "border: 0; border-top: 1px solid var(--color-border-strong); margin: 4px 0;";
+        separator.className = "feedback-separator";
 
         const actions = document.createElement("div");
         actions.className = "feedback-actions";
         const goodBtn = document.createElement("button");
         goodBtn.className = "push-button feedback-action-btn good";
-        goodBtn.style.cssText = "margin: 0; padding: 4px 8px; font-size: 0.8em; min-width: 80px;";
         goodBtn.textContent = `👍 ${message("feedbackviewRateTitleConversionIsGood", "Is good")}`;
         const badBtn = document.createElement("button");
         badBtn.className = "push-button feedback-action-btn bad";
-        badBtn.style.cssText = "margin: 0; padding: 4px 8px; font-size: 0.8em; min-width: 80px;";
         badBtn.textContent = `👎 ${message("feedbackviewRateTitleConversionIsBad", "Is no good")}`;
         actions.append(goodBtn, badBtn);
 
