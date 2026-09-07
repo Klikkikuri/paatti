@@ -329,6 +329,8 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
             box.style.width = `${rect.width}px`;
             box.style.height = `${rect.height}px`;
 
+            const label = box.querySelector(".label");
+
             const status = element.dataset.klikkikuriStatus;
             if (box.dataset.status !== status) {
                 if (status) {
@@ -336,12 +338,13 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
                 } else {
                     delete box.dataset.status;
                 }
-                const label = box.querySelector(".label");
                 label.textContent = STATUS_LABELS[status] || "";
-                // A skipped or paywalled entry has no conversion to report on, so its label stays a plain
-                // status chip rather than a button that opens an empty dialog.
-                label.disabled = !onLabelActivate || (canActivate ? !canActivate(element) : false);
             }
+
+            // A skipped or paywalled entry has no conversion to report on, so its label stays a plain status
+            // chip rather than a button that opens an empty dialog. Read on every draw: the converted title
+            // can arrive after the status, and a page that recycles a headline keeps the box it has.
+            label.disabled = !onLabelActivate || (canActivate ? !canActivate(element) : false);
 
             box.classList.toggle("hover", hovered.has(element));
         }
