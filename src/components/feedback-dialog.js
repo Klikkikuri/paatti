@@ -149,6 +149,56 @@ function readTarget(target) {
     };
 }
 
+/** Kept between the card and the viewport edge whenever the card has to come off its anchor. */
+const PLACE_MARGIN = 8;
+
+/**
+ * Whether the anchor has left the page, so the card should go with it: collapsed to nothing, or scrolled
+ * fully past an edge. Partly visible still counts as visible.
+ *
+ * @param {{top: number, left: number, right: number, bottom: number, width: number, height: number}} anchor
+ *   In viewport coordinates, as `getBoundingClientRect` gives them.
+ * @param {{width: number, height: number}} viewport
+ * @returns {boolean}
+ */
+export function isAnchorGone(anchor, viewport) {
+    return anchor.width === 0 || anchor.height === 0
+        || anchor.bottom <= 0 || anchor.top >= viewport.height
+        || anchor.right <= 0 || anchor.left >= viewport.width;
+}
+
+/**
+ * Where to put the card: both top-right corners on the same point, so it covers the pill that was clicked.
+ *
+ * Nothing is clamped to the viewport -- the card travels with its headline, scrolling off the edge with it
+ * rather than clinging to the edge detached from the thing it reports on. The two fallbacks move it only
+ * where the primary corner would leave it unusable.
+ *
+ * @param {{top: number, left: number, right: number, bottom: number}} anchor - In viewport coordinates.
+ * @param {{width: number, height: number}} card - Measured at its settled size.
+ * @param {{width: number, height: number}} viewport
+ * @param {number} [margin]
+ * @returns {{top: number, left: number, transformOrigin: string}}
+ */
+export function placeCard(anchor, card, viewport, margin = PLACE_MARGIN) {
+    // Too little room under the pill for the whole card: pull it up to sit on the anchor's bottom edge.
+    // Never past the pill, or an anchor taller than the card would push it down and off the fold.
+    let top = anchor.top;
+    if (top + card.height > viewport.height - margin) top = Math.min(top, anchor.bottom - card.height);
+
+    // A headline narrower than the card would push it off the left edge; align it with the left edge then.
+    let left = anchor.right - card.width;
+    if (left < margin) left = anchor.left;
+
+    // Whichever corner ended up on the anchor is the one the card grows out of. Derived from the edges it was
+    // aligned to, not from a comparison: a card wider than its headline starts left of it either way.
+    return {
+        top,
+        left,
+        transformOrigin: `${top === anchor.top ? "top" : "bottom"} ${left === anchor.left ? "left" : "right"}`
+    };
+}
+
 /**
  * Build the dialog and attach it to the document.
  *
@@ -267,13 +317,11 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     }
 
     /**
-     * Cover the element's status pill with the card: both top-right corners on the same point, so the card
-     * appears where the click landed.
+     * Measure the anchor and put the card on it, or close the dialog once the anchor is gone -- scrolled
+     * fully out of view, hidden, or dropped from the page.
      *
-     * The anchor is read from the element every time rather than captured when the dialog opened, and nothing
-     * is clamped to the viewport, so the card travels with its headline -- scrolling off the edge with it
-     * instead of clinging to the edge, detached from the thing it reports on. Once the headline is gone --
-     * scrolled fully out of view, hidden, or dropped from the page -- the dialog goes with it.
+     * The anchor is read on every call rather than captured when the dialog opened, so the card follows its
+     * headline as the page moves under it. The geometry itself is in `placeCard`.
      */
     function place() {
         if (!current) return;
@@ -283,36 +331,21 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             return;
         }
 
-        const margin = 8;
         const anchor = current.getBoundingClientRect();
-
-        const gone = anchor.width === 0 || anchor.height === 0
-            || anchor.bottom <= 0 || anchor.top >= window.innerHeight
-            || anchor.right <= 0 || anchor.left >= window.innerWidth;
-        if (gone) {
+        const viewport = { width: window.innerWidth, height: window.innerHeight };
+        if (isAnchorGone(anchor, viewport)) {
             close();
             return;
         }
 
         // offsetWidth/Height rather than a client rect: they ignore transforms, so a reposition mid-animation
         // measures the card at its settled size instead of its scaled one.
-        const width = dialog.offsetWidth;
-        const height = dialog.offsetHeight;
-
-        // Too little room under the pill for the whole card: pull it up to sit on the element's bottom edge.
-        // Never past the pill, or an element taller than the card would push it down and off the fold.
-        let top = anchor.top;
-        if (top + height > window.innerHeight - margin) top = Math.min(top, anchor.bottom - height);
-
-        // A headline narrower than the card would push it off the left edge; align it with the left edge then.
-        let left = anchor.right - width;
-        if (left < margin) left = anchor.left;
+        const card = { width: dialog.offsetWidth, height: dialog.offsetHeight };
+        const { top, left, transformOrigin } = placeCard(anchor, card, viewport);
 
         dialog.style.top = `${top}px`;
         dialog.style.left = `${left}px`;
-        // Whichever corner ended up on the anchor is the one the card grows out of. Derived from the edges it
-        // was aligned to, not from a comparison: a card wider than its headline starts left of it either way.
-        dialog.style.transformOrigin = `${top === anchor.top ? "top" : "bottom"} ${left === anchor.left ? "left" : "right"}`;
+        dialog.style.transformOrigin = transformOrigin;
     }
 
     /** Coalesced to one reposition per frame, however many scroll events arrive. */
