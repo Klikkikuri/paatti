@@ -41,9 +41,9 @@ const HOST_STYLE = {
     border: "0",
     padding: "0",
     display: "block",
-    // One below the maximum, which the feedback dialog takes: the two hosts are siblings, so an equal z-index
-    // would leave DOM order to decide and the overlay would paint over the dialog it opens.
-    "z-index": "2147483646",
+    // The maximum. Nothing here has to leave room for the feedback dialog this overlay opens: that one is a
+    // popover and paints in the top layer, which no z-index competes with.
+    "z-index": "2147483647",
     "pointer-events": "none"
 };
 

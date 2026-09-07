@@ -18,7 +18,14 @@
 
 import { buildFeedbackPayload, buildFeedbackRequest, clickbaitBadgeIndex } from "../feedback.js";
 
-/** Inline on the host, all `!important`: an inline important declaration outranks any page author rule. */
+/**
+ * Inline on the host, all `!important`: an inline important declaration outranks any page author rule. The
+ * same resets neutralise the UA's own `[popover]` box -- its inset, border, padding, fit-content sizing and
+ * scroll container -- leaving a 0x0 anchor that only its shadow root draws through.
+ *
+ * No z-index: the host is a popover, so it paints in the top layer, above every page stacking context however
+ * the page numbers its own. Popover is Chrome 114 and Firefox 125, under this manifest's 122 and 128 floors.
+ */
 const HOST_STYLE = {
     position: "fixed",
     top: "0",
@@ -28,8 +35,9 @@ const HOST_STYLE = {
     margin: "0",
     border: "0",
     padding: "0",
-    display: "block",
-    "z-index": "2147483647"
+    overflow: "visible",
+    background: "transparent",
+    display: "block"
 };
 
 /* Short enough that a click still feels immediate; the hide is quicker, because by then the user has decided. */
@@ -205,6 +213,9 @@ export function placeCard(anchor, card, viewport, margin = PLACE_MARGIN) {
  */
 export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabaseUpdated, log, setHighlighted = () => {} }) {
     const host = document.createElement("klikkikuri-feedback-dialog");
+    // Manual, not auto: the card keeps its own Escape and outside-click handling rather than taking the
+    // light-dismiss behaviour, which would also tie it to the page's own popover stack.
+    host.setAttribute("popover", "manual");
     for (const [property, value] of Object.entries(HOST_STYLE)) {
         host.style.setProperty(property, value, "important");
     }
@@ -301,7 +312,8 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             dialog.hidden = true;
             dialog.replaceChildren();
             // Out of the page entirely between openings -- the element stays alive here, so its shadow root
-            // keeps the sheets already fetched, but the page is left with no trace of it.
+            // keeps the sheets already fetched, but the page is left with no trace of it. Removing an open
+            // popover takes it out of the top layer too, so there is nothing else to unwind.
             host.remove();
         // Cancelled by a reopen during the hide, which keeps the card exactly where it is.
         }, () => {});
@@ -505,7 +517,10 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
 
             // Under <html> rather than <body>, so the content script's body-scoped MutationObserver never
             // sees it. Back in before `place()`, which needs the card laid out to measure it.
-            document.documentElement.appendChild(host);
+            if (!host.isConnected) document.documentElement.appendChild(host);
+            // Into the top layer. A reopen during the closing animation finds the host still showing, and
+            // re-showing an open popover is a no-op on current Chromium but an InvalidStateError elsewhere.
+            if (!host.matches(":popover-open")) host.showPopover();
             render(readTarget(target));
             dialog.hidden = false;
             place();
