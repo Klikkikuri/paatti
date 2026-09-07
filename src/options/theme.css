@@ -1,18 +1,26 @@
 /**
- * Shared design tokens for every extension page (popup, options) and for the
- * light-DOM Web Components they host.
+ * Shared design tokens for every extension page (popup, options), for the
+ * light-DOM Web Components they host, and for the in-page feedback dialog.
  *
  * This is the single source of truth for colour: pages and components must
  * reference `var(--color-*)` rather than literal values, so a theme change is a
- * one-file edit and both pages stay consistent.
+ * one-file edit and every surface stays consistent.
  *
- * Dark mode follows `prefers-color-scheme`, which is the right signal here:
- * these are extension pages rendered in browser chrome, not content injected
- * into a website. In-page badges deliberately do the opposite and inherit the
- * page's own colours — see src/components/badge-style.js.
+ * Both blocks are `:root, :host` so this file works on either side of a shadow
+ * boundary: `:root` matches the document element on the extension pages, and
+ * `:host` matches the shadow host when the feedback dialog adopts this sheet
+ * (see src/components/feedback-dialog.js). `:root` alone matches neither the
+ * host nor anything inside it, so a shadow root that adopted it would resolve
+ * every token to nothing.
+ *
+ * Dark mode follows `prefers-color-scheme`, which is the right signal for all
+ * of them: extension pages are browser chrome, and the dialog is an opaque
+ * panel over the page rather than part of it. In-page badges deliberately do
+ * the opposite and inherit the page's own colours — see
+ * src/components/badge-style.js.
  */
 
-:root {
+:root, :host {
     /* Tell the browser which schemes we support so form controls, scrollbars
      * and the canvas behind the page follow along. */
     color-scheme: light dark;
@@ -142,7 +150,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root, :host {
         /* Brand hues are lightened so they keep contrast against dark surfaces;
          * the gradient keeps the original deeper tones since it only ever sits
          * behind white text. */

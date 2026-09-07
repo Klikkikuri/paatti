@@ -66,7 +66,9 @@ let hrefSign;
         getDatabaseUpdated: async () => {
             const status = await model.read.getDatabaseStatus();
             return status.lastDatabaseUpdate ? new Date(status.lastDatabaseUpdate).toISOString() : "Unknown";
-        }
+        },
+        // Reached through the overlay declared below, which exists by the time a pill can be clicked.
+        setHighlighted: (element, on) => highlightOverlay.setFeedback([element], on)
     });
 
     // Draws the debug outlines and the popup's hover highlight, in a shadow root of its own.
@@ -110,53 +112,26 @@ let hrefSign;
 
     let isPopupOpen = false;
 
-    const updateEnvironmentClass = async () => {
+    const updateStatusHighlighting = async () => {
         try {
-            const env = await model.read.getEnvironment();
-            const documentElement = document.documentElement;
-            if (documentElement) {
-                for (const className of Array.from(documentElement.classList)) {
-                    if (className.startsWith("klikkikuri-env-")) {
-                        documentElement.classList.remove(className);
-                    }
-                }
-                documentElement.classList.add(`klikkikuri-env-${env}`);
+            const enabled = await model.read.getVisualHighlightEnabled();
+            const visible = enabled || isPopupOpen;
+            highlightOverlay.setStatusVisible(visible);
+            // The dialog is opened from a status label, so it must not outlive the labels.
+            if (!visible) {
+                feedbackDialog.close();
             }
         } catch (e) {
-            log("Failed to update environment class", e);
+            log("Failed to update status highlighting", e);
         }
     };
 
-    const updateVisualHighlightClass = async () => {
-        try {
-            const documentElement = document.documentElement;
-            if (documentElement) {
-                const enabled = await model.read.getVisualHighlightEnabled();
-                if (enabled || isPopupOpen) {
-                    documentElement.classList.add("klikkikuri-visual-hilight");
-                } else {
-                    documentElement.classList.remove("klikkikuri-visual-hilight");
-                }
-                // The class drives no styling any more; it stays as a signal that the mode is on.
-                const visible = enabled || isPopupOpen;
-                highlightOverlay.setStatusVisible(visible);
-                // The dialog is opened from a status label, so it must not outlive the labels.
-                if (!visible) {
-                    feedbackDialog.close();
-                }
-            }
-        } catch (e) {
-            log("Failed to update visual highlight class", e);
-        }
-    };
+    await updateStatusHighlighting();
 
-    await updateEnvironmentClass();
-    await updateVisualHighlightClass();
-
-    // Listen for storage changes to toggle the class dynamically
+    // Listen for storage changes to toggle the highlighting dynamically
     browser.storage.onChanged.addListener((changes, areaName) => {
         if (areaName === "local" && changes.visualHighlightEnabled) {
-            updateVisualHighlightClass();
+            updateStatusHighlighting();
         }
     });
 
@@ -174,14 +149,16 @@ let hrefSign;
     ////////////////////////////////////////////////////////////////////////////
     // Initialization.
 
-    // Listen for popup direct connection to manage visibility styling, highlighting, and live stats push
+    // Listen for popup direct connection to manage highlighting and live stats push
     browser.runtime.onConnect.addListener((port) => {
         if (port.name === "paatti-popup-direct") {
-            log("Popup connection established, adding visible class.");
+            log("Popup connection established.");
+            // The popup carries the same card in its feedback view, so the in-page one stands down rather
+            // than leaving the user two of them, one of which they cannot see behind the popup.
+            feedbackDialog.close();
             activePort = port;
-            document.body.classList.add("paatti-popup-visible");
             isPopupOpen = true;
-            updateVisualHighlightClass();
+            updateStatusHighlighting();
 
             // Push current snapshot if one has already been computed
             if (lastPageSnapshot) {
@@ -196,14 +173,13 @@ let hrefSign;
             }
 
             port.onDisconnect.addListener(() => {
-                log("Popup connection closed, removing visible class.");
+                log("Popup connection closed.");
                 activePort = null;
-                document.body.classList.remove("paatti-popup-visible");
                 isPopupOpen = false;
-                updateVisualHighlightClass();
+                updateStatusHighlighting();
 
-                // Clear any hover highlights when popup is closed
-                highlightOverlay.clearHovered();
+                // A popup that closes mid-hover never sends its mouseleave, so drop what it raised.
+                highlightOverlay.clearFeedback();
             });
         }
     });
@@ -245,7 +221,6 @@ let hrefSign;
 
                     if (!titleElem) {
                         container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
-                        container.dataset.klikkikuriReason = `No title element found for selector '${rule.title}'`;
                         continue;
                     }
 
@@ -259,7 +234,6 @@ let hrefSign;
                         }
                     } else {
                         container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
-                        container.dataset.klikkikuriReason = "Link has no href attribute";
                     }
                 }
             }
@@ -294,7 +268,6 @@ let hrefSign;
                 if (!urlSign) {
                     why = `Failed to generate signature for URL '${href}'`;
                     container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
-                    container.dataset.klikkikuriReason = why;
                     return { what, why, how, clickbaitiness, urlSign: null };
                 }
                 container.dataset.klikkikuriUrlSign = urlSign;
@@ -303,7 +276,6 @@ let hrefSign;
                 if (!rahtiEntry) {
                     why = `No Rahti entry found for hash '${urlSign}'`;
                     container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
-                    container.dataset.klikkikuriReason = why;
                     return { what, why, how, clickbaitiness };
                 }
 
@@ -337,7 +309,6 @@ let hrefSign;
                     titleText = rahtiEntry.title;
 
                     container.dataset.klikkikuriStatus = klikkikuriStatus.CONVERTED;
-                    container.dataset.klikkikuriReason = `Converted (Clickbaitiness level: ${why})`;
                 } else {
                     const isPaywalled = !hasConvertedTitle && rahtiEntry.labels && rahtiEntry.labels.includes(LABEL_PAYWALLED);
                     what = isPaywalled ? "paywalled" : "original";
@@ -349,7 +320,6 @@ let hrefSign;
                     titleText = titleElem.dataset.klikkikuriOriginalTitle;
 
                     container.dataset.klikkikuriStatus = isPaywalled ? klikkikuriStatus.PAYWALLED : klikkikuriStatus.ORIGINAL;
-                    container.dataset.klikkikuriReason = why;
                 }
 
                 // Apply registered title modifiers (e.g. AI marking)
@@ -396,7 +366,6 @@ let hrefSign;
                 log(`Error processing title element: ${why}`, err, link);
 
                 container.dataset.klikkikuriStatus = klikkikuriStatus.ERROR;
-                container.dataset.klikkikuriReason = why;
             }
 
             // Return classifications for gathering stats.
@@ -467,7 +436,6 @@ let hrefSign;
         for (const element of document.querySelectorAll("[data-klikkikuri-status]")) {
             if (matchedContainers.has(element)) continue;
             delete element.dataset.klikkikuriStatus;
-            delete element.dataset.klikkikuriReason;
         }
 
         highlightOverlay.refresh();
@@ -645,15 +613,11 @@ let hrefSign;
                 return true;
             }
             case "highlightElement": {
-                highlightOverlay.addHovered(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`));
+                highlightOverlay.setFeedback(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`), true);
                 break;
             }
             case "unhighlightElement": {
-                highlightOverlay.removeHovered(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`));
-                break;
-            }
-            case "clearAllHighlights": {
-                highlightOverlay.clearHovered();
+                highlightOverlay.setFeedback(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`), false);
                 break;
             }
             default:

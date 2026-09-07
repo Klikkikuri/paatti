@@ -11,9 +11,7 @@ globalThis.browser = fake.browser;
 const {
     buildFeedbackPayload,
     buildFeedbackRequest,
-    clickbaitBadgeIndex,
-    googleFormPostUrl,
-    isGoogleForm
+    clickbaitBadgeIndex
 } = await import('../src/feedback.js');
 
 const GOOGLE_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSf_abc/formResponse';
@@ -80,27 +78,6 @@ describe('buildFeedbackPayload', () => {
     });
 });
 
-describe('googleFormPostUrl', () => {
-    const cases = [
-        ['https://docs.google.com/forms/d/e/X/viewform', 'https://docs.google.com/forms/d/e/X/formResponse'],
-        ['https://docs.google.com/forms/d/e/X/formResponse', 'https://docs.google.com/forms/d/e/X/formResponse'],
-        ['https://docs.google.com/forms/d/e/X', 'https://docs.google.com/forms/d/e/X/formResponse'],
-        ['https://docs.google.com/forms/d/e/X/', 'https://docs.google.com/forms/d/e/X/formResponse']
-    ];
-
-    for (const [input, expected] of cases) {
-        test(`rewrites '${input}'`, () => assert.equal(googleFormPostUrl(input), expected));
-    }
-});
-
-describe('isGoogleForm', () => {
-    test('recognises a forms URL and rejects anything else', () => {
-        assert.equal(isGoogleForm(GOOGLE_FORM), true);
-        assert.equal(isGoogleForm('https://api.klikkikuri.fi/v1/feedback'), false);
-        assert.equal(isGoogleForm(undefined), false);
-    });
-});
-
 describe('buildFeedbackRequest', () => {
     test('maps every payload field onto its Google Form entry id', () => {
         const payload = buildFeedbackPayload(COMPLETE);
@@ -119,13 +96,31 @@ describe('buildFeedbackRequest', () => {
         assert.equal(body.get('entry.364993842'), '2026-09-01T00:00:00.000Z');
     });
 
-    test('rewrites a /viewform endpoint before posting', () => {
-        const { url } = buildFeedbackRequest(
-            'https://docs.google.com/forms/d/e/X/viewform',
-            buildFeedbackPayload(COMPLETE)
-        );
+    const formEndpoints = [
+        ['https://docs.google.com/forms/d/e/X/viewform', 'https://docs.google.com/forms/d/e/X/formResponse'],
+        ['https://docs.google.com/forms/d/e/X/formResponse', 'https://docs.google.com/forms/d/e/X/formResponse'],
+        ['https://docs.google.com/forms/d/e/X', 'https://docs.google.com/forms/d/e/X/formResponse'],
+        ['https://docs.google.com/forms/d/e/X/', 'https://docs.google.com/forms/d/e/X/formResponse']
+    ];
 
-        assert.equal(url, 'https://docs.google.com/forms/d/e/X/formResponse');
+    for (const [endpoint, expected] of formEndpoints) {
+        test(`posts '${endpoint}' to its formResponse endpoint`, () => {
+            const { url, init } = buildFeedbackRequest(endpoint, buildFeedbackPayload(COMPLETE));
+
+            assert.equal(url, expected);
+            assert.equal(init.headers['Content-Type'], 'application/x-www-form-urlencoded');
+        });
+    }
+
+    test('takes the JSON branch for anything that is not a form, a missing endpoint included', () => {
+        const payload = buildFeedbackPayload(COMPLETE);
+
+        for (const endpoint of ['https://api.klikkikuri.fi/v1/feedback', undefined]) {
+            const { url, init } = buildFeedbackRequest(endpoint, payload);
+
+            assert.equal(url, endpoint);
+            assert.equal(init.headers['Content-Type'], 'text/plain');
+        }
     });
 
     test('sends the trimmed comment on the JSON endpoint too', () => {

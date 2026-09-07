@@ -94,20 +94,22 @@ export function buildFeedbackPayload({
 /**
  * Whether a feedback endpoint is a Google Form, which takes urlencoded `entry.*` fields rather than JSON.
  *
+ * Internal: `buildFeedbackRequest` is the whole public surface, and both branches are covered through it.
+ *
  * @param {string} url
  * @returns {boolean}
  */
-export function isGoogleForm(url) {
+function isGoogleForm(url) {
     return typeof url === "string" && url.includes("docs.google.com/forms");
 }
 
 /**
- * Rewrite a Google Form URL to the endpoint that accepts a submission.
+ * Rewrite a Google Form URL to the endpoint that accepts a submission. Internal, as `isGoogleForm` is.
  *
  * @param {string} url
  * @returns {string}
  */
-export function googleFormPostUrl(url) {
+function googleFormPostUrl(url) {
     if (url.endsWith("/formResponse")) return url;
     if (url.endsWith("/viewform")) return url.replace("/viewform", "/formResponse");
     return url.endsWith("/") ? `${url}formResponse` : `${url}/formResponse`;

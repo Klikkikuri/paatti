@@ -18,13 +18,13 @@
  * module its only import, and with it a `web_accessible_resources` dependency.
  */
 
-/** Label per `klikkikuriStatus` value from model.js. */
+/** Label per `klikkikuriStatus` value from model.js. The icon is kept apart so CSS can swap it on hover. */
 const STATUS_LABELS = {
-    skipped: "⏭️ Skipped",
-    converted: "✅ Converted",
-    original: "🔄 Original",
-    paywalled: "🔒 Paywalled",
-    error: "⚠️ Error"
+    skipped: { icon: "⏭️", text: "Skipped" },
+    converted: { icon: "✅", text: "Converted" },
+    original: { icon: "🔄", text: "Original" },
+    paywalled: { icon: "🔒", text: "Paywalled" },
+    error: { icon: "⚠️", text: "Error" }
 };
 
 /** Tooltip on a label that opens the feedback dialog. English, as the status labels beside it are. */
@@ -41,9 +41,9 @@ const HOST_STYLE = {
     border: "0",
     padding: "0",
     display: "block",
-    // One below the maximum, which the feedback dialog takes: the two hosts are siblings, so an equal z-index
-    // would leave DOM order to decide and the overlay would paint over the dialog it opens.
-    "z-index": "2147483646",
+    // The maximum. Nothing here has to leave room for the feedback dialog this overlay opens: that one is a
+    // popover and paints in the top layer, which no z-index competes with.
+    "z-index": "2147483647",
     "pointer-events": "none"
 };
 
@@ -138,6 +138,46 @@ const OVERLAY_CSS = `
     outline-offset: 1px;
 }
 
+/* A fixed-size slot: the pill is anchored to the right, so an icon swap that changed its width would slide
+ * the left edge out from under the pointer, drop the hover, and flicker. The status emoji and the feedback
+ * emoji are stacked inside it and the slot clips to one row, so a hover scrolls the stack up a row. */
+.icon {
+    display: inline-block;
+    width: 1.3em;
+    height: 1.3em;
+    margin-right: 3px;
+    overflow: hidden;
+    vertical-align: middle;
+    text-align: center;
+    line-height: 1.3em;
+}
+
+.icon::before,
+.icon::after {
+    display: block;
+    transition: transform 200ms ease;
+}
+
+.icon::before {
+    content: attr(data-icon);
+}
+
+.icon::after {
+    content: "💬";
+}
+
+/* Says what a click does. Only an enabled pill opens the dialog, so only it gets the hint. The feedback
+ * highlight holds the same swap while the card is up, so the pill keeps saying which article it belongs to
+ * after the pointer has left it for the card. */
+.label:not(:disabled):hover .icon::before,
+.label:not(:disabled):hover .icon::after,
+.label:focus-visible .icon::before,
+.label:focus-visible .icon::after,
+.box.feedback .icon::before,
+.box.feedback .icon::after {
+    transform: translateY(-100%);
+}
+
 .box:not([data-status]) .label {
     display: none;
 }
@@ -158,7 +198,7 @@ const OVERLAY_CSS = `
     box-shadow: 0 0 12px rgba(var(--kk-hover), 0.8);
 }
 
-.box.hover .ring {
+.box.feedback .ring {
     opacity: 1;
     animation: klikkikuri-pulse 1.2s infinite ease-in-out;
 }
@@ -169,8 +209,13 @@ const OVERLAY_CSS = `
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .box.hover .ring {
+    .box.feedback .ring {
         animation: none;
+    }
+
+    .icon::before,
+    .icon::after {
+        transition: none;
     }
 }
 `;
@@ -180,9 +225,8 @@ const OVERLAY_CSS = `
  *
  * @returns {{
  *   setStatusVisible: (visible: boolean) => void,
- *   addHovered: (elements: Iterable<Element>) => void,
- *   removeHovered: (elements: Iterable<Element>) => void,
- *   clearHovered: () => void,
+ *   setFeedback: (elements: Iterable<Element>, on: boolean) => void,
+ *   clearFeedback: () => void,
  *   refresh: () => void
  * }}
  */
@@ -204,8 +248,8 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
 
     /** @type {Map<Element, HTMLElement>} Page element to the box drawn over it. */
     const boxes = new Map();
-    /** @type {Set<Element>} Elements the popup is currently hovering. */
-    const hovered = new Set();
+    /** @type {Set<Element>} The article an open feedback card reports on. Never more than one in practice. */
+    const feedback = new Set();
 
     let statusVisible = false;
     let frame = 0;
@@ -247,12 +291,12 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
                 targets.add(element);
             }
         }
-        for (const element of hovered) {
+        for (const element of feedback) {
             // A page that recycles its DOM would otherwise leave us holding detached nodes for the tab's life.
             if (element.isConnected) {
                 targets.add(element);
             } else {
-                hovered.delete(element);
+                feedback.delete(element);
             }
         }
         return targets;
@@ -275,6 +319,11 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
         const label = document.createElement("button");
         label.type = "button";
         label.className = "label";
+
+        const icon = document.createElement("span");
+        icon.className = "icon";
+        icon.setAttribute("aria-hidden", "true");
+        label.append(icon, "");
 
         if (onLabelActivate) {
             label.title = LABEL_ACTION;
@@ -338,7 +387,9 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
                 } else {
                     delete box.dataset.status;
                 }
-                label.textContent = STATUS_LABELS[status] || "";
+                const { icon = "", text = "" } = STATUS_LABELS[status] || {};
+                label.querySelector(".icon").dataset.icon = icon;
+                label.lastChild.textContent = text;
             }
 
             // A skipped or paywalled entry has no conversion to report on, so its label stays a plain status
@@ -346,7 +397,7 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
             // can arrive after the status, and a page that recycles a headline keeps the box it has.
             label.disabled = !onLabelActivate || (canActivate ? !canActivate(element) : false);
 
-            box.classList.toggle("hover", hovered.has(element));
+            box.classList.toggle("feedback", feedback.has(element));
         }
 
         setListening(targets.size > 0);
@@ -359,22 +410,27 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
             scheduleRefresh();
         },
 
-        addHovered(elements) {
+        /**
+         * The feedback highlight: a pulsing ring, plus the pill's icon held on its feedback face for as long
+         * as feedback is being given. Both the in-page card and the popup's <feedback-item> raise it.
+         *
+         * @param {Iterable<Element>} elements - The articles the card reports on.
+         * @param {boolean} on
+         */
+        setFeedback(elements, on) {
             for (const element of elements) {
-                hovered.add(element);
+                if (on) {
+                    feedback.add(element);
+                } else {
+                    feedback.delete(element);
+                }
             }
             scheduleRefresh();
         },
 
-        removeHovered(elements) {
-            for (const element of elements) {
-                hovered.delete(element);
-            }
-            scheduleRefresh();
-        },
-
-        clearHovered() {
-            hovered.clear();
+        /** Drop every feedback highlight at once, for when the card that raised one goes without saying so. */
+        clearFeedback() {
+            feedback.clear();
             scheduleRefresh();
         },
 

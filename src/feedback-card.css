@@ -1,0 +1,198 @@
+/**
+ * The feedback card, shared by the popup's <feedback-item> and the in-page dialog.
+ *
+ * The two render the same card on opposite sides of a shadow boundary, so every rule carries both scopes:
+ * `feedback-item` for the popup, where these rules land in the page's own stylesheet and must not reach the
+ * rest of it, and `:host` for the dialog's shadow root, which fetches and adopts this file because a page
+ * stylesheet never crosses into a shadow root. Each half is inert in the other's context -- `:host` matches
+ * nothing outside a shadow tree, and there is no <feedback-item> inside the dialog -- and neither invalidates
+ * the list.
+ *
+ * Written out rather than folded into `:is(:host, feedback-item)`: the shadow host is featureless, and whether
+ * it matches inside `:is()` is exactly the corner browsers disagree on.
+ *
+ * Colours come from theme.css, which both surfaces load.
+ */
+
+:host .feedback-card,
+feedback-item .feedback-card {
+    padding: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    list-style: none;
+    text-align: left;
+}
+
+:host .feedback-row,
+feedback-item .feedback-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: 8px;
+}
+
+:host .feedback-row.original,
+feedback-item .feedback-row.original {
+    border-left: 3px solid var(--color-warning);
+}
+
+:host .feedback-row.converted,
+feedback-item .feedback-row.converted {
+    border-left: 3px solid var(--color-success-strong);
+}
+
+/* The label and its badge sit on one line above the text they introduce. */
+:host .feedback-row-head,
+feedback-item .feedback-row-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+:host .feedback-separator,
+feedback-item .feedback-separator {
+    border: 0;
+    border-top: 1px solid var(--color-border-strong);
+    margin: 4px 0;
+}
+
+:host .feedback-label,
+feedback-item .feedback-label {
+    font-size: 0.7em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+}
+
+:host .feedback-text,
+feedback-item .feedback-text {
+    font-size: 0.88em;
+    color: var(--color-text-primary);
+    line-height: 1.35;
+    font-weight: bold;
+}
+
+:host .feedback-actions,
+feedback-item .feedback-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+    min-height: 24px;
+}
+
+/* Smaller than a regular push button, so it casts and travels less. */
+:host .feedback-action-btn,
+feedback-item .feedback-action-btn {
+    --push-offset: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    margin: 0;
+    padding: 4px 8px;
+    font-size: 0.8em;
+    min-width: 80px;
+}
+
+:host .feedback-action-btn.good:hover,
+feedback-item .feedback-action-btn.good:hover {
+    background: var(--feedback-vote-yes-bg) !important;
+    outline-color: var(--color-success-strong) !important;
+    color: var(--feedback-vote-yes-text) !important;
+}
+
+:host .feedback-action-btn.bad:hover,
+feedback-item .feedback-action-btn.bad:hover {
+    background: var(--feedback-vote-no-bg) !important;
+    outline-color: var(--color-danger-strong) !important;
+    color: var(--feedback-vote-no-text) !important;
+}
+
+:host .feedback-input-container,
+feedback-item .feedback-input-container {
+    margin-top: 4px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+:host .feedback-input-group,
+feedback-item .feedback-input-group {
+    display: flex;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--color-surface);
+    box-shadow: inset 0 1px 3px var(--shadow-ambient);
+}
+
+:host .feedback-text-input,
+feedback-item .feedback-text-input {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 0.85em;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--color-text-primary);
+    box-sizing: border-box;
+}
+
+:host .feedback-submit-button,
+feedback-item .feedback-submit-button {
+    background: var(--push-bg);
+    border: none;
+    border-left: 1px solid var(--color-border-strong);
+    color: var(--color-text-primary);
+    padding: 6px 12px;
+    font-size: 0.8em;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+:host .feedback-submit-button:hover,
+feedback-item .feedback-submit-button:hover {
+    background: var(--color-info);
+    color: var(--color-on-accent);
+}
+
+/* Clickbait level badge. Each level supplies a hue; the badge mixes it against the surface for its fill and
+ * against the body text colour for its label, so one scale covers both themes. */
+:host .clickbait-level-badge,
+feedback-item .clickbait-level-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.6em;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    background: color-mix(in srgb, var(--severity) 16%, var(--color-surface));
+    color: color-mix(in srgb, var(--severity) 55%, var(--color-text-primary));
+    border: 1px solid color-mix(in srgb, var(--severity) 40%, var(--color-surface));
+}
+
+:host .clickbait-level-badge[data-level="0"],
+feedback-item .clickbait-level-badge[data-level="0"] { --severity: var(--severity-0); }
+
+:host .clickbait-level-badge[data-level="1"],
+feedback-item .clickbait-level-badge[data-level="1"] { --severity: var(--severity-1); }
+
+:host .clickbait-level-badge[data-level="2"],
+feedback-item .clickbait-level-badge[data-level="2"] { --severity: var(--severity-2); }
+
+:host .clickbait-level-badge[data-level="3"],
+feedback-item .clickbait-level-badge[data-level="3"] { --severity: var(--severity-3); }
+
+:host .clickbait-level-badge[data-level="4"],
+feedback-item .clickbait-level-badge[data-level="4"] { --severity: var(--severity-4); }
