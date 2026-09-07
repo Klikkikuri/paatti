@@ -658,7 +658,6 @@ let hrefSign;
                 break;
             }
             case "clearAllHighlights": {
-                highlightOverlay.clearHovered();
                 highlightOverlay.clearFeedback();
                 break;
             }

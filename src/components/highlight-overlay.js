@@ -198,7 +198,6 @@ const OVERLAY_CSS = `
     box-shadow: 0 0 12px rgba(var(--kk-hover), 0.8);
 }
 
-.box.hover .ring,
 .box.feedback .ring {
     opacity: 1;
     animation: klikkikuri-pulse 1.2s infinite ease-in-out;
@@ -210,7 +209,6 @@ const OVERLAY_CSS = `
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .box.hover .ring,
     .box.feedback .ring {
         animation: none;
     }
@@ -227,9 +225,6 @@ const OVERLAY_CSS = `
  *
  * @returns {{
  *   setStatusVisible: (visible: boolean) => void,
- *   addHovered: (elements: Iterable<Element>) => void,
- *   removeHovered: (elements: Iterable<Element>) => void,
- *   clearHovered: () => void,
  *   setFeedback: (elements: Iterable<Element>, on: boolean) => void,
  *   clearFeedback: () => void,
  *   refresh: () => void
@@ -253,8 +248,6 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
 
     /** @type {Map<Element, HTMLElement>} Page element to the box drawn over it. */
     const boxes = new Map();
-    /** @type {Set<Element>} Elements the popup is currently hovering. */
-    const hovered = new Set();
     /** @type {Set<Element>} The article an open feedback card reports on. Never more than one in practice. */
     const feedback = new Set();
 
@@ -298,14 +291,12 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
                 targets.add(element);
             }
         }
-        for (const source of [hovered, feedback]) {
-            for (const element of source) {
-                // A page that recycles its DOM would otherwise leave us holding detached nodes for the tab's life.
-                if (element.isConnected) {
-                    targets.add(element);
-                } else {
-                    source.delete(element);
-                }
+        for (const element of feedback) {
+            // A page that recycles its DOM would otherwise leave us holding detached nodes for the tab's life.
+            if (element.isConnected) {
+                targets.add(element);
+            } else {
+                feedback.delete(element);
             }
         }
         return targets;
@@ -406,7 +397,6 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
             // can arrive after the status, and a page that recycles a headline keeps the box it has.
             label.disabled = !onLabelActivate || (canActivate ? !canActivate(element) : false);
 
-            box.classList.toggle("hover", hovered.has(element));
             box.classList.toggle("feedback", feedback.has(element));
         }
 
@@ -420,31 +410,9 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
             scheduleRefresh();
         },
 
-        addHovered(elements) {
-            for (const element of elements) {
-                hovered.add(element);
-            }
-            scheduleRefresh();
-        },
-
-        removeHovered(elements) {
-            for (const element of elements) {
-                hovered.delete(element);
-            }
-            scheduleRefresh();
-        },
-
-        clearHovered() {
-            hovered.clear();
-            scheduleRefresh();
-        },
-
         /**
-         * The feedback highlight: the visual highlight of a hover, plus the pill's icon held on its feedback
-         * face for as long as the card is up.
-         *
-         * A layer of its own rather than a call to `addHovered`, so the popup's hover and an open card cannot
-         * cancel one another -- one shared set has no way to tell whose highlight it is holding.
+         * The feedback highlight: a pulsing ring, plus the pill's icon held on its feedback face for as long
+         * as feedback is being given. Both the in-page card and the popup's <feedback-item> raise it.
          *
          * @param {Iterable<Element>} elements - The articles the card reports on.
          * @param {boolean} on
