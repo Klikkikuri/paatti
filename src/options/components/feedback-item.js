@@ -3,12 +3,11 @@ import { getLogger } from '../../utils.js';
 import { getConfig } from '../../config.js';
 import { model } from '../../model.js';
 import { buildFeedbackPayload, buildFeedbackRequest, clickbaitBadgeIndex } from '../../feedback.js';
-import { feedbackRules } from '../../feedback-style.js';
-import { adoptComponentStyles, defineComponent } from './component-utils.js';
+import { adoptComponentStyleSheet, defineComponent } from './component-utils.js';
 
-// Scoped under the element name, so rules shared with the in-page dialog's shadow root cannot reach
-// anything else on this page.
-adoptComponentStyles('feedback-item', feedbackRules('feedback-item '));
+// Not co-located like the other components' sheets: the in-page dialog adopts this same file into its shadow
+// root, which is what keeps the two renderings of the card from drifting.
+adoptComponentStyleSheet(new URL('../../feedback-card.css', import.meta.url));
 
 const log = getLogger('components/feedback-item');
 

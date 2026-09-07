@@ -12,11 +12,11 @@
  * because a custom element would need the page's registry to upgrade it. Its own host rather than the overlay's,
  * because it is `position: fixed` and the overlay's layer is in document coordinates.
  *
- * The card's markup and rules are shared with the popup's <feedback-item> through src/feedback-style.js.
+ * The card's rules are shared with the popup's <feedback-item> through src/feedback-card.css, which this
+ * shadow root adopts alongside theme.css.
  */
 
 import { buildFeedbackPayload, buildFeedbackRequest, clickbaitBadgeIndex } from "../feedback.js";
-import { FEEDBACK_BASE, feedbackRules } from "../feedback-style.js";
 
 /** Inline on the host, all `!important`: an inline important declaration outranks any page author rule. */
 const HOST_STYLE = {
@@ -73,8 +73,57 @@ const DIALOG_CSS = `
     font-size: 0.85em;
     font-weight: bold;
 }
-${FEEDBACK_BASE}
-${feedbackRules("")}
+
+/* The page utilities the card's markup leans on: .feedback-card's surface and .hidden from components.css,
+ * .push-button from styles.css. Copied rather than shared, because they are general utilities owned by the
+ * extension pages -- the card's own rules, in feedback-card.css, are the part that must not drift.
+ * No backticks in here: this is inside a template literal, and a pair of them silently turns CSS into JS. */
+.feedback-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-strong);
+    border-radius: 6px;
+    box-shadow: var(--push-shadow) 2px 2px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.push-button {
+    display: inline-block;
+    cursor: pointer;
+    background: var(--push-bg);
+    outline: 1px outset var(--color-border-strong);
+    border-radius: 0.375rem;
+    box-shadow:
+        var(--push-shadow) var(--push-offset) var(--push-offset),
+        var(--push-shadow) 0px 0px inset;
+    transition:
+        transform 0.2s ease-in-out,
+        box-shadow 0.2s ease-in-out,
+        background 0.2s ease-in-out;
+    text-align: center;
+    min-width: 6.25rem;
+    color: var(--push-text);
+    margin: 0;
+    padding: 2%;
+    padding-bottom: 0.3125rem;
+    font-weight: bold;
+}
+
+.push-button:hover {
+    color: var(--push-accent);
+    outline: 2px solid var(--color-info);
+}
+
+.push-button:active {
+    box-shadow:
+        var(--push-shadow) 0px 0px,
+        var(--push-shadow) 1px 1px inset;
+    transform: translate(calc(var(--push-offset) / 2), calc(var(--push-offset) / 2));
+    background: var(--push-bg-active);
+    outline: 1px solid var(--color-info);
+}
 `;
 
 /**
@@ -117,16 +166,18 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     style.textContent = DIALOG_CSS;
     shadow.appendChild(style);
 
-    // The colours the rules below read, from the one file that defines them. Its blocks are scoped
-    // `:root, :host`, so the sheet the extension pages link resolves against this shadow host too -- fetched
-    // rather than linked, because a page stylesheet never crosses a shadow boundary. Started at construction
-    // rather than on open, so it has landed long before the first click on a pill.
-    const themeSheet = new CSSStyleSheet();
-    shadow.adoptedStyleSheets = [themeSheet];
-    fetch(browser.runtime.getURL("src/options/theme.css"))
-        .then((response) => response.text())
-        .then((css) => themeSheet.replaceSync(css))
-        .catch((err) => log("Failed to load the theme:", err));
+    // The two sheets the extension pages link: theme.css for the colours, feedback-card.css for the card
+    // itself. Both are scoped to reach a shadow host as well as a document, and both are fetched rather than
+    // linked, because a page stylesheet never crosses a shadow boundary. Started at construction rather than
+    // on open, so they have landed long before the first click on a pill.
+    for (const path of ["src/options/theme.css", "src/feedback-card.css"]) {
+        const sheet = new CSSStyleSheet();
+        shadow.adoptedStyleSheets = [...shadow.adoptedStyleSheets, sheet];
+        fetch(browser.runtime.getURL(path))
+            .then((response) => response.text())
+            .then((css) => sheet.replaceSync(css))
+            .catch((err) => log(`Failed to load ${path}:`, err));
+    }
 
     // Under <html> rather than <body>, so the content script's body-scoped MutationObserver never sees it.
     document.documentElement.appendChild(host);
