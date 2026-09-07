@@ -421,10 +421,8 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
             for (const element of elements) {
                 if (on) {
                     feedback.add(element);
-                    element.dataset.klikkikuriFeedback = "";
                 } else {
                     feedback.delete(element);
-                    delete element.dataset.klikkikuriFeedback;
                 }
             }
             scheduleRefresh();
@@ -432,9 +430,6 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
 
         /** Drop every feedback highlight at once, for when the card that raised one goes without saying so. */
         clearFeedback() {
-            for (const element of feedback) {
-                delete element.dataset.klikkikuriFeedback;
-            }
             feedback.clear();
             scheduleRefresh();
         },
