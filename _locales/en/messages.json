@@ -540,7 +540,7 @@
     "description": "Description for AI content marker setting"
   },
   "modifierAiSlopLabel": {
-    "message": "Mark AI-generated content",
+    "message": "Marker for AI-generated content",
     "description": "Compact label for AI content marker setting"
   },
   "modifierAiSlopTooltip": {
@@ -556,7 +556,7 @@
     "description": "Description for video content marker setting"
   },
   "modifierVideoLabel": {
-    "message": "Mark video content",
+    "message": "Marker for video content",
     "description": "Compact label for video content marker setting"
   },
   "modifierVideoTooltip": {
@@ -572,7 +572,7 @@
     "description": "Description for converted headline marker setting"
   },
   "modifierConvertedLabel": {
-    "message": "Mark converted headlines",
+    "message": "Marker for converted headlines",
     "description": "Compact label for converted headline marker setting"
   },
   "modifierConvertedTooltip": {

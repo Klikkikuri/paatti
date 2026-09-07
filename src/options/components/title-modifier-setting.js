@@ -16,7 +16,7 @@ import { createToggleSetting } from './toggle-setting.js';
 const MODIFIER_META = {
     aiSlop: {
         labelKey:      'modifierAiSlopLabel',
-        labelFallback: 'Mark AI generated content',
+        labelFallback: 'Marker for AI-generated content',
         titleKey:      'modifierAiSlopTitle',
         titleFallback: 'AI Content Marker',
         descKey:       'modifierAiSlopDesc',
@@ -25,7 +25,7 @@ const MODIFIER_META = {
     },
     video: {
         labelKey:      'modifierVideoLabel',
-        labelFallback: 'Mark video content',
+        labelFallback: 'Marker for video content',
         titleKey:      'modifierVideoTitle',
         titleFallback: 'Video Content Marker',
         descKey:       'modifierVideoDesc',
@@ -34,7 +34,7 @@ const MODIFIER_META = {
     },
     converted: {
         labelKey:      'modifierConvertedLabel',
-        labelFallback: 'Mark converted headlines',
+        labelFallback: 'Marker for converted headlines',
         titleKey:      'modifierConvertedTitle',
         titleFallback: 'Converted Headline Marker',
         descKey:       'modifierConvertedDesc',
