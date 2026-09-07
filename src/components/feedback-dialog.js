@@ -199,6 +199,19 @@ export function placeCard(anchor, card, viewport, margin = PLACE_MARGIN) {
 }
 
 /**
+ * The focused element, reached through any open shadow root. `document.activeElement` stops at the host, so
+ * the pill that opens the card -- which lives in the overlay's shadow root -- would otherwise be invisible
+ * here, and focus could not be handed back to it.
+ *
+ * @returns {Element|null}
+ */
+function deepActiveElement() {
+    let node = document.activeElement;
+    while (node?.shadowRoot?.activeElement) node = node.shadowRoot.activeElement;
+    return node;
+}
+
+/**
  * Build the dialog and attach it to the document.
  *
  * @param {object} deps
@@ -241,6 +254,10 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     const dialog = document.createElement("div");
     dialog.className = "dialog feedback-card";
     dialog.setAttribute("role", "dialog");
+    // Focusable only programmatically: the card takes focus when it opens, so its name is announced, but it
+    // never becomes a tab stop of its own. Not trapping focus -- the popover is not modal, and a trap on a
+    // card floating in someone else's page would strand a keyboard user in it.
+    dialog.setAttribute("tabindex", "-1");
     dialog.hidden = true;
     shadow.appendChild(dialog);
 
@@ -248,6 +265,10 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     let listeners = null;
     let current = null;
     let frame = 0;
+    /** Where focus came from, to hand it back when the card closes. */
+    let opener = null;
+    /** The card's live region, rebuilt per render. Announces what `setStatus` writes. */
+    let live = null;
     /** The show or hide currently running, kept so a reopen can cancel a hide before it takes the card away. */
     let motion = null;
     let hiding = false;
@@ -315,6 +336,12 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             // keeps the sheets already fetched, but the page is left with no trace of it. Removing an open
             // popover takes it out of the top layer too, so there is nothing else to unwind.
             host.remove();
+
+            // Back to the pill that opened it, if the page still has it. preventScroll, because the card also
+            // closes when its headline scrolls away -- and focus must not drag the page back to it.
+            const returnTo = opener;
+            opener = null;
+            if (returnTo?.isConnected) returnTo.focus({ preventScroll: true });
         // Cancelled by a reopen during the hide, which keeps the card exactly where it is.
         }, () => {});
     }
@@ -360,12 +387,32 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
         });
     }
 
+    /**
+     * Show a status, and say it. The live region is rendered with the card and only its text changes here: a
+     * region inserted along with its content is announced unreliably, one that already exists is not.
+     *
+     * The visible copy is hidden from the accessibility tree, or the same words would land twice.
+     */
     function setStatus(container, text, colour) {
+        // Read before the swap. Removing the focused control does not leave it focused-but-disconnected: the
+        // browser retargets focus to <body>, which is connected -- so asking afterwards cannot tell a control
+        // that was taken away from a user who had clicked elsewhere on the page.
+        const focused = deepActiveElement();
+        const cardHadFocus = focused === dialog || (!!focused && dialog.contains(focused));
+
         const span = document.createElement("span");
         span.className = "status";
         span.style.color = colour;
         span.textContent = text;
+        span.setAttribute("aria-hidden", "true");
         container.replaceChildren(span);
+
+        if (live) live.textContent = text;
+
+        // This status has usually just replaced the control that had focus -- the buttons, or the comment
+        // field. Keep focus in the card rather than letting it fall to the page body, but never take it from
+        // somewhere the user has moved it to.
+        if (cardHadFocus && !focused.isConnected) dialog.focus({ preventScroll: true });
     }
 
     async function submit(type, comment) {
@@ -459,7 +506,11 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
         group.append(input, submitBtn);
         form.appendChild(group);
 
-        dialog.replaceChildren(close_, original, converted, separator, actions, form);
+        live = document.createElement("div");
+        live.className = "visually-hidden";
+        live.setAttribute("role", "status");
+
+        dialog.replaceChildren(close_, original, converted, separator, actions, form, live);
 
         const report = (ok) => setStatus(
             actions,
@@ -480,6 +531,12 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
 
         const triggerSubmit = async () => {
             if (!input.value.trim()) return;
+
+            // Take focus to the card before disabling the field that holds it. A disabled control hands focus
+            // to <body> while staying connected, so nothing after this point could tell that it happened --
+            // and the status, which only lands once the request comes back, would arrive to no focus at all.
+            if (dialog.contains(deepActiveElement())) dialog.focus({ preventScroll: true });
+
             input.disabled = true;
             submitBtn.disabled = true;
             submitBtn.textContent = "...";
@@ -511,6 +568,10 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             hiding = false;
 
             listeners = new AbortController();
+            // A reopen during the closing animation is already focused inside the card; keep the pill the
+            // first opening recorded, or focus would be handed back to a card that no longer exists.
+            const active = deepActiveElement();
+            if (active !== dialog && !dialog.contains(active)) opener = active;
             current = target;
             setHighlighted(target, true);
             const { signal } = listeners;
@@ -524,6 +585,8 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             render(readTarget(target));
             dialog.hidden = false;
             place();
+            // After place(), so the card is where it will stay before a screen reader is pointed at it.
+            dialog.focus({ preventScroll: true });
             motion = animateCard(true);
 
             // Follow the headline while the page moves under it. Capture, so a scrolling container that stops
