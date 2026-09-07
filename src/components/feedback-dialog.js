@@ -153,13 +153,13 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     }
 
     /**
-     * Position the dialog beside the element it is about, flipping above and clamping to the viewport so a
-     * partly visible headline still gets a card that is fully on screen.
+     * Cover the element's status pill with the card: both top-right corners on the same point, so the card
+     * appears where the click landed.
      *
-     * The anchor is read from the element every time rather than captured when the dialog opened, so the card
-     * stays with its headline while the page scrolls or reflows. Once the headline is gone -- scrolled fully
-     * out of view, hidden, or dropped from the page -- the dialog goes with it rather than floating at the
-     * viewport edge, detached from the thing it reports on.
+     * The anchor is read from the element every time rather than captured when the dialog opened, and nothing
+     * is clamped to the viewport, so the card travels with its headline -- scrolling off the edge with it
+     * instead of clinging to the edge, detached from the thing it reports on. Once the headline is gone --
+     * scrolled fully out of view, hidden, or dropped from the page -- the dialog goes with it.
      */
     function place() {
         if (!current) return;
@@ -182,12 +182,17 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
 
         const { width, height } = dialog.getBoundingClientRect();
 
-        let top = anchor.bottom + margin;
-        if (top + height > window.innerHeight) {
-            top = anchor.top - height - margin;
-        }
-        dialog.style.top = `${Math.max(margin, Math.min(top, window.innerHeight - height - margin))}px`;
-        dialog.style.left = `${Math.max(margin, Math.min(anchor.left, window.innerWidth - width - margin))}px`;
+        // Too little room under the pill for the whole card: pull it up to sit on the element's bottom edge.
+        // Never past the pill, or an element taller than the card would push it down and off the fold.
+        let top = anchor.top;
+        if (top + height > window.innerHeight - margin) top = Math.min(top, anchor.bottom - height);
+
+        // A headline narrower than the card would push it off the left edge; align it with the left edge then.
+        let left = anchor.right - width;
+        if (left < margin) left = anchor.left;
+
+        dialog.style.top = `${top}px`;
+        dialog.style.left = `${left}px`;
     }
 
     /** Coalesced to one reposition per frame, however many scroll events arrive. */
