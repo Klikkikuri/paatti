@@ -32,6 +32,10 @@ const HOST_STYLE = {
     "z-index": "2147483647"
 };
 
+/* Short enough that a click still feels immediate; the hide is quicker, because by then the user has decided. */
+const MOTION_IN_MS = 120;
+const MOTION_OUT_MS = 90;
+
 const DIALOG_CSS = `
 :host {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
@@ -189,6 +193,11 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     let listeners = null;
     let current = null;
     let frame = 0;
+    /** The show or hide currently running, kept so a reopen can cancel a hide before it takes the card away. */
+    let motion = null;
+    let hiding = false;
+
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 
     // Catches what scroll and resize miss: the card's own headline reflowing as the page settles.
     const resizeObserver = new ResizeObserver(() => schedulePlace());
@@ -199,18 +208,56 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     // expect one in.
     dialog.setAttribute("aria-label", message("feedbackviewDialogLabel", "Klikkikuri headline feedback"));
 
-    function close() {
+    /** Drop everything the last opening wired up. Shared by close() and by a reopen. */
+    function teardown() {
         listeners?.abort();
         listeners = null;
         if (current) resizeObserver.unobserve(current);
         current = null;
         cancelAnimationFrame(frame);
         frame = 0;
-        dialog.hidden = true;
-        dialog.replaceChildren();
-        // Out of the page entirely between openings -- the element stays alive here, so its shadow root keeps
-        // the sheets already fetched, but the page is left with no trace of it.
-        host.remove();
+    }
+
+    /**
+     * Fade the card, scaling it out of the corner that sits on the pill so it grows from the thing that was
+     * clicked rather than appearing whole.
+     *
+     * Under `prefers-reduced-motion: reduce` the scale goes and the fade stays: a fade carries no movement, so
+     * it asks nothing of a reader the preference is there to protect. Read per call, not cached, so a change
+     * to the setting takes effect without a reload.
+     *
+     * @param {boolean} show
+     * @returns {Animation}
+     */
+    function animateCard(show) {
+        const hidden = { opacity: "0", transform: reducedMotion.matches ? "none" : "scale(0.96)" };
+        const shown = { opacity: "1", transform: "none" };
+        return dialog.animate(show ? [hidden, shown] : [shown, hidden], {
+            duration: show ? MOTION_IN_MS : MOTION_OUT_MS,
+            easing: show ? "ease-out" : "ease-in",
+            // The hide holds its last frame: the card leaves the page a tick later, and snapping back to full
+            // opacity in between would flash.
+            fill: show ? "none" : "forwards"
+        });
+    }
+
+    function close() {
+        teardown();
+        if (!host.isConnected || hiding) return;
+
+        hiding = true;
+        // A show still in flight would otherwise keep compositing against the hide.
+        motion?.cancel();
+        motion = animateCard(false);
+        motion.finished.then(() => {
+            hiding = false;
+            dialog.hidden = true;
+            dialog.replaceChildren();
+            // Out of the page entirely between openings -- the element stays alive here, so its shadow root
+            // keeps the sheets already fetched, but the page is left with no trace of it.
+            host.remove();
+        // Cancelled by a reopen during the hide, which keeps the card exactly where it is.
+        }, () => {});
     }
 
     /**
@@ -241,7 +288,10 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             return;
         }
 
-        const { width, height } = dialog.getBoundingClientRect();
+        // offsetWidth/Height rather than a client rect: they ignore transforms, so a reposition mid-animation
+        // measures the card at its settled size instead of its scaled one.
+        const width = dialog.offsetWidth;
+        const height = dialog.offsetHeight;
 
         // Too little room under the pill for the whole card: pull it up to sit on the element's bottom edge.
         // Never past the pill, or an element taller than the card would push it down and off the fold.
@@ -254,6 +304,9 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
 
         dialog.style.top = `${top}px`;
         dialog.style.left = `${left}px`;
+        // Whichever corner ended up on the anchor is the one the card grows out of. Derived from the edges it
+        // was aligned to, not from a comparison: a card wider than its headline starts left of it either way.
+        dialog.style.transformOrigin = `${top === anchor.top ? "top" : "bottom"} ${left === anchor.left ? "left" : "right"}`;
     }
 
     /** Coalesced to one reposition per frame, however many scroll events arrive. */
@@ -411,7 +464,12 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
          * @param {Element} target - The highlighted element being reported on.
          */
         open(target) {
-            close();
+            teardown();
+            // A hide still running would otherwise remove the host from under the card we are about to show.
+            motion?.cancel();
+            motion = null;
+            hiding = false;
+
             listeners = new AbortController();
             current = target;
             const { signal } = listeners;
@@ -422,6 +480,7 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             render(readTarget(target));
             dialog.hidden = false;
             place();
+            motion = animateCard(true);
 
             // Follow the headline while the page moves under it. Capture, so a scrolling container that stops
             // the event still reaches us; passive, because none of this cancels anything.
