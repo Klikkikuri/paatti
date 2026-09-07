@@ -657,10 +657,6 @@ let hrefSign;
                 highlightOverlay.setFeedback(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`), false);
                 break;
             }
-            case "clearAllHighlights": {
-                highlightOverlay.clearFeedback();
-                break;
-            }
             default:
                 log(`Unknown command '${message.command}'`);
                 break;
