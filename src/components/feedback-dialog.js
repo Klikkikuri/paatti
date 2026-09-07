@@ -86,7 +86,7 @@ const DIALOG_CSS = `
     background: var(--color-surface);
     border: 1px solid var(--color-border-strong);
     border-radius: 6px;
-    box-shadow: var(--push-shadow) 2px 2px;
+    box-shadow: var(--push-shadow) var(--raised-offset) var(--raised-offset);
 }
 
 .hidden {
