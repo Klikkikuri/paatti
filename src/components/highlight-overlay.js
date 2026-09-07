@@ -166,11 +166,15 @@ const OVERLAY_CSS = `
     content: "💬";
 }
 
-/* Says what a click does. Only an enabled pill opens the dialog, so only it gets the hint. */
+/* Says what a click does. Only an enabled pill opens the dialog, so only it gets the hint. The feedback
+ * highlight holds the same swap while the card is up, so the pill keeps saying which article it belongs to
+ * after the pointer has left it for the card. */
 .label:not(:disabled):hover .icon::before,
 .label:not(:disabled):hover .icon::after,
 .label:focus-visible .icon::before,
-.label:focus-visible .icon::after {
+.label:focus-visible .icon::after,
+.box.feedback .icon::before,
+.box.feedback .icon::after {
     transform: translateY(-100%);
 }
 
@@ -194,7 +198,8 @@ const OVERLAY_CSS = `
     box-shadow: 0 0 12px rgba(var(--kk-hover), 0.8);
 }
 
-.box.hover .ring {
+.box.hover .ring,
+.box.feedback .ring {
     opacity: 1;
     animation: klikkikuri-pulse 1.2s infinite ease-in-out;
 }
@@ -205,7 +210,8 @@ const OVERLAY_CSS = `
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .box.hover .ring {
+    .box.hover .ring,
+    .box.feedback .ring {
         animation: none;
     }
 
@@ -224,6 +230,8 @@ const OVERLAY_CSS = `
  *   addHovered: (elements: Iterable<Element>) => void,
  *   removeHovered: (elements: Iterable<Element>) => void,
  *   clearHovered: () => void,
+ *   setFeedback: (elements: Iterable<Element>, on: boolean) => void,
+ *   clearFeedback: () => void,
  *   refresh: () => void
  * }}
  */
@@ -247,6 +255,8 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
     const boxes = new Map();
     /** @type {Set<Element>} Elements the popup is currently hovering. */
     const hovered = new Set();
+    /** @type {Set<Element>} The article an open feedback card reports on. Never more than one in practice. */
+    const feedback = new Set();
 
     let statusVisible = false;
     let frame = 0;
@@ -288,12 +298,14 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
                 targets.add(element);
             }
         }
-        for (const element of hovered) {
-            // A page that recycles its DOM would otherwise leave us holding detached nodes for the tab's life.
-            if (element.isConnected) {
-                targets.add(element);
-            } else {
-                hovered.delete(element);
+        for (const source of [hovered, feedback]) {
+            for (const element of source) {
+                // A page that recycles its DOM would otherwise leave us holding detached nodes for the tab's life.
+                if (element.isConnected) {
+                    targets.add(element);
+                } else {
+                    source.delete(element);
+                }
             }
         }
         return targets;
@@ -395,6 +407,7 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
             label.disabled = !onLabelActivate || (canActivate ? !canActivate(element) : false);
 
             box.classList.toggle("hover", hovered.has(element));
+            box.classList.toggle("feedback", feedback.has(element));
         }
 
         setListening(targets.size > 0);
@@ -423,6 +436,38 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
 
         clearHovered() {
             hovered.clear();
+            scheduleRefresh();
+        },
+
+        /**
+         * The feedback highlight: the visual highlight of a hover, plus the pill's icon held on its feedback
+         * face for as long as the card is up.
+         *
+         * A layer of its own rather than a call to `addHovered`, so the popup's hover and an open card cannot
+         * cancel one another -- one shared set has no way to tell whose highlight it is holding.
+         *
+         * @param {Iterable<Element>} elements - The articles the card reports on.
+         * @param {boolean} on
+         */
+        setFeedback(elements, on) {
+            for (const element of elements) {
+                if (on) {
+                    feedback.add(element);
+                    element.dataset.klikkikuriFeedback = "";
+                } else {
+                    feedback.delete(element);
+                    delete element.dataset.klikkikuriFeedback;
+                }
+            }
+            scheduleRefresh();
+        },
+
+        /** Drop every feedback highlight at once, for when the card that raised one goes without saying so. */
+        clearFeedback() {
+            for (const element of feedback) {
+                delete element.dataset.klikkikuriFeedback;
+            }
+            feedback.clear();
             scheduleRefresh();
         },
 

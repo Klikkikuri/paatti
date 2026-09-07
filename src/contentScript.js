@@ -67,12 +67,8 @@ let hrefSign;
             const status = await model.read.getDatabaseStatus();
             return status.lastDatabaseUpdate ? new Date(status.lastDatabaseUpdate).toISOString() : "Unknown";
         },
-        // The same ring the popup raises over an item it hovers. Reached through the overlay declared below,
-        // which exists by the time a pill can be clicked.
-        setHighlighted: (element, on) => {
-            if (on) highlightOverlay.addHovered([element]);
-            else highlightOverlay.removeHovered([element]);
-        }
+        // Reached through the overlay declared below, which exists by the time a pill can be clicked.
+        setHighlighted: (element, on) => highlightOverlay.setFeedback([element], on)
     });
 
     // Draws the debug outlines and the popup's hover highlight, in a shadow root of its own.
@@ -211,8 +207,8 @@ let hrefSign;
                 isPopupOpen = false;
                 updateVisualHighlightClass();
 
-                // Clear any hover highlights when popup is closed
-                highlightOverlay.clearHovered();
+                // A popup that closes mid-hover never sends its mouseleave, so drop what it raised.
+                highlightOverlay.clearFeedback();
             });
         }
     });
@@ -654,15 +650,16 @@ let hrefSign;
                 return true;
             }
             case "highlightElement": {
-                highlightOverlay.addHovered(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`));
+                highlightOverlay.setFeedback(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`), true);
                 break;
             }
             case "unhighlightElement": {
-                highlightOverlay.removeHovered(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`));
+                highlightOverlay.setFeedback(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`), false);
                 break;
             }
             case "clearAllHighlights": {
                 highlightOverlay.clearHovered();
+                highlightOverlay.clearFeedback();
                 break;
             }
             default:
