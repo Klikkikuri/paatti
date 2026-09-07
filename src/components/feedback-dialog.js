@@ -137,6 +137,10 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
 
     const message = (key, fallback) => browser.i18n.getMessage(key) || fallback;
 
+    // Without a name a dialog is announced as just "dialog", which says nothing in a page the user did not
+    // expect one in.
+    dialog.setAttribute("aria-label", message("feedbackviewDialogLabel", "Klikkikuri headline feedback"));
+
     function close() {
         listeners?.abort();
         listeners = null;

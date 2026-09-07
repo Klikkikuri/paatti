@@ -346,6 +346,10 @@
     "message": "Close",
     "description": "Accessible name for the in-page feedback dialog's close button"
   },
+  "feedbackviewDialogLabel": {
+    "message": "Klikkikuri headline feedback",
+    "description": "Accessible name for the in-page feedback dialog itself"
+  },
   "feedbackviewReportSubmitBtn": {
     "message": "Submit",
     "description": "Label for submit button in reporting form"

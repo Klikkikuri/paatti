@@ -346,6 +346,10 @@
     "message": "Sulje",
     "description": "Accessible name for the in-page feedback dialog's close button"
   },
+  "feedbackviewDialogLabel": {
+    "message": "Klikkikurin otsikkopalaute",
+    "description": "Accessible name for the in-page feedback dialog itself"
+  },
   "feedbackviewReportSubmitBtn": {
     "message": "Lähetä",
     "description": "Label for submit button in reporting form"
