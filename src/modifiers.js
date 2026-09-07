@@ -7,9 +7,40 @@ const LABEL_AI_SLOP = "com.github.klikkikuri/ai-slop=true";
 const LABEL_VIDEO = "com.github.klikkikuri/type=video";
 
 /**
+ * Never present in the dataset: whether a headline was swapped is decided per page, by the site's
+ * setting and the clickbait threshold, so the content script adds this label to the entry it hands
+ * to the modifiers once it has replaced the text.
+ */
+const LABEL_CONVERTED = "com.github.klikkikuri/converted=true";
+
+/**
  * List of registered title modifiers that run sequentially on news titles.
  */
 const titleModifiers = [
+    {
+        name: "converted",
+        isEnabled: async () => await model.read.getMarkConverted(),
+        /**
+         * Marks a headline whose text this page load replaced with the dataset's aligned title.
+         * Runs first, so its badge sits leftmost: it qualifies the headline itself, where the
+         * others describe the content behind the link.
+         * @param {string} title
+         * @param {Object} entry - The rahti data entry, carrying LABEL_CONVERTED when swapped
+         */
+        modify: (title, entry) => {
+            if (entry.labels && entry.labels.includes(LABEL_CONVERTED)) {
+                const tooltip = browser?.i18n?.getMessage("modifierConvertedTooltip") || "Paatti replaced this headline with an aligned version.";
+                const label = browser?.i18n?.getMessage("modifierConvertedLabel") || "Converted";
+                return {
+                    text: title,
+                    tagName: "klikkikuri-converted-badge",
+                    badgeText: label,
+                    tooltip: tooltip
+                };
+            }
+            return { text: title };
+        }
+    },
     {
         name: "ai-slop",
         isEnabled: async () => await model.read.getMarkAiSlop(),
@@ -90,5 +121,5 @@ async function applyModifiers(titleText, rahtiEntry) {
     return { text: currentText, badges };
 }
 
-export { applyModifiers, titleModifiers };
+export { applyModifiers, titleModifiers, LABEL_CONVERTED };
 

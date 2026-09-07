@@ -24,13 +24,14 @@ let hrefSign;
     const { getConfig } = await import(browser.runtime.getURL("src/config.js"));
 
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
-    const { applyModifiers } = await import(browser.runtime.getURL("src/modifiers.js"));
+    const { applyModifiers, LABEL_CONVERTED } = await import(browser.runtime.getURL("src/modifiers.js"));
     const { buildPageSnapshot, createSessionTracker } = await import(browser.runtime.getURL("src/stats.js"));
 
     // Inject Web Components into page's main world context
     const badgeComponents = [
         "src/components/klikkikuri-ai-badge.js",
-        "src/components/klikkikuri-video-badge.js"
+        "src/components/klikkikuri-video-badge.js",
+        "src/components/klikkikuri-converted-badge.js"
     ];
     for (const componentPath of badgeComponents) {
         try {
@@ -322,8 +323,13 @@ let hrefSign;
                     container.dataset.klikkikuriStatus = isPaywalled ? klikkikuriStatus.PAYWALLED : klikkikuriStatus.ORIGINAL;
                 }
 
-                // Apply registered title modifiers (e.g. AI marking)
-                const modifierResult = await applyModifiers(titleText, rahtiEntry);
+                // Apply registered title modifiers (e.g. AI marking). The dataset says what a link
+                // is; only this pass knows whether the headline was swapped, so the converted
+                // marker's label is added to a copy -- the entry itself is the shared cache's.
+                const modifierEntry = what === "converted"
+                    ? { ...rahtiEntry, labels: [...(rahtiEntry.labels || []), LABEL_CONVERTED] }
+                    : rahtiEntry;
+                const modifierResult = await applyModifiers(titleText, modifierEntry);
                 let modifiedTitle = titleText;
                 let badges = [];
 

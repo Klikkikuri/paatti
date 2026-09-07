@@ -563,6 +563,22 @@
     "message": "This link is mostly video rather than a written article.",
     "description": "Tooltip text for video content marker"
   },
+  "modifierConvertedTitle": {
+    "message": "Converted Headline Marker",
+    "description": "Title for converted headline marker setting"
+  },
+  "modifierConvertedDesc": {
+    "message": "Shows an indicator next to headlines whose text Paatti has replaced with the aligned version.",
+    "description": "Description for converted headline marker setting"
+  },
+  "modifierConvertedLabel": {
+    "message": "Mark converted headlines",
+    "description": "Compact label for converted headline marker setting"
+  },
+  "modifierConvertedTooltip": {
+    "message": "Paatti replaced this headline with an aligned version.",
+    "description": "Tooltip text for converted headline marker"
+  },
 
   "settingSavedSuccess": {
     "message": "Setting saved!",

@@ -3,6 +3,7 @@ import { controller } from '../../controller.js';
 import { onConfigValue } from '../../config.js';
 import '../../components/klikkikuri-ai-badge.js';
 import '../../components/klikkikuri-video-badge.js';
+import '../../components/klikkikuri-converted-badge.js';
 import { defineComponent } from './component-utils.js';
 import { createToggleSetting } from './toggle-setting.js';
 
@@ -30,6 +31,15 @@ const MODIFIER_META = {
         descKey:       'modifierVideoDesc',
         descFallback:  'Shows a video icon next to headlines when the link is mostly video rather than a written article.',
         badgeTag:      'klikkikuri-video-badge',
+    },
+    converted: {
+        labelKey:      'modifierConvertedLabel',
+        labelFallback: 'Mark converted headlines',
+        titleKey:      'modifierConvertedTitle',
+        titleFallback: 'Converted Headline Marker',
+        descKey:       'modifierConvertedDesc',
+        descFallback:  'Shows an indicator next to headlines whose text Paatti has replaced with the aligned version.',
+        badgeTag:      'klikkikuri-converted-badge',
     },
 };
 

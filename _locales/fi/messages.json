@@ -563,6 +563,22 @@
     "message": "Juttu on pääosin video eikä luettava artikkeli.",
     "description": "Tooltip-teksti videomerkinnälle"
   },
+  "modifierConvertedTitle": {
+    "message": "Oikaisumerkintä",
+    "description": "Otsikko oikaisumerkinnän valinnalle"
+  },
+  "modifierConvertedDesc": {
+    "message": "Näyttää merkinnän otsikoissa, joiden tekstin Paatti on korvannut oikaistulla versiolla.",
+    "description": "Kuvaus oikaisumerkinnän valinnalle"
+  },
+  "modifierConvertedLabel": {
+    "message": "Oikaisumerkintä",
+    "description": "Kompakti etiketti oikaisumerkinnän valinnalle"
+  },
+  "modifierConvertedTooltip": {
+    "message": "Paatti on korvannut tämän otsikon oikaistulla versiolla.",
+    "description": "Tooltip-teksti oikaisumerkinnälle"
+  },
 
   "settingSavedSuccess": {
     "message": "Asetus tallennettu!",
