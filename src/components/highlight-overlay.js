@@ -362,7 +362,6 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
         addHovered(elements) {
             for (const element of elements) {
                 hovered.add(element);
-                element.dataset.klikkikuriHover = "";
             }
             scheduleRefresh();
         },
@@ -370,15 +369,11 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
         removeHovered(elements) {
             for (const element of elements) {
                 hovered.delete(element);
-                delete element.dataset.klikkikuriHover;
             }
             scheduleRefresh();
         },
 
         clearHovered() {
-            for (const element of hovered) {
-                delete element.dataset.klikkikuriHover;
-            }
             hovered.clear();
             scheduleRefresh();
         },
