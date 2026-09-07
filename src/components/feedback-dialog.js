@@ -179,9 +179,6 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             .catch((err) => log(`Failed to load ${path}:`, err));
     }
 
-    // Under <html> rather than <body>, so the content script's body-scoped MutationObserver never sees it.
-    document.documentElement.appendChild(host);
-
     const dialog = document.createElement("div");
     dialog.className = "dialog feedback-card";
     dialog.setAttribute("role", "dialog");
@@ -211,6 +208,9 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
         frame = 0;
         dialog.hidden = true;
         dialog.replaceChildren();
+        // Out of the page entirely between openings -- the element stays alive here, so its shadow root keeps
+        // the sheets already fetched, but the page is left with no trace of it.
+        host.remove();
     }
 
     /**
@@ -416,6 +416,9 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             current = target;
             const { signal } = listeners;
 
+            // Under <html> rather than <body>, so the content script's body-scoped MutationObserver never
+            // sees it. Back in before `place()`, which needs the card laid out to measure it.
+            document.documentElement.appendChild(host);
             render(readTarget(target));
             dialog.hidden = false;
             place();
