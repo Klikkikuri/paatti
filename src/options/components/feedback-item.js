@@ -1,10 +1,14 @@
 import browser from '../../browser-api.js';
-import { getLogger, sanitizeUrlForFeedback } from '../../utils.js';
+import { getLogger } from '../../utils.js';
 import { getConfig } from '../../config.js';
-import { model, Clickbaitiness } from '../../model.js';
-import { adoptComponentStyleSheet, defineComponent } from './component-utils.js';
+import { model } from '../../model.js';
+import { buildFeedbackPayload, buildFeedbackRequest, clickbaitBadgeIndex } from '../../feedback.js';
+import { feedbackRules } from '../../feedback-style.js';
+import { adoptComponentStyles, defineComponent } from './component-utils.js';
 
-adoptComponentStyleSheet(new URL('./feedback-item.css', import.meta.url));
+// Scoped under the element name, so rules shared with the in-page dialog's shadow root cannot reach
+// anything else on this page.
+adoptComponentStyles('feedback-item', feedbackRules('feedback-item '));
 
 const log = getLogger('components/feedback-item');
 
@@ -97,21 +101,8 @@ class FeedbackItem extends HTMLElement {
      * @returns {{text: string, level: number}} Badge label and normalized level.
      */
     getClickbaitBadgeInfo(level) {
-        // Fallbacks mirror _locales/en, the manifest default_locale, so a missing
-        // translation degrades to English instead of to the UI language of the day.
-        const FALLBACKS = ["Neutral", "Low", "Medium", "High", "Extreme"];
-
-        let index = Clickbaitiness.stringToNumber(level);
-        if (index < 0) {
-            index = Number.parseInt(level, 10);
-        }
-        // Anything unrecognised is treated as the most severe level, matching
-        // the previous `default:` branch.
-        if (!Number.isInteger(index) || index < 0 || index >= FALLBACKS.length) {
-            index = FALLBACKS.length - 1;
-        }
-
-        const text = browser.i18n.getMessage(`clickbaitBadgeLevel${index}`) || FALLBACKS[index];
+        const { index, fallback } = clickbaitBadgeIndex(level);
+        const text = browser.i18n.getMessage(`clickbaitBadgeLevel${index}`) || fallback;
         return { text, level: index };
     }
 
@@ -202,90 +193,28 @@ class FeedbackItem extends HTMLElement {
             }
 
             const dbStatus = await model.read.getDatabaseStatus();
-            const databaseUpdated = dbStatus.lastDatabaseUpdate ? new Date(dbStatus.lastDatabaseUpdate).toISOString() : "Unknown";
-            const commentVal = comment.trim() || "-";
 
-            const rawPageUrl = this._tab?.url || "";
-            const pageUrl = sanitizeUrlForFeedback(rawPageUrl);
-            const urlSign = this._item.urlSign || "";
-            const originalTitle = this._item.originalTitle || "";
-            const convertedTitle = this._item.convertedTitle || "";
-            const clickbaitLevel = (this._item.clickbaitLevel !== undefined && this._item.clickbaitLevel !== null) ? String(this._item.clickbaitLevel) : "";
+            const payload = buildFeedbackPayload({
+                pageUrl: this._tab?.url,
+                urlSign: this._item.urlSign,
+                originalTitle: this._item.originalTitle,
+                convertedTitle: this._item.convertedTitle,
+                clickbaitLevel: this._item.clickbaitLevel,
+                feedbackType: type,
+                comment,
+                databaseUpdated: dbStatus.lastDatabaseUpdate ? new Date(dbStatus.lastDatabaseUpdate).toISOString() : "Unknown"
+            });
 
-            if (!pageUrl || !urlSign || !originalTitle || !convertedTitle || clickbaitLevel === "" || !type || !commentVal || !databaseUpdated) {
-                log("Validation failed: missing required feedback fields", {
-                    pageUrl,
-                    urlSign,
-                    originalTitle,
-                    convertedTitle,
-                    clickbaitLevel,
-                    type,
-                    commentVal,
-                    databaseUpdated
-                });
+            if (!payload) {
+                log("Validation failed: missing required feedback fields", this._item);
                 return false;
             }
 
-            const isGoogleForm = feedbackServerUrl.includes("docs.google.com/forms");
-
+            // Posted by the worker, not here, so this and the in-page dialog share one network path.
+            const { url, init } = buildFeedbackRequest(feedbackServerUrl, payload);
             try {
-                if (isGoogleForm) {
-                    let postUrl = feedbackServerUrl;
-                    if (postUrl.endsWith("/viewform")) {
-                        postUrl = postUrl.replace("/viewform", "/formResponse");
-                    } else if (!postUrl.endsWith("/formResponse")) {
-                        if (postUrl.endsWith("/")) {
-                            postUrl += "formResponse";
-                        } else {
-                            postUrl += "/formResponse";
-                        }
-                    }
-
-                    const formData = new URLSearchParams();
-                    formData.append("entry.1944615860", pageUrl);
-                    formData.append("entry.1369854914", urlSign);
-                    formData.append("entry.917360051", originalTitle);
-                    formData.append("entry.1935829065", convertedTitle);
-                    formData.append("entry.1807257025", clickbaitLevel);
-                    formData.append("entry.167673994", type);
-                    formData.append("entry.78795748", commentVal);
-                    formData.append("entry.364993842", databaseUpdated);
-
-                    await fetch(postUrl, {
-                        method: "POST",
-                        mode: "no-cors",
-                        referrerPolicy: "no-referrer",
-                        credentials: "omit",
-                        headers: {
-                            "Content-Type": "application/x-www-form-urlencoded"
-                        },
-                        body: formData.toString()
-                    });
-                } else {
-                    const payload = {
-                        timestamp: new Date().toISOString(),
-                        pageUrl: pageUrl,
-                        urlSign: urlSign,
-                        originalTitle: originalTitle,
-                        convertedTitle: convertedTitle,
-                        clickbaitLevel: this._item.clickbaitLevel,
-                        feedbackType: type,
-                        comment: comment,
-                        databaseUpdated: databaseUpdated
-                    };
-
-                    await fetch(feedbackServerUrl, {
-                        method: "POST",
-                        mode: "no-cors",
-                        referrerPolicy: "no-referrer",
-                        credentials: "omit",
-                        headers: {
-                            "Content-Type": "text/plain"
-                        },
-                        body: JSON.stringify(payload)
-                    });
-                }
-                return true;
+                const result = await browser.runtime.sendMessage({ action: "submitFeedback", url, init });
+                return result?.success === true;
             } catch (err) {
                 log("Failed to submit feedback:", err);
                 return false;

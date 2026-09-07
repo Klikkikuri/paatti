@@ -102,9 +102,23 @@ utilities (`.push-button`, `.raised`, `.hidden`, `.visually-hidden`) do not cros
 properties do; `<label for>` does not cross it either, and `site-toggle` points a label at a `toggle-button`; and
 `popup.js`, `options.js` and `localizeDocument()` reach into component subtrees on purpose. Do not migrate them.
 
-**`src/contentStyle.css` — neither.** It is not a component. It styles the visited page's own elements, through a
-class on `document.documentElement`, `[data-klikkikuri-status]` attributes and `::after` badges on nodes the page
-owns. No shadow root can enclose someone else's element, so this is the one place blanket `!important` is correct.
+**`src/components/highlight-overlay.js` — shadow DOM, isolated world.** Debug outlines and the popup's hover
+highlight. No shadow root can enclose an element the page owns, so it is an overlay rather than a wrapper: one host
+under `<html>` carrying a box per highlighted element, placed over it in document coordinates. Nothing inside the
+shadow root needs `!important`; only the host does, inline, to survive the page's stylesheet.
+
+It is deliberately **not** a custom element, and that is the one thing to preserve when editing it. Badges are
+upgraded by the page's registry, which is why they are injected into the main world. This module is driven from the
+content script's isolated world, where a registration would never upgrade a node the page can see — so it uses an
+unregistered tag name and calls `attachShadow` itself, which works from either world. It also holds a single
+`<style>` node rather than a shared constructable sheet: there is one instance, so nothing is cloned per instance,
+and it sidesteps the question of whether a sheet constructed in the isolated world adopts into a page shadow root.
+
+The host goes under `document.documentElement`, not `document.body`. The content script's MutationObserver watches
+`document.body`, and its "is this our own change" guard would not recognise the host; changes inside a shadow root
+never reach an observer outside it, so the per-frame updates stay invisible either way.
+
+No page-level CSS is injected any more. `src/background.js` registers the content script with `js` alone.
 
 #### Where the CSS goes
 

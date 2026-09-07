@@ -61,6 +61,25 @@ function adoptComponentStyleSheet(url) {
 }
 
 /**
+ * Load generated CSS into the host page, once per page.
+ *
+ * The sibling above links a stylesheet file; this takes the text, for a component whose rules are shared with
+ * a shadow root elsewhere and so have to be built in JS (see src/feedback-style.js). Still one <style> per
+ * *page* -- never one inside a template, which is cloned per instance.
+ *
+ * @param {string} id - Marker identifying these rules, so a second import is a no-op.
+ * @param {string} css - The rules to install.
+ */
+function adoptComponentStyles(id, css) {
+    if (document.querySelector(`style[data-component-styles="${id}"]`)) return;
+
+    const style = document.createElement("style");
+    style.dataset.componentStyles = id;
+    style.textContent = css;
+    document.head.appendChild(style);
+}
+
+/**
  * Register a custom element, unless the tag is already taken.
  *
  * Load-bearing rather than defensive: `make dist NON_OSS=1` overlays
@@ -148,4 +167,4 @@ function emitSettingSaved(element, detail) {
     }));
 }
 
-export { adoptComponentStyleSheet, defineComponent, ComponentBase, emitSettingSaved };
+export { adoptComponentStyleSheet, adoptComponentStyles, defineComponent, ComponentBase, emitSettingSaved };

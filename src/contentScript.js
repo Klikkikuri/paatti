@@ -19,6 +19,10 @@ let hrefSign;
     const { controller } = await import(browser.runtime.getURL("src/controller.js"));
     const { getLogger, debounce, canAppendSpan } = await import(browser.runtime.getURL("src/utils.js"));
 
+    const { createHighlightOverlay } = await import(browser.runtime.getURL("src/components/highlight-overlay.js"));
+    const { createFeedbackDialog } = await import(browser.runtime.getURL("src/components/feedback-dialog.js"));
+    const { getConfig } = await import(browser.runtime.getURL("src/config.js"));
+
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
     const { applyModifiers } = await import(browser.runtime.getURL("src/modifiers.js"));
     const { buildPageSnapshot, createSessionTracker } = await import(browser.runtime.getURL("src/stats.js"));
@@ -41,6 +45,35 @@ let hrefSign;
     }
 
     const log = getLogger("content_script");
+
+    /** The converted title lives on the container's title element, or on the container itself. */
+    const convertedTitleOf = (element) =>
+        (element.querySelector("[data-klikkikuri-original-title]") || element).dataset.klikkikuriConvertedTitle;
+
+    // Reports on a conversion, in the page, in a shadow root of its own. The popup cannot be opened from here.
+    const feedbackDialog = createFeedbackDialog({
+        browser,
+        log,
+        getFeedbackServerUrl: async () => {
+            try {
+                const config = await getConfig();
+                if (config?.feedbackServerUrl) return config.feedbackServerUrl;
+            } catch (err) {
+                log("Error loading config for feedback server URL:", err);
+            }
+            return "https://api.klikkikuri.fi/v1/feedback";
+        },
+        getDatabaseUpdated: async () => {
+            const status = await model.read.getDatabaseStatus();
+            return status.lastDatabaseUpdate ? new Date(status.lastDatabaseUpdate).toISOString() : "Unknown";
+        }
+    });
+
+    // Draws the debug outlines and the popup's hover highlight, in a shadow root of its own.
+    const highlightOverlay = createHighlightOverlay({
+        canActivate: (element) => Boolean(convertedTitleOf(element)),
+        onLabelActivate: (element) => feedbackDialog.open(element)
+    });
 
     /**
      * Returns the favicon URL the browser would use for this page:
@@ -104,6 +137,13 @@ let hrefSign;
                 } else {
                     documentElement.classList.remove("klikkikuri-visual-hilight");
                 }
+                // The class drives no styling any more; it stays as a signal that the mode is on.
+                const visible = enabled || isPopupOpen;
+                highlightOverlay.setStatusVisible(visible);
+                // The dialog is opened from a status label, so it must not outlive the labels.
+                if (!visible) {
+                    feedbackDialog.close();
+                }
             }
         } catch (e) {
             log("Failed to update visual highlight class", e);
@@ -163,10 +203,7 @@ let hrefSign;
                 updateVisualHighlightClass();
 
                 // Clear any hover highlights when popup is closed
-                const highlightedElements = document.querySelectorAll(".klikkikuri-hover-highlight");
-                for (const el of highlightedElements) {
-                    el.classList.remove("klikkikuri-hover-highlight");
-                }
+                highlightOverlay.clearHovered();
             });
         }
     });
@@ -193,9 +230,11 @@ let hrefSign;
 
         // Scan and collect elements to process
         const linksToProcess = [];
+        const matchedContainers = new Set();
         for (const rule of siteRules) {
             const containers = document.querySelectorAll(rule.container);
             for (const container of containers) {
+                matchedContainers.add(container);
                 const links = (!rule.link || rule.link === "self" || rule.link === ":scope")
                     ? [container]
                     : container.querySelectorAll(rule.link);
@@ -422,6 +461,17 @@ let hrefSign;
             }
         }
 
+        // Statuses are sticky — nothing else ever removes one — so a container the page has recycled for new
+        // content would keep a status that no longer describes it. Drop the ones this pass did not match.
+        // Deliberately not klikkikuriHighlightId: getConversions mints it and a hover in flight reads it.
+        for (const element of document.querySelectorAll("[data-klikkikuri-status]")) {
+            if (matchedContainers.has(element)) continue;
+            delete element.dataset.klikkikuriStatus;
+            delete element.dataset.klikkikuriReason;
+        }
+
+        highlightOverlay.refresh();
+
         log(`Finished conversion procedure on '${newsSite}' in ${duration.toFixed(2)}ms. Stats:`, stats);
 
         const matchesCount = stats.converted + stats.original;
@@ -595,24 +645,15 @@ let hrefSign;
                 return true;
             }
             case "highlightElement": {
-                const els = document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`);
-                for (const el of els) {
-                    el.classList.add("klikkikuri-hover-highlight");
-                }
+                highlightOverlay.addHovered(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`));
                 break;
             }
             case "unhighlightElement": {
-                const els = document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`);
-                for (const el of els) {
-                    el.classList.remove("klikkikuri-hover-highlight");
-                }
+                highlightOverlay.removeHovered(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`));
                 break;
             }
             case "clearAllHighlights": {
-                const els = document.querySelectorAll(".klikkikuri-hover-highlight");
-                for (const el of els) {
-                    el.classList.remove("klikkikuri-hover-highlight");
-                }
+                highlightOverlay.clearHovered();
                 break;
             }
             default:
@@ -620,36 +661,6 @@ let hrefSign;
                 break;
         }
     });
-
-    // Expose developer debug helpers on window object.
-    window.__klikkikuri_debug = {
-        newsSite,
-        processSite,
-        rahti,
-        getStats: () => {
-            const elements = document.querySelectorAll("[data-klikkikuri-status]");
-            const stats = { converted: 0, original: 0, skipped: 0, error: 0 };
-            elements.forEach(el => {
-                const status = el.dataset.klikkikuriStatus;
-                if (status in stats) {
-                    stats[status]++;
-                }
-            });
-            return stats;
-        },
-        getElements: (statusFilter) => {
-            const elements = Array.from(document.querySelectorAll("[data-klikkikuri-status]"));
-            return elements
-                .filter(el => !statusFilter || el.dataset.klikkikuriStatus === statusFilter)
-                .map(el => ({
-                    element: el,
-                    status: el.dataset.klikkikuriStatus,
-                    reason: el.dataset.klikkikuriReason,
-                    hash: el.dataset.klikkikuriUrlSign || el.dataset.klikkikuriUrlHash || el.querySelector("a")?.dataset.klikkikuriUrlSign || el.querySelector("a")?.dataset.klikkikuriUrlHash,
-                    text: el.textContent
-                }));
-        }
-    };
 
     // Run the conversion on reload.
     try {
