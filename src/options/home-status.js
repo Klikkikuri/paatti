@@ -17,8 +17,8 @@
  * @property {?string} headerKey - i18n key replacing the hostname in the header, or null to keep it.
  * @property {boolean} isError - Whether the header wears the error colour.
  * @property {boolean} showCompanion - Whether the companion artwork is drawn under the message
- *   -- the boat by day, the meerman after dark. It marks the two states that have nothing to
- *   report yet rather than something to report.
+ *   -- the boat by day, the meerman after dark. It marks the views with no reading to show: a site
+ *   Paatti does not cover, and the wait for the page's first report.
  * @property {boolean} showGauge - Whether the gauge and its per-level list are shown.
  * @property {boolean} showRequestSite - Whether the "request site support" button is shown.
  * @property {boolean} showUpdateDb - Whether the database update control is shown.
@@ -90,16 +90,19 @@ function homeStatus({ loadFailed, hasHostname, isSupported, isEnabled, conversio
             : state("homeviewStatusChecking", { showCompanion: true });
     }
 
-    // An ordinary article page carries no headline links, which is not a fault of anything.
-    if (!pageStats.candidates) {
-        return state("homeviewStatusNoTitlesFound");
+    // Levels in hand means there is a reading to draw, whatever else the snapshot does or does not
+    // carry. Asked the other way round, a snapshot with no candidates count would hide a gauge it
+    // has the numbers for.
+    if (Object.keys(pageStats.groupedByClickbaitiness || {}).length > 0) {
+        return state("", { showGauge: true });
     }
 
-    if (Object.keys(pageStats.groupedByClickbaitiness || {}).length === 0) {
-        return state("homeviewStatusNoMatches");
-    }
-
-    return state("", { showGauge: true });
+    // Nothing here is in the database. Whether the page carried headlines at all is only knowable
+    // when the snapshot states the count; an ordinary article page carries none, and that is no
+    // fault of anything.
+    return state(pageStats.candidates === 0
+        ? "homeviewStatusNoTitlesFound"
+        : "homeviewStatusNoMatches");
 }
 
 export { homeStatus };

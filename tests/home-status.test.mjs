@@ -119,6 +119,14 @@ describe('homeStatus', () => {
         assert.equal(s.statusKey, 'homeviewStatusNoMatches');
     });
 
+    // The count says nothing about whether there is a reading to draw, so it must not gate one.
+    test('levels are drawn even when the snapshot states no count', () => {
+        const s = at({ pageStats: { groupedByClickbaitiness: { 'Very Clickbaity': 2 } } });
+
+        assert.equal(s.showGauge, true);
+        assert.equal(s.statusKey, '');
+    });
+
     // Several inputs are unhappy at once far more often than one is. These pin the order.
     describe('precedence', () => {
         test('a failed load outranks everything', () => {

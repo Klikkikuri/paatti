@@ -88,7 +88,7 @@ describe('buildPageSnapshot', () => {
         assert.equal(buildPageSnapshot(undefined).candidates, 0);
     });
 
-    test('candidates skips holes in the array', () => {
+    test('candidates skips entries that came back empty', () => {
         assert.equal(buildPageSnapshot([null, { what: 'skipped' }, undefined]).candidates, 1);
     });
 });
