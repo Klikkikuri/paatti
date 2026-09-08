@@ -92,6 +92,22 @@ function normalize(markup) {
         notes.push("removed <metadata>");
     }
 
+    // Inkscape saves its canvas state, guides and per-object bookkeeping into the drawing: a
+    // <sodipodi:namedview> and an inkscape: attribute on nearly every element. None of it draws
+    // anything, and on a hand-edited icon it is most of the file. The xmlns declarations go with the
+    // attributes rather than after them -- a prefix left undeclared makes the icon unparseable, which
+    // costs more than the bytes ever did.
+    const editorMarkup = svg.length;
+    svg = svg
+        .replace(/<(?:inkscape|sodipodi):[\w.-]+\b[^>]*?\/>/g, "")
+        .replace(/<(inkscape|sodipodi):([\w.-]+)\b[\s\S]*?<\/\1:\2>/g, "")
+        .replace(/\s(?:inkscape|sodipodi):[\w.-]+\s*=\s*"[^"]*"/g, "")
+        .replace(/\sxmlns:(?:inkscape|sodipodi)\s*=\s*"[^"]*"/g, "")
+        .trim();
+    if (svg.length !== editorMarkup) {
+        notes.push(`removed ${editorMarkup - svg.length} bytes of editor bookkeeping`);
+    }
+
     // The root's own attributes, which decide how the badge sizes and reads. Not anchored at the
     // start: an editor's banner comment sits ahead of the root, and an anchored match would find
     // nothing and quietly leave the drawing at its page size.
@@ -122,12 +138,15 @@ function normalize(markup) {
         }
 
         // An editor saves the drawing at its page size, in the page's units. The stylesheet
-        // overrides both, but a unit here would be the fallback size when it cannot.
-        const sized = next.match(/\swidth\s*=\s*"([^"]*)"/);
-        if (!sized || sized[1] !== "18") {
+        // overrides both, but a unit here would be the fallback size when it cannot. Both are read:
+        // a drawing already 18 wide can still be any height, and half a size is not a square.
+        const width = next.match(/\swidth\s*=\s*"([^"]*)"/);
+        const height = next.match(/\sheight\s*=\s*"([^"]*)"/);
+        if (width?.[1] !== "18" || height?.[1] !== "18") {
             set("width", "18");
             set("height", "18");
-            if (sized) notes.push(`root size ${sized[1]} replaced with 18`);
+            const was = [width?.[1], height?.[1]].filter(Boolean);
+            if (was.length > 0) notes.push(`root size ${was.join(" x ")} replaced with 18 x 18`);
         }
 
         // Editor bookkeeping that means nothing inside a shadow root.
@@ -154,6 +173,21 @@ function normalize(markup) {
 }
 
 /**
+ * Make markup safe to sit inside the backtick literal it is written into. A backtick or a `${`
+ * sequence -- in a <title>, a font name, a comment -- would otherwise close the literal or
+ * interpolate, and a badge module that fails to parse leaves the badge un-upgraded on real pages
+ * with nothing in the console to say why. The escapes are source-level only: the string the module
+ * evaluates to is byte-for-byte the markup passed in.
+ *
+ * @param {string} markup - Badge-ready markup from `normalize`.
+ * @returns {string} The same markup, escaped for a template literal.
+ */
+const forTemplate = (markup) => markup
+    .replace(/\\/g, "\\\\")
+    .replace(/`/g, "\\`")
+    .replace(/\$\{/g, "\\${");
+
+/**
  * @param {string} file - A module in one of COMPONENT_DIRS, repo-relative.
  * @returns {{path: string, source: string, next: string, current: string}|null} The rewrite it
  *   needs, or null when the module claims no icon source.
@@ -177,7 +211,7 @@ function rewrite(file) {
 
     const generated = [
         "// BEGIN GENERATED ICON -- edit the .svg, then run `make icons`",
-        `const svgMarkup = \`\n${markup}\n\`;`,
+        `const svgMarkup = \`\n${forTemplate(markup)}\n\`;`,
         "// END GENERATED ICON",
     ].join("\n");
 
