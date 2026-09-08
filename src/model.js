@@ -352,6 +352,23 @@ const model = (() => {
             },
 
             /**
+             * How many titles the local database holds.
+             *
+             * Kept out of getDatabaseStatus, whose callers re-read on every timestamp write: the
+             * index is one string per entry, and none of them want to deserialize it.
+             *
+             * This, not lastDatabaseUpdate, is the test for an empty database. That timestamp is
+             * evidence of a fetch and never of content -- it is written on an all-304 response,
+             * which touches no data, and a successful fetch can fail to write it at all.
+             *
+             * @returns {Promise<number>} Entry count, 0 when nothing has been stored.
+             */
+            getDatabaseEntryCount: async () => {
+                const data = await browser.storage.local.get("rahtiData_index");
+                return Array.isArray(data.rahtiData_index) ? data.rahtiData_index.length : 0;
+            },
+
+            /**
              * The salt that gives this install its own easter egg calendar.
              *
              * Local and not sync, and a key of its own rather than a setting: it is a

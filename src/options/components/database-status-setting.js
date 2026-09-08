@@ -9,10 +9,10 @@ const compactTemplate = document.createElement('template');
 compactTemplate.innerHTML = `
     <div style="margin-top: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; width: 100%;">
         <div style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
-            <p id="database-last-updated" class="text-muted-small" style="margin: 0;"></p>
-            <p id="database-generation-date" class="text-muted-small" style="margin: 0;"></p>
+            <p class="db-last-updated text-muted-small" style="margin: 0;"></p>
+            <p class="db-generation-date text-muted-small" style="margin: 0;"></p>
         </div>
-        <button id="update-database-btn" class="push-button" style="margin: 0; padding: 6px 12px; min-height: 32px; font-size: 0.9em;"></button>
+        <button class="db-update-btn push-button" style="margin: 0; padding: 6px 12px; min-height: 32px; font-size: 0.9em;"></button>
     </div>
 `;
 
@@ -49,7 +49,11 @@ detailedTemplate.innerHTML = `
 
 /**
  * Custom element managing uutistietokanta (news database) status display and manual updates.
- * Supports layout="compact" (popup settings view) and layout="detailed" (options page).
+ * Supports layout="compact" (popup settings view, and the popup home view when the database is
+ * empty) and layout="detailed" (options page).
+ *
+ * Its handles are classes rather than ids because the popup carries two compact instances at once.
+ * `setting-saved` is dispatched from every layout; which page listens is that page's business.
  */
 /** The local keys the shown timestamps come from. Neither is part of the merged config. */
 const STATUS_KEYS = ['lastDatabaseUpdate', 'databaseGenerationDate'];
@@ -61,7 +65,7 @@ class DatabaseStatusSetting extends ComponentBase {
         if (layout === 'compact') {
             this.replaceChildren(compactTemplate.content.cloneNode(true));
             const btnText = browser.i18n.getMessage('databaseUpdateBtn') || 'Update Database';
-            const btn = this.querySelector('#update-database-btn');
+            const btn = this.querySelector('.db-update-btn');
             if (btn) btn.textContent = btnText;
         } else {
             this.replaceChildren(detailedTemplate.content.cloneNode(true));
@@ -143,7 +147,7 @@ class DatabaseStatusSetting extends ComponentBase {
             if (!this.isConnected) return;
 
             if (layout === 'compact') {
-                const dbLastUpdatedEl = this.querySelector('#database-last-updated');
+                const dbLastUpdatedEl = this.querySelector('.db-last-updated');
                 if (dbLastUpdatedEl) {
                     if (status.lastDatabaseUpdate) {
                         const timeEl = this.formatDateOrTime(status.lastDatabaseUpdate, true);
@@ -152,7 +156,7 @@ class DatabaseStatusSetting extends ComponentBase {
                         dbLastUpdatedEl.textContent = browser.i18n.getMessage("databaseNeverUpdated");
                     }
                 }
-                const dbGenDateEl = this.querySelector('#database-generation-date');
+                const dbGenDateEl = this.querySelector('.db-generation-date');
                 if (dbGenDateEl) {
                     if (status.databaseGenerationDate) {
                         const timeEl = this.formatDateOrTime(status.databaseGenerationDate, true);
@@ -236,7 +240,7 @@ class DatabaseStatusSetting extends ComponentBase {
         }
 
         // Bind update button click handler
-        const updateBtn = this.querySelector(layout === 'compact' ? '#update-database-btn' : '#manualUpdateBtn');
+        const updateBtn = this.querySelector(layout === 'compact' ? '.db-update-btn' : '#manualUpdateBtn');
         if (updateBtn) {
             updateBtn.addEventListener('click', async () => {
                 updateBtn.disabled = true;
@@ -248,42 +252,36 @@ class DatabaseStatusSetting extends ComponentBase {
                     const response = await browser.runtime.sendMessage({ action: 'updateDatabase' });
                     if (response && response.success) {
                         await this.sync(layout);
-                        if (layout !== 'compact') {
-                            this.dispatchEvent(new CustomEvent('setting-saved', {
-                                bubbles: true,
-                                detail: {
-                                    key: 'databaseUpdate',
-                                    success: true,
-                                    message: browser.i18n.getMessage('databaseUpdateSuccess') || 'Updated!'
-                                }
-                            }));
-                        }
+                        this.dispatchEvent(new CustomEvent('setting-saved', {
+                            bubbles: true,
+                            detail: {
+                                key: 'databaseUpdate',
+                                success: true,
+                                message: browser.i18n.getMessage('databaseUpdateSuccess') || 'Updated!'
+                            }
+                        }));
                     } else {
                         const errorMsg = response?.error || '';
                         const failText = browser.i18n.getMessage('databaseUpdateFailed') || 'Failed!';
-                        if (layout !== 'compact') {
-                            this.dispatchEvent(new CustomEvent('setting-saved', {
-                                bubbles: true,
-                                detail: {
-                                    key: 'databaseUpdate',
-                                    success: false,
-                                    message: errorMsg ? `${failText}: ${errorMsg}` : failText
-                                }
-                            }));
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error updating database manually:', error);
-                    if (layout !== 'compact') {
                         this.dispatchEvent(new CustomEvent('setting-saved', {
                             bubbles: true,
                             detail: {
                                 key: 'databaseUpdate',
                                 success: false,
-                                message: browser.i18n.getMessage('databaseUpdateFailed') || 'Failed!'
+                                message: errorMsg ? `${failText}: ${errorMsg}` : failText
                             }
                         }));
                     }
+                } catch (error) {
+                    console.error('Error updating database manually:', error);
+                    this.dispatchEvent(new CustomEvent('setting-saved', {
+                        bubbles: true,
+                        detail: {
+                            key: 'databaseUpdate',
+                            success: false,
+                            message: browser.i18n.getMessage('databaseUpdateFailed') || 'Failed!'
+                        }
+                    }));
                 } finally {
                     updateBtn.disabled = false;
                     updateBtn.textContent = originalText;

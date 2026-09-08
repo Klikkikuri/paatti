@@ -7,6 +7,7 @@ import { controller } from "../controller.js";
 import { getConfig, onConfigValue } from "../config.js";
 import { computeGaugeValue, computeCollectingPeriod, sharePercent, summarizeLevels } from "../stats.js";
 import { isSiteEnabled, getClickbaitLevelInfo, levelToI18nKey, localizeDocument } from "./utils.js";
+import { homeStatus } from "./home-status.js";
 import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
 import "./components/master-switch-setting.js";
@@ -71,6 +72,18 @@ const _setSettingsviewCheckboxesReadonly = (isConversionEnabled) => {
 
 // Cached page stats pushed live from the content script.
 let cachedPageStats = null;
+
+// Read once on open: the popup lives seconds, and refresh() runs on every page scroll.
+let databaseIsEmpty = false;
+
+// Set when the grace period for the content script's first push has passed. Until then a page
+// with no stats yet is indistinguishable from one that will never send any, so the view says
+// nothing rather than blaming a page that is merely still working.
+let waitedForPageStats = false;
+
+/** How long to wait for that first push. It follows a hashUrls round trip to the background
+ *  worker, which on MV3 can include a cold service worker start and WASM init. */
+const PAGE_STATS_WAIT_MS = 1500;
 
 /**
  * Create a stat row element for a given clickbait level and count.
@@ -303,59 +316,62 @@ const _createThresholdDivider = () => {
     return divider;
 };
 
-const _refreshHomeView = ({ site, pageStats, isSiteEnabled, clickbaitLevelThreshold }) => {
+const _refreshHomeView = ({ site, pageStats, isSiteEnabled, conversionEnabled, hasHostname,
+    clickbaitLevelThreshold, loadFailed }) => {
+
     const siteHeaderElem = document.getElementById("site-host");
     // Reset possible error state.
     siteHeaderElem.classList.remove("error");
 
     const statsTableData = (pageStats || {}).groupedByClickbaitiness || {};
-    let statusTextKey = "";
+
+    // isSiteEnabled arrives as a tri-state, undefined meaning "no siteConfig matched". Split it
+    // here so the decision table can be read, and asserted, as plain booleans.
+    const status = homeStatus({
+        loadFailed,
+        hasHostname,
+        isSupported: isSiteEnabled !== undefined,
+        isEnabled: isSiteEnabled === true,
+        conversionEnabled,
+        databaseEmpty: databaseIsEmpty,
+        pageStats,
+        waited: waitedForPageStats,
+    });
+
+    if (status.isError) {
+        siteHeaderElem.classList.add("error");
+    }
+    if (status.headerKey) {
+        siteHeaderElem.textContent = browser.i18n.getMessage(status.headerKey);
+    } else if (site) {
+        siteHeaderElem.textContent = site;
+    }
 
     const requestSiteBtn = document.getElementById("request-site-btn");
-
-    // Show appropriate elements and handle errors.
-    if (isSiteEnabled === undefined) {
-        siteHeaderElem.classList.add("error");
-        siteHeaderElem.textContent = browser.i18n.getMessage("siteTitleProcessingNotSupported");
-        statusTextKey = "homeviewStatusNotSupported";
-
-        if (requestSiteBtn) {
-            requestSiteBtn.classList.remove("hidden");
+    if (requestSiteBtn) {
+        requestSiteBtn.classList.toggle("hidden", !status.showRequestSite);
+        if (status.showRequestSite) {
             requestSiteBtn.textContent = browser.i18n.getMessage("homeviewRequestSiteBtn");
         }
-    } else {
-        if (requestSiteBtn) {
-            requestSiteBtn.classList.add("hidden");
-        }
+    }
 
-        if (!isSiteEnabled) {
-            siteHeaderElem.classList.add("error");
-            siteHeaderElem.textContent = browser.i18n.getMessage("siteTitleProcessingDisabled");
-            statusTextKey = "homeviewStatusDisabled";
-        } else if (pageStats === null) {
-            // Live page stats not yet received from content script (push model is async).
-            // Show site hostname in a neutral state — data will arrive via port message shortly.
-            siteHeaderElem.textContent = site;
-            statusTextKey = "";
-        } else if (Object.keys(statsTableData).length === 0) {
-            // Page was processed but no matching clickbait elements were found.
-            siteHeaderElem.textContent = site;
-            statusTextKey = "";
-        } else {
-            // Page was processed and has clickbait data — show hostname and gauge.
-            siteHeaderElem.textContent = site;
-            statusTextKey = "";
-        }
+    // The same component the settings view uses, so the button, its i18n and its progress state
+    // are not written twice. Its result comes back as a setting-saved event.
+    const dbStatusEl = document.getElementById("homeview-db-status");
+    if (dbStatusEl) {
+        dbStatusEl.classList.toggle("hidden", !status.showUpdateDb);
     }
 
     // Populate Home/Status view elements
     const homeviewStatusText = document.getElementById("homeview-status-text");
     if (homeviewStatusText) {
-        homeviewStatusText.textContent = statusTextKey ? browser.i18n.getMessage(statusTextKey) : "";
+        homeviewStatusText.textContent = status.statusKey
+            ? browser.i18n.getMessage(status.statusKey)
+            : "";
     }
 
     const gaugeContainer = document.getElementById("gauge-container");
-    if (isSiteEnabled === undefined || !isSiteEnabled || Object.keys(statsTableData).length === 0) {
+    if (!status.showGauge) {
         if (gaugeContainer) gaugeContainer.classList.add("hidden");
     } else {
         if (gaugeContainer) gaugeContainer.classList.remove("hidden");
@@ -580,9 +596,9 @@ const showView = (viewName) => {
 let initialViewSelected = false;
 
 /**
- * Load up current settings to UI.
+ * Read the current state and draw every view from it.
  */
-const refresh = async () => {
+const _loadIntoView = async () => {
     const isConversionEnabled = await model.read.isEnabled();
     const pageHostname = await getCurrentTabHostname();
     const matchingDomain = await model.read.getMatchingSiteDomain(pageHostname);
@@ -624,6 +640,8 @@ const refresh = async () => {
         site: pageHostname,
         pageStats: cachedPageStats,
         isSiteEnabled: matchingDomain ? isCurrentSiteEnabled : undefined,
+        conversionEnabled: isConversionEnabled,
+        hasHostname: Boolean(pageHostname),
         clickbaitLevelThreshold,
     });
     _refreshStatsView({
@@ -796,15 +814,33 @@ const refresh = async () => {
 };
 
 /**
+ * Load up current settings to UI, and say so in the view when that fails.
+ *
+ * None of the events that drive a reload -- a config change, a statistics write, a page scroll --
+ * awaits the result, so an unhandled throw would leave the popup on whatever it last drew. On the
+ * first load that is the blank initial markup, which reads as a broken extension.
+ */
+const refresh = async () => {
+    try {
+        await _loadIntoView();
+    } catch (err) {
+        log("Failed to load the popup view:", err);
+        _refreshHomeView({ site: "", pageStats: cachedPageStats, loadFailed: true });
+    }
+};
+
+/**
  * Perform initialization when the popup is opened. Load in settings and current
  * page's statistics.
  * @param {*} e 
  */
 // handleUpdateDatabaseClick is now encapsulated in the database-status-setting component
 
-const handleDomContentLoaded = async (e) => {
+const _setUpView = async (e) => {
     localizeDocument();
     log("Setting up UI");
+
+    databaseIsEmpty = await model.read.getDatabaseEntryCount() === 0;
 
     // Connect directly to the content script in the active tab.
     // The connection automatically signals visibility, and disconnection signals closure.
@@ -824,6 +860,8 @@ const handleDomContentLoaded = async (e) => {
                         site: pageHostname,
                         pageStats: cachedPageStats,
                         isSiteEnabled: matchingDomain ? isCurrentSiteEnabled : undefined,
+                        conversionEnabled: await model.read.isEnabled(),
+                        hasHostname: Boolean(pageHostname),
                         clickbaitLevelThreshold,
                     });
                 }
@@ -900,6 +938,32 @@ const handleDomContentLoaded = async (e) => {
 
 
     await refresh();
+
+    // The content script pushes its first snapshot only after a round trip to the background
+    // worker. Give it that long before the view says anything about the silence.
+    setTimeout(async () => {
+        waitedForPageStats = true;
+        if (cachedPageStats !== null) return;
+        try {
+            await refresh();
+        } catch (err) {
+            log("Failed to refresh after the page stats wait:", err);
+        }
+    }, PAGE_STATS_WAIT_MS);
+};
+
+/**
+ * Perform initialization when the popup is opened, and say so in the view when that fails.
+ *
+ * Nothing awaits this listener, so a throw here would leave the popup on its blank initial markup.
+ */
+const handleDomContentLoaded = async (e) => {
+    try {
+        await _setUpView(e);
+    } catch (err) {
+        log("Failed to set up the popup:", err);
+        _refreshHomeView({ site: "", pageStats: null, loadFailed: true });
+    }
 };
 
 const __devmodeEnable = async () => {
@@ -979,6 +1043,39 @@ onConfigValue(
     ],
     view.refresh
 );
+
+// The database-status-setting components report their manual update here, from either view.
+//
+// A fresh database does not convert the open page: the content script took its snapshot of the
+// title storage when it started and never reloads it. So the view asks for a page load rather
+// than re-rendering into a state that would claim the page's titles are unknown.
+document.addEventListener("setting-saved", async (e) => {
+    const { key, success, message } = e.detail || {};
+    if (key !== "databaseUpdate") return;
+
+    const statusText = document.getElementById("homeview-status-text");
+    const siteHeaderElem = document.getElementById("site-host");
+
+    if (!success) {
+        if (siteHeaderElem) siteHeaderElem.classList.add("error");
+        if (statusText) {
+            statusText.textContent = message
+                || browser.i18n.getMessage("databaseUpdateFailed") || "Failed!";
+        }
+        return;
+    }
+
+    try {
+        databaseIsEmpty = await model.read.getDatabaseEntryCount() === 0;
+        await view.refresh();
+    } catch (err) {
+        log("Failed to refresh after a database update:", err);
+    }
+
+    if (statusText) {
+        statusText.textContent = browser.i18n.getMessage("homeviewDatabaseUpdatedReload");
+    }
+});
 
 // Statistics are their own local key, written by the content script and the worker,
 // so they never reach the popup through the config.

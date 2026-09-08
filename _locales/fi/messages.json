@@ -397,6 +397,41 @@
     "message": "Paatti ei tue tätä sivustoa.",
     "description": "Text saying that the site is not supported"
   },
+  "homeviewStatusNoPageData": {
+    "message": "Paatti ei saanut tietoja sivulta. Lataa sivu uudelleen.",
+    "description": "Kotinäkymän teksti, kun sisältöskripti ei ehtinyt lähettää sivun tietoja"
+  },
+
+  "homeviewStatusDatabaseEmpty": {
+    "message": "Otsikkotietokanta on tyhjä. Päivitä tietokanta.",
+    "description": "Kotinäkymän teksti, kun paikallisessa otsikkotietokannassa ei ole yhtään merkintää"
+  },
+
+  "homeviewStatusNoTitlesFound": {
+    "message": "Paatti ei löytänyt otsikoita tältä sivulta.",
+    "description": "Kotinäkymän teksti, kun sivustosäännöt eivät osuneet yhteenkään sivun otsikkoon"
+  },
+
+  "homeviewStatusNoMatches": {
+    "message": "Paatti löysi otsikoita, mutta niitä ei ole tietokannassa.",
+    "description": "Kotinäkymän teksti, kun sivulta löytyi otsikoita mutta yksikään niistä ei ole otsikkotietokannassa"
+  },
+
+  "homeviewStatusLoadFailed": {
+    "message": "Paatti ei saanut luettua tietojaan. Sulje ja avaa Paatti uudelleen.",
+    "description": "Kotinäkymän teksti, kun ponnahdusikkuna ei saanut ladattua tietojaan"
+  },
+
+  "homeviewDatabaseUpdatedReload": {
+    "message": "Tietokanta päivitetty. Lataa sivu uudelleen.",
+    "description": "Kotinäkymän teksti tietokannan käsipäivityksen jälkeen; kehottaa lataamaan sivun uudelleen"
+  },
+
+  "homeviewStatusExtensionOff": {
+    "message": "Paatti on pois päältä. Ota se käyttöön asetuksista.",
+    "description": "Kotinäkymän teksti, kun laajennuksen pääkytkin on pois päältä"
+  },
+
   "homeviewRequestSiteBtn": {
     "message": "Pyydä sivutukea",
     "description": "Label of the button to request site support on GitHub"
