@@ -1,8 +1,4 @@
 {
-  "extensionName": {
-    "message": "Klikkikuri Paatti",
-    "description": "Name of the extension."
-  },
   "extensionDescription": {
     "message": "Korvaa uutissivujen klikkiotsikot vastaamaan paremmin juttujen sisältöä",
     "description": "Description of the extension."
@@ -69,10 +65,6 @@
   "siteTitleProcessingDisabled": {
     "message": "Sivuston käsittely on pois päältä",
     "description": "Message to show in 'main' title element when the visited site is disabled in settings"
-  },
-  "statsErrorUserFixInstructions": {
-    "message": "Sivun tietoja ei saatu ladattua. Koeta päivittää ikkuna.",
-    "description": "Instruction text to show in the bottom of 'main' view to help user with an unexpected error"
   },
 
   "statsviewConvertedOfFound": {

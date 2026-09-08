@@ -3,12 +3,11 @@ import { getLogger } from '../../utils.js';
 import { getConfig } from '../../config.js';
 import { model } from '../../model.js';
 import { buildFeedbackPayload, buildFeedbackRequest, clickbaitBadgeIndex } from '../../feedback.js';
-import { feedbackRules } from '../../feedback-style.js';
-import { adoptComponentStyles, defineComponent } from './component-utils.js';
+import { adoptComponentStyleSheet, defineComponent } from './component-utils.js';
 
-// Scoped under the element name, so rules shared with the in-page dialog's shadow root cannot reach
-// anything else on this page.
-adoptComponentStyles('feedback-item', feedbackRules('feedback-item '));
+// Not co-located like the other components' sheets: the in-page dialog adopts this same file into its shadow
+// root, which is what keeps the two renderings of the card from drifting.
+adoptComponentStyleSheet(new URL('../../feedback-card.css', import.meta.url));
 
 const log = getLogger('components/feedback-item');
 
@@ -22,7 +21,7 @@ template.innerHTML = `
         </div>
 
         <div class="feedback-row original">
-            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+            <div class="feedback-row-head">
                 <span class="feedback-label original-label-text"></span>
                 <span class="clickbait-level-badge"></span>
             </div>
@@ -33,11 +32,11 @@ template.innerHTML = `
             <span class="feedback-text converted-title-text"></span>
         </div>
         
-        <hr style="border: 0; border-top: 1px solid var(--color-border-strong); margin: 4px 0;">
+        <hr class="feedback-separator">
         
         <div class="feedback-actions">
-            <button class="push-button feedback-action-btn good" style="margin: 0; padding: 4px 8px; font-size: 0.8em; min-width: 80px;"></button>
-            <button class="push-button feedback-action-btn bad" style="margin: 0; padding: 4px 8px; font-size: 0.8em; min-width: 80px;"></button>
+            <button class="push-button feedback-action-btn good"></button>
+            <button class="push-button feedback-action-btn bad"></button>
         </div>
         
         <div class="feedback-input-container hidden">
