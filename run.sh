@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-set -eo pipefail
+set -euo pipefail
 
-# web-ext discovers web-ext-config.cjs in the current working directory and defaults --source-dir to it, so the
-# script has to run from the repository root no matter where it was invoked from.
+# web-ext discovers web-ext-config.cjs in the current working directory, so the script has to run from the
+# repository root no matter where it was invoked from.
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
 # Prefer the web-ext installed in the image (see .devcontainer/Dockerfile); npx is the fallback elsewhere.
@@ -11,6 +11,11 @@ if command -v web-ext >/dev/null 2>&1; then
 else
     CMD=(npx web-ext)
 fi
+
+die() {
+    echo "run.sh: $*" >&2
+    exit 1
+}
 
 usage() {
     cat <<'USAGE'
@@ -71,12 +76,19 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         -s|--source-dir)
+            [[ $# -ge 2 ]] || die "$1 requires a directory"
             SOURCE_DIR="$2"
             shift 2
             ;;
         --url|-u|--start-url)
+            [[ $# -ge 2 ]] || die "$1 requires a URL"
             START_URL="$2"
             shift 2
+            ;;
+        --)
+            shift
+            ARGS+=("$@")
+            break
             ;;
         *)
             ARGS+=("$1")
@@ -89,6 +101,8 @@ done
 if [[ -z "$SOURCE_DIR" ]]; then
     SOURCE_DIR="build/dist"
     make dist
+elif [[ ! -d "$SOURCE_DIR" ]]; then
+    die "source dir not found: $SOURCE_DIR"
 fi
 
 ARGS=(-s "$SOURCE_DIR" "${ARGS[@]}")
@@ -133,7 +147,7 @@ case "$TARGET" in
             fi
         done
 
-        "${CMD[@]}" run -t firefox-desktop --url "$START_URL" "${FIREFOX_ARGS[@]}" "${ARGS[@]}" 2>&1 | tee "$LOG_FILE" 2>&1
+        "${CMD[@]}" run -t firefox-desktop --url "$START_URL" "${FIREFOX_ARGS[@]}" "${ARGS[@]}" 2>&1 | tee "$LOG_FILE"
         ;;
     chromium)
         CHROMIUM_ARGS=()
@@ -144,6 +158,6 @@ case "$TARGET" in
                 break
             fi
         done
-        "${CMD[@]}" run -t chromium --url "$START_URL" "${CHROMIUM_ARGS[@]}" "${ARGS[@]}" 2>&1 | tee "$LOG_FILE" 2>&1
+        "${CMD[@]}" run -t chromium --url "$START_URL" "${CHROMIUM_ARGS[@]}" "${ARGS[@]}" 2>&1 | tee "$LOG_FILE"
         ;;
 esac
