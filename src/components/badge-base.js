@@ -73,11 +73,25 @@ export function createBadgeClass(svgMarkup, defaultLabel) {
 
         /**
          * Keyboard activation, routed through `click()` so the pointer and the keyboard arrive at the one
-         * listener the badge's owner registered. A field, not a method, so add and remove see one function.
+         * listener the badge's owner registered. Fields, not methods, so add and remove see one function.
+         *
+         * A button's two keys do not behave alike, and these follow the native contract: Enter acts on the
+         * way down, Space on the way up. Acting on every Space keydown would activate once per repeat while
+         * the key is held. The keydown is still swallowed on those repeats, or the page scrolls under a held
+         * key -- and Enter's default is swallowed too, or it submits a form the badge happens to sit in.
          */
         _onKeydown = (event) => {
-            if (!this.hasAttribute("action") || (event.key !== "Enter" && event.key !== " ")) return;
-            // Space scrolls the page and Enter submits a surrounding form, neither of which was asked for.
+            if (!this.hasAttribute("action")) return;
+            if (event.key === " ") {
+                event.preventDefault();
+            } else if (event.key === "Enter" && !event.repeat) {
+                event.preventDefault();
+                this.click();
+            }
+        };
+
+        _onKeyup = (event) => {
+            if (!this.hasAttribute("action") || event.key !== " ") return;
             event.preventDefault();
             this.click();
         };
@@ -97,11 +111,13 @@ export function createBadgeClass(svgMarkup, defaultLabel) {
             // Inline !important wins over any host-page stylesheet rules targeting the element.
             this.style.setProperty("display", "inline-flex", "important");
             this.addEventListener("keydown", this._onKeydown);
+            this.addEventListener("keyup", this._onKeyup);
             this._updateLabels();
         }
 
         disconnectedCallback() {
             this.removeEventListener("keydown", this._onKeydown);
+            this.removeEventListener("keyup", this._onKeyup);
         }
 
         attributeChangedCallback(name, oldValue, newValue) {
