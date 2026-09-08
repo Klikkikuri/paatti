@@ -17,6 +17,9 @@
  * - Pushed to the popup via the `paatti-popup-direct` port as an event `pageStatsUpdated`.
  * - Used to render the gauge meter and the per-level breakdown list on the Home view.
  * - Levels with a count of 0 are hidden from the Home view list.
+ * - `candidates` counts the headlines looked up, database hit or miss, so the Home view can tell a
+ *   page with no headlines apart from one whose headlines the database does not cover. Both read as
+ *   an empty `groupedByClickbaitiness` without it.
  *
  * ### 2. Cumulative Statistics (persistent, per siteConfig domain)
  * Accumulated in `browser.storage.local` under the key `statistics`.
@@ -88,6 +91,9 @@ const LEVEL_VALUES = {
  * @typedef {Object} PageSnapshot
  * @property {ClickbaitinessMap} groupedByClickbaitiness - Counts per clickbaitiness level.
  * @property {ClickbaitinessMap} convertedByClickbaitiness - Counts per level of the ones converted.
+ * @property {number} candidates - Headlines the site rules matched and Paatti looked up, whether or
+ *   not the database knew them. Live only: `mergeStats` copies named fields, so a delta snapshot
+ *   carrying this never writes it into the cumulative record.
  */
 
 /**
@@ -108,10 +114,12 @@ const LEVEL_VALUES = {
 function buildPageSnapshot(reasons) {
     const groupedByClickbaitiness = {};
     const convertedByClickbaitiness = {};
+    let candidates = 0;
 
     if (Array.isArray(reasons)) {
         for (const item of reasons) {
             if (!item) continue;
+            candidates++;
             const wasConverted = item.what === "converted";
             if (item.clickbaitiness != null && item.clickbaitiness !== "") {
                 groupedByClickbaitiness[item.clickbaitiness] =
@@ -124,7 +132,7 @@ function buildPageSnapshot(reasons) {
         }
     }
 
-    return { groupedByClickbaitiness, convertedByClickbaitiness };
+    return { groupedByClickbaitiness, convertedByClickbaitiness, candidates };
 }
 
 /**

@@ -397,6 +397,46 @@
     "message": "This site is not supported by Paatti.",
     "description": "Text saying that the site is not supported"
   },
+  "homeviewStatusChecking": {
+    "message": "Checking the headlines…",
+    "description": "Text shown on the home view while Paatti waits for the content script's first report"
+  },
+
+  "homeviewStatusNoPageData": {
+    "message": "Paatti did not get data from the page. Load the page again.",
+    "description": "Text shown on the home view when the content script sent no page data in time"
+  },
+
+  "homeviewStatusDatabaseEmpty": {
+    "message": "The title database is empty. Update the database.",
+    "description": "Text shown on the home view when the local title database has no entries"
+  },
+
+  "homeviewStatusNoTitlesFound": {
+    "message": "Paatti found no headlines on this page.",
+    "description": "Text shown on the home view when the site rules matched no headline on the page"
+  },
+
+  "homeviewStatusNoMatches": {
+    "message": "Paatti found headlines, but they are not in the database.",
+    "description": "Text shown on the home view when headlines were found but none of them is in the title database"
+  },
+
+  "homeviewStatusLoadFailed": {
+    "message": "Paatti could not read its data. Close and open Paatti again.",
+    "description": "Text shown on the home view when the popup failed to load its data"
+  },
+
+  "homeviewDatabaseUpdatedReload": {
+    "message": "The database is updated. Load the page again.",
+    "description": "Text shown on the home view after a manual database update, telling the user to load the page again"
+  },
+
+  "homeviewStatusExtensionOff": {
+    "message": "Paatti is off. Turn it on in the settings.",
+    "description": "Text shown on the home view when the extension master switch is off"
+  },
+
   "homeviewRequestSiteBtn": {
     "message": "Request site support",
     "description": "Label of the button to request site support on GitHub"

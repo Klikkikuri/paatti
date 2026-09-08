@@ -65,6 +65,32 @@ describe('buildPageSnapshot', () => {
             assert.ok(count <= snapshot.groupedByClickbaitiness[level]);
         }
     });
+
+    // candidates counts headlines looked up, not headlines the database knew. That is the whole
+    // point of it: an empty database and a page with no headlines both leave the maps empty.
+    test('candidates counts every reason, level or not', () => {
+        assert.equal(buildPageSnapshot(reasons).candidates, 5);
+    });
+
+    test('candidates counts a page whose headlines are all database misses', () => {
+        const misses = [
+            { what: 'skipped', clickbaitiness: null },
+            { what: 'skipped', clickbaitiness: null }
+        ];
+        const snapshot = buildPageSnapshot(misses);
+
+        assert.equal(snapshot.candidates, 2);
+        assert.deepEqual(snapshot.groupedByClickbaitiness, {});
+    });
+
+    test('candidates is 0 for an empty array and for a non-array', () => {
+        assert.equal(buildPageSnapshot([]).candidates, 0);
+        assert.equal(buildPageSnapshot(undefined).candidates, 0);
+    });
+
+    test('candidates skips entries that came back empty', () => {
+        assert.equal(buildPageSnapshot([null, { what: 'skipped' }, undefined]).candidates, 1);
+    });
 });
 
 describe('computeGaugeValue', () => {
@@ -128,6 +154,14 @@ describe('mergeStats', () => {
 
     test('firstSeen is stamped on a brand new domain', () => {
         assert.equal(mergeStats(undefined, incoming, 1700).firstSeen, 1700);
+    });
+
+    // The delta handed to addStatistics is a page snapshot, which carries candidates. That count
+    // describes one page load and would be meaningless summed over a domain's history.
+    test('a snapshot candidates count never reaches the stored record', () => {
+        const merged = mergeStats(makeExisting(), { ...incoming, candidates: 12 });
+
+        assert.ok(!('candidates' in merged));
     });
 
     test('firstSeen is stamped on stored stats that predate it', () => {
