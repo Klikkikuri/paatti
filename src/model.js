@@ -225,6 +225,12 @@ const model = (() => {
                 await browser.storage.local.set({ userPreferences });
             },
 
+            /** Records that the "All headlines" warning was seen. Set once, never cleared. */
+            acknowledgeClickbaitLevelWarning: async () => {
+                log("Acknowledging the clickbait level warning");
+                await browser.storage.sync.set({ clickbaitLevelWarningSeen: true });
+            },
+
             /**
              * Accumulate a page snapshot delta into persisted cumulative statistics.
              *

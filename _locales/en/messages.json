@@ -565,6 +565,18 @@
     "message": "The title is deceptive, misleading, or uses outrageous claims that do not align with the article's content.",
     "description": "Description for clickbait level 4 (Extremely Clickbaity)"
   },
+  "clickbaitLevelWarningTitle": {
+    "message": "Also replaces neutral headlines",
+    "description": "Title of the warning shown when the clickbait threshold is set to level 0 (All headlines)"
+  },
+  "clickbaitLevelWarningText": {
+    "message": "Klikkikuri rated these headlines as neutral, with no clickbait in them. At this level Paatti replaces them too. You lose the wording of the news site and remove no more clickbait.",
+    "description": "Body of the warning shown when the clickbait threshold is set to level 0 (All headlines)"
+  },
+  "clickbaitLevelWarningDismiss": {
+    "message": "Got it",
+    "description": "Button that dismisses the level 0 warning and stops it from showing again"
+  },
 
   "sitePolicyLinkText": {
     "message": "Publisher's policy",
