@@ -167,7 +167,8 @@ export function isAnchorGone(anchor, viewport) {
 }
 
 /**
- * Where to put the card: both top-right corners on the same point, so it covers the pill that was clicked.
+ * Where to put the card: both top-right corners on the same point, so it covers the anchor's corner, which is
+ * where the status pill sits.
  *
  * Nothing is clamped to the viewport -- the card travels with its headline, scrolling off the edge with it
  * rather than clinging to the edge detached from the thing it reports on. The two fallbacks move it only
@@ -180,8 +181,8 @@ export function isAnchorGone(anchor, viewport) {
  * @returns {{top: number, left: number, transformOrigin: string}}
  */
 export function placeCard(anchor, card, viewport, margin = PLACE_MARGIN) {
-    // Too little room under the pill for the whole card: pull it up to sit on the anchor's bottom edge.
-    // Never past the pill, or an anchor taller than the card would push it down and off the fold.
+    // Too little room below the anchor's top edge for the whole card: pull it up to sit on the anchor's
+    // bottom edge. Never past that top edge, or an anchor taller than the card would push it off the fold.
     let top = anchor.top;
     if (top + card.height > viewport.height - margin) top = Math.min(top, anchor.bottom - card.height);
 
@@ -200,7 +201,7 @@ export function placeCard(anchor, card, viewport, margin = PLACE_MARGIN) {
 
 /**
  * The focused element, reached through any open shadow root. `document.activeElement` stops at the host, so
- * the pill that opens the card -- which lives in the overlay's shadow root -- would otherwise be invisible
+ * neither opener of the card -- the overlay's status pill, or a badge in the headline -- would be visible
  * here, and focus could not be handed back to it.
  *
  * @returns {Element|null}
@@ -241,7 +242,7 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     // The sheets the extension pages link: theme.css for the colours, components.css for the card's surface
     // and .hidden, feedback-card.css for the card itself. All are fetched rather than linked, because a page
     // stylesheet never crosses a shadow boundary. Started at construction rather than on open, so they have
-    // landed long before the first click on a pill.
+    // landed long before the first click that opens the card.
     for (const path of ["src/options/theme.css", "src/options/components.css", "src/feedback-card.css"]) {
         const sheet = new CSSStyleSheet();
         shadow.adoptedStyleSheets = [...shadow.adoptedStyleSheets, sheet];
@@ -298,8 +299,8 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     }
 
     /**
-     * Fade the card, scaling it out of the corner that sits on the pill so it grows from the thing that was
-     * clicked rather than appearing whole.
+     * Fade the card, scaling it out of the corner that sits on the anchor so it grows from the headline that
+     * was reported on rather than appearing whole.
      *
      * Under `prefers-reduced-motion: reduce` the scale goes and the fade stays: a fade carries no movement, so
      * it asks nothing of a reader the preference is there to protect. Read per call, not cached, so a change
@@ -337,7 +338,7 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             // popover takes it out of the top layer too, so there is nothing else to unwind.
             host.remove();
 
-            // Back to the pill that opened it, if the page still has it. preventScroll, because the card also
+            // Back to whatever opened it, if the page still has it. preventScroll, because the card also
             // closes when its headline scrolls away -- and focus must not drag the page back to it.
             const returnTo = opener;
             opener = null;
@@ -568,7 +569,7 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             hiding = false;
 
             listeners = new AbortController();
-            // A reopen during the closing animation is already focused inside the card; keep the pill the
+            // A reopen during the closing animation is already focused inside the card; keep the opener the
             // first opening recorded, or focus would be handed back to a card that no longer exists.
             const active = deepActiveElement();
             if (active !== dialog && !dialog.contains(active)) opener = active;

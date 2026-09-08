@@ -17,7 +17,8 @@ const fake = createFakeBrowser({
         modifierConvertedTitle: 'Converted Headline Marker',
         modifierConvertedDesc: 'Shows an indicator next to headlines whose text Paatti has replaced with the aligned version.',
         modifierConvertedLabel: 'Converted',
-        modifierConvertedTooltip: 'Paatti replaced this headline with an aligned version.'
+        modifierConvertedTooltip: 'Paatti replaced this headline with an aligned version.',
+        modifierConvertedAction: 'Report this converted headline'
     }
 });
 globalThis.browser = fake.browser;
@@ -69,6 +70,25 @@ test('the converted modifier applies a badge when the headline was swapped', asy
     assert.equal(result.badges[0].tagName, 'klikkikuri-converted-badge');
     assert.equal(result.badges[0].badgeText, 'Converted');
     assert.equal(result.badges[0].tooltip, 'Paatti replaced this headline with an aligned version.');
+});
+
+test('only the converted badge claims an action, which is what makes it a button', async () => {
+    await setModifiers({ aiSlop: true, video: true, converted: true });
+
+    const result = await applyModifiers('Aligned Title', {
+        labels: [
+            'com.github.klikkikuri/converted=true',
+            'com.github.klikkikuri/ai-slop=true',
+            'com.github.klikkikuri/type=video'
+        ]
+    });
+
+    const actions = Object.fromEntries(result.badges.map((badge) => [badge.tagName, badge.action]));
+    assert.deepEqual(actions, {
+        'klikkikuri-converted-badge': 'Report this converted headline',
+        'klikkikuri-ai-badge': undefined,
+        'klikkikuri-video-badge': undefined
+    });
 });
 
 test('the converted modifier is ignored when disabled in settings', async () => {

@@ -68,7 +68,7 @@ let hrefSign;
             const status = await model.read.getDatabaseStatus();
             return status.lastDatabaseUpdate ? new Date(status.lastDatabaseUpdate).toISOString() : "Unknown";
         },
-        // Reached through the overlay declared below, which exists by the time a pill can be clicked.
+        // Reached through the overlay declared below, which exists by the time anything can open the card.
         setHighlighted: (element, on) => highlightOverlay.setFeedback([element], on)
     });
 
@@ -77,6 +77,22 @@ let hrefSign;
         canActivate: (element) => Boolean(convertedTitleOf(element)),
         onLabelActivate: (element) => feedbackDialog.open(element)
     });
+
+    // The converted badge is a button that opens the same card as a status pill; its own keyboard handling
+    // arrives here as a click too. Delegated rather than bound per badge: processSite rebuilds the badges on
+    // every pass, and a page that recycles its DOM would otherwise leave listeners on detached nodes.
+    // Capture, so the page cannot swallow the click first.
+    document.addEventListener("click", (event) => {
+        const badge = event.target.closest?.("klikkikuri-converted-badge[action]");
+        const container = badge?.closest("[data-klikkikuri-status]");
+        if (!container) return;
+
+        // The badge sits inside the headline's link, as the pill sits over it: without both of these the
+        // click would navigate, and the page's own listeners would see a click they cannot explain.
+        event.preventDefault();
+        event.stopPropagation();
+        feedbackDialog.open(container);
+    }, { capture: true });
 
     /**
      * Returns the favicon URL the browser would use for this page:
@@ -118,10 +134,6 @@ let hrefSign;
             const enabled = await model.read.getVisualHighlightEnabled();
             const visible = enabled || isPopupOpen;
             highlightOverlay.setStatusVisible(visible);
-            // The dialog is opened from a status label, so it must not outlive the labels.
-            if (!visible) {
-                feedbackDialog.close();
-            }
         } catch (e) {
             log("Failed to update status highlighting", e);
         }
@@ -352,6 +364,10 @@ let hrefSign;
                             if (b.tooltip) {
                                 badgeElem.setAttribute("tooltip", b.tooltip);
                                 badgeElem.setAttribute("title", b.tooltip);
+                            }
+                            // Turns the badge into a button, named by whichever modifier claimed an action.
+                            if (b.action) {
+                                badgeElem.setAttribute("action", b.action);
                             }
                             children.push(badgeElem);
                         }

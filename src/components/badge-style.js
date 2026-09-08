@@ -12,6 +12,12 @@
  * This is why badges must NOT use `prefers-color-scheme`: that reports the OS
  * preference, while injected content lives in the page's theme. A dark site on
  * a light-mode OS would otherwise get a black badge on a dark headline.
+ *
+ * A badge carrying `action` is a button rather than a picture, so it needs the
+ * states a control has. Both are drawn on the icon, not on `:host`: a page rule
+ * outranks a `:host` rule, and nothing the page writes can reach inside the
+ * shadow root. The chip is a box-shadow spread rather than padding, so growing
+ * it on hover cannot reflow the headline it sits in.
  */
 
 /**
@@ -37,6 +43,10 @@ badgeStyleSheet.replaceSync(`
     user-select: none;
 }
 
+:host([action]) {
+    cursor: pointer;
+}
+
 .badge-icon {
     display: inline-block;
     width: 1.1em;
@@ -44,6 +54,34 @@ badgeStyleSheet.replaceSync(`
     min-width: 16px;
     min-height: 16px;
     flex-shrink: 0;
+}
+
+:host([action]) .badge-icon {
+    border-radius: 50%;
+    transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+:host([action]:hover) .badge-icon,
+:host([action]:focus-visible) .badge-icon {
+    background-color: color-mix(in srgb, currentColor 18%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+/* The ring the keyboard needs. The host's own outline goes, because a page's blanket
+   \`outline: none\` could take it away and leave a focused badge with no ring at all. */
+:host([action]:focus-visible) .badge-icon {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+}
+
+:host([action]:focus-visible) {
+    outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :host([action]) .badge-icon {
+        transition: none;
+    }
 }
 
 .badge-glyph-font {

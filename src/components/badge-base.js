@@ -43,10 +43,15 @@ function parseBadgeSvg(markup) {
  *
  * The returned class handles:
  *  - Shadow root attachment, stylesheet adoption and icon cloning
- *  - `label` / `tooltip` attribute observation
+ *  - `label` / `tooltip` / `action` attribute observation
  *  - SVG aria-label and <title> synchronisation
  *  - Forcing display:inline-flex via inline style so host-page stylesheets
  *    (which take precedence over shadow-internal :host rules) cannot hide the badge
+ *
+ * `action` names what activating the badge does, and giving it turns the badge from an image into a
+ * button: a tab stop, a role, that name, and Enter or Space. The badge does not know what the action
+ * is -- whoever set the attribute listens for the click. Badges run in the page's main world, where
+ * `browser.i18n` does not exist, so the name arrives already translated, as `label` and `tooltip` do.
  *
  * @param {string} svgMarkup - The badge's `<svg>` markup.
  * @param {string} defaultLabel - Fallback aria-label when no attribute is set.
@@ -58,8 +63,19 @@ export function createBadgeClass(svgMarkup, defaultLabel) {
 
     return class extends HTMLElement {
         static get observedAttributes() {
-            return ["label", "tooltip"];
+            return ["label", "tooltip", "action"];
         }
+
+        /**
+         * Keyboard activation, routed through `click()` so the pointer and the keyboard arrive at the one
+         * listener the badge's owner registered. A field, not a method, so add and remove see one function.
+         */
+        _onKeydown = (event) => {
+            if (!this.hasAttribute("action") || (event.key !== "Enter" && event.key !== " ")) return;
+            // Space scrolls the page and Enter submits a surrounding form, neither of which was asked for.
+            event.preventDefault();
+            this.click();
+        };
 
         constructor() {
             super();
@@ -75,7 +91,12 @@ export function createBadgeClass(svgMarkup, defaultLabel) {
         connectedCallback() {
             // Inline !important wins over any host-page stylesheet rules targeting the element.
             this.style.setProperty("display", "inline-flex", "important");
+            this.addEventListener("keydown", this._onKeydown);
             this._updateLabels();
+        }
+
+        disconnectedCallback() {
+            this.removeEventListener("keydown", this._onKeydown);
         }
 
         attributeChangedCallback(name, oldValue, newValue) {
@@ -85,7 +106,7 @@ export function createBadgeClass(svgMarkup, defaultLabel) {
         }
 
         /**
-         * Sync the SVG's aria-label and <title> element from the component's attributes.
+         * Sync the badge's labelling and its role from the component's attributes.
          */
         _updateLabels() {
             const svg = this.shadowRoot.querySelector("svg");
@@ -93,6 +114,7 @@ export function createBadgeClass(svgMarkup, defaultLabel) {
 
             const label = this.getAttribute("label") || this.getAttribute("tooltip") || defaultLabel;
             const tooltip = this.getAttribute("tooltip") || label;
+            const action = this.getAttribute("action");
 
             svg.setAttribute("aria-label", label);
 
@@ -105,6 +127,21 @@ export function createBadgeClass(svgMarkup, defaultLabel) {
                 titleElement.textContent = tooltip;
             } else if (titleElement) {
                 titleElement.remove();
+            }
+
+            // An action badge is a control rather than a picture, so it is announced and reached as one.
+            // The icon is hidden from the accessibility tree while it is: the button carries the name, and
+            // an image with a name of its own inside it would be read out a second time.
+            if (action) {
+                this.setAttribute("role", "button");
+                this.setAttribute("tabindex", "0");
+                this.setAttribute("aria-label", action);
+                svg.setAttribute("aria-hidden", "true");
+            } else {
+                this.removeAttribute("role");
+                this.removeAttribute("tabindex");
+                this.removeAttribute("aria-label");
+                svg.removeAttribute("aria-hidden");
             }
         }
     };

@@ -31,11 +31,14 @@ const titleModifiers = [
             if (entry.labels && entry.labels.includes(LABEL_CONVERTED)) {
                 const tooltip = browser?.i18n?.getMessage("modifierConvertedTooltip") || "Paatti replaced this headline with an aligned version.";
                 const label = browser?.i18n?.getMessage("modifierConvertedLabel") || "Converted";
+                // Naming an action makes the badge a button. The content script handles the click.
+                const action = browser?.i18n?.getMessage("modifierConvertedAction") || "Report this converted headline";
                 return {
                     text: title,
                     tagName: "klikkikuri-converted-badge",
                     badgeText: label,
-                    tooltip: tooltip
+                    tooltip: tooltip,
+                    action: action
                 };
             }
             return { text: title };
@@ -91,7 +94,7 @@ const titleModifiers = [
  * Applies all active modifiers sequentially to the given title text.
  * @param {string} titleText - The title text to modify
  * @param {Object} rahtiEntry - The dataset entry
- * @returns {Promise<{text: string, badges: Array<{tagName: string, badgeText?: string, tooltip?: string, className?: string}>}>} The modified title text and badges
+ * @returns {Promise<{text: string, badges: Array<{tagName: string, badgeText?: string, tooltip?: string, action?: string}>}>} The modified title text and badges
  */
 async function applyModifiers(titleText, rahtiEntry) {
     let currentText = titleText;
@@ -109,7 +112,8 @@ async function applyModifiers(titleText, rahtiEntry) {
                         badges.push({
                             tagName: res.tagName,
                             badgeText: res.badgeText,
-                            tooltip: res.tooltip
+                            tooltip: res.tooltip,
+                            action: res.action
                         });
                     }
                 }

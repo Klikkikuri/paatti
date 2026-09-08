@@ -50,7 +50,7 @@ Sail smoothly through the clickbait-infested web using this browser extension.
 - Provides **granular controls & options** via the settings page:
   - Toggle switches for per-site filtering.
   - A clickbait severity **threshold slider** to customize replacement sensitivity.
-  - Custom **Title Modifiers**, including a feature to automatically attach a clean EU-styled vector badge `[AI]` to headlines identified as AI-generated or AI-translated content, a marker for links that are mostly video, and a marker for headlines whose text has been replaced with the aligned version.
+  - Custom **Title Modifiers**, including a feature to automatically attach a clean EU-styled vector badge `[AI]` to headlines identified as AI-generated or AI-translated content, a marker for links that are mostly video, and a marker for headlines whose text has been replaced with the aligned version. The replaced-headline marker is a button: clicking it, or reaching it by keyboard and pressing Enter, opens the feedback card for that headline.
 - Equipped with **developer and diagnostic utilities** to debug and trace behavior:
   - Appends semantic **`data-klikkikuri-*` DOM attributes** (status, reason, signatures, labels) directly to elements.
   - Overlay outlines and status badges under a **visual debug mode**.
