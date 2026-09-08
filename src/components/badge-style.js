@@ -5,13 +5,19 @@
  *
  * Badges carry no colours of their own. The icon body is painted with
  * `currentColor`, so it inherits the headline's colour, and the glyph inside it
- * is knocked out (see `knockoutMask`) so the page's own background shows
- * through. A badge is therefore correct on any site, in any theme, without
- * inspecting the page at all.
+ * is knocked out -- each icon's own `<mask>` in assets/icons/ -- so the page's
+ * own background shows through. A badge is therefore correct on any site, in any
+ * theme, without inspecting the page at all.
  *
  * This is why badges must NOT use `prefers-color-scheme`: that reports the OS
  * preference, while injected content lives in the page's theme. A dark site on
  * a light-mode OS would otherwise get a black badge on a dark headline.
+ *
+ * A badge carrying `action` is a button rather than a picture, so it needs the
+ * states a control has. Both are drawn on the icon, not on `:host`: a page rule
+ * outranks a `:host` rule, and nothing the page writes can reach inside the
+ * shadow root. The chip is a box-shadow spread rather than padding, so growing
+ * it on hover cannot reflow the headline it sits in.
  */
 
 /**
@@ -37,6 +43,10 @@ badgeStyleSheet.replaceSync(`
     user-select: none;
 }
 
+:host([action]) {
+    cursor: pointer;
+}
+
 .badge-icon {
     display: inline-block;
     width: 1.1em;
@@ -46,29 +56,37 @@ badgeStyleSheet.replaceSync(`
     flex-shrink: 0;
 }
 
+:host([action]) .badge-icon {
+    border-radius: 50%;
+    transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+:host([action]:hover) .badge-icon,
+:host([action]:focus-visible) .badge-icon {
+    background-color: color-mix(in srgb, currentColor 18%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+/* The ring the keyboard needs. The host's own outline goes, because a page's blanket
+   \`outline: none\` could take it away and leave a focused badge with no ring at all. */
+:host([action]:focus-visible) .badge-icon {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+}
+
+:host([action]:focus-visible) {
+    outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :host([action]) .badge-icon {
+        transition: none;
+    }
+}
+
 .badge-glyph-font {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
     font-weight: 800;
     font-size: 11px;
 }
 `);
-
-/**
- * Build an SVG `<mask>` that cuts `glyph` out of `body`.
- *
- * Everything white in a luminance mask is painted, everything black is removed,
- * so drawing the glyph in black punches a hole through the badge body. Mask ids
- * only need to be unique within a shadow root, and every badge instance has its
- * own, so a fixed id is safe.
- *
- * @param {string} id - Mask id, referenced as `mask="url(#id)"`.
- * @param {string} body - Shape covering the badge, drawn in white.
- * @param {string} glyph - Shape to knock out, drawn in black.
- * @returns {string} `<defs>` markup containing the mask.
- */
-export function knockoutMask(id, body, glyph) {
-    return `<defs><mask id="${id}" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
-    <g fill="#ffffff">${body}</g>
-    <g fill="#000000">${glyph}</g>
-</mask></defs>`;
-}

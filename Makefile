@@ -92,7 +92,7 @@ check-tinygo:
 		exit 1; \
 	}
 
-dist: $(WASM_OUTPUTS)
+dist: $(WASM_OUTPUTS) | check-icons
 	mkdir -p $(DIST_DIR)/build
 	cp -r $(EXTENSION_ASSETS) $(DIST_DIR)/
 	cp $(WASM_OUTPUTS) $(DIST_DIR)/build/
@@ -111,6 +111,15 @@ source-dist:
 test-data:
 	mkdir -p "$(TEST_DATA_BUILD_DIR)"
 	./generate_test_data.py $(TEST_DATA_SIGNATURES)
+
+# Badge icons are authored as .svg under assets/icons/ and written into the module that
+# draws them. The result is committed: the repo root is itself a loadable unpacked
+# extension, so src/ must never hold a placeholder.
+icons:
+	node tools/inline-icons.mjs
+
+check-icons:
+	@node tools/inline-icons.mjs --check
 
 clean:
 	rm -f "$(BUILD_TEST_DATA)" "$(TEST_DATA_SIGNATURES)" "$(BUILD_EXTENSION)"
@@ -155,4 +164,4 @@ test-wasm:
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
 	fi
 
-.PHONY: build init ensure-suola check-tinygo package source-dist test-data clean build-suola-local build-suola rebuild-suola release dist test test-wasm lint lint-webext
+.PHONY: build init ensure-suola check-tinygo package source-dist test-data icons check-icons clean build-suola-local build-suola rebuild-suola release dist test test-wasm lint lint-webext

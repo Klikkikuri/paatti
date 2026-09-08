@@ -118,21 +118,23 @@ describe('merging stored values over the defaults', () => {
         assert.ok(config.siteConfigs['yle.fi'].origins);
     });
 
-    test('the free environment defaults the video modifier to false', async () => {
+    test('the free environment leaves the optional modifiers off', async () => {
         await sync.remove(['userSiteOverrides', 'modifiers']);
         await local.set({ userPreferences: { environment: 'free' } });
         const config = await getConfig();
 
         assert.equal(config.modifiers.aiSlop, true);
         assert.equal(config.modifiers.video, false);
+        assert.equal(config.modifiers.converted, false);
     });
 
-    test('the development environment defaults the video modifier to true', async () => {
+    test('the development environment turns the optional modifiers on', async () => {
         await local.set({ userPreferences: { environment: 'development' } });
         const config = await getConfig();
 
         assert.equal(config.modifiers.aiSlop, true);
         assert.equal(config.modifiers.video, true);
+        assert.equal(config.modifiers.converted, true);
     });
 
     test('a sync modifier override wins over the environment default', async () => {

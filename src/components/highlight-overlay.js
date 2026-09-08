@@ -231,6 +231,7 @@ const OVERLAY_CSS = `
  * }}
  */
 export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
+    // onLabelActivate(element, label): the highlighted element, and the pill that was activated on it.
     const host = document.createElement("klikkikuri-highlight-overlay");
     for (const [property, value] of Object.entries(HOST_STYLE)) {
         host.style.setProperty(property, value, "important");
@@ -332,7 +333,9 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
                 // page's own document listeners would see a click they cannot explain.
                 event.preventDefault();
                 event.stopPropagation();
-                onLabelActivate(element);
+                // The pill goes with the element: it is what the user aimed at, so it is what the feedback
+                // card is placed on.
+                onLabelActivate(element, label);
             });
         }
         label.disabled = true;

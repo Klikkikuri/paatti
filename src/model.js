@@ -479,6 +479,15 @@ const model = (() => {
             getMarkVideo: async () => {
                 const config = await getConfig();
                 return !!config.modifiers?.video;
+            },
+
+            /**
+             * Whether the converted headline modifier is enabled in user settings.
+             * @returns {Promise<boolean>}
+             */
+            getMarkConverted: async () => {
+                const config = await getConfig();
+                return !!config.modifiers?.converted;
             }
         },
     };

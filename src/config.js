@@ -23,7 +23,8 @@ const DEFAULT_CONFIG = {
     "environment": "free",
     "modifiers": {
         "aiSlop": true,
-        "video": false
+        "video": false,
+        "converted": false
     },
 
     // CONFIG: Configure per-site settings here.
@@ -308,7 +309,8 @@ const DEFAULT_CONFIG = {
             "debugVisualsEnabled": true,
             "refreshIntervalMinutes": 1,
             "modifiers": {
-                "video": true
+                "video": true,
+                "converted": true
             },
             "titleDataUrls": [
                 "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json",

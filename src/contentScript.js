@@ -24,13 +24,14 @@ let hrefSign;
     const { getConfig } = await import(browser.runtime.getURL("src/config.js"));
 
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
-    const { applyModifiers } = await import(browser.runtime.getURL("src/modifiers.js"));
+    const { applyModifiers, LABEL_CONVERTED } = await import(browser.runtime.getURL("src/modifiers.js"));
     const { buildPageSnapshot, createSessionTracker } = await import(browser.runtime.getURL("src/stats.js"));
 
     // Inject Web Components into page's main world context
     const badgeComponents = [
         "src/components/klikkikuri-ai-badge.js",
-        "src/components/klikkikuri-video-badge.js"
+        "src/components/klikkikuri-video-badge.js",
+        "src/components/klikkikuri-converted-badge.js"
     ];
     for (const componentPath of badgeComponents) {
         try {
@@ -67,15 +68,33 @@ let hrefSign;
             const status = await model.read.getDatabaseStatus();
             return status.lastDatabaseUpdate ? new Date(status.lastDatabaseUpdate).toISOString() : "Unknown";
         },
-        // Reached through the overlay declared below, which exists by the time a pill can be clicked.
+        // Reached through the overlay declared below, which exists by the time anything can open the card.
         setHighlighted: (element, on) => highlightOverlay.setFeedback([element], on)
     });
 
     // Draws the debug outlines and the popup's hover highlight, in a shadow root of its own.
     const highlightOverlay = createHighlightOverlay({
         canActivate: (element) => Boolean(convertedTitleOf(element)),
-        onLabelActivate: (element) => feedbackDialog.open(element)
+        onLabelActivate: (element, label) => feedbackDialog.open(element, label)
     });
+
+    // The converted badge is a button that opens the same card as a status pill; its own keyboard handling
+    // arrives here as a click too. Delegated rather than bound per badge: processSite rebuilds the badges on
+    // every pass, and a page that recycles its DOM would otherwise leave listeners on detached nodes.
+    // Capture, so the page cannot swallow the click first.
+    document.addEventListener("click", (event) => {
+        const badge = event.target.closest?.("klikkikuri-converted-badge[action]");
+        const container = badge?.closest("[data-klikkikuri-status]");
+        if (!container) return;
+
+        // The badge sits inside the headline's link, as the pill sits over it: without both of these the
+        // click would navigate, and the page's own listeners would see a click they cannot explain.
+        event.preventDefault();
+        event.stopPropagation();
+        // The badge is handed over to be measured, never held: the card takes its offsets and lets it go,
+        // because the next conversion pass replaces every badge on the page.
+        feedbackDialog.open(container, badge);
+    }, { capture: true });
 
     /**
      * Returns the favicon URL the browser would use for this page:
@@ -117,10 +136,6 @@ let hrefSign;
             const enabled = await model.read.getVisualHighlightEnabled();
             const visible = enabled || isPopupOpen;
             highlightOverlay.setStatusVisible(visible);
-            // The dialog is opened from a status label, so it must not outlive the labels.
-            if (!visible) {
-                feedbackDialog.close();
-            }
         } catch (e) {
             log("Failed to update status highlighting", e);
         }
@@ -322,8 +337,13 @@ let hrefSign;
                     container.dataset.klikkikuriStatus = isPaywalled ? klikkikuriStatus.PAYWALLED : klikkikuriStatus.ORIGINAL;
                 }
 
-                // Apply registered title modifiers (e.g. AI marking)
-                const modifierResult = await applyModifiers(titleText, rahtiEntry);
+                // Apply registered title modifiers (e.g. AI marking). The dataset says what a link
+                // is; only this pass knows whether the headline was swapped, so the converted
+                // marker's label is added to a copy -- the entry itself is the shared cache's.
+                const modifierEntry = what === "converted"
+                    ? { ...rahtiEntry, labels: [...(rahtiEntry.labels || []), LABEL_CONVERTED] }
+                    : rahtiEntry;
+                const modifierResult = await applyModifiers(titleText, modifierEntry);
                 let modifiedTitle = titleText;
                 let badges = [];
 
@@ -346,6 +366,10 @@ let hrefSign;
                             if (b.tooltip) {
                                 badgeElem.setAttribute("tooltip", b.tooltip);
                                 badgeElem.setAttribute("title", b.tooltip);
+                            }
+                            // Turns the badge into a button, named by whichever modifier claimed an action.
+                            if (b.action) {
+                                badgeElem.setAttribute("action", b.action);
                             }
                             children.push(badgeElem);
                         }

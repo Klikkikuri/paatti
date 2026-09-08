@@ -167,40 +167,74 @@ export function isAnchorGone(anchor, viewport) {
 }
 
 /**
- * Where to put the card: both top-right corners on the same point, so it covers the pill that was clicked.
+ * The activator's rect, rebuilt from the container it sits in.
  *
- * Nothing is clamped to the viewport -- the card travels with its headline, scrolling off the edge with it
- * rather than clinging to the edge detached from the thing it reports on. The two fallbacks move it only
- * where the primary corner would leave it unusable.
+ * The activator element itself is deliberately not held: a badge is replaced wholesale on every conversion
+ * pass, so a stored one would be detached within seconds while an identical badge stands in its place. The
+ * offsets are measured once, when the card opens, and ride the container from then on.
  *
- * @param {{top: number, left: number, right: number, bottom: number}} anchor - In viewport coordinates.
+ * @param {{top: number, left: number}} container - In viewport coordinates.
+ * @param {{top: number, left: number, width: number, height: number}} offset - Inside the container.
+ * @returns {{top: number, left: number, right: number, bottom: number, width: number, height: number}}
+ */
+export function anchorRect(container, offset) {
+    const top = container.top + offset.top;
+    const left = container.left + offset.left;
+    return {
+        top,
+        left,
+        bottom: top + offset.height,
+        right: left + offset.width,
+        width: offset.width,
+        height: offset.height
+    };
+}
+
+/**
+ * Where to put the card: on the activator that opened it -- the badge leading the headline, or the status
+ * pill drawn over its corner.
+ *
+ * Only the horizontal placement is clamped to the viewport. The card travels with its headline vertically,
+ * scrolling off the fold with it rather than clinging to an edge detached from the thing it reports on;
+ * sideways nothing carries it away, and an anchor the size of a badge cannot pull it back into view alone.
+ *
+ * @param {{top: number, left: number, right: number, bottom: number, width: number, height: number}} activator
+ *   In viewport coordinates.
+ * @param {{left: number, width: number}} container - The headline being reported on, which decides which way
+ *   the card opens.
  * @param {{width: number, height: number}} card - Measured at its settled size.
  * @param {{width: number, height: number}} viewport
  * @param {number} [margin]
  * @returns {{top: number, left: number, transformOrigin: string}}
  */
-export function placeCard(anchor, card, viewport, margin = PLACE_MARGIN) {
-    // Too little room under the pill for the whole card: pull it up to sit on the anchor's bottom edge.
-    // Never past the pill, or an anchor taller than the card would push it down and off the fold.
-    let top = anchor.top;
-    if (top + card.height > viewport.height - margin) top = Math.min(top, anchor.bottom - card.height);
+export function placeCard(activator, container, card, viewport, margin = PLACE_MARGIN) {
+    // Starts on the activator and covers it, as it has always covered the pill: what you clicked is what the
+    // card grows out of. Pulled up onto the activator's bottom edge when the room below runs out.
+    let top = activator.top;
+    if (top + card.height > viewport.height - margin) top = activator.bottom - card.height;
 
-    // A headline narrower than the card would push it off the left edge; align it with the left edge then.
-    let left = anchor.right - card.width;
-    if (left < margin) left = anchor.left;
+    // Hung from whichever of the activator's edges keeps the card over the headline it reports on. The badge
+    // leads the headline, so its card opens rightwards across it; the pill sits at the far corner, so its
+    // card opens back over the article instead of out across the column beside it. A card wider than the
+    // headline overhangs either way -- this only chooses the side that overhangs least.
+    const trailing = activator.left + activator.width / 2 > container.left + container.width / 2;
+    let left = trailing ? activator.right - card.width : activator.left;
+    left = Math.min(Math.max(left, margin), Math.max(margin, viewport.width - margin - card.width));
 
-    // Whichever corner ended up on the anchor is the one the card grows out of. Derived from the edges it was
-    // aligned to, not from a comparison: a card wider than its headline starts left of it either way.
+    // The activator's centre, expressed inside the card: a point rather than a corner keyword, because once
+    // the clamp has moved the card sideways no corner of it is on the activator any more.
+    const origin = (centre, edge, size) => Math.round(Math.min(Math.max(centre - edge, 0), size));
     return {
         top,
         left,
-        transformOrigin: `${top === anchor.top ? "top" : "bottom"} ${left === anchor.left ? "left" : "right"}`
+        transformOrigin: `${origin(activator.left + activator.width / 2, left, card.width)}px `
+            + `${origin(activator.top + activator.height / 2, top, card.height)}px`
     };
 }
 
 /**
  * The focused element, reached through any open shadow root. `document.activeElement` stops at the host, so
- * the pill that opens the card -- which lives in the overlay's shadow root -- would otherwise be invisible
+ * neither opener of the card -- the overlay's status pill, or a badge in the headline -- would be visible
  * here, and focus could not be handed back to it.
  *
  * @returns {Element|null}
@@ -222,7 +256,7 @@ function deepActiveElement() {
  * @param {(element: Element, on: boolean) => void} [deps.setHighlighted] - Marks the article the card reports
  *   on, so it stands out for as long as the card is up. The content script points this at the same overlay
  *   call the popup's <feedback-item> reaches over a message when it is hovered.
- * @returns {{ open: (target: Element) => void, close: () => void }}
+ * @returns {{ open: (target: Element, activator?: Element) => void, close: () => void }}
  */
 export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabaseUpdated, log, setHighlighted = () => {} }) {
     const host = document.createElement("klikkikuri-feedback-dialog");
@@ -241,7 +275,7 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     // The sheets the extension pages link: theme.css for the colours, components.css for the card's surface
     // and .hidden, feedback-card.css for the card itself. All are fetched rather than linked, because a page
     // stylesheet never crosses a shadow boundary. Started at construction rather than on open, so they have
-    // landed long before the first click on a pill.
+    // landed long before the first click that opens the card.
     for (const path of ["src/options/theme.css", "src/options/components.css", "src/feedback-card.css"]) {
         const sheet = new CSSStyleSheet();
         shadow.adoptedStyleSheets = [...shadow.adoptedStyleSheets, sheet];
@@ -264,6 +298,8 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     /** Torn down every time the dialog closes, so a reopened dialog never carries the last one's listeners. */
     let listeners = null;
     let current = null;
+    /** Where the activator sits inside `current`, measured when the card opened. See `anchorRect`. */
+    let activatorOffset = null;
     let frame = 0;
     /** Where focus came from, to hand it back when the card closes. */
     let opener = null;
@@ -292,14 +328,18 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             resizeObserver.unobserve(current);
             setHighlighted(current, false);
         }
+        resizeObserver.unobserve(dialog);
         current = null;
+        // Cleared with the anchor it belongs to: a reopen on another headline would otherwise place the card
+        // by the last activator's offsets, which lands it somewhere plausible and wrong.
+        activatorOffset = null;
         cancelAnimationFrame(frame);
         frame = 0;
     }
 
     /**
-     * Fade the card, scaling it out of the corner that sits on the pill so it grows from the thing that was
-     * clicked rather than appearing whole.
+     * Fade the card, scaling it out of the corner that sits on the anchor so it grows from the headline that
+     * was reported on rather than appearing whole.
      *
      * Under `prefers-reduced-motion: reduce` the scale goes and the fade stays: a fade carries no movement, so
      * it asks nothing of a reader the preference is there to protect. Read per call, not cached, so a change
@@ -337,7 +377,7 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             // popover takes it out of the top layer too, so there is nothing else to unwind.
             host.remove();
 
-            // Back to the pill that opened it, if the page still has it. preventScroll, because the card also
+            // Back to whatever opened it, if the page still has it. preventScroll, because the card also
             // closes when its headline scrolls away -- and focus must not drag the page back to it.
             const returnTo = opener;
             opener = null;
@@ -350,20 +390,25 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
      * Measure the anchor and put the card on it, or close the dialog once the anchor is gone -- scrolled
      * fully out of view, hidden, or dropped from the page.
      *
-     * The anchor is read on every call rather than captured when the dialog opened, so the card follows its
-     * headline as the page moves under it. The geometry itself is in `placeCard`.
+     * The container is read on every call rather than captured when the dialog opened, so the card follows its
+     * headline as the page moves under it. The activator's rect is derived from it through `anchorRect`,
+     * which is what survives the badge being rebuilt. The geometry itself is in `placeCard`.
      */
     function place() {
-        if (!current) return;
+        // Both, not just the anchor: the offsets are written a moment after `current` is, and a reposition
+        // that arrived in between would have nothing to place against.
+        if (!current || !activatorOffset) return;
 
         if (!current.isConnected) {
             close();
             return;
         }
 
-        const anchor = current.getBoundingClientRect();
+        const container = current.getBoundingClientRect();
         const viewport = { width: window.innerWidth, height: window.innerHeight };
-        if (isAnchorGone(anchor, viewport)) {
+        // The container decides whether the card lives: it is the headline being reported on. The activator
+        // only decides where the card sits.
+        if (isAnchorGone(container, viewport)) {
             close();
             return;
         }
@@ -371,7 +416,8 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
         // offsetWidth/Height rather than a client rect: they ignore transforms, so a reposition mid-animation
         // measures the card at its settled size instead of its scaled one.
         const card = { width: dialog.offsetWidth, height: dialog.offsetHeight };
-        const { top, left, transformOrigin } = placeCard(anchor, card, viewport);
+        const activator = anchorRect(container, activatorOffset);
+        const { top, left, transformOrigin } = placeCard(activator, container, card, viewport);
 
         dialog.style.top = `${top}px`;
         dialog.style.left = `${left}px`;
@@ -559,8 +605,11 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
     return {
         /**
          * @param {Element} target - The highlighted element being reported on.
+         * @param {Element} [activator] - The control that was activated, which the card is placed on. Measured
+         *   here and then let go of; see `anchorRect`. Defaults to the target, placing the card on the
+         *   headline itself.
          */
-        open(target) {
+        open(target, activator = target) {
             teardown();
             // A hide still running would otherwise remove the host from under the card we are about to show.
             motion?.cancel();
@@ -568,12 +617,22 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             hiding = false;
 
             listeners = new AbortController();
-            // A reopen during the closing animation is already focused inside the card; keep the pill the
+            // A reopen during the closing animation is already focused inside the card; keep the opener the
             // first opening recorded, or focus would be handed back to a card that no longer exists.
             const active = deepActiveElement();
             if (active !== dialog && !dialog.contains(active)) opener = active;
             current = target;
             setHighlighted(target, true);
+
+            // Measured now, while the page is still exactly as the user left it when they clicked, and kept
+            // as offsets rather than as the element. An activator with no box of its own -- never laid out,
+            // or simply the target -- puts the card on the headline, which is where it used to go.
+            const box = target.getBoundingClientRect();
+            const hit = activator.getBoundingClientRect();
+            activatorOffset = hit.width && hit.height
+                ? { top: hit.top - box.top, left: hit.left - box.left, width: hit.width, height: hit.height }
+                : { top: 0, left: 0, width: box.width, height: box.height };
+
             const { signal } = listeners;
 
             // Under <html> rather than <body>, so the content script's body-scoped MutationObserver never
@@ -594,6 +653,11 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             window.addEventListener("scroll", schedulePlace, { capture: true, passive: true, signal });
             window.addEventListener("resize", schedulePlace, { signal });
             resizeObserver.observe(target);
+            // The card too, not just its anchor: its own height decides where its top edge goes once it has
+            // ridden up onto the activator, so a card that grows -- the comment form opening, a status line
+            // arriving -- has to be placed again. This cannot loop: `place` writes only top, left and
+            // transform-origin, and none of those resize the card.
+            resizeObserver.observe(dialog);
 
             // Capture phase, so the page cannot swallow the key before it reaches us.
             window.addEventListener("keydown", (event) => {

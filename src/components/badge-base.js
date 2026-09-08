@@ -43,10 +43,20 @@ function parseBadgeSvg(markup) {
  *
  * The returned class handles:
  *  - Shadow root attachment, stylesheet adoption and icon cloning
- *  - `label` / `tooltip` attribute observation
+ *  - `label` / `tooltip` / `action` attribute observation
  *  - SVG aria-label and <title> synchronisation
  *  - Forcing display:inline-flex via inline style so host-page stylesheets
  *    (which take precedence over shadow-internal :host rules) cannot hide the badge
+ *
+ * `action` names the control the badge becomes: giving it turns the badge from an image into a button,
+ * with a tab stop, a role, that name, and Enter or Space. The badge does not know what the action is --
+ * whoever set the attribute listens for the click. Badges run in the page's main world, where
+ * `browser.i18n` does not exist, so the name arrives already translated, as `label` and `tooltip` do.
+ *
+ * Name it as a noun phrase, not as a command. A badge sits inside the headline's link, and a link takes
+ * its own name from the text it contains -- so whatever this says is read twice: once as the button, and
+ * again as the opening words of the link around it. "Converted headline feedback" survives that; "Report
+ * this converted headline" turns every headline into an instruction.
  *
  * @param {string} svgMarkup - The badge's `<svg>` markup.
  * @param {string} defaultLabel - Fallback aria-label when no attribute is set.
@@ -58,8 +68,33 @@ export function createBadgeClass(svgMarkup, defaultLabel) {
 
     return class extends HTMLElement {
         static get observedAttributes() {
-            return ["label", "tooltip"];
+            return ["label", "tooltip", "action"];
         }
+
+        /**
+         * Keyboard activation, routed through `click()` so the pointer and the keyboard arrive at the one
+         * listener the badge's owner registered. Fields, not methods, so add and remove see one function.
+         *
+         * A button's two keys do not behave alike, and these follow the native contract: Enter acts on the
+         * way down, Space on the way up. Acting on every Space keydown would activate once per repeat while
+         * the key is held. The keydown is still swallowed on those repeats, or the page scrolls under a held
+         * key -- and Enter's default is swallowed too, or it submits a form the badge happens to sit in.
+         */
+        _onKeydown = (event) => {
+            if (!this.hasAttribute("action")) return;
+            if (event.key === " ") {
+                event.preventDefault();
+            } else if (event.key === "Enter" && !event.repeat) {
+                event.preventDefault();
+                this.click();
+            }
+        };
+
+        _onKeyup = (event) => {
+            if (!this.hasAttribute("action") || event.key !== " ") return;
+            event.preventDefault();
+            this.click();
+        };
 
         constructor() {
             super();
@@ -75,7 +110,14 @@ export function createBadgeClass(svgMarkup, defaultLabel) {
         connectedCallback() {
             // Inline !important wins over any host-page stylesheet rules targeting the element.
             this.style.setProperty("display", "inline-flex", "important");
+            this.addEventListener("keydown", this._onKeydown);
+            this.addEventListener("keyup", this._onKeyup);
             this._updateLabels();
+        }
+
+        disconnectedCallback() {
+            this.removeEventListener("keydown", this._onKeydown);
+            this.removeEventListener("keyup", this._onKeyup);
         }
 
         attributeChangedCallback(name, oldValue, newValue) {
@@ -85,7 +127,7 @@ export function createBadgeClass(svgMarkup, defaultLabel) {
         }
 
         /**
-         * Sync the SVG's aria-label and <title> element from the component's attributes.
+         * Sync the badge's labelling and its role from the component's attributes.
          */
         _updateLabels() {
             const svg = this.shadowRoot.querySelector("svg");
@@ -93,6 +135,7 @@ export function createBadgeClass(svgMarkup, defaultLabel) {
 
             const label = this.getAttribute("label") || this.getAttribute("tooltip") || defaultLabel;
             const tooltip = this.getAttribute("tooltip") || label;
+            const action = this.getAttribute("action");
 
             svg.setAttribute("aria-label", label);
 
@@ -105,6 +148,21 @@ export function createBadgeClass(svgMarkup, defaultLabel) {
                 titleElement.textContent = tooltip;
             } else if (titleElement) {
                 titleElement.remove();
+            }
+
+            // An action badge is a control rather than a picture, so it is announced and reached as one.
+            // The icon is hidden from the accessibility tree while it is: the button carries the name, and
+            // an image with a name of its own inside it would be read out a second time.
+            if (action) {
+                this.setAttribute("role", "button");
+                this.setAttribute("tabindex", "0");
+                this.setAttribute("aria-label", action);
+                svg.setAttribute("aria-hidden", "true");
+            } else {
+                this.removeAttribute("role");
+                this.removeAttribute("tabindex");
+                this.removeAttribute("aria-label");
+                svg.removeAttribute("aria-hidden");
             }
         }
     };
