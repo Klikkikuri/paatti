@@ -32,7 +32,7 @@ const titleModifiers = [
                 const tooltip = browser?.i18n?.getMessage("modifierConvertedTooltip") || "Paatti replaced this headline with an aligned version.";
                 const label = browser?.i18n?.getMessage("modifierConvertedLabel") || "Converted";
                 // Naming an action makes the badge a button. The content script handles the click.
-                const action = browser?.i18n?.getMessage("modifierConvertedAction") || "Report this converted headline";
+                const action = browser?.i18n?.getMessage("modifierConvertedAction") || "Converted headline feedback";
                 return {
                     text: title,
                     tagName: "klikkikuri-converted-badge",

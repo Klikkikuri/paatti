@@ -18,7 +18,7 @@ const fake = createFakeBrowser({
         modifierConvertedDesc: 'Shows an indicator next to headlines whose text Paatti has replaced with the aligned version.',
         modifierConvertedLabel: 'Converted',
         modifierConvertedTooltip: 'Paatti replaced this headline with an aligned version.',
-        modifierConvertedAction: 'Report this converted headline'
+        modifierConvertedAction: 'Converted headline feedback'
     }
 });
 globalThis.browser = fake.browser;
@@ -85,7 +85,7 @@ test('only the converted badge claims an action, which is what makes it a button
 
     const actions = Object.fromEntries(result.badges.map((badge) => [badge.tagName, badge.action]));
     assert.deepEqual(actions, {
-        'klikkikuri-converted-badge': 'Report this converted headline',
+        'klikkikuri-converted-badge': 'Converted headline feedback',
         'klikkikuri-ai-badge': undefined,
         'klikkikuri-video-badge': undefined
     });

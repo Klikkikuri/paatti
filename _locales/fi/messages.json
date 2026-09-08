@@ -580,7 +580,7 @@
     "description": "Tooltip-teksti oikaisumerkinnälle"
   },
   "modifierConvertedAction": {
-    "message": "Anna palautetta tästä oikaistusta otsikosta",
+    "message": "Palaute oikaistusta otsikosta",
     "description": "Oikaisumerkinnän saavutettava nimi; merkinnästä avautuu palautekortti"
   },
 

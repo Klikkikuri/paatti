@@ -48,10 +48,15 @@ function parseBadgeSvg(markup) {
  *  - Forcing display:inline-flex via inline style so host-page stylesheets
  *    (which take precedence over shadow-internal :host rules) cannot hide the badge
  *
- * `action` names what activating the badge does, and giving it turns the badge from an image into a
- * button: a tab stop, a role, that name, and Enter or Space. The badge does not know what the action
- * is -- whoever set the attribute listens for the click. Badges run in the page's main world, where
+ * `action` names the control the badge becomes: giving it turns the badge from an image into a button,
+ * with a tab stop, a role, that name, and Enter or Space. The badge does not know what the action is --
+ * whoever set the attribute listens for the click. Badges run in the page's main world, where
  * `browser.i18n` does not exist, so the name arrives already translated, as `label` and `tooltip` do.
+ *
+ * Name it as a noun phrase, not as a command. A badge sits inside the headline's link, and a link takes
+ * its own name from the text it contains -- so whatever this says is read twice: once as the button, and
+ * again as the opening words of the link around it. "Converted headline feedback" survives that; "Report
+ * this converted headline" turns every headline into an instruction.
  *
  * @param {string} svgMarkup - The badge's `<svg>` markup.
  * @param {string} defaultLabel - Fallback aria-label when no attribute is set.

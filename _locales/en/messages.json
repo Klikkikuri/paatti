@@ -580,7 +580,7 @@
     "description": "Tooltip text for converted headline marker"
   },
   "modifierConvertedAction": {
-    "message": "Report this converted headline",
+    "message": "Converted headline feedback",
     "description": "Accessible name of the converted headline marker, which opens the feedback card"
   },
 
