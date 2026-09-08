@@ -326,7 +326,7 @@ const DEFAULT_CONFIG = {
 // written on every conversion batch -- leaves the cache alone.
 const WATCHED_KEYS = {
     local: ["userPreferences"],
-    sync: ["userSiteOverrides", "modifiers", "environmentConfigs"],
+    sync: ["userSiteOverrides", "modifiers", "environmentConfigs", "clickbaitLevelWarningSeen"],
 };
 
 let cachedConfig = null;
@@ -419,7 +419,7 @@ async function getConfig() {
     const currentPromise = (async () => {
         const [localData, syncData] = await Promise.all([
             browser.storage.local.get("userPreferences"),
-            browser.storage.sync.get(["userSiteOverrides", "modifiers", "environmentConfigs"])
+            browser.storage.sync.get(["userSiteOverrides", "modifiers", "environmentConfigs", "clickbaitLevelWarningSeen"])
         ]);
 
         const userPreferences = localData.userPreferences || {};
@@ -472,7 +472,10 @@ async function getConfig() {
             },
             environmentConfigs: mergedEnvConfigs,
             siteConfigs: mergedSiteConfigs, // Use properly merged site configs
-            activeEnv: activeEnv
+            activeEnv: activeEnv,
+            // Synced, so the warning about the "all headlines" level is dismissed once per person
+            // rather than once per device.
+            clickbaitLevelWarningSeen: syncData.clickbaitLevelWarningSeen === true
         };
 
         // Cache the result only if the cache wasn't invalidated during the async call

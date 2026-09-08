@@ -565,6 +565,18 @@
     "message": "Otsikko on petollinen, harhaanjohtava tai esittää pöyristyttäviä väitteitä, jotka eivät vastaa artikkelin sisältöä.",
     "description": "Kuvaus klikkitason raja-arvolle 4 (Extremely Clickbaity)"
   },
+  "clickbaitLevelWarningTitle": {
+    "message": "Korvaa myös neutraalit otsikot",
+    "description": "Otsikko varoitukselle, joka näytetään kun klikkitason raja-arvo on 0 (Kaikki otsikot)"
+  },
+  "clickbaitLevelWarningText": {
+    "message": "Klikkikuri on arvioinut nämä otsikot neutraaleiksi: niissä ei ole klikkiä. Tällä tasolla Paatti korvaa nekin. Menetät uutissivuston oman sanamuodon etkä poista yhtään enempää klikkiotsikoita.",
+    "description": "Varoitusteksti, joka näytetään kun klikkitason raja-arvo on 0 (Kaikki otsikot)"
+  },
+  "clickbaitLevelWarningDismiss": {
+    "message": "Selvä",
+    "description": "Painike joka sulkee tason 0 varoituksen niin ettei sitä näytetä uudelleen"
+  },
 
   "sitePolicyLinkText": {
     "message": "Julkaisijan periaatteet",

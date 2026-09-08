@@ -1,0 +1,31 @@
+/**
+ * The "all headlines" warning, appended by ClickbaitLevelBase to both sliders.
+ *
+ * The base is not a registered element, so the rules are scoped under each concrete
+ * name instead. Hidden state comes from .hidden in components.css.
+ */
+
+clickbait-level-vertical .level-warning,
+clickbait-level-horizontal .level-warning {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-left: 3px solid var(--color-warning);
+    border-radius: 4px;
+    background: var(--color-surface-muted);
+}
+
+clickbait-level-vertical .level-warning-title,
+clickbait-level-horizontal .level-warning-title {
+    color: var(--color-warning);
+}
+
+clickbait-level-vertical .level-warning-dismiss,
+clickbait-level-horizontal .level-warning-dismiss {
+    align-self: flex-end;
+    padding: 4px 12px;
+    font-size: 0.85em;
+}

@@ -36,6 +36,10 @@ const controller = {
         await model.write.setClickbaitLevel(value);
     },
 
+    acknowledgeClickbaitLevelWarning: async () => {
+        await model.write.acknowledgeClickbaitLevelWarning();
+    },
+
     setDebugVisualsEnabled: async (value) => {
         log(`Setting debug visuals to ${value}`);
         await model.write.setDebugVisualsEnabled(value);
