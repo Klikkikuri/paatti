@@ -21,8 +21,14 @@ await import('../src/options/components/clickbait-level-vertical.js');
 after(() => dom.teardown());
 
 // Never fake.reset(): it clears onChanged.listeners, which drops the listener config.js
-// registered at module evaluation, and every later republish would silently stop.
-beforeEach(() => document.body.replaceChildren());
+// registered at module evaluation, and every later republish would silently stop. clear() is
+// the safe one -- it empties the area and dispatches onChanged the way a real write does.
+beforeEach(async () => {
+    document.body.replaceChildren();
+    await globalThis.browser.storage.local.clear();
+    await globalThis.browser.storage.sync.clear();
+    await flush();
+});
 
 /** One turn drains config.js's publish chain: everything it awaits resolves as a microtask. */
 const flush = () => new Promise((resolve) => setImmediate(resolve));
