@@ -75,7 +75,7 @@ let hrefSign;
     // Draws the debug outlines and the popup's hover highlight, in a shadow root of its own.
     const highlightOverlay = createHighlightOverlay({
         canActivate: (element) => Boolean(convertedTitleOf(element)),
-        onLabelActivate: (element) => feedbackDialog.open(element)
+        onLabelActivate: (element, label) => feedbackDialog.open(element, label)
     });
 
     // The converted badge is a button that opens the same card as a status pill; its own keyboard handling
@@ -91,7 +91,9 @@ let hrefSign;
         // click would navigate, and the page's own listeners would see a click they cannot explain.
         event.preventDefault();
         event.stopPropagation();
-        feedbackDialog.open(container);
+        // The badge is handed over to be measured, never held: the card takes its offsets and lets it go,
+        // because the next conversion pass replaces every badge on the page.
+        feedbackDialog.open(container, badge);
     }, { capture: true });
 
     /**
