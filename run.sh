@@ -12,15 +12,33 @@ else
     CMD=(npx web-ext)
 fi
 
+usage() {
+    cat <<'USAGE'
+Usage: ./run.sh [options] [-- web-ext options]
+
+Builds the extension and launches it in a browser via web-ext.
+
+Options:
+  --ff                  Use Firefox Developer Edition
+  --cr                  Use Chromium instead of Firefox
+  --light               Force light theme
+  --dark                Force dark theme
+  -s, --source-dir DIR  Run this directory as-is instead of building build/dist
+  -u, --url URL         Page to open on startup (default: http://yle.fi/uutiset)
+  -h, --help            Show this help
+
+Unrecognised arguments are passed through to web-ext run.
+USAGE
+}
+
 TARGET="firefox-default"
-ARGS=(-s build/dist)
+SOURCE_DIR=""
+ARGS=()
 THEME_ARGS=()
 START_URL="http://yle.fi/uutiset"
 LOG_FILE="build/run.log"
 
 mkdir -p "$(dirname "$LOG_FILE")"
-
-make dist
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -48,6 +66,14 @@ while [[ $# -gt 0 ]]; do
             )
             shift
             ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -s|--source-dir)
+            SOURCE_DIR="$2"
+            shift 2
+            ;;
         --url|-u|--start-url)
             START_URL="$2"
             shift 2
@@ -59,10 +85,28 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# An explicit -s is run as-is; otherwise build the packed extension and run that.
+if [[ -z "$SOURCE_DIR" ]]; then
+    SOURCE_DIR="build/dist"
+    make dist
+fi
+
+ARGS=(-s "$SOURCE_DIR" "${ARGS[@]}")
+
 # Default arguments for Firefox based on your previous command
 FIREFOX_ARGS=(
     --pref devtools.console.stdout.chrome=true
     --pref devtools.console.stdout.content=true
+    --pref browser.translations.automaticallyPopup=false
+    --pref browser.aboutwelcome.enabled=false
+    --pref datareporting.policy.dataSubmissionEnabled=false
+    --pref datareporting.policy.dataSubmissionPolicyAcceptedVersion=2
+    --pref datareporting.policy.dataSubmissionPolicyBypassNotification=true
+    --pref startup.homepage_welcome_url=about:blank
+    --pref startup.homepage_override_url=about:blank
+    --pref browser.startup.homepage_override.mstone=ignore
+    --pref trailhead.firstrun.didSeeAboutWelcome=true
+    --pref trailhead.firstrun.branches=nofirstrun-empty
     --browser-console
     --verbose
 )
