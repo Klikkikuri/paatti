@@ -22,6 +22,7 @@ Sail smoothly through the clickbait-infested web using this browser extension.
   - [Permission Requirements](#permission-requirements)
   - [Development](#development)
     - [Running the Tests](#running-the-tests)
+    - [Badge Icons](#badge-icons)
     - [Local Test Data \& Hashed Signatures](#local-test-data--hashed-signatures)
       - [Step 1: Dump URL Signatures from the Page](#step-1-dump-url-signatures-from-the-page)
       - [Step 2: Save the Signatures](#step-2-save-the-signatures)
@@ -211,6 +212,39 @@ because ESM resolution ignores it and the helper reaches jsdom through the CJS r
 
 jsdom does no layout and does not resolve the cascade, so it covers structure, lifecycle and events but says
 nothing about styling. Check CSS in a real browser instead.
+
+### Badge Icons
+
+The icons the in-page badges draw are authored as standalone SVG files under [`assets/icons/`](./assets/icons/) —
+Kagi's beside its permission file in [`assets/non-oss/by-kagi/`](./assets/non-oss/by-kagi/). Edit one in a vector
+editor, then write it into the module that draws it:
+
+```sh
+make icons
+```
+
+Each badge module names its source and fences the region the generator owns:
+
+```js
+// @icon-source assets/icons/video-badge.svg
+// BEGIN GENERATED ICON -- edit the .svg, then run `make icons`
+const svgMarkup = `…`;
+// END GENERATED ICON
+```
+
+The generated block is committed on purpose. The project root is itself a loadable unpacked extension (see
+[Temporary Development Loading](#temporary-development-loading)) and there is no bundler, so a module cannot
+resolve its icon at load time and `src/` must never hold a placeholder. `make dist` runs `make check-icons`
+first and fails when a module has drifted from its SVG, naming the file to regenerate.
+
+[`tools/inline-icons.mjs`](./tools/inline-icons.mjs) rejects a source the badge machinery cannot draw, while it
+is still a fixable file rather than a blank box on a news site: the `<svg>` root must carry
+`xmlns="http://www.w3.org/2000/svg"` (the markup is parsed as XML, which has no implicit namespace),
+`class="badge-icon"` (which sizes the badge against the headline) and a `viewBox`; and no comment may contain
+`--`, which XML does not allow. Colours belong to the page, not the icon — paint with `currentColor` and knock
+the glyph out with a `<mask>`, as [`src/components/badge-style.js`](./src/components/badge-style.js) explains.
+
+A new badge needs its SVG, a module carrying the two markers above, and a `make icons` run.
 
 ### Local Test Data & Hashed Signatures
 

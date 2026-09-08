@@ -227,3 +227,7 @@ separates a static template from markup a caller can influence.
   must declare `xmlns` on its root. Without it the markup still parses, but into elements merely *named* `svg`, which
   draw nothing while the shared stylesheet still sizes them into a blank box. Check `documentElement.namespaceURI` and
   throw, so the fault surfaces instead of shipping a badge that never draws.
+- Badge icons are authored as `.svg` under `assets/icons/` (the Kagi one beside its permission file), named by a
+  `// @icon-source` line in the module. `make icons` writes it into the `BEGIN/END GENERATED ICON` block, and
+  `make dist` fails on a stale one. The generated block is committed on purpose: the repo root is itself a loadable
+  unpacked extension, so `src/` must never hold a placeholder, and there is no bundler to resolve one at load time.

@@ -5,9 +5,9 @@
  *
  * Badges carry no colours of their own. The icon body is painted with
  * `currentColor`, so it inherits the headline's colour, and the glyph inside it
- * is knocked out (see `knockoutMask`) so the page's own background shows
- * through. A badge is therefore correct on any site, in any theme, without
- * inspecting the page at all.
+ * is knocked out -- each icon's own `<mask>` in assets/icons/ -- so the page's
+ * own background shows through. A badge is therefore correct on any site, in any
+ * theme, without inspecting the page at all.
  *
  * This is why badges must NOT use `prefers-color-scheme`: that reports the OS
  * preference, while injected content lives in the page's theme. A dark site on
@@ -52,23 +52,3 @@ badgeStyleSheet.replaceSync(`
     font-size: 11px;
 }
 `);
-
-/**
- * Build an SVG `<mask>` that cuts `glyph` out of `body`.
- *
- * Everything white in a luminance mask is painted, everything black is removed,
- * so drawing the glyph in black punches a hole through the badge body. Mask ids
- * only need to be unique within a shadow root, and every badge instance has its
- * own, so a fixed id is safe.
- *
- * @param {string} id - Mask id, referenced as `mask="url(#id)"`.
- * @param {string} body - Shape covering the badge, drawn in white.
- * @param {string} glyph - Shape to knock out, drawn in black.
- * @returns {string} `<defs>` markup containing the mask.
- */
-export function knockoutMask(id, body, glyph) {
-    return `<defs><mask id="${id}" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
-    <g fill="#ffffff">${body}</g>
-    <g fill="#000000">${glyph}</g>
-</mask></defs>`;
-}
