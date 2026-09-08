@@ -668,6 +668,59 @@ input:checked+.push-button:hover {
     color: var(--color-danger);
 }
 
+/*
+ * The companion the home view shows when it has nothing to report yet: while it waits for the page,
+ * and on a site Paatti does not cover. It is the very artwork <page-background> draws its easter egg
+ * from -- the boat by day, the meerman after dark -- borrowed rather than copied, which is why
+ * page-background is told to stand that egg down while this shows; see the `quiet` attribute in
+ * page-background.css.
+ *
+ * It is a row of the content column rather than a layer over it, so it can never come to rest under
+ * the message.
+ */
+.companion {
+    width: 100%;
+    flex: 0 1 9.5rem;
+    min-height: 4.5rem;
+    /* Settles it on the water at the foot of the view. */
+    margin-top: auto;
+
+    background-image: url("images/boat.webp");
+    background-repeat: no-repeat;
+    /* Held under the artwork's own width; drawn larger than that it goes soft on a 2x display. */
+    background-size: contain;
+    /* Left of centre, not centred. Both figures face right, so the water they look into belongs in
+       front of them; and the boat's shadow trails 42px further left than its hull does, so centring
+       the box would sit the boat itself right of the middle. */
+    background-position: 20% bottom;
+}
+
+/* After dark the scene's companion is the meerman, the same swap the easter egg makes.
+ *
+ * Mirrored, and so is the box around her -- which is why her offset is measured from the right here
+ * and from the left above. It is the same 20%, and it puts her on the same patch of water as the
+ * boat; change one figure and change the other with it. */
+@media (prefers-color-scheme: dark) {
+    .companion {
+        background-image: url("images/meerman.webp");
+        background-position: right 20% bottom;
+        transform: scaleX(-1);
+    }
+}
+
+/* Was inline on the element until the message needed a margin of its own, below. */
+#homeview-status-text {
+    margin: 0;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+/* With the companion up, the message settles in the middle of the air above it. The companion's own
+   auto margin would otherwise take every spare pixel, packing the message against the top of the
+   view; a second auto margin here splits the free space between the two instead. */
+#homeview-content:has(> .companion:not(.hidden)) > #homeview-status-text {
+    margin-top: auto;
+}
 
 h2, h3 {
     font-family: var(--font-display);

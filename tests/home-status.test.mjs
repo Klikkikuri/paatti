@@ -24,6 +24,7 @@ describe('homeStatus', () => {
             statusKey: '',
             headerKey: null,
             isError: false,
+            showCompanion: false,
             showGauge: true,
             showRequestSite: false,
             showUpdateDb: false
@@ -44,6 +45,7 @@ describe('homeStatus', () => {
 
         assert.equal(s.statusKey, 'homeviewStatusNotSupported');
         assert.equal(s.showRequestSite, false);
+        assert.equal(s.showCompanion, true);
     });
 
     test('an unsupported site offers a site request', () => {
@@ -52,6 +54,7 @@ describe('homeStatus', () => {
         assert.equal(s.statusKey, 'homeviewStatusNotSupported');
         assert.equal(s.headerKey, 'siteTitleProcessingNotSupported');
         assert.equal(s.showRequestSite, true);
+        assert.equal(s.showCompanion, true);
     });
 
     test('the master switch being off is named as such', () => {
@@ -76,15 +79,31 @@ describe('homeStatus', () => {
         assert.equal(s.isError, false, 'this one is fixable from here, so it is not an error');
     });
 
-    test('page stats that have not arrived yet say nothing', () => {
+    test('page stats that have not arrived yet report that Paatti is working', () => {
         const s = at({ pageStats: null, waited: false });
 
-        assert.equal(s.statusKey, '');
+        assert.equal(s.statusKey, 'homeviewStatusChecking');
+        assert.equal(s.showCompanion, true);
+        assert.equal(s.isError, false);
         assert.equal(s.showGauge, false);
     });
 
     test('page stats that never arrived ask for a reload', () => {
-        assert.equal(at({ pageStats: null }).statusKey, 'homeviewStatusNoPageData');
+        const s = at({ pageStats: null });
+
+        assert.equal(s.statusKey, 'homeviewStatusNoPageData');
+        assert.equal(s.showCompanion, false, 'a reload is something to report, not a blank wait');
+    });
+
+    // The companion marks having nothing to report yet. Every other line reports something, so it
+    // stays away rather than becoming decoration the message has to compete with.
+    test('no other state shows the companion', () => {
+        for (const overrides of [{}, { loadFailed: true }, { conversionEnabled: false },
+            { isEnabled: false }, { databaseEmpty: true },
+            { pageStats: { candidates: 0, groupedByClickbaitiness: {} } },
+            { pageStats: { candidates: 3, groupedByClickbaitiness: {} } }]) {
+            assert.equal(at(overrides).showCompanion, false, JSON.stringify(overrides));
+        }
     });
 
     test('a page with no headlines is not reported as a fault', () => {

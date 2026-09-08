@@ -397,6 +397,11 @@
     "message": "This site is not supported by Paatti.",
     "description": "Text saying that the site is not supported"
   },
+  "homeviewStatusChecking": {
+    "message": "Checking the headlines…",
+    "description": "Text shown on the home view while Paatti waits for the content script's first report"
+  },
+
   "homeviewStatusNoPageData": {
     "message": "Paatti did not get data from the page. Load the page again.",
     "description": "Text shown on the home view when the content script sent no page data in time"

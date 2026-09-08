@@ -16,14 +16,17 @@
  * @property {string} statusKey - i18n key for the status line, or "" to leave it blank.
  * @property {?string} headerKey - i18n key replacing the hostname in the header, or null to keep it.
  * @property {boolean} isError - Whether the header wears the error colour.
+ * @property {boolean} showCompanion - Whether the companion artwork is drawn under the message
+ *   -- the boat by day, the meerman after dark. It marks the two states that have nothing to
+ *   report yet rather than something to report.
  * @property {boolean} showGauge - Whether the gauge and its per-level list are shown.
  * @property {boolean} showRequestSite - Whether the "request site support" button is shown.
  * @property {boolean} showUpdateDb - Whether the database update control is shown.
  */
 
-const state = (statusKey, { headerKey = null, isError = false, showGauge = false,
-    showRequestSite = false, showUpdateDb = false } = {}) =>
-    ({ statusKey, headerKey, isError, showGauge, showRequestSite, showUpdateDb });
+const state = (statusKey, { headerKey = null, isError = false, showCompanion = false,
+    showGauge = false, showRequestSite = false, showUpdateDb = false } = {}) =>
+    ({ statusKey, headerKey, isError, showCompanion, showGauge, showRequestSite, showUpdateDb });
 
 /**
  * Decides what the home view shows for the current page and extension state.
@@ -51,12 +54,13 @@ function homeStatus({ loadFailed, hasHostname, isSupported, isEnabled, conversio
     // nothing to name in a site request, so the button that files one stays away.
     if (!hasHostname) {
         return state("homeviewStatusNotSupported", {
-            headerKey: "siteTitleProcessingNotSupported", isError: true });
+            headerKey: "siteTitleProcessingNotSupported", isError: true, showCompanion: true });
     }
 
     if (!isSupported) {
         return state("homeviewStatusNotSupported", {
-            headerKey: "siteTitleProcessingNotSupported", isError: true, showRequestSite: true });
+            headerKey: "siteTitleProcessingNotSupported", isError: true, showCompanion: true,
+            showRequestSite: true });
     }
 
     // The master switch outranks the per-site one: turning the site on would change nothing.
@@ -79,8 +83,11 @@ function homeStatus({ loadFailed, hasHostname, isSupported, isEnabled, conversio
 
     if (!pageStats) {
         // The first push waits on a round trip to the background worker, so a popup opened on a
-        // healthy page sits here for a moment. Say nothing until that grace period is spent.
-        return waited ? state("homeviewStatusNoPageData") : state("");
+        // healthy page sits here for a moment. Say that Paatti is working until the grace period
+        // is spent, and only then treat the silence as a fault.
+        return waited
+            ? state("homeviewStatusNoPageData")
+            : state("homeviewStatusChecking", { showCompanion: true });
     }
 
     // An ordinary article page carries no headline links, which is not a fault of anything.

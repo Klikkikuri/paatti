@@ -28,6 +28,14 @@
  *   --art-width, --art-height     the artwork's own pixel grid
  *   --egg-width, --egg-height     the size of the easter egg on that grid
  *   --egg-x, --egg-y              the top left corner of the easter egg on it
+ *
+ * ## Standing the egg down
+ *
+ * A host that puts its own artwork over the element sets the `quiet` attribute, and the easter egg
+ * gives way to the plain photo for as long as it is there. The popup's home view uses it while its
+ * own companion is up: that companion is this very artwork, boat or meerman, so the two would
+ * otherwise be on screen at once. The roll is untouched -- a day that has a sighting still has it
+ * when `quiet` goes away.
  */
 
 /*
@@ -93,6 +101,13 @@ page-background.has-easter-egg::before {
         0 0;
 }
 
+/* The host has its own artwork up; the photo carries the plane alone until it goes. */
+page-background[quiet].has-easter-egg::before {
+    background-image: url("../images/bg-light.webp");
+    background-size: 100% 100%;
+    background-position: 0 0;
+}
+
 /* The scrim that keeps text over the artwork readable. The host says how heavy. */
 page-background::after {
     content: "";
@@ -116,6 +131,10 @@ page-background::after {
 
     page-background.has-easter-egg::before {
         background-image: url("../images/meerman.webp"), url("../images/bg-dark.webp");
+    }
+
+    page-background[quiet].has-easter-egg::before {
+        background-image: url("../images/bg-dark.webp");
     }
 }
 

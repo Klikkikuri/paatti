@@ -397,6 +397,11 @@
     "message": "Paatti ei tue tätä sivustoa.",
     "description": "Text saying that the site is not supported"
   },
+  "homeviewStatusChecking": {
+    "message": "Tarkistetaan otsikoita…",
+    "description": "Kotinäkymän teksti, kun Paatti odottaa sisältöskriptin ensimmäistä raporttia sivulta"
+  },
+
   "homeviewStatusNoPageData": {
     "message": "Paatti ei saanut tietoja sivulta. Lataa sivu uudelleen.",
     "description": "Kotinäkymän teksti, kun sisältöskripti ei ehtinyt lähettää sivun tietoja"

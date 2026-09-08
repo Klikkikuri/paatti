@@ -28,7 +28,7 @@
     <div class="content main-content">
         <page-background></page-background>
         <div id="homeview-content" style="display: flex; flex-direction: column; gap: 15px; width: 100%; text-align: center; justify-content: center; align-items: center; height: 100%;">
-            <p id="homeview-status-text" style="font-weight: bold; font-size: 1.1em; margin: 0;"></p>
+            <p id="homeview-status-text"></p>
             <div id="gauge-container" class="hidden">
                 <svg viewBox="0 0 100 60">
                     <defs>
@@ -49,6 +49,7 @@
             </div>
             <button id="request-site-btn" class="push-button hidden" style="margin: 0; font-size: 0.9em; padding: 6px 12px; min-height: 32px;"></button>
             <database-status-setting id="homeview-db-status" layout="compact" class="hidden" style="width: 100%;"></database-status-setting>
+            <div class="companion hidden" aria-hidden="true"></div>
         </div>
     </div>
 

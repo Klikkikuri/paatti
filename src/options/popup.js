@@ -370,6 +370,17 @@ const _refreshHomeView = ({ site, pageStats, isSiteEnabled, conversionEnabled, h
             : "";
     }
 
+    // This is the very artwork <page-background> draws its easter egg from, so the element is asked
+    // to stand that down while this is up rather than showing the same figure twice.
+    const companionEl = document.querySelector(".main-content .companion");
+    if (companionEl) {
+        companionEl.classList.toggle("hidden", !status.showCompanion);
+    }
+    const pageBackgroundEl = document.querySelector(".main-content page-background");
+    if (pageBackgroundEl) {
+        pageBackgroundEl.toggleAttribute("quiet", Boolean(status.showCompanion));
+    }
+
     const gaugeContainer = document.getElementById("gauge-container");
     if (!status.showGauge) {
         if (gaugeContainer) gaugeContainer.classList.add("hidden");
