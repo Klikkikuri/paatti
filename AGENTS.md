@@ -44,7 +44,10 @@
 - Use `jq` for JSON and `yq` for YAML config files.
 - If a tool you need is missing, add it to the final stage in the `Dockerfile` rather than installing it
   ad hoc — anything installed in a shell is lost on the next rebuild. Keep the version pins in step with
-  `.github/workflows/build.yml`, which installs `eslint` for CI.
+  `.github/workflows/build.yml`, which installs `eslint` for CI, and `.github/workflows/publish-amo.yml`, which
+  installs `web-ext`.
+- `docs/release.md` is the release and publish procedure. It also holds the manifest overlay rules: a key that
+  only one browser accepts goes into the other browser's overlay as `null`.
 
 ## Conventions
 

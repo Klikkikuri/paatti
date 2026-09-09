@@ -195,6 +195,8 @@ Paatti needs Firefox 128 or later, or Chrome 122 or later. Firefox for Android i
 
 ### From a GitHub Release
 
+The release carries a signed `.xpi` for Firefox and a `-chrome.zip` for Chrome.
+
 To install the packaged extension in Firefox:
 
 1. **Download the release.** Go to the [Klikkikuri Paatti
@@ -208,8 +210,8 @@ To install the packaged extension in Firefox:
    - Select the `.xpi` file you downloaded.
    - Confirm the installation.
 
-Chrome does not permit an extension to install from a file in the same way, so a `.crx` build is not always
-available.
+Chrome does not permit an extension to install from a file in the same way. Extract the `-chrome.zip` and load
+the directory through `chrome://extensions` → **Developer mode** → **Load unpacked**.
 
 ## Permission Requirements
 
@@ -294,8 +296,9 @@ make build
 (`js.wasm` and its support file `wasm_exec.js`) with Docker, or with a host toolchain when `DOCKER=false`. The
 two files must come from the same toolchain to work together, so run `make clean` when you change build method.
 Finally it stages the extension assets (`src/`, `icons/`, `_locales/`, `manifest.json`, `LICENSE.md`,
-`LISENSSI.md` and `docs/PRIVACY_POLICY.md`) with the WebAssembly binaries into `build/dist/`, and packages them
-into `build/klikkikuri-paatti.zip`.
+`LISENSSI.md` and `docs/PRIVACY_POLICY.md`) with the WebAssembly binaries into `build/dist/`, writes one tree per
+browser into `build/dist-chrome/` and `build/dist-firefox/`, and packages them into
+`build/klikkikuri-paatti-chrome.zip` and `build/klikkikuri-paatti-firefox.zip`.
 
 If the `suola` submodule is missing, `make` fetches it with `make init`. You can also clone the repository
 with `git clone --recursive` to get it from the start.
@@ -337,8 +340,12 @@ Pass `NON_OSS=1` to **include the non-OSS assets**, which overlays `assets/non-o
 make build NON_OSS=1
 ```
 
-Other targets: `make package` zips a staged build, `make source-dist` packages the source for review,
-`make rebuild-suola` forces a WebAssembly rebuild, and `make test-wasm` runs suola's own smoke test.
+Other targets: `make package` zips the per-browser trees, `make dist-chrome` and `make dist-firefox` stage one
+browser's tree, `make source-dist` packages the source for review, `make rebuild-suola` forces a WebAssembly
+rebuild, and `make test-wasm` runs suola's own smoke test.
+
+`manifest.json` is the base for both browsers; `manifest.chrome.json` and `manifest.firefox.json` remove what the
+other browser does not accept. See [Browser Manifests](docs/release.md#browser-manifests) for the merge rules.
 
 `make init` fetches the `suola` submodule. Do not use `make test-data`: it passes a signature-file path that
 [`generate_test_data.py`](./generate_test_data.py) ignores. Call the script directly instead, as described in
@@ -403,10 +410,11 @@ make lint-webext   # web-ext lint; run this by hand
 `make lint` rejects a bare `browser` or `chrome` global and `globalThis.browser`. See
 [AGENTS.md](AGENTS.md) for the two exempt files and the reason for the rule.
 
-`make lint-webext` is deliberately not part of `make lint`, and CI does not run it: `web-ext lint` reports an
-error for the gecko `update_url` that this project needs for self-hosted Firefox updates. Read its report and
-keep the `UNSAFE_VAR_ASSIGNMENT` count at zero — that count is the one signal that separates a static template
-from markup a caller can influence.
+`make lint-webext` is deliberately not part of `make lint`, and CI does not run it. It lints the Firefox tree
+with `--self-hosted`, which permits the gecko `update_url` that self-hosted Firefox updates need, and fails on any
+error. Three warnings remain: the Chrome-only `favicon` permission, and `data_collection_permissions`, which
+Firefox 128 does not know yet, on desktop and on Android. Keep the `UNSAFE_VAR_ASSIGNMENT` count at zero — that
+count is the one signal that separates a static template from markup a caller can influence.
 
 ### Environments
 
@@ -511,26 +519,7 @@ See [docs/architecture.md](./docs/architecture.md) for the module diagram and th
 
 ### Make a Release
 
-The project uses a semi-automated, tag-driven release process:
-
-1. **Verify your local branch.** Make sure it is clean and up to date.
-2. **Bump the version, commit and tag.** This bumps `manifest.json`, appends the release block to
-   `updates.json`, commits the change, and tags the commit locally:
-
-   ```sh
-   make release VERSION=0.0.4
-   ```
-
-3. **Push.**
-
-   ```sh
-   git push origin HEAD --follow-tags
-   ```
-
-   If the branch is protected, push the commit as a pull request first, merge it, pull `main`, then tag and push
-   the tag.
-4. **Let CI finish.** When a `v*` tag arrives, the release workflow verifies that the tag matches the version in
-   `manifest.json`, verifies that `updates.json` carries an entry for it, builds the package with `NON_OSS=1`,
-   verifies the suola artifact attestation, submits the package to Mozilla for unlisted signing (with the source
-   code attached for WebAssembly review), generates build provenance attestations, and uploads the `.zip` and
-   the signed `.xpi` to a new GitHub Release.
+`make release VERSION=x.y.z` bumps `manifest.json`, appends the release to `updates.json`, commits and tags.
+`git push origin HEAD --follow-tags` then lets CI build, sign and publish the GitHub Release. The stores are
+published afterwards by hand, from the **Publish to AMO** and **Publish to Chrome Web Store** workflows on the
+Actions tab. The full procedure is in [docs/release.md](./docs/release.md).
