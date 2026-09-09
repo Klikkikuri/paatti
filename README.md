@@ -4,190 +4,369 @@ Sail smoothly through the clickbait-infested web using this browser extension.
 
 - [⛵ Klikkikuri Paatti](#-klikkikuri-paatti)
   - [Features](#features)
-    - [Supported Sites](#supported-sites)
+  - [Supported Sites](#supported-sites)
+    - [Works After You Install](#works-after-you-install)
+    - [Needs Your Permission First](#needs-your-permission-first)
   - [Screenshots](#screenshots)
-    - [Comparison of replaced headlines on a news site](#comparison-of-replaced-headlines-on-a-news-site)
-    - [Feedback and correction interface](#feedback-and-correction-interface)
-    - [Normal operation](#normal-operation)
-  - [Installing](#installing)
-    - [Installing the pre-built browser extension](#installing-the-pre-built-browser-extension)
-    - [Building from Source](#building-from-source)
-      - [Requirements](#requirements)
-      - [Build Flags \& Options](#build-flags--options)
-      - [Configuration](#configuration)
-    - [Temporary Development Loading](#temporary-development-loading)
-      - [For Firefox (Manual)](#for-firefox-manual)
-      - [For Chrome / Chromium (Manual)](#for-chrome--chromium-manual)
-      - [Via web-ext run](#via-web-ext-run)
+    - [Replaced Headlines on a News Site](#replaced-headlines-on-a-news-site)
+    - [Normal Operation](#normal-operation)
+    - [Feedback Without Leaving the Page](#feedback-without-leaving-the-page)
+    - [The Popup](#the-popup)
+    - [Dark Mode](#dark-mode)
+    - [Settings](#settings)
+  - [Install](#install)
+    - [From a Browser Store](#from-a-browser-store)
+    - [From a GitHub Release](#from-a-github-release)
   - [Permission Requirements](#permission-requirements)
-  - [Development](#development)
-    - [Running the Tests](#running-the-tests)
-    - [Badge Icons](#badge-icons)
-    - [Local Test Data \& Hashed Signatures](#local-test-data--hashed-signatures)
-      - [Step 1: Dump URL Signatures from the Page](#step-1-dump-url-signatures-from-the-page)
-      - [Step 2: Save the Signatures](#step-2-save-the-signatures)
-      - [Step 3: Generate the Mock Database](#step-3-generate-the-mock-database)
-      - [Step 4: Serve the Database Locally](#step-4-serve-the-database-locally)
-      - [Step 5: Switch Extension Environment \& Grant Permissions](#step-5-switch-extension-environment--grant-permissions)
-    - [Generating a Release](#generating-a-release)
-  - [Architecture](#architecture)
+  - [How It Works](#how-it-works)
   - [Privacy Policy](#privacy-policy)
   - [License](#license)
     - [Non-OSS Assets](#non-oss-assets)
-
+  - [Development](#development)
+    - [Build from Source](#build-from-source)
+      - [Requirements](#requirements)
+      - [Build Flags and Options](#build-flags-and-options)
+    - [Load a Development Build](#load-a-development-build)
+    - [Run the Tests](#run-the-tests)
+    - [Lint](#lint)
+    - [Environments](#environments)
+    - [Developer and Diagnostic Utilities](#developer-and-diagnostic-utilities)
+    - [Badge Icons](#badge-icons)
+    - [Local Test Data and Hashed Signatures](#local-test-data-and-hashed-signatures)
+    - [Architecture](#architecture)
+    - [Make a Release](#make-a-release)
 
 ## Features
 
-- Automatically **replaces sensational, misleading, or clickbaity headlines** with neutral, factual alternatives on supported sites.
-- Uses the Go-compiled WebAssembly module [`suola`](https://github.com/Klikkikuri/suola) to normalize and hash (SHA-256) URLs locally. Because replaced **headlines are looked up from a cached local database**, your **browsing history is never transmitted** to external servers.
-- You can request support for additional sites by submitting a GitHub issue.
-- Monitors page updates using a **debounced DOM `MutationObserver`** to instantly process and replace new headlines as the user scrolls or navigates.
-- Fully supports **Firefox for Android**.
-- Integrates a **feature-rich popup interface** containing:
-  - A visual **clickbait density gauge** showing the overall clickbait percentage of the current page.
-  - Headline statistics grouped by **severity levels** (from "Not Clickbait at all" to "Extremely Clickbaity").
-  - An interactive **feedback loop** displaying all converted headlines, allowing users to vote on alignment quality, submit suggestions, and check an **expando section** for headlines falling below the clickbait threshold.
-- Provides **granular controls & options** via the settings page:
-  - Toggle switches for per-site filtering.
-  - A clickbait severity **threshold slider** to customize replacement sensitivity.
-  - Custom **Title Modifiers**, including a feature to automatically attach a clean EU-styled vector badge `[AI]` to headlines identified as AI-generated or AI-translated content, a marker for links that are mostly video, and a marker for headlines whose text has been replaced with the aligned version. The replaced-headline marker is a button: clicking it, or reaching it by keyboard and pressing Enter, opens the feedback card for that headline.
-- Equipped with **developer and diagnostic utilities** to debug and trace behavior:
-  - Appends semantic **`data-klikkikuri-*` DOM attributes** (status, reason, signatures, labels) directly to elements.
-  - Overlay outlines and status badges under a **visual debug mode**.
-  - A **signature dumper** to copy normalized URL signatures of all page links to the clipboard.
-  - A local mock database generator [`generate_test_data.py`](./generate_test_data.py) and a custom Python HTTP server [`httpserver.py`](./httpserver.py) for offline testing.
-  - Ability to specify multiple development database endpoint URLs (`titleDataUrls`) directly in the developer settings section.
+- Paatti **replaces sensational, misleading and clickbaity headlines** with neutral, factual alternatives on
+  supported sites.
+- The extension **looks up headlines in a database on your own device**. It downloads that database from
+  GitHub at intervals. It **does not send your browsing history** to an external server, unless you take an
+  explicit action such as sending feedback. See the [Privacy Policy](docs/PRIVACY_POLICY.md).
+- The Go-compiled WebAssembly module [`suola`](https://github.com/Klikkikuri/suola) **normalizes and hashes
+  (SHA-256) each URL locally**, so a lookup needs no network request.
+- A debounced DOM `MutationObserver` watches the page. **Paatti replaces new headlines as you browse** or as
+  the site loads more content.
+- Paatti fully supports **Firefox for Android**, **Firefox**, **Chrome**, **Chromium**, and **Brave**.
+- The user interface is fully **translated** and available in **English and Finnish**.
+- The popup and the settings page **follow your browser's light or dark theme** by themselves. The markers
+  Paatti puts on a news page instead take the colours of the site around them, so they stay legible on a dark
+  site and on a light one.
+- Adjustable **clickbait threshold** to set how clickbaity a headline must be before Paatti replaces it.
+- The popup shows:
+  - A **clickbait density gauge** for the page you are on.
+  - Headline counts grouped by severity, from "Not Clickbait at all" to "Extremely Clickbaity".
+  - A **feedback list** of the headlines Paatti changed. You can rate a replacement, send a suggestion, and
+    open an **expando section** that shows the headlines below your threshold.
+  - The **database status**: when Paatti last downloaded corrections, and a button to download them now. You
+    can also set how often it checks.
+  - A **shortcut that searches the GitHub issues** for the site you are on, so you can see whether support for
+    it was already requested. To request a new site, open an issue.
+- The settings page gives you:
+  - A **switch for each supported site**.
+  - A **threshold slider** that sets how clickbaity a headline must be before Paatti replaces it.
+  - Three **headline markers**. Only the AI Content Marker is on when you install Paatti; switch the other two
+    on if you want them, or switch all three off to let Paatti work with no visible mark at all:
+    - The **AI Content Marker** tells you that the article shows characteristics typical of AI-generated or
+      AI-translated material. Use it to decide whether an article is worth your time, if the author did not bother writing it themselves.
+    - The **Video Content Marker** tells you that a link leads mostly to video rather than to a written article.
+    - The **Converted Headline Marker** tells you that Paatti replaced this headline. It is a button: click it,
+      or move to it with the keyboard and press Enter, to open the feedback card for that headline.
 
-### Supported Sites
+## Supported Sites
 
-- **Supported news websites**:
-  - *Helsingin Sanomat* (`hs.fi`)
-  - *Iltalehti* (`iltalehti.fi`)
-  - *Yle* (`yle.fi`)
-  - *MTV Uutiset* (`mtvuutiset.fi`)
-  - *Äänekosken Kaupunkisanomat* (`aksa.fi`)
-  - *Ampparit* (`ampparit.com`)
+Sites fall into two groups. The group decides whether Paatti starts by itself, or waits for you.
+
+### Works After You Install
+
+Paatti starts on these sites immediately. It needs no further action from you.
+
+- *Helsingin Sanomat* (`hs.fi`)
+- *Iltalehti* (`iltalehti.fi`)
+- *Yle* (`yle.fi`)
+- *MTV Uutiset* (`mtvuutiset.fi`)
+- *Äänekosken Kaupunkisanomat* (`aksa.fi`)
+
+### Needs Your Permission First
+
+- *Ampparit Uutispalvelut* (`ampparit.com`)
+
+This site is off by default. When you switch it on in the settings, the browser asks you to approve access to
+it. Paatti starts on the site only after you approve. If you decline, the site stays off. If you switch it on
+from the popup, the popup closes, because the browser cannot show the approval prompt inside a popup.
+
+To ask for support for another site, open an issue on GitHub.
 
 ## Screenshots
 
-### Comparison of replaced headlines on a news site
+### Replaced Headlines on a News Site
 
-Showing the clickbait replacement feature in action on different levels of clickbaitiness replacement, with visual debug mode enabled to highlight replaced headlines and their severity levels:
+The same Yle "Suosituimmat" list at two threshold settings, with the visual debug mode on. The coloured outline
+and the badge on each card are developer tools that are off by default — they are here to make the threshold
+visible. Green **CONVERTED** means Paatti replaced the headline, orange **ORIGINAL** means it left it alone.
 
-![Clickbait replacement in moderate levels](./docs/screenshots/v002-levels-moderate.png)
-![Clickbait replacement only in extreme levels](./docs/screenshots/v002-levels-extreme.png)
+At **Moderately clickbaity**, the top three stories are replaced. The first reads "Laatokan järvilohet ovat
+nousseet kutemaan Hiitolanjokeen ensimmäistä kertaa 115 vuoteen".
 
-### Feedback and correction interface
+![Yle popular-stories list at a moderate threshold, the top three cards outlined green and badged CONVERTED](./docs/screenshots/v0010-levels-moderate.png)
 
-Sending feedback on replaced headlines via the inline popup interface:
+At **Only extreme**, nothing in the list clears the bar, so every card keeps the site's own wording. The same
+first story now reads "Venäjältä nousi koskeen kaloja, joita ei ole nähty 115 vuoteen – nyt vesistöpäällikkö
+odottaa jättipottia", which withholds the fact the replacement states.
 
-![Feedback interface](./docs/screenshots/v002-feedback-popup.png)
+![The same list at the highest threshold, every card outlined orange and badged ORIGINAL](./docs/screenshots/v0010-levels-extreme.png)
 
-### Normal operation
+### Normal Operation
 
-Extension in normal action, staying out of the way unless specifically invoked by the user. By design, sport news are excluded from the replacement feature, even if they are written in a sensational style.
+The same page as a user sees it, with the debug mode off. No outlines and no status badges: the page reads as
+Yle's own. The only sign of Paatti is the small marker before each headline it changed, and the AI Content
+Marker on the Google story further down.
 
-![Extension replaced headlines on a news site](./docs/screenshots/v002-in-action.png)
+All three markers are switched on here. A new install shows only the AI Content Marker — the Video Content
+Marker and the Converted Headline Marker start off. Each has its own switch, so you can also turn all three off
+and let Paatti replace headlines leaving no visible mark.
 
-## Installing
+![Yle news page with replaced headlines, no debug outlines, small markers before changed headlines](./docs/screenshots/v0010-in-action.png)
 
-### Installing the pre-built browser extension
+### Feedback Without Leaving the Page
 
-Klikkikuri Paatti browser extension is also available in [🛍️ Google Chrome Webstore](https://chromewebstore.google.com/detail/klikkikuri-paatti/jalegaigmgljhnaakmbbaajooffgcbgc?hl=en) and in [🦊 Mozilla Firefox Add-on](https://addons.mozilla.org/fi-FI/firefox/addon/klikkikuri/). Unless you're interested on developing or using more bleeding edge version, you should prefer those.
+Clicking the Converted Headline Marker opens this card beside the headline, so you can rate a replacement while
+you read. It names the site's **ORIGINAL** headline and its severity, shows the **ALIGNED** replacement under
+it, and outlines the headline the card belongs to.
 
-To install the pre-packaged browser extension in Firefox from github releases
+This card is the marker's own function, so it needs the Converted Headline Marker switched on — which a new
+install does not do. Without the marker there is nothing to click, and the popup's feedback view is the way to
+rate a replacement; it lists every one on the page.
 
-1. **Download the Release**: Go to the [Klikkikuri Paatti Releases](https://github.com/Klikkikuri/paatti/releases) page on GitHub and download the latest `klikkikuri-paatti` `.xpi` file.
-2. **Open Firefox Add-ons**: Navigate to `about:addons` in the Firefox address bar (or open the Menu and select **Add-ons and Themes**).
-3. **Install from File**:
-   - Click the gear icon (⚙️) next to "Manage Your Add-ons" at the top-right.
-   - Select **Install Add-on From File...** from the dropdown menu.
-   - Choose the downloaded `klikkikuri` `.xpi` file.
-   - Confirm the installation when prompted.
+![In-page feedback card next to a headline, showing the original and aligned versions and two rating buttons](./docs/screenshots/v0010-feedback-card.png)
 
-Due to how Google Chrome has walled-garden approach to chrome extensions, there might be – or not – `.crx` versions available for chrome.
+### The Popup
 
-### Building from Source
+The home view rates the page you are on. The gauge gives one number for the whole page, and the rows below
+count the headlines at each severity. The dotted line labelled **Threshold** sits where your setting is: rows
+above it are left alone, rows below it are replaced. You can drag that line to change the setting.
 
-#### Requirements
+![Popup home view with a 41% gauge reading Moderately Clickbaity above a list of severity counts](./docs/screenshots/v0010-popup-home.png)
 
-- `make`
-- `bash`
-- Node.js (runs `make test` and the release task)
-- (optional) Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2)
-- (optional, for testing) Python 3
-- `suola` submodule (automatically initialized by `make` if missing)
-  - [`suola`](https://github.com/Klikkikuri/suola)
-  - TinyGo 0.41+ (for local compilation without Docker)
+The feedback view lists what Paatti changed on this page. Each entry shows the site's **ORIGINAL** headline with
+its severity, the **ALIGNED** replacement underneath, and two buttons to say whether the replacement is fair, or send feedback if it should be improved.
 
-Fetch and build dependencies and package for distribution with `make`.
+![Popup feedback view showing original and aligned headline pairs with Is good and Is no good buttons](./docs/screenshots/v0010-popup-feedback.png)
 
-When `make build` is executed, it first checks if the `suola` submodule is initialized, fetching it automatically if missing. It then compiles `suola` into WebAssembly binaries (`js.wasm` and its support file `wasm_exec.js`) locally using Docker (or a host toolchain when `DOCKER=false`). The two files must come from the same toolchain to work together, so run `make clean` when switching between build methods. Alternatively, passing `USE_RELEASE_ARTIFACTS=1` downloads pre-built WebAssembly release assets directly from GitHub. Finally, all extension assets (`src/`, `icons/`, `_locales/`, `manifest.json`) and the WebAssembly binaries are staged into `build/dist/` and packaged into `build/klikkikuri-paatti.zip`.
+The statistics view totals what Paatti has seen on this site since it started counting.
+
+![Popup statistics view reading 31 of 75 converted titles, with a bar per severity level](./docs/screenshots/v0010-popup-stats.png)
+
+### Dark Mode
+
+Paatti's own pages follow `prefers-color-scheme`, so they turn dark when your browser or system does. There is
+no theme setting to keep in step, and the background artwork has a night version of its own.
+
+![Popup home view in dark mode, the gauge over a dark night-sky background](./docs/screenshots/v0010-popup-home-dark.png)
+
+The markers Paatti adds to a news page work the other way round, and deliberately so. They paint with the
+page's own text colour and knock the glyph out of it, so they read correctly against whatever the site uses. A
+marker that followed the system theme instead would come out black on a dark site whenever the system was set
+to light. [`src/components/badge-style.js`](./src/components/badge-style.js) carries the reasoning.
+
+### Settings
+
+Each supported site has its own switch, showing the site's own icon. Ampparit is off, because it is the site
+that needs your permission first. Below the list sits a switch for each of the three headline markers; all
+three are on in this picture, but a new install starts with only the AI Content Marker.
+
+![Settings page site list with per-site switches, Ampparit switched off, above the three marker settings](./docs/screenshots/v0010-options-sites.png)
+
+The statistics section totals every enabled site, and names the one that was most clickbaity.
+
+![Settings page statistics with totals, a severity breakdown bar, and a per-site table](./docs/screenshots/v0010-options-markers.png)
+
+## Install
+
+### From a Browser Store
+
+Install Klikkikuri Paatti from the [🛍️ Google Chrome Web
+Store](https://chromewebstore.google.com/detail/klikkikuri-paatti/jalegaigmgljhnaakmbbaajooffgcbgc?hl=en) or
+from [🦊 Mozilla Firefox Add-ons](https://addons.mozilla.org/fi-FI/firefox/addon/klikkikuri/). Use a store
+version unless you want to develop the extension or to test a newer build.
+
+Paatti needs Firefox 128 or later, or Chrome 122 or later. Firefox for Android is supported.
+
+### From a GitHub Release
+
+To install the packaged extension in Firefox:
+
+1. **Download the release.** Go to the [Klikkikuri Paatti
+   releases](https://github.com/Klikkikuri/paatti/releases) page and download the newest `klikkikuri-paatti`
+   `.xpi` file.
+2. **Open the Firefox add-ons page.** Enter `about:addons` in the address bar, or open the menu and select
+   **Add-ons and Themes**.
+3. **Install from the file.**
+   - Click the gear icon (⚙️) next to "Manage Your Add-ons".
+   - Select **Install Add-on From File...**.
+   - Select the `.xpi` file you downloaded.
+   - Confirm the installation.
+
+Chrome does not permit an extension to install from a file in the same way, so a `.crx` build is not always
+available.
+
+## Permission Requirements
+
+- `host_permissions`: Paatti reads the headlines on the supported news sites and replaces their text, so it
+  needs access to those pages. This permission also covers
+  `raw.githubusercontent.com/Klikkikuri/rahti/*`, which is where Paatti downloads the correction database
+  from.
+- `optional_host_permissions`: Paatti asks for these only when you need them. `www.ampparit.com` is requested
+  when you switch that site on. `http://localhost/*` is requested only for local development.
+- `alarms`: Paatti schedules the database download in the background. The alarm lets the background service
+  worker sleep between downloads, which saves system resources.
+- `storage`: Paatti keeps the downloaded correction database, your settings, your statistics and the site icon
+  cache on your device. Your settings follow your browser profile if you use browser sync.
+- `tabs`: Paatti must know when you open a supported news site, and when a site replaces its content without a
+  page load. It uses this to decide when to examine the page.
+- `favicon`: Chromium keeps the icons of the sites you visit, and this permission lets Paatti read one from
+  that cache with no network request. Where the cache has no icon, Paatti shows an icon it stored earlier, and
+  if it has none, a generated letter badge. To fill that store, Paatti reads the icon address from a supported
+  page and downloads the icon once per site, without cookies and without a referrer, then keeps it for 30 days.
+- `scripting`: Paatti registers and unregisters its content script per site, which is how a site switch takes
+  effect without a browser restart. It also lets Paatti hold no permission at all for an optional site until
+  you switch that site on.
+
+## How It Works
+
+Klikkikuri Paatti is the browser extension. Three other projects stand behind it:
+
+- [meri](https://github.com/Klikkikuri/meri) reads the articles, judges whether a headline matches the article,
+  and writes a neutral replacement.
+- [suola](https://github.com/Klikkikuri/suola) normalizes and hashes URLs. The backend and the extension use
+  the same module, so both sides agree on the signature for an article.
+- [rahti](https://github.com/Klikkikuri/rahti) publishes the result as
+  [`data.json`](https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json).
+
+Paatti downloads that file, keeps it on your device, and looks each headline up in it. Your browsing does not
+leave your machine to make a lookup.
+
+Which headlines the database covers is decided by the backend, not by the extension. Sports headlines, for
+example, are not corrected, although they are often written in a sensational style.
+
+For more about the projects, see the [Klikkikuri organization profile](https://github.com/Klikkikuri).
+
+## Privacy Policy
+
+For information about data handling and user privacy, please refer to our [Privacy
+Policy](docs/PRIVACY_POLICY.md).
+
+## License
+
+This project is licensed under the European Union Public Licence v1.2 (EUPL-1.2).
+
+- English version: [LICENSE.md](LICENSE.md)
+- Finnish version (Suomenkielinen versio): [LISENSSI.md](LISENSSI.md)
+
+### Non-OSS Assets
+
+The assets in [`assets/non-oss/`](./assets/non-oss/) are not covered by the EUPL-1.2 license.
+
+- The AI Content Marker icon in [`assets/non-oss/by-kagi/`](./assets/non-oss/by-kagi/) is designed by and
+  copyright of [Kagi Inc.](https://kagi.com/) and used with permission (see
+  [`assets/non-oss/by-kagi/PERMISSION.txt`](./assets/non-oss/by-kagi/PERMISSION.txt)).
+
+`make build` leaves these assets out. The build must opt in with `NON_OSS=1`, which the release workflow does —
+so the packages published to the stores and to GitHub Releases do contain the Kagi icon. A build without
+`NON_OSS=1` draws the marker with the EU-styled vector badge in [`assets/icons/`](./assets/icons/) instead.
+
+---
+
+## Development
+
+Read **[AGENTS.md](AGENTS.md)** before you change anything under `src/`. It holds the binding conventions of
+this repository: how to reach the extension API, the three populations of web components and why they differ,
+where a stylesheet belongs, and the traps around settings, extractor registration and prompts.
+
+### Build from Source
 
 ```sh
 make build
 ```
 
-#### Build Flags & Options
+`make build` first checks that the `suola` submodule is present. It then compiles `suola` to WebAssembly
+(`js.wasm` and its support file `wasm_exec.js`) with Docker, or with a host toolchain when `DOCKER=false`. The
+two files must come from the same toolchain to work together, so run `make clean` when you change build method.
+Finally it stages the extension assets (`src/`, `icons/`, `_locales/`, `manifest.json`, `LICENSE.md`,
+`LISENSSI.md` and `docs/PRIVACY_POLICY.md`) with the WebAssembly binaries into `build/dist/`, and packages them
+into `build/klikkikuri-paatti.zip`.
 
-- **Local compilation without Docker**:
-  ```sh
-  make build DOCKER=false
-  ```
-- **Use Podman instead of Docker**:
-  ```sh
-  make build DOCKER=podman
-  ```
-- **Use pre-built release artifacts** (downloads release binaries from GitHub):
-  ```sh
-  make build USE_RELEASE_ARTIFACTS=1
-  ```
-- **Include non-OSS assets** (overlays assets from `assets/non-oss/by-kagi/`):
-  ```sh
-  make build NON_OSS=1
-  ```
+If the `suola` submodule is missing, `make` fetches it with `make init`. You can also clone the repository
+with `git clone --recursive` to get it from the start.
 
-#### Configuration
+#### Requirements
 
-Search for the string `CONFIG` in the JavaScript source files for various configuration values that can be customized before compiling and packaging the extension.
+- `make`, `bash`, `git`, `zip` and `curl`
+- Node.js. Every build runs `check-icons`, and `make test` and the release task need it too.
+- `eslint` and `web-ext` for the lint targets. Both come from the dev container image.
+- (optional) Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2)
+- (optional, for the test-data helpers) Python 3
+- The [`suola`](https://github.com/Klikkikuri/suola) submodule
+  - TinyGo 0.41+, to compile it locally without Docker
 
-### Temporary Development Loading
+#### Build Flags and Options
 
-#### For Firefox (Manual)
+Pass `DOCKER=false` to **compile suola on the host** instead of in a container:
 
-1. Open Firefox and enter `about:debugging` in the address bar.
-2. Select **This Firefox** from the sidebar.
-3. Click **Load Temporary Add-on...**.
-4. Choose [`manifest.json`](./manifest.json) from the project root.
-
-#### For Chrome / Chromium (Manual)
-
-1. Open Google Chrome or Chromium and enter `chrome://extensions` in the address bar.
-2. Enable **Developer mode** using the toggle switch in the top-right corner.
-3. Click **Load unpacked** in the top-left corner.
-4. Choose the project root directory containing [`manifest.json`](./manifest.json).
-
-#### Via web-ext run
-
-Alternatively, you can run the extension in a clean development profile using [`web-ext`](https://extensionworkshop.com/documentation/develop/getting-started-with-web-ext/):
 ```sh
-web-ext run --devtools [--firefox firefox-devedition] [--url http://www.yle.fi/uutiset]
-# Or chrome:
-web-ext run --devtools [--chromium-binary /usr/bin/chromium] -t chromium [--url http://www.yle.fi/]
+make build DOCKER=false
 ```
 
-## Permission Requirements
+Pass `DOCKER=podman` to **build with podman**:
 
-- `host_permissions`: Host permissions are required to access the DOM of supported news websites. This allows the extension to read the original headlines on the page and modify them with the aligned, clickbait-free text.
-- `alarms`: The alarms API is used to periodically schedule background fetches for the latest headline correction database. This ensures the user has up-to-date corrections while allowing the background service worker to sleep, saving system resources.
-- `storage`: The storage API is used to cache the downloaded headline correction list locally to reduce network requests and improve page load performance. It is also used to save the user's personal settings, such as their preferred clickbait severity threshold and per-site enable/disable preferences.
-- `tabs`: The tabs API is required to detect when a user navigates to a supported news website or when a page dynamically updates its content (e.g., Single Page Applications), so the extension knows exactly when to trigger the headline replacement script.
-- `favicon`: Chromium exposes already-cached favicons through an internal `_favicon/` route, which this permission unlocks. The settings and popup site lists use it to show each site's own icon without any network request. It is Chromium-only; where it is unavailable the icon comes from a locally cached data URI instead, and failing that from a generated letter badge.
-- `scripting`: The scripting API is used to dynamically register and unregister the content scripts and styles on supported sites based on the user's preferences. This allows the extension to keep its initial required `host_permissions` footprint minimal, requesting optional host permissions and registering injection rules dynamically __only__ when the user explicitly enables support for a specific news site in the preferences.
+```sh
+make build DOCKER=podman
+```
 
-## Development
+Pass `USE_RELEASE_ARTIFACTS=1` to **download the WebAssembly binaries** from GitHub instead of compiling them.
+The `suola` checkout must sit on an exact tag, which it does after a recursive clone:
 
-### Running the Tests
+```sh
+make build USE_RELEASE_ARTIFACTS=1
+```
+
+Pass `NON_OSS=1` to **include the non-OSS assets**, which overlays `assets/non-oss/by-kagi/` onto `src/`:
+
+```sh
+make build NON_OSS=1
+```
+
+Other targets: `make package` zips a staged build, `make source-dist` packages the source for review,
+`make rebuild-suola` forces a WebAssembly rebuild, and `make test-wasm` runs suola's own smoke test.
+
+`make init` fetches the `suola` submodule. Do not use `make test-data`: it passes a signature-file path that
+[`generate_test_data.py`](./generate_test_data.py) ignores. Call the script directly instead, as described in
+[Local Test Data and Hashed Signatures](#local-test-data-and-hashed-signatures).
+
+### Load a Development Build
+
+Use [`run.sh`](./run.sh). It builds the extension and starts a browser with a clean profile:
+
+```sh
+./run.sh                        # Firefox
+./run.sh --ff                   # Firefox Developer Edition
+./run.sh --cr                   # Chromium
+./run.sh --dark                 # Force the dark theme
+./run.sh -u https://yle.fi/     # Open this page on startup
+./run.sh -s .                   # Run a directory as-is, instead of build/dist
+```
+
+`run.sh` reads [`web-ext-config.cjs`](./web-ext-config.cjs) from the repository root, which carries the browser
+preferences and the watch-ignore patterns.
+
+The repository root is itself a loadable unpacked extension, so you can also load
+[`manifest.json`](./manifest.json) by hand: in Firefox through `about:debugging` → **This Firefox** → **Load
+Temporary Add-on...**, and in Chrome through `chrome://extensions` → **Developer mode** → **Load unpacked**.
+See the [Firefox](https://extensionworkshop.com/documentation/develop/temporary-installation-in-firefox/) and
+[Chrome](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world#load-unpacked) documentation
+for the current steps.
+
+### Run the Tests
 
 ```sh
 make test
@@ -213,6 +392,55 @@ because ESM resolution ignores it and the helper reaches jsdom through the CJS r
 jsdom does no layout and does not resolve the cascade, so it covers structure, lifecycle and events but says
 nothing about styling. Check CSS in a real browser instead.
 
+### Lint
+
+```sh
+make lint          # eslint; this is what CI runs
+make lint-webext   # web-ext lint; run this by hand
+```
+
+`make lint` rejects a bare `browser` or `chrome` global and `globalThis.browser`. See
+[AGENTS.md](AGENTS.md) for the two exempt files and the reason for the rule.
+
+`make lint-webext` is deliberately not part of `make lint`, and CI does not run it: `web-ext lint` reports an
+error for the gecko `update_url` that this project needs for self-hosted Firefox updates. Read its report and
+keep the `UNSAFE_VAR_ASSIGNMENT` count at zero — that count is the one signal that separates a static template
+from markup a caller can influence.
+
+### Environments
+
+Paatti carries three environments, defined in `DEFAULT_CONFIG.environmentConfigs` in
+[`src/config.js`](./src/config.js). They differ in how often the database refreshes, which markers start on, and
+which database URLs are used.
+
+| Environment | Purpose |
+|---|---|
+| `free` | The released default. Downloads `data.json` from rahti. |
+| `paid` | Reserved for a paid service with additional lists. Not yet available. |
+| `development` | Refreshes every minute, turns the debug visuals on, and adds `http://localhost:3000/data.json` to the database URLs. |
+
+**An unpacked build selects `development` by itself**, because `management.getSelf().installType` reports
+`development` for it. The defaults you see in a build you loaded yourself are therefore not the defaults a user
+gets from a store. Keep this in mind when you check behaviour or take screenshots.
+
+### Developer and Diagnostic Utilities
+
+Turn developer mode on by clicking the logo at the foot of the popup, beside "Made with". A 🤓 appears next to
+it while developer mode is on, and the hidden controls become visible. Turning it on switches the environment to
+`development`; turning it off switches back to `free`.
+
+- Paatti writes **`data-klikkikuri-*` attributes** on the elements it examined: `status`, `url-sign`,
+  `clickbait-level`, `original-title`, `converted-title`, `labels` and `highlight-id`. Read them in the
+  inspector to see what Paatti decided and why.
+- **Visual debug mode** draws an outline and a status badge over each examined headline. The badge names the
+  status Paatti gave it: converted, original, 🔒 paywalled, skipped or error. Two settings control the overlay:
+  `debugVisualsEnabled` comes from the environment, and `visualHighlightEnabled` is your own override. Note
+  that an open popup forces the outlines on, whatever the setting says.
+- The **signature dumper** copies the normalized SHA-256 signature of every article link on the page to the
+  clipboard. Use the 🧂 button, or the **Copy to Clipboard** button in the popup's **Salt Signatures** section.
+- The **Developer Settings** section of the settings page takes several database URLs (`titleDataUrls`), so you
+  can point Paatti at a local server.
+
 ### Badge Icons
 
 The icons the in-page badges draw are authored as standalone SVG files under [`assets/icons/`](./assets/icons/) —
@@ -233,9 +461,9 @@ const svgMarkup = `…`;
 ```
 
 The generated block is committed on purpose. The project root is itself a loadable unpacked extension (see
-[Temporary Development Loading](#temporary-development-loading)) and there is no bundler, so a module cannot
-resolve its icon at load time and `src/` must never hold a placeholder. `make dist` runs `make check-icons`
-first and fails when a module has drifted from its SVG, naming the file to regenerate.
+[Load a Development Build](#load-a-development-build)) and there is no bundler, so a module cannot resolve its
+icon at load time and `src/` must never hold a placeholder. `make dist` runs `make check-icons` first and fails
+when a module has drifted from its SVG, naming the file to regenerate.
 
 [`tools/inline-icons.mjs`](./tools/inline-icons.mjs) rejects a source the badge machinery cannot draw, while it
 is still a fixable file rather than a blank box on a news site: the `<svg>` root must carry
@@ -246,206 +474,62 @@ the glyph out with a `<mask>`, as [`src/components/badge-style.js`](./src/compon
 
 A new badge needs its SVG, a module carrying the two markers above, and a `make icons` run.
 
-### Local Test Data & Hashed Signatures
+### Local Test Data and Hashed Signatures
 
-For local development and testing, you can generate and serve mock clickbait databases using the two Python helper scripts ([`generate_test_data.py`](./generate_test_data.py) and [`httpserver.py`](./httpserver.py)).
+For local development and testing, you can generate and serve a mock correction database with the two Python
+helper scripts ([`generate_test_data.py`](./generate_test_data.py) and [`httpserver.py`](./httpserver.py)).
 
-If you are adding support for a new site, see [docs/development/adding-a-new-site.md](./docs/development/adding-a-new-site.md).
+To add support for a new site, see
+[docs/development/adding-a-new-site.md](./docs/development/adding-a-new-site.md).
 
-#### Step 1: Dump URL Signatures from the Page
+1. **Dump the signatures.** Turn developer mode on, open a supported news site, then open the popup and use the
+   🧂 button or the **Copy to Clipboard** button in the **Salt Signatures** section. This copies the normalized
+   SHA-256 signature of every article link on the page.
+2. **Save them** to `test_data/signatures.txt`.
+3. **Generate the database.** The script reads `test_data/signatures.txt` and writes `test_data/data.json`:
 
-1. Enable **Developer Mode** in the extension (e.g. by toggle-clicking the developer mode controls or enabling it in the Options UI).
-2. Visit the news website you want to test (e.g. `iltalehti.fi`).
-3. Open the Paatti popup and click the salt emoji (🧂) or the **Dump link hashes** button. This normalizes and copies the SHA-256 signature hashes of all news article links currently loaded on the page to your clipboard.
+   ```sh
+   python3 generate_test_data.py
+   ```
 
-#### Step 2: Save the Signatures
-Paste the copied signatures directly into `test_data/signatures.txt`.
+4. **Serve it.** This serves the mock data at `http://localhost:3000/data.json` with the CORS and cache headers
+   the extension expects:
 
-#### Step 3: Generate the Mock Database
+   ```sh
+   python3 httpserver.py
+   ```
 
-Run [`generate_test_data.py`](./generate_test_data.py) to parse the signatures and generate a mock clickbait database (`test_data/data.json`):
+5. **Point the extension at it.** Set the environment to **Development**, which adds
+   `http://localhost:3000/data.json` to the database URLs. In Firefox, `localhost` is an optional permission, so
+   also open `about:addons` → **Klikkikuri Paatti** → **Permissions** and turn **Access your data for localhost**
+   on. You can enter further URLs under **Developer Settings** on the settings page.
 
-```sh
-python3 generate_test_data.py
-```
+### Architecture
 
-#### Step 4: Serve the Database Locally
-Start the mock HTTP server [`httpserver.py`](./httpserver.py):
-```sh
-python3 httpserver.py
-```
-This serves your mock data at `http://localhost:3000/data.json` with appropriate CORS and cache headers.
+See [docs/architecture.md](./docs/architecture.md) for the module diagram and the paths between the modules.
 
-#### Step 5: Switch Extension Environment & Grant Permissions
-1. Open the extension options page in Firefox (`about:addons` > Click the three dots next to **Klikkikuri Paatti** > Select **Preferences** / **Options**).
-2. Change the environment setting to **Development**.
-3. **Grant Localhost Permissions**: Because `localhost` is listed as an optional permission, Firefox blocks requests to it by default. Navigate to the **Permissions** tab of the Klikkikuri Paatti extension page in `about:addons`, and toggle the permission switch for **Access your data for localhost** (or `http://localhost/*`) to **On**.
-4. **Configure Test URLs**: You can optionally specify multiple mock database endpoints (e.g. `http://localhost:3000/data.json`) under the **Developer Settings** section directly from the extension's Options page.
-5. The extension will now be able to periodically fetch database updates from your local test server.
-
-### Generating a Release
+### Make a Release
 
 The project uses a semi-automated, tag-driven release process:
 
-1. **Verify your local branch**: Ensure your local branch is clean and updated.
-2. **Bump version, commit, and tag**: Run the release task providing the new version (e.g. `0.0.4`). This bumps `manifest.json`, appends the release update block to `updates.json`, commits the change, and tags the commit locally:
+1. **Verify your local branch.** Make sure it is clean and up to date.
+2. **Bump the version, commit and tag.** This bumps `manifest.json`, appends the release block to
+   `updates.json`, commits the change, and tags the commit locally:
+
    ```sh
    make release VERSION=0.0.4
    ```
-3. **Push to Remote**: Push the commit and tags upstream:
+
+3. **Push.**
+
    ```sh
    git push origin HEAD --follow-tags
    ```
-   *(Note: If pushing to a branch with branch protection, you can push the commit first as a PR, merge it, pull `main` locally, and then tag and push the tag).*
-4. **CI/CD Processing**: Once the tag `v*` is pushed, the GitHub Actions release workflow validates that the tag matches the version config, builds the package, submits it to Mozilla for unlisted signing (with source code uploaded for WebAssembly verification), generates build provenance attestations, and uploads the `.zip` and signed `.xpi` release assets to a newly created GitHub Release.
 
-
-## Architecture
-```mermaid
----
-title: Architecture v0.0.8
----
-classDiagram
-    direction TB
-    class BrowserStorage {
-        +local
-        +sync
-    }
-    class Storage {
-        +string ns
-        +reload()
-        +get(key)
-        +store(entries)
-        +remove(keys)
-    }
-    class Model {
-        +read
-        +write
-    }
-    class Config {
-        +enabled
-        +activeEnv
-        +siteConfigs
-        +environmentConfigs
-        +getConfig()
-        +onConfigValue(select, callback)
-    }
-    class Controller {
-        +setEnabled(value)
-        +setSiteEnabled(value)
-        +setEnvironment(value)
-        +setClickbaitLevel(value)
-        +setModifierEnabled(name, value)
-        +setDebugVisualsEnabled(value)
-        +setVisualHighlightEnabled(value)
-        +setEasterEggProbability(value)
-        +setRefreshIntervalMinutes(value)
-        +setDevTitleDataUrls(urls)
-        +updateStatistics()
-    }
-    class RahtiModule {
-        +fetchRahtiData(options)
-        +fetchRahtiDataWithRetry(options, retryConfig)
-        +fetcher (HTTP & 304 resolution)
-        +schema (SemVer & keying)
-        +sync (Storage & metadata)
-    }
-    class BackgroundScript {
-        +updateDynamicContentScripts()
-        +fetchRahtiData()
-        +fetchRahtiDataWithRetry()
-        +isDatabaseStale()
-        +alarms
-        +initSuola()
-        +hashUrls(urls)
-    }
-    class ContentScript {
-        +MutationObserver
-        +processSite()
-        +convertClickbaits()
-        +getConversions()
-    }
-    class StatsModule {
-        +buildPageSnapshot()
-        +computeGaugeValue()
-        +mergeStats()
-        +createSessionTracker()
-    }
-    class Modifiers {
-        +titleModifiers
-        +applyModifiers(titleText, rahtiEntry)
-    }
-    class SuolaWasm {
-        +rules_yaml
-        +hashUrl(url)
-        +initSuola()
-    }
-    class Popup {
-        +HomeView
-        +StatsView
-        +FeedbackView
-        +SettingsView
-    }
-    class OptionsUI {
-        +MasterSwitch
-        +ThresholdSlider
-        +SiteConfigs
-        +DevSettings
-    }
-    class FeedbackServer {
-        +submitFeedback()
-    }
-    class TitleDataServer {
-        +data_json
-    }
-
-    Storage --> BrowserStorage : Reads/writes namespaced keys
-    Model --> BrowserStorage : Reads/writes preferences & stats
-    Config --> BrowserStorage : Merges defaults & overrides
-    
-    Controller <--> Model : Orchestrates state updates
-    
-    BackgroundScript --> Config : Reads enabled origins
-    BackgroundScript --> Storage : Stores fetched data
-    BackgroundScript --> RahtiModule : Requests database fetches
-    RahtiModule ..> TitleDataServer : Fetch updates
-
-    
-    ContentScript --> Storage : Reads cached conversions
-    ContentScript --> Modifiers : Applies active transformations
-    Modifiers --> Model : Reads modifier toggle preferences
-    ContentScript --> BackgroundScript : Requests batch URL hashing
-    BackgroundScript --> ContentScript : Tells the active tab to re-convert
-    BackgroundScript --> SuolaWasm : Instantiates & runs Go Wasm
-    ContentScript --> Controller : Updates active page stats
-    ContentScript --> StatsModule : Computes session delta & snapshot
-    Controller --> StatsModule : Merges cumulative stats
-    Popup --> StatsModule : Computes gauge values
-    
-    Popup *-- Controller : Dispatches user preferences
-    Popup *-- Model : Reads stats
-    Config --> Popup : Publishes changed values
-    Popup --> ContentScript : Port connection (highlights)
-    Popup ..> FeedbackServer : Submits user corrections
-    
-    OptionsUI *-- Controller : Dispatches settings changes
-    OptionsUI *-- Model : Reads stats
-    Config --> OptionsUI : Publishes changed values
-```
-
-## Privacy Policy
-
-For information about data handling and user privacy, please refer to our [Privacy Policy](docs/PRIVACY_POLICY.md).
-
-
-## License
-
-This project is licensed under the European Union Public Licence v1.2 (EUPL-1.2).
-
-- English version: [LICENSE.md](LICENSE.md)
-- Finnish version (Suomenkielinen versio): [LISENSSI.md](LISENSSI.md)
-
-### Non-OSS Assets
-These assets in [`assets/non-oss/`](./assets/non-oss/) are not covered by the EUPL-1.2 license and are excluded from default builds unless explicitly opted into via `NON_OSS=1`.
-
-- AI smell icon in [`assets/non-oss/by-kagi/`](./assets/non-oss/by-kagi/)is designed by and copyright of [Kagi Inc.](https://kagi.com/) and used with permission (see [`assets/non-oss/by-kagi/PERMISSION.txt`](./assets/non-oss/by-kagi/PERMISSION.txt)).
+   If the branch is protected, push the commit as a pull request first, merge it, pull `main`, then tag and push
+   the tag.
+4. **Let CI finish.** When a `v*` tag arrives, the release workflow verifies that the tag matches the version in
+   `manifest.json`, verifies that `updates.json` carries an entry for it, builds the package with `NON_OSS=1`,
+   verifies the suola artifact attestation, submits the package to Mozilla for unlisted signing (with the source
+   code attached for WebAssembly review), generates build provenance attestations, and uploads the `.zip` and
+   the signed `.xpi` to a new GitHub Release.

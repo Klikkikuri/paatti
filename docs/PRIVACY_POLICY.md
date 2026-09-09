@@ -49,12 +49,23 @@ To keep clickbait detection up to date, the extension periodically fetches publi
 * These requests are read-only downloads of public database files, and **no personal information, browsing history, queried URLs, or user identifiers are included**.
 * As with any web request, GitHub's servers receive **standard HTTP request metadata** (such as your IP address and browser User-Agent).
 
+### D. Site Icons Retrieved from Supported News Sites
+
+To show each site's own icon in the settings and popup site lists, the extension may download that icon once per site:
+
+* On Chromium the icon normally comes from the browser's own cache with **no network request at all**.
+* Where that cache has no icon, the extension reads the icon address declared by the supported news page itself (its `link rel="icon"`, or `/favicon.ico`) and downloads that file **once per site**, then stores it locally for 30 days.
+* The request is sent **without cookies or credentials** (`credentials: "omit"`) and **without a referrer** (`referrerPolicy: "no-referrer"`), so it carries no session, no identifier, and no indication of which page you were reading.
+* The request goes to the news site or to whichever host that site declares for its icon. As with any web request, that host receives **standard HTTP request metadata** (such as your IP address and browser User-Agent).
+* No headline, URL, signature, or browsing history is included, and this retrieval happens only for sites you have enabled.
+
 ## 3. How We Use Your Information
 
 * Submitted feedback is used solely to **review clickbait detection accuracy**, improve headline replacement algorithms, and update our database of headline corrections.
 * Additionally, **we may compile and publish these feedback submissions as an open-source, anonymized dataset**. Prior to any public release, all data is strictly sanitized to strip any inadvertent personal information, to a point it would fall outside the scope of GDPR Article 4(1) definition of personal data.
 * Your email address is used solely to **notify you about updates regarding invitations, early access, or subscriptions** for the paid version of Klikkikuri Paatti, and is never sold, rented, or used for unrelated marketing purposes.
 * Retrieved database files are **used locally to perform headline replacements** on supported sites.
+* Retrieved site icons are **used locally to label the site lists** in the extension's own settings and popup, and are never transmitted anywhere.
 
 ### A. Proactive Notice of Changes
 
