@@ -53,5 +53,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: klikkikuri-paatti-extension
-          path: build/klikkikuri-paatti.zip
+          path: |
+            build/klikkikuri-paatti-chrome.zip
+            build/klikkikuri-paatti-firefox.zip
           if-no-files-found: error

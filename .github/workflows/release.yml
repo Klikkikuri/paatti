@@ -73,14 +73,13 @@ jobs:
 
       - name: "🏗️ Build Extension Package"
         run: |
-          make build USE_RELEASE_ARTIFACTS=1 NON_OSS=1
+          make package dist-firefox USE_RELEASE_ARTIFACTS=1 NON_OSS=1
 
       - name: "🛡️ Verify Suola Artifact Attestation"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh attestation verify build/js.wasm --repo Klikkikuri/suola
-          gh attestation verify build/wasm_exec.js --repo Klikkikuri/suola
+          make verify-suola
 
       - name: "📦 Package Source Code for Review"
         run: |
@@ -92,7 +91,7 @@ jobs:
           AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
         run: |
           npx web-ext sign \
-            --source-dir build/dist \
+            --source-dir build/dist-firefox \
             --channel unlisted \
             --api-key "$AMO_JWT_ISSUER" \
             --api-secret "$AMO_JWT_SECRET" \
@@ -102,7 +101,7 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
-          cp build/klikkikuri-paatti.zip build/klikkikuri-paatti-${VERSION}.zip
+          cp build/klikkikuri-paatti-chrome.zip build/klikkikuri-paatti-${VERSION}-chrome.zip
           # Copy the signed XPI downloaded by web-ext from the artifacts folder
           cp web-ext-artifacts/*.xpi build/klikkikuri-paatti-${VERSION}.xpi
 
@@ -110,9 +109,8 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            build/klikkikuri-paatti.zip
             build/klikkikuri-paatti-${{ steps.get_version.outputs.VERSION }}.xpi
-            build/klikkikuri-paatti-${{ steps.get_version.outputs.VERSION }}.zip
+            build/klikkikuri-paatti-${{ steps.get_version.outputs.VERSION }}-chrome.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -121,6 +119,5 @@ jobs:
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
-            build/klikkikuri-paatti.zip
             build/klikkikuri-paatti-${{ steps.get_version.outputs.VERSION }}.xpi
-            build/klikkikuri-paatti-${{ steps.get_version.outputs.VERSION }}.zip
+            build/klikkikuri-paatti-${{ steps.get_version.outputs.VERSION }}-chrome.zip

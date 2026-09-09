@@ -1,0 +1,6 @@
+{
+  "minimum_chrome_version": null,
+  "background": {
+    "service_worker": null
+  }
+}

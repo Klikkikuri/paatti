@@ -5,7 +5,8 @@ TEST_DATA_BUILD_DIR := $(BUILD_DIR)/test_data
 TEST_DATA_SIGNATURES := $(TEST_DATA_BUILD_DIR)/signatures.txt
 BUILD_TEST_DATA := $(TEST_DATA_BUILD_DIR)/data.json
 BUILD_SOURCE_DIST := $(BUILD_DIR)/source-code.zip
-BUILD_EXTENSION := $(BUILD_DIR)/klikkikuri-paatti.zip
+STORE_REVISION ?= 1
+CHROME_EXTENSION_ID := jalegaigmgljhnaakmbbaajooffgcbgc
 DIST_DIR := $(BUILD_DIR)/dist
 EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md docs/PRIVACY_POLICY.md
 WASM_ASSETS := js.wasm wasm_exec.js
@@ -110,8 +111,29 @@ ifeq ($(NON_OSS),1)
 	cp -r assets/non-oss/by-kagi/src/. $(DIST_DIR)/src/
 endif
 
-package: dist
-	cd $(DIST_DIR) && zip -r -FS $(BUILD_EXTENSION) .
+# One tree per browser: build/dist with manifest.<browser>.json merged onto manifest.json by
+# tools/manifest.mjs. Static pattern rule on purpose: make skips implicit rules for .PHONY targets.
+dist-chrome dist-firefox: dist-%: manifest.%.json dist
+	rm -rf $(BUILD_DIR)/$@
+	cp -r $(DIST_DIR) $(BUILD_DIR)/$@
+	node tools/manifest.mjs $* > $(BUILD_DIR)/$@/manifest.json
+
+# Store trees: the same merge, then the version AMO needs and no update_url (a listed AMO version
+# must not carry one; the self-hosted xpi from dist-firefox keeps it). A store build always carries
+# the non-OSS assets; the recursive make is how NON_OSS=1 reaches the parse-time ifeq in dist.
+store-chrome store-firefox: store-%: manifest.%.json
+	$(MAKE) dist NON_OSS=1
+	rm -rf $(BUILD_DIR)/$@
+	cp -r $(DIST_DIR) $(BUILD_DIR)/$@
+	node tools/manifest.mjs $* --store $(STORE_REVISION) > $(BUILD_DIR)/$@/manifest.json
+
+# Not -FS: a STORE_REVISION bump keeps manifest.json the same size, which -FS can skip. abspath because
+# the recipe cds into a tree that has its own build/ subdirectory, where a relative BUILD_DIR would land.
+$(BUILD_DIR)/klikkikuri-paatti-%.zip: dist-%
+	rm -f $@
+	cd $(BUILD_DIR)/dist-$* && zip -r $(abspath $@) .
+
+package: $(BUILD_DIR)/klikkikuri-paatti-chrome.zip $(BUILD_DIR)/klikkikuri-paatti-firefox.zip
 
 source-dist:
 	mkdir -p $(BUILD_DIR)
@@ -133,7 +155,7 @@ check-icons:
 	@node tools/inline-icons.mjs --check
 
 clean:
-	rm -f "$(BUILD_TEST_DATA)" "$(TEST_DATA_SIGNATURES)" "$(BUILD_EXTENSION)"
+	rm -f "$(BUILD_TEST_DATA)" "$(TEST_DATA_SIGNATURES)"
 	rm -f $(BUILD_DIR)/klikkikuri-*.xpi
 	rm -f $(BUILD_DIR)/klikkikuri-paatti-*.xpi
 	rm -rf "$(BUILD_DIR)"
@@ -143,13 +165,31 @@ clean:
 release:
 	node release.js $(VERSION)
 
+# The suola artifacts must carry suola's build attestation before anything is uploaded.
+verify-suola: $(WASM_OUTPUTS)
+	gh attestation verify $(BUILD_DIR)/js.wasm --repo Klikkikuri/suola
+	gh attestation verify $(BUILD_DIR)/wasm_exec.js --repo Klikkikuri/suola
+
+# Store submission, run by publish-amo.yml and publish-chrome.yml, which install web-ext or
+# chrome-webstore-upload-cli on the runner and pass USE_RELEASE_ARTIFACTS=1 and the credentials in env.
+publish-firefox: store-firefox source-dist verify-suola
+	web-ext sign --source-dir $(BUILD_DIR)/store-firefox --channel listed --approval-timeout 0 \
+		--upload-source-code $(BUILD_SOURCE_DIST) --artifacts-dir $(BUILD_DIR)/web-ext-artifacts
+
+publish-chrome: store-chrome verify-suola
+	rm -f $(BUILD_DIR)/store-chrome.zip
+	cd $(BUILD_DIR)/store-chrome && zip -r $(abspath $(BUILD_DIR)/store-chrome.zip) .
+	chrome-webstore-upload --extension-id $(CHROME_EXTENSION_ID) --source $(BUILD_DIR)/store-chrome.zip
+
+publish: publish-firefox publish-chrome
+
 lint:
 	eslint .
 
-# Not part of `lint`: web-ext errors on the gecko update_url this project needs for
-# self-hosted Firefox updates. Read the report, keep UNSAFE_VAR_ASSIGNMENT at zero.
-lint-webext: dist
-	-web-ext lint --source-dir $(DIST_DIR)
+# Not part of `lint`. --self-hosted, because the Firefox tree keeps the gecko update_url that
+# self-hosted updates need and AMO listings reject. Keep UNSAFE_VAR_ASSIGNMENT at zero.
+lint-webext: dist-firefox
+	web-ext lint --source-dir $(BUILD_DIR)/dist-firefox --self-hosted
 
 # An explicit glob, not a bare `node --test`: the latter sweeps the whole tree and would
 # pick up suola's own smoke test, which test-wasm below runs deliberately and with an
@@ -175,4 +215,4 @@ test-wasm:
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
 	fi
 
-.PHONY: build init ensure-suola check-tinygo package source-dist test-data icons check-icons clean build-suola-local build-suola rebuild-suola release dist test test-wasm lint lint-webext
+.PHONY: build init ensure-suola check-tinygo package source-dist test-data icons check-icons clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-chrome store-firefox verify-suola publish-firefox publish-chrome publish test test-wasm lint lint-webext
