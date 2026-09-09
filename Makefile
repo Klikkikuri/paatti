@@ -7,6 +7,7 @@ BUILD_TEST_DATA := $(TEST_DATA_BUILD_DIR)/data.json
 BUILD_SOURCE_DIST := $(BUILD_DIR)/source-code.zip
 STORE_REVISION ?= 1
 CHROME_EXTENSION_ID := jalegaigmgljhnaakmbbaajooffgcbgc
+AMO_METADATA := $(BUILD_DIR)/amo-metadata.json
 DIST_DIR := $(BUILD_DIR)/dist
 EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md docs/PRIVACY_POLICY.md
 WASM_ASSETS := js.wasm wasm_exec.js
@@ -172,9 +173,17 @@ verify-suola: $(WASM_OUTPUTS)
 
 # Store submission, run by publish-amo.yml and publish-chrome.yml, which install web-ext or
 # chrome-webstore-upload-cli on the runner and pass USE_RELEASE_ARTIFACTS=1 and the credentials in env.
-publish-firefox: store-firefox source-dist verify-suola
+# AMO shows the GitHub Release body of the tag as the version's release notes, so the Release
+# must exist and be written before publishing. The reviewer notes are static.
+amo-metadata:
+	mkdir -p $(BUILD_DIR)
+	gh release view "v$$(node -p "require('./manifest.json').version")" --json body --jq .body \
+		| node tools/amo-metadata.mjs docs/amo-reviewer-notes.md > $(AMO_METADATA)
+
+publish-firefox: store-firefox source-dist verify-suola amo-metadata
 	web-ext sign --source-dir $(BUILD_DIR)/store-firefox --channel listed --approval-timeout 0 \
-		--upload-source-code $(BUILD_SOURCE_DIST) --artifacts-dir $(BUILD_DIR)/web-ext-artifacts
+		--upload-source-code $(BUILD_SOURCE_DIST) --amo-metadata $(AMO_METADATA) \
+		--artifacts-dir $(BUILD_DIR)/web-ext-artifacts
 
 publish-chrome: store-chrome verify-suola
 	rm -f $(BUILD_DIR)/store-chrome.zip
@@ -215,4 +224,4 @@ test-wasm:
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
 	fi
 
-.PHONY: build init ensure-suola check-tinygo package source-dist test-data icons check-icons clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-chrome store-firefox verify-suola publish-firefox publish-chrome publish test test-wasm lint lint-webext
+.PHONY: build init ensure-suola check-tinygo package source-dist test-data icons check-icons clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-chrome store-firefox verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext

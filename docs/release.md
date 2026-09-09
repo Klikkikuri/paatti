@@ -67,6 +67,10 @@ carry their own copies with a store version. Publishing does not change `updates
    - It sends the Firefox package to Mozilla for unlisted signing, with the source code for review.
    - It makes a GitHub Release with the signed `.xpi` and the Chrome `.zip`, and attests both.
 
+4. Write the release notes. Open the new GitHub Release and replace the generated list of pull requests with
+   the changelog. AMO shows this text as the release notes of the store version, so write it before you
+   publish. The Chrome Web Store has no release notes for a version.
+
 ## Publish to the Stores
 
 Each store has its own workflow. The two workflows have the same steps.
@@ -81,6 +85,17 @@ The workflow installs the store tool and runs `make publish-firefox` or `make pu
 builds the store tree, makes sure that the `suola` artifacts carry their attestation, and then uploads the
 package. AMO puts the version in its review queue. The Chrome Web Store puts the version in its review queue
 when the upload is complete. The workflow does not wait for the review.
+
+The AMO submission carries two texts, from `make amo-metadata`:
+
+- The release notes are the body of the GitHub Release of the tag. The target fails if the Release does not
+  exist.
+- The notes to the Mozilla reviewer are [docs/amo-reviewer-notes.md](amo-reviewer-notes.md). They tell the
+  reviewer how to rebuild the package and how to verify the WebAssembly module. Update the file when the
+  build changes.
+
+The Chrome Web Store has no fields for these texts. Update the listing text in the developer dashboard by
+hand when it changes.
 
 The workflow refuses to run on a branch. It does not change `updates.json`.
 

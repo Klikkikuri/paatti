@@ -520,6 +520,7 @@ See [docs/architecture.md](./docs/architecture.md) for the module diagram and th
 ### Make a Release
 
 `make release VERSION=x.y.z` bumps `manifest.json`, appends the release to `updates.json`, commits and tags.
-`git push origin HEAD --follow-tags` then lets CI build, sign and publish the GitHub Release. The stores are
-published afterwards by hand, from the **Publish to AMO** and **Publish to Chrome Web Store** workflows on the
-Actions tab. The full procedure is in [docs/release.md](./docs/release.md).
+`git push origin HEAD --follow-tags` then lets CI build, sign and publish the GitHub Release. Write the changelog
+into that Release. The stores are published afterwards by hand, from the **Publish to AMO** and **Publish to
+Chrome Web Store** workflows on the Actions tab; AMO shows the Release body as its release notes. The full
+procedure is in [docs/release.md](./docs/release.md).
