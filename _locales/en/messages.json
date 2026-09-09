@@ -301,6 +301,18 @@
     "message": "Nothing counted yet. Visit a supported site to start the tally.",
     "description": "Message shown in place of the options page statistics when no site has been counted yet"
   },
+  "statsTotalsResetButton": {
+    "message": "Reset statistics",
+    "description": "Button under the options page statistics table that wipes every site's tally"
+  },
+  "statsTotalsResetConfirm": {
+    "message": "Click again to reset",
+    "description": "Label the reset button shows after a first press, asking for a second press within a few seconds"
+  },
+  "statsTotalsResetDone": {
+    "message": "Statistics reset",
+    "description": "Status message shown after the statistics were wiped"
+  },
   "statsThresholdDividerLabel": {
     "message": "Threshold",
     "description": "Label for the clickbait threshold divider line shown in home view stats list"

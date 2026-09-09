@@ -177,7 +177,8 @@ three are on in this picture, but a new install starts with only the AI Content 
 
 ![Settings page site list with per-site switches, Ampparit switched off, above the three marker settings](./docs/screenshots/v0010-options-sites.png)
 
-The statistics section totals every enabled site, and names the one that was most clickbaity.
+The statistics section totals every enabled site, and names the one that was most clickbaity. A button under
+the table resets the tally; press it twice within a few seconds to confirm.
 
 ![Settings page statistics with totals, a severity breakdown bar, and a per-site table](./docs/screenshots/v0010-options-markers.png)
 

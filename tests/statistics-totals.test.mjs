@@ -1,4 +1,4 @@
-import test, { describe, after, afterEach, beforeEach } from 'node:test';
+import test, { describe, after, afterEach, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { installDom } from './helpers/dom.mjs';
@@ -29,6 +29,10 @@ const fake = createFakeBrowser({
         statsviewCollectingPeriodDays: 'Collecting for $1 days',
         statsviewCollectingPeriodMonths: 'Collecting for $1 months',
         statsTotalsEmpty: 'Nothing counted yet.',
+        statsTotalsResetButton: 'Reset statistics',
+        statsTotalsResetConfirm: 'Click again to reset',
+        statsTotalsResetDone: 'Statistics reset',
+        settingSavedError: 'Error saving setting',
         statsTotalsSiteLevelsAriaLabel: 'Breakdown for $1',
         statsviewBreakdownCaption: 'All titles found, before rewriting.',
         clickbaitinessLabel_Extremely_Clickbaity: 'Extremely Clickbaity',
@@ -459,5 +463,127 @@ describe('statistics-totals', () => {
 
         assert.equal(browser.storage.onChanged.listeners.length, 1);
         assert.equal(element.querySelector('.totals-number').textContent, (612).toLocaleString());
+    });
+});
+
+describe('the reset button', () => {
+    /** Collect the setting-saved events that reach the document. */
+    function record() {
+        const seen = [];
+        const fn = (e) => seen.push(e.detail);
+        document.addEventListener('setting-saved', fn);
+        return { seen, stop: () => document.removeEventListener('setting-saved', fn) };
+    }
+
+    const button = () => element.querySelector('.totals-reset');
+    const isArmed = () => button().hasAttribute('data-armed');
+
+    test('is drawn under the table, and only while something is counted', async () => {
+        await mount();
+
+        assert.ok(element.querySelector('.totals-body .totals-table + .totals-reset'));
+        assert.equal(button().textContent, 'Reset statistics');
+        assert.ok(!isArmed());
+
+        await browser.storage.local.set({ statistics: { _global: { totalConversions: 12 } } });
+        await flush();
+
+        assert.ok(element.querySelector('.totals-body').classList.contains('hidden'));
+    });
+
+    test('one press arms it, and a second press wipes the tally', async () => {
+        await mount();
+        const r = record();
+        try {
+            button().click();
+
+            assert.ok(isArmed());
+            assert.equal(button().textContent, 'Click again to reset');
+            assert.equal(button().style.getPropertyValue('--totals-reset-arm'), '4000ms');
+            assert.ok('statistics' in await browser.storage.local.get('statistics'));
+
+            button().click();
+            await flush();
+
+            assert.deepEqual(await browser.storage.local.get('statistics'), {});
+            assert.ok(element.querySelector('.totals-body').classList.contains('hidden'));
+            assert.ok(!element.querySelector('.totals-empty').classList.contains('hidden'));
+            assert.deepEqual(r.seen, [
+                { key: 'statistics', value: null, success: true, message: 'Statistics reset' }
+            ]);
+        } finally {
+            r.stop();
+        }
+    });
+
+    // Enabled after mount(): its flush() runs on a real setTimeout, and so does the next one.
+    test('disarms on its own when the second press does not come', async () => {
+        await mount();
+        mock.timers.enable({ apis: ['setTimeout'] });
+        try {
+            button().click();
+            assert.ok(isArmed());
+
+            mock.timers.tick(4000);
+
+            assert.ok(!isArmed());
+            assert.equal(button().textContent, 'Reset statistics');
+            assert.ok('statistics' in await browser.storage.local.get('statistics'));
+        } finally {
+            mock.timers.reset();
+        }
+    });
+
+    test('leaving the page while armed drops the pending disarm', async () => {
+        await mount();
+        mock.timers.enable({ apis: ['setTimeout'] });
+        try {
+            button().click();
+            element.remove();
+
+            assert.ok(!isArmed());
+
+            document.body.appendChild(element);
+        } finally {
+            mock.timers.reset();
+        }
+        await flush();
+
+        assert.ok(!isArmed());
+        assert.equal(button().textContent, 'Reset statistics');
+    });
+
+    test('a failed wipe says so and leaves the button idle', async () => {
+        await mount();
+        const r = record();
+        const remove = browser.storage.local.remove;
+        browser.storage.local.remove = async () => { throw new Error('nope'); };
+        try {
+            button().click();
+            button().click();
+            await flush();
+
+            assert.deepEqual(r.seen, [
+                { key: 'statistics', value: null, success: false, message: 'Error saving setting' }
+            ]);
+            assert.ok('statistics' in await browser.storage.local.get('statistics'));
+            assert.ok(!isArmed());
+            assert.ok(!element.querySelector('.totals-body').classList.contains('hidden'));
+        } finally {
+            browser.storage.local.remove = remove;
+            r.stop();
+        }
+    });
+
+    test('moves focus to the empty message when the table goes', async () => {
+        await mount();
+        button().focus();
+        assert.equal(document.activeElement, button());
+
+        button().click();
+        button().click();
+        await flush();
+
+        assert.equal(document.activeElement, element.querySelector('.totals-empty'));
     });
 });

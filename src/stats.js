@@ -55,6 +55,9 @@
  *   it is still stored, and reads as found counts alone with nothing rewritten.
  * - `firstSeen` is stamped on the first write for the domain and never moves after that, so the
  *   Stats view can say how long the tally took to build.
+ * - The options page's reset button removes the whole key, `_global` included. A content script
+ *   that is already open keeps its `SessionTracker`, so the titles it has counted are not counted
+ *   again until that page reloads.
  * - Used to render the historical summary table on the popup's Stats view, and — every domain at
  *   once, through `summarizeSites` — the totals section on the options page.
  *

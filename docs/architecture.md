@@ -55,6 +55,7 @@ classDiagram
         +setRefreshIntervalMinutes(value)
         +setDevTitleDataUrls(urls)
         +updateStatistics()
+        +resetStatistics()
     }
     class RahtiModule {
         +fetchRahtiData(options)

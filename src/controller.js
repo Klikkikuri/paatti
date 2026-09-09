@@ -83,6 +83,12 @@ const controller = {
         await model.write.addStatistics(delta, { domain });
     },
 
+    /** Wipe the cumulative statistics of every site. */
+    resetStatistics: async () => {
+        log("Resetting statistics");
+        await model.write.resetStatistics();
+    },
+
     devmode: {
         dumpLinkSignatures: async () => {
             log("Generating dump of link signatures for the current page...");

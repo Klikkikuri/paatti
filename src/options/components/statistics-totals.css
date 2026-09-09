@@ -487,6 +487,68 @@ statistics-totals .totals-empty {
  * that the reading would have to truncate, and a level name reads in full or not at all. So each
  * site becomes a card of its own instead: name, then reading, then the tally, then the bar across
  * the width they were read on. */
+/* --- Reset --- */
+
+/* A footnote to the table, not a form action: options.css gives every button flex: 1 and a
+ * 12px/24px pad, sized for the page's action row. Sized down and pushed to the end of the line. */
+statistics-totals .totals-reset {
+    display: block;
+    flex: 0 0 auto;
+    width: auto;
+    margin: 10px 0 0 auto;
+    padding: 6px 12px;
+    font-size: 0.85em;
+    font-weight: normal;
+}
+
+/* Armed: the label already says "click again"; the colour says it is no longer a safe press, and
+ * the bar along the bottom drains over the window the press is held open. Its duration comes from
+ * the component, which owns the timer. */
+statistics-totals .totals-reset[data-armed] {
+    position: relative;
+    overflow: hidden;
+    background: var(--color-danger);
+    color: var(--color-on-accent);
+}
+
+statistics-totals .totals-reset[data-armed]::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--color-on-accent);
+    opacity: 0.7;
+    transform-origin: left;
+    animation: totals-reset-drain var(--totals-reset-arm, 4s) linear forwards;
+}
+
+@keyframes totals-reset-drain {
+    to { transform: scaleX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    statistics-totals .totals-reset[data-armed]::after {
+        display: none;
+    }
+}
+
+statistics-totals .totals-reset[data-armed]:hover {
+    background: var(--color-danger-strong);
+}
+
+statistics-totals .totals-reset:focus-visible {
+    outline: 2px solid var(--color-text-secondary);
+    outline-offset: 2px;
+}
+
+/* Focus is parked here after a reset so it does not fall to <body>; a ring on a paragraph would
+ * only puzzle. */
+statistics-totals .totals-empty:focus {
+    outline: none;
+}
+
 @media (max-width: 640px) {
     /* No column is wide enough for both, so each term sits above the answer it names. */
     statistics-totals .totals-about-list {

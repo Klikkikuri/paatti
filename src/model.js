@@ -250,6 +250,12 @@ const model = (() => {
                 log(`Stored cumulative stats for '${domain}':`, statistics[domain]);
             },
 
+            /** Drop every site's tally, the legacy `_global` one included, as on a fresh install. */
+            resetStatistics: async () => {
+                log("Resetting statistics");
+                await browser.storage.local.remove("statistics");
+            },
+
             setTitleDataUrl: async (value) => {
                 const data = await browser.storage.local.get("userPreferences");
                 const userPreferences = data.userPreferences || {};

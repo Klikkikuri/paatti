@@ -3,10 +3,11 @@
 import browser from '../../browser-api.js';
 import { getLogger } from '../../utils.js';
 import { model, Clickbaitiness } from '../../model.js';
+import { controller } from '../../controller.js';
 import { getConfig } from '../../config.js';
 import { computeCollectingPeriod, sharePercent, summarizeLevels, summarizeSites } from '../../stats.js';
 import { levelToI18nKey, localizeDocument } from '../utils.js';
-import { adoptComponentStyleSheet, ComponentBase, defineComponent } from './component-utils.js';
+import { adoptComponentStyleSheet, ComponentBase, defineComponent, emitSettingSaved } from './component-utils.js';
 import './favicon-img.js';
 
 adoptComponentStyleSheet(new URL('./statistics-totals.css', import.meta.url));
@@ -71,10 +72,15 @@ template.innerHTML = `
             </div>
             <ul class="totals-site-list"></ul>
         </div>
+
+        <button type="button" class="totals-reset btn-secondary" aria-live="polite" data-i18n="statsTotalsResetButton"></button>
     </div>
 
-    <p class="totals-empty hidden" data-i18n="statsTotalsEmpty"></p>
+    <p class="totals-empty hidden" tabindex="-1" data-i18n="statsTotalsEmpty"></p>
 `;
+
+/** How long a first press on the reset button holds before it disarms on its own. */
+const RESET_ARM_MS = 4000;
 
 /**
  * Custom element for the options page statistics section: what the extension has done across
@@ -91,10 +97,16 @@ template.innerHTML = `
  * tally as a share of the found one, and the level a row reads at is a chip beside its name. A row opens onto the levels behind its tally, which is
  * what the popup's Stats view draws for the one domain in front of you. Any number of rows may be
  * open at once: the popup closes the others because it has no room, and this page has.
+ *
+ * A button under the table wipes the whole tally. It asks twice by relabelling itself for a few
+ * seconds rather than with a dialog.
  */
 class StatisticsTotals extends ComponentBase {
     /** Bumped per refresh, so an earlier read that resolves late cannot win. */
     #generation = 0;
+
+    /** Pending disarm of the reset button, while it is armed. */
+    #disarmTimer = null;
 
     /** The configured sites, for naming a domain. Read with the statistics it labels. */
     #siteConfigs = {};
@@ -128,6 +140,52 @@ class StatisticsTotals extends ComponentBase {
             const toggle = event.target.closest('.totals-site-toggle');
             if (toggle) this.toggleLevels(toggle.closest('.totals-site'));
         }, { signal: this.signal });
+
+        const reset = this.querySelector('.totals-reset');
+        reset.addEventListener('click', () => this.onResetClick(), { signal: this.signal });
+        // The armed bar drains over the same window the timer runs, so the duration is stated once, here.
+        reset.style.setProperty('--totals-reset-arm', `${RESET_ARM_MS}ms`);
+        // A pending disarm must not outlive the connection: it would write into a subtree the next
+        // connectedCallback has already replaced.
+        this.addTeardown(() => this.disarmReset());
+    }
+
+    /** First press arms the button; a second press while it is armed wipes the tally. */
+    onResetClick() {
+        const button = this.querySelector('.totals-reset');
+        if (!button.hasAttribute('data-armed')) {
+            button.setAttribute('data-armed', '');
+            button.textContent = browser.i18n.getMessage('statsTotalsResetConfirm');
+            this.#disarmTimer = setTimeout(() => this.disarmReset(), RESET_ARM_MS);
+            return;
+        }
+
+        this.disarmReset();
+        this.resetStatistics().catch((error) => log('Could not reset the statistics:', error));
+    }
+
+    /** Back to the idle label, dropping the pending disarm if there is one. Safe to call when idle. */
+    disarmReset() {
+        clearTimeout(this.#disarmTimer);
+        this.#disarmTimer = null;
+
+        const button = this.querySelector('.totals-reset');
+        if (!button) return;
+        button.removeAttribute('data-armed');
+        button.textContent = browser.i18n.getMessage('statsTotalsResetButton');
+    }
+
+    /** Wipe every site's tally. The storage listener redraws the section into its empty state. */
+    async resetStatistics() {
+        try {
+            await controller.resetStatistics();
+            emitSettingSaved(this, {
+                key: 'statistics', value: null, messageKey: 'statsTotalsResetDone', fallback: 'Statistics reset'
+            });
+        } catch (error) {
+            log('Could not reset the statistics:', error);
+            emitSettingSaved(this, { key: 'statistics', value: null, success: false });
+        }
     }
 
     /** Read the stored statistics and redraw from them. */
@@ -151,9 +209,16 @@ class StatisticsTotals extends ComponentBase {
      */
     render({ sites, clickbaitiest, overallByLevel, totals, since }) {
         const hasData = sites.length > 0;
+        // Read before the toggle: a hidden button has lost its focus to <body> by the next flush.
+        const hadFocus = this.contains(document.activeElement);
         this.querySelector('.totals-body').classList.toggle('hidden', !hasData);
         this.querySelector('.totals-empty').classList.toggle('hidden', hasData);
-        if (!hasData) return;
+        if (!hasData) {
+            // Hiding the body takes the focused reset button with it; park focus on the message
+            // that replaces it rather than letting it fall to <body>.
+            if (hadFocus) this.querySelector('.totals-empty').focus();
+            return;
+        }
 
         this.renderTotalTile(totals);
         this.renderPeriodTile(since);

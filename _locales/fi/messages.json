@@ -301,6 +301,18 @@
     "message": "Ei vielä laskettuja otsikoita. Käy tuetulla sivustolla.",
     "description": "Message shown in place of the options page statistics when no site has been counted yet"
   },
+  "statsTotalsResetButton": {
+    "message": "Nollaa tilastot",
+    "description": "Button under the options page statistics table that wipes every site's tally"
+  },
+  "statsTotalsResetConfirm": {
+    "message": "Napsauta uudelleen nollataksesi",
+    "description": "Label the reset button shows after a first press, asking for a second press within a few seconds"
+  },
+  "statsTotalsResetDone": {
+    "message": "Tilastot nollattu",
+    "description": "Status message shown after the statistics were wiped"
+  },
   "statsThresholdDividerLabel": {
     "message": "Raja-arvo",
     "description": "Otsikko klikkitason raja-arvon erotinviivalle päänäkymän tilastolistassa"
