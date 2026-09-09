@@ -127,7 +127,8 @@ describe('mergeStats', () => {
         groupedByClickbaitiness: {
             [Clickbaitiness.LEVEL_NONE]: 5,
             [Clickbaitiness.LEVEL_HIGH]: 2
-        }
+        },
+        convertedByClickbaitiness: {}
     });
     const incoming = {
         groupedByClickbaitiness: {
@@ -168,6 +169,12 @@ describe('mergeStats', () => {
         assert.equal(mergeStats(makeExisting(), incoming, 1700).firstSeen, 1700);
     });
 
+    test('a record with nothing swapped yet keeps its found counts', () => {
+        const merged = mergeStats(makeExisting(), incoming);
+
+        assert.equal(merged.groupedByClickbaitiness[Clickbaitiness.LEVEL_NONE], 5);
+    });
+
     test('firstSeen survives later merges', () => {
         const existing = { ...makeExisting(), firstSeen: 900 };
 
@@ -200,16 +207,24 @@ describe('mergeStats', () => {
         assert.equal(existing.convertedByClickbaitiness[Clickbaitiness.LEVEL_HIGH], 1);
     });
 
-    // A record stored before the split existed keeps its found counts and starts the swapped ones
-    // from nothing; no later write can divide its history into levels.
-    test('stored stats predating the per-level converted counts merge cleanly', () => {
-        const merged = mergeStats(makeExisting(), {
+    // A record stored before the split existed has found counts reaching further back than any
+    // swapped count could, so its first write after the split starts every field over together.
+    test('stored stats predating the per-level converted counts are discarded', () => {
+        const preSplit = {
+            groupedByClickbaitiness: { [Clickbaitiness.LEVEL_NONE]: 5, [Clickbaitiness.LEVEL_HIGH]: 2 },
+            convertedCount: 7,
+            firstSeen: 900
+        };
+        const merged = mergeStats(preSplit, {
             groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 },
             convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 }
-        });
+        }, 1700);
 
-        assert.equal(merged.groupedByClickbaitiness[Clickbaitiness.LEVEL_HIGH], 3);
-        assert.equal(merged.convertedByClickbaitiness[Clickbaitiness.LEVEL_HIGH], 1);
+        assert.deepEqual(merged, {
+            groupedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 },
+            convertedByClickbaitiness: { [Clickbaitiness.LEVEL_HIGH]: 1 },
+            firstSeen: 1700
+        });
     });
 });
 

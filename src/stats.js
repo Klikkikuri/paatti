@@ -49,11 +49,12 @@
  *   of what was rewritten: nothing is swapped below the threshold, so nothing is swapped without a
  *   level, and a total is always a sum over these. Within a level the swapped titles are a subset
  *   of the found ones, so a share between the two is real wherever it is stated.
- * - Records written before the split existed carry no swapped counts, and no later write can
- *   divide their history into levels: they keep their found counts and read zero rewritten.
+ * - A record written before the split existed carries no swapped counts, and no later write can
+ *   divide its history into levels. Its first write after the split discards it, so the found
+ *   counts, the swapped counts and `firstSeen` all start from the same moment. Until that write
+ *   it is still stored, and reads as found counts alone with nothing rewritten.
  * - `firstSeen` is stamped on the first write for the domain and never moves after that, so the
- *   Stats view can say how long the tally took to build. Records written before the field existed
- *   get it on their next write, which starts their period short.
+ *   Stats view can say how long the tally took to build.
  * - Used to render the historical summary table on the popup's Stats view, and — every domain at
  *   once, through `summarizeSites` — the totals section on the options page.
  *
@@ -182,6 +183,10 @@ function computeGaugeValue(groupedByClickbaitiness) {
  * @returns {CumulativeStats} Newly merged cumulative statistics object.
  */
 function mergeStats(existing = {}, incoming = {}, now = Date.now()) {
+    // No swapped counts means the record predates the split. Its found counts would reach further
+    // back than anything counted beside them, so the tally restarts with every field in step.
+    if (existing.convertedByClickbaitiness == null) existing = {};
+
     const merged = {
         groupedByClickbaitiness: { ...(existing.groupedByClickbaitiness || {}) },
         convertedByClickbaitiness: { ...(existing.convertedByClickbaitiness || {}) },
