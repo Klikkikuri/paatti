@@ -21,16 +21,25 @@ endif
 build: package
 
 init:
-	git submodule init --init --recursive
+	git submodule update --init --recursive
 
 # Ensure suola submodule is initialized and up to date with superproject commit pointer.
-# If in a Git repo: initializes suola if missing, and fails if checked out commit differs from superproject pointer.
+# If in a Git repo: initializes suola if missing, and warns if the checked out commit differs from the pointer.
 # If not in a Git repo: verifies suola directory exists.
+# The init branch has to exit explicitly: the pointer check below is the last command in the block, and an `if`
+# whose condition is false returns 0 -- which used to mask a failed init and let the build continue without suola.
 ensure-suola:
 	@if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
 		if [ ! -f suola/Makefile ]; then \
 			echo "suola submodule not found. Initializing suola submodule..."; \
-			$(MAKE) init; \
+			if ! $(MAKE) init; then \
+				echo "Error: failed to initialize the suola submodule."; \
+				exit 1; \
+			fi; \
+			if [ ! -f suola/Makefile ]; then \
+				echo "Error: suola submodule is still incomplete after 'make init'."; \
+				exit 1; \
+			fi; \
 		fi; \
 		if git submodule status suola | grep -q '^[+]'; then \
 			echo "Warning: suola submodule commit does not match superproject pointer."; \
