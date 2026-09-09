@@ -852,6 +852,24 @@
     "message": "💾 Save URLs",
     "description": "Button to save development database URLs"
   },
+  "requestDatasourcePermissionBtn": {
+    "message": "🔓 Request access permission",
+    "description": "Button that asks the browser for host permission for the development database URLs"
+  },
+  "datasourcePermissionGranted": {
+    "message": "Access granted for the database URLs",
+    "description": "Notification message when the database URL host permission was granted"
+  },
+  "datasourcePermissionMissing": {
+    "message": "⚠️ Paatti has no permission to fetch: $ORIGINS$",
+    "description": "Warning beside the development database URLs, listing the origins the browser has not granted",
+    "placeholders": {
+      "origins": {
+        "content": "$1",
+        "example": "http://localhost/data.json*"
+      }
+    }
+  },
   "devUrlsInvalid": {
     "message": "Invalid development URL: $URL$",
     "description": "Error message when a development URL is invalid",

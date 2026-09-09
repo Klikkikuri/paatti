@@ -160,8 +160,10 @@ When you add a key to `manifest.json` that only one browser accepts, put the key
 overlay with the value `null`. The test `tests/manifest.test.mjs` compares the merged manifests with the base.
 
 `make store-chrome` and `make store-firefox` make the store trees. They apply the same merge, then set the
-store version and remove `update_url`. They set `NON_OSS=1` and `USE_RELEASE_ARTIFACTS=1` themselves. Do not
-edit the merged manifests under `build/`. Each build writes them again.
+store version, remove `update_url` and remove the wildcard `*://*/*` from `optional_host_permissions`. The
+wildcard lets the GitHub build request access to a database URL on any host, and a store review flags it. They
+set `NON_OSS=1` and `USE_RELEASE_ARTIFACTS=1` themselves. Do not edit the merged manifests under `build/`. Each
+build writes them again.
 
 `make lint-webext` lints the Firefox tree with `--self-hosted`. The flag permits `update_url`, which the
 self-hosted `.xpi` needs. The store tree has no `update_url` and lints without the flag.

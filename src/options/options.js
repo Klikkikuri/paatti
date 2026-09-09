@@ -10,6 +10,7 @@ import './components/visual-highlight-setting.js';
 import './components/master-switch-setting.js';
 import './components/title-modifier-setting.js';
 import './components/database-status-setting.js';
+import './components/datasource-permission-setting.js';
 import './components/clickbait-level-vertical.js';
 import './components/favicon-img.js';
 import './components/statistics-totals.js';
@@ -256,6 +257,10 @@ async function setupEventListeners() {
                     }
                 }
                 
+                // Started inside the click, before any await: Firefox honours a permission request only then.
+                // A refusal is not an error here; the component shows what is still missing.
+                document.querySelector('datasource-permission-setting').request(urls)?.catch(() => {});
+
                 try {
                     await controller.setDevTitleDataUrls(urls);
                     showStatus(browser.i18n.getMessage('devUrlsSavedSuccess') || 'Development URLs saved!');

@@ -220,7 +220,9 @@ the directory through `chrome://extensions` → **Developer mode** → **Load un
   `raw.githubusercontent.com/Klikkikuri/rahti/*`, which is where Paatti downloads the correction database
   from.
 - `optional_host_permissions`: Paatti asks for these only when you need them. `www.ampparit.com` is requested
-  when you switch that site on. `http://localhost/*` is requested only for local development.
+  when you switch that site on. The GitHub build also declares `*://*/*`, so that the **Request access
+  permission** button under Debug Settings can grant a database URL on any host. Paatti requests access only to
+  the database files in your list, not to whole hosts. The store build does not declare the wildcard.
 - `alarms`: Paatti schedules the database download in the background. The alarm lets the background service
   worker sleep between downloads, which saves system resources.
 - `storage`: Paatti keeps the downloaded correction database, your settings, your statistics and the site icon
@@ -511,9 +513,11 @@ To add support for a new site, see
    ```
 
 5. **Point the extension at it.** Set the environment to **Development**, which adds
-   `http://localhost:3000/data.json` to the database URLs. In Firefox, `localhost` is an optional permission, so
-   also open `about:addons` → **Klikkikuri Paatti** → **Permissions** and turn **Access your data for localhost**
-   on. You can enter further URLs under **Developer Settings** on the settings page.
+   `http://localhost:3000/data.json` to the database URLs. Under **Debug Settings** on the settings page, a
+   warning lists each database URL that the browser has not granted. Select **Request access permission** and
+   accept the browser prompt. When you save further URLs in the same place, Paatti asks for their permission at
+   once; if you refuse, the warning stays and **Request access permission** asks again. The button exists on the
+   GitHub and unpacked builds only.
 
 ### Architecture
 

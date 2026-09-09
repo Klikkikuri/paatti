@@ -13,7 +13,8 @@
  * `--store REV` makes the store build. AMO needs a version no unlisted build has used, so the
  * fourth version component becomes the tag's fourth component (0 when absent) plus REV: 0.0.10
  * with REV 1 is 0.0.10.1, and the hotfix 0.0.10.1 with REV 1 is 0.0.10.2. `update_url` goes,
- * because a listed AMO version must not carry one.
+ * because a listed AMO version must not carry one, and so does the wildcard optional host
+ * permission, because a store review flags it. Only the GitHub build can request any origin.
  *
  * Usage: node tools/manifest.mjs <chrome|firefox> [--store REV] > manifest.json
  */
@@ -21,6 +22,8 @@
 import { readFileSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { ARBITRARY_ORIGINS } from "../src/options/origins.js";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -49,7 +52,7 @@ export function mergeManifest(base, overlay) {
 /**
  * @param {object} manifest - A merged manifest.
  * @param {string} revision - Fourth version component of the store build.
- * @returns {object} A copy with the store version and without `update_url`.
+ * @returns {object} A copy with the store version, without `update_url` and without the wildcard origin.
  */
 export function storeManifest(manifest, revision) {
     if (!/^[1-9]\d*$/.test(revision)) {
@@ -67,6 +70,9 @@ export function storeManifest(manifest, revision) {
     // The Chrome tree has no browser_specific_settings at all; the overlay deleted it.
     if (copy.browser_specific_settings?.gecko?.update_url !== undefined) {
         delete copy.browser_specific_settings.gecko.update_url;
+    }
+    if (copy.optional_host_permissions !== undefined) {
+        copy.optional_host_permissions = copy.optional_host_permissions.filter((origin) => origin !== ARBITRARY_ORIGINS);
     }
 
     return copy;
