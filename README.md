@@ -341,8 +341,10 @@ make build NON_OSS=1
 ```
 
 Other targets: `make package` zips the per-browser trees, `make dist-chrome` and `make dist-firefox` stage one
-browser's tree, `make source-dist` packages the source for review, `make rebuild-suola` forces a WebAssembly
-rebuild, and `make test-wasm` runs suola's own smoke test.
+browser's tree, `make store-build` overwrites the two zips with the store packages (always with `NON_OSS=1` and
+`USE_RELEASE_ARTIFACTS=1`) and adds the source archive for a manual store upload,
+`make source-dist` packages the source for review, `make rebuild-suola` forces a WebAssembly rebuild, and
+`make test-wasm` runs suola's own smoke test.
 
 `manifest.json` is the base for both browsers; `manifest.chrome.json` and `manifest.firefox.json` remove what the
 other browser does not accept. See [Browser Manifests](docs/release.md#browser-manifests) for the merge rules.
