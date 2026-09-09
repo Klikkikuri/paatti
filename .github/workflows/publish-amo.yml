@@ -1,0 +1,55 @@
+name: Publish to AMO
+
+# Run by hand from the Actions tab with a release tag selected as the ref. Submits the store build
+# of that tag to the addons.mozilla.org listed channel; see docs/release.md.
+on:
+  workflow_dispatch:
+    inputs:
+      store_revision:
+        description: "Fourth version component of the store build (bump after a rejection)"
+        default: "1"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: "🦊 Submit to AMO"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "🏷️ Require a release tag"
+        run: |
+          [[ "$GITHUB_REF" == refs/tags/v* ]] && exit 0
+          echo "Error: run this workflow on a v* tag, not on $GITHUB_REF"
+          exit 1
+
+      - name: "🔄 Checkout Repository"
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: "🏷️ Fetch Submodule Tags"
+        run: |
+          git -C suola fetch --tags
+
+      - name: "🔧 Set up Node.js"
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: "🔧 Install web-ext"
+        run: |
+          npm install -g web-ext@10
+
+      - name: "🚀 Build, verify and submit"
+        env:
+          STORE_REVISION: ${{ inputs.store_revision }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          make publish-firefox USE_RELEASE_ARTIFACTS=1 STORE_REVISION="$STORE_REVISION"
