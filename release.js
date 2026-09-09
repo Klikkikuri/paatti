@@ -109,8 +109,8 @@ function run() {
     }
 
     // Validate version format
-    if (!/^\d+\.\d+\.\d+$/.test(targetVersion)) {
-      console.error(`Error: Version "${targetVersion}" is not in a valid x.y.z format.`);
+    if (!/^\d+(\.\d+){1,3}$/.test(targetVersion)) {
+      console.error(`Error: Version "${targetVersion}" is not in a valid format.`);
       process.exit(1);
     }
   } else {
@@ -124,10 +124,17 @@ function run() {
     }
 
     if (currentTagExists) {
-      // Auto-increment patch version
+      // Auto-increment patch version (z in x.y.z)
       const parts = currentVersion.split('.').map(Number);
-      if (parts.length === 3 && !parts.some(isNaN)) {
+      if (parts.length >= 2 && parts.length <= 4 && !parts.some(isNaN)) {
+        // Default to updating the 3rd part (z) and dropping any 4th part
+        if (parts.length === 2) {
+          parts.push(0);
+        }
         parts[2] += 1;
+        if (parts.length > 3) {
+          parts.length = 3; // Drop the 4th part
+        }
         targetVersion = parts.join('.');
         console.log(`Tag v${currentVersion} already exists. Auto-incrementing to v${targetVersion}.`);
       } else {
