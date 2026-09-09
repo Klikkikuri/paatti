@@ -46,6 +46,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         zip \
         python3 \
         wamerican \
+        # For image processing
+        librsvg2-bin \
+        imagemagick \
         # Headless browser for chrome-devtools-mcp, which drives Chromium over
         # CDP and needs no webdriver. Point automation at
         # /usr/lib/chromium/chromium, not /usr/bin/chromium: the latter is a
