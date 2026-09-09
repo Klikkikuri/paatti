@@ -18,13 +18,22 @@
   "minimum_chrome_version": "122.0",
   "homepage_url": "https://github.com/klikkikuri",
   "icons": {
-    "48": "icons/klikkikuri-48.png"
+    "16": "icons/klikkikuri-16.png",
+    "32": "icons/klikkikuri-32.png",
+    "48": "icons/klikkikuri-48.png",
+    "64": "icons/klikkikuri-64.png",
+    "96": "icons/klikkikuri-96.png",
+    "128": "icons/klikkikuri-128.png",
+    "256": "icons/klikkikuri-256.png"
   },
   "default_locale": "en",
   "action": {
     "default_icon": {
-      "19": "icons/klikkikuri-19.png",
-      "38": "icons/klikkikuri-38.png"
+      "16": "icons/klikkikuri-16.png",
+      "24": "icons/klikkikuri-24.png",
+      "32": "icons/klikkikuri-32.png",
+      "48": "icons/klikkikuri-48.png",
+      "64": "icons/klikkikuri-64.png"
     },
     "default_title": "Klikkikuri Paatti",
     "default_popup": "src/options/popup.html",

@@ -123,9 +123,11 @@ test-data:
 
 # Badge icons are authored as .svg under assets/icons/ and written into the module that
 # draws them. The result is committed: the repo root is itself a loadable unpacked
-# extension, so src/ must never hold a placeholder.
+# extension, so src/ must never hold a placeholder. The extension icon PNGs come from
+# the two SVG masters under assets/sources/ the same way.
 icons:
 	node tools/inline-icons.mjs
+	assets/sources/export-icons.sh
 
 check-icons:
 	@node tools/inline-icons.mjs --check
