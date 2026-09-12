@@ -221,8 +221,9 @@ the directory through `chrome://extensions` → **Developer mode** → **Load un
   from.
 - `optional_host_permissions`: Paatti asks for these only when you need them. `www.ampparit.com` is requested
   when you switch that site on. The GitHub build also declares `*://*/*`, so that the **Request access
-  permission** button under Debug Settings can grant a database URL on any host. Paatti requests access only to
-  the database files in your list, not to whole hosts. The store build does not declare the wildcard.
+  permission** button under Debug Settings can grant a database URL on any host. Paatti requests access only for
+  the URLs in your list. Firefox limits the grant to the path of each URL; Chrome grants the whole host. The
+  store build does not declare the wildcard.
 - `alarms`: Paatti schedules the database download in the background. The alarm lets the background service
   worker sleep between downloads, which saves system resources.
 - `storage`: Paatti keeps the downloaded correction database, your settings, your statistics and the site icon

@@ -246,11 +246,15 @@ async function setupEventListeners() {
                     .map(u => u.trim())
                     .filter(u => u.length > 0);
                 
-                // Validate URLs
+                // Only http(s): a fetch needs host permission, and the permission control derives one from these.
                 for (const url of urls) {
+                    let valid = false;
                     try {
-                        new URL(url);
+                        valid = /^https?:$/.test(new URL(url).protocol);
                     } catch (e) {
+                        valid = false;
+                    }
+                    if (!valid) {
                         const errMsg = browser.i18n.getMessage('devUrlsInvalid', [url]) || `Invalid development URL: ${url}`;
                         showStatus(errMsg, true);
                         return;

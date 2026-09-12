@@ -235,6 +235,21 @@ describe('request(urls), for the save button', () => {
         r.stop();
     });
 
+    test('a second request while one is pending is refused without calling the browser', async () => {
+        let release;
+        respond = () => new Promise((r) => { release = r; });
+        const el = await mount();
+
+        const first = el.request([LOCALHOST]);
+        assert.equal(el.request([LOCALHOST]), null);
+        assert.equal(requests.length, 1);
+
+        release(true);
+        assert.equal(await first, true);
+        await settled();
+        assert.notEqual(el.request([LOCALHOST]), null);
+    });
+
     test('a rejected request rejects the caller and still re-checks', async () => {
         respond = async () => { throw new Error('not declared'); };
         const el = await mount();

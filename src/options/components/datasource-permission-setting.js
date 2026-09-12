@@ -66,12 +66,12 @@ class DatasourcePermissionSetting extends ComponentBase {
      * honours a permission request only then. An origin already granted does not prompt.
      *
      * @param {string[]} urls
-     * @returns {Promise<boolean>|null} Whether every origin is granted; null on a build that cannot request.
+     * @returns {Promise<boolean>|null} Whether every origin is granted; null on a build that cannot request,
+     *   and while an earlier request is still pending, since a second one before the prompt is answered throws.
      */
     request(urls) {
-        if (!this.#canRequest) return null;
+        if (!this.#canRequest || this.#pending) return null;
 
-        // Disabled while pending: a second request before the prompt is answered throws.
         this.#pending = true;
         this.#button.disabled = true;
         const result = browser.permissions.request({ origins: originPatterns(urls) });

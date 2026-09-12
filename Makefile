@@ -122,9 +122,12 @@ dist-chrome dist-firefox: dist-%: manifest.%.json dist
 # Store trees: the same merge, then the version AMO needs and no update_url (a listed AMO version
 # must not carry one; the self-hosted xpi from dist-firefox keeps it). A store build always carries
 # the non-OSS assets and the attested suola artifacts of the pinned tag; the recursive make is how
-# both flags reach the parse-time conditionals in dist and the Wasm rule.
-store-chrome store-firefox: store-%: manifest.%.json
+# both flags reach the parse-time conditionals in dist and the Wasm rule. One shared staging step,
+# so that `make -j store-build` does not run two of them into the same $(DIST_DIR).
+store-dist:
 	$(MAKE) dist NON_OSS=1 USE_RELEASE_ARTIFACTS=1
+
+store-chrome store-firefox: store-%: manifest.%.json store-dist
 	rm -rf $(BUILD_DIR)/$@
 	cp -r $(DIST_DIR) $(BUILD_DIR)/$@
 	node tools/manifest.mjs $* --store $(STORE_REVISION) > $(BUILD_DIR)/$@/manifest.json
@@ -143,11 +146,13 @@ package: $(BUILD_DIR)/klikkikuri-paatti-chrome.zip $(BUILD_DIR)/klikkikuri-paatt
 store-build: store-chrome store-firefox source-dist
 	for browser in chrome firefox; do \
 		rm -f $(BUILD_DIR)/klikkikuri-paatti-$$browser.zip; \
-		(cd $(BUILD_DIR)/store-$$browser && zip -r $(abspath $(BUILD_DIR))/klikkikuri-paatti-$$browser.zip .); \
+		(cd $(BUILD_DIR)/store-$$browser && zip -r $(abspath $(BUILD_DIR))/klikkikuri-paatti-$$browser.zip .) || exit 1; \
 	done
 
+# Removed first: zip adds to an existing archive, which would keep files deleted since the last run.
 source-dist:
 	mkdir -p $(BUILD_DIR)
+	rm -f $(BUILD_SOURCE_DIST)
 	git ls-files --recurse-submodules | zip -@ $(BUILD_SOURCE_DIST)
 
 test-data:
@@ -232,4 +237,4 @@ test-wasm:
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
 	fi
 
-.PHONY: build init ensure-suola check-tinygo package source-dist test-data icons check-icons clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
+.PHONY: build init ensure-suola check-tinygo package source-dist test-data icons check-icons clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext

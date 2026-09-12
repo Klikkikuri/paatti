@@ -13,7 +13,8 @@ export const ARBITRARY_ORIGINS = "*://*/*";
 
 /**
  * The match pattern that covers `url`: scheme, host and path, with a trailing wildcard so a query string
- * still matches. No port: a pattern without one matches every port in both browsers.
+ * still matches. No port: a pattern without one matches every port in both browsers. The path narrows the
+ * grant in Firefox only; Chrome ignores the path of a host permission and grants the whole host.
  *
  * @param {string} url
  * @returns {string|null} Null for a string that is not an http(s) URL.
