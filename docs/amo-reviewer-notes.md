@@ -10,9 +10,12 @@ CI. The build attestation is verifiable with GitHub CLI:
 To rebuild the package from the source archive, with Docker available:
 
 1. Unpack the archive.
-2. Run: make store-firefox STORE_REVISION=<fourth component of this version>
-   The build compiles suola in a container from suola/Dockerfile, which pins the TinyGo version, and writes
-   the package tree to build/store-firefox/. This tree is what was submitted.
-3. Compare build/store-firefox/ with the submitted package.
+2. Run: make build-suola-local
+   This compiles suola in a container from suola/Dockerfile, which pins the TinyGo version, and writes
+   build/js.wasm and build/wasm_exec.js.
+3. Run: make store-firefox STORE_REVISION=<fourth component of this version>
+   This stages the package tree in build/store-firefox/. It keeps the module from step 2, because that module
+   is newer than the suola source. Without step 2 it downloads the attested release module instead.
+4. Compare build/store-firefox/ with the submitted package.
 
 docs/release.md in the archive describes the build and the release process.

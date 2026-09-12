@@ -106,7 +106,10 @@
                                 <span style="display: block; margin-top: 5px; margin-bottom: 8px;" data-i18n="devTitleDataUrlsDesc">Enter JSON database URLs for the development environment, one URL per line.</span>
                             </div>
                             <textarea id="devTitleDataUrls" rows="3" placeholder="http://localhost:3000/data.json" style="width: 100%; padding: 10px; border: 2px solid var(--color-border); border-radius: 8px; font-size: 1rem; font-family: monospace; resize: vertical; box-sizing: border-box;"></textarea>
-                            <button type="button" class="btn-primary" id="saveDevUrlsBtn" style="margin-top: 5px; padding: 8px 16px; width: auto; align-self: flex-end;" data-i18n="saveDevUrlsBtn">💾 Save URLs</button>
+                            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 5px;">
+                                <datasource-permission-setting></datasource-permission-setting>
+                                <button type="button" class="btn-primary" id="saveDevUrlsBtn" style="flex: 0 0 auto; padding: 8px 16px; width: auto;" data-i18n="saveDevUrlsBtn">💾 Save URLs</button>
+                            </div>
                         </div>
                     </div>
                 </div>

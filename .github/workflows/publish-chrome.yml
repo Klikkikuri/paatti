@@ -54,4 +54,4 @@ jobs:
           REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
           PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
         run: |
-          make publish-chrome USE_RELEASE_ARTIFACTS=1 STORE_REVISION="$STORE_REVISION"
+          make publish-chrome STORE_REVISION="$STORE_REVISION"

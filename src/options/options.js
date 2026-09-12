@@ -10,6 +10,7 @@ import './components/visual-highlight-setting.js';
 import './components/master-switch-setting.js';
 import './components/title-modifier-setting.js';
 import './components/database-status-setting.js';
+import './components/datasource-permission-setting.js';
 import './components/clickbait-level-vertical.js';
 import './components/favicon-img.js';
 import './components/statistics-totals.js';
@@ -245,17 +246,25 @@ async function setupEventListeners() {
                     .map(u => u.trim())
                     .filter(u => u.length > 0);
                 
-                // Validate URLs
+                // Only http(s): a fetch needs host permission, and the permission control derives one from these.
                 for (const url of urls) {
+                    let valid = false;
                     try {
-                        new URL(url);
+                        valid = /^https?:$/.test(new URL(url).protocol);
                     } catch (e) {
+                        valid = false;
+                    }
+                    if (!valid) {
                         const errMsg = browser.i18n.getMessage('devUrlsInvalid', [url]) || `Invalid development URL: ${url}`;
                         showStatus(errMsg, true);
                         return;
                     }
                 }
                 
+                // Started inside the click, before any await: Firefox honours a permission request only then.
+                // A refusal is not an error here; the component shows what is still missing.
+                document.querySelector('datasource-permission-setting').request(urls)?.catch(() => {});
+
                 try {
                     await controller.setDevTitleDataUrls(urls);
                     showStatus(browser.i18n.getMessage('devUrlsSavedSuccess') || 'Development URLs saved!');

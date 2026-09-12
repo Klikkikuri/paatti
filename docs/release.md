@@ -99,6 +99,31 @@ hand when it changes.
 
 The workflow refuses to run on a branch. It does not change `updates.json`.
 
+### Upload by Hand
+
+When a workflow is not available, build the store packages in the dev container and upload them in the store
+dashboards:
+
+```sh
+make store-build STORE_REVISION=1
+```
+
+The command writes three files under `build/`:
+
+| File | Upload to |
+|---|---|
+| `klikkikuri-paatti-firefox.zip` | AMO Developer Hub, as the new version. Attach `source-code.zip` as the source. Paste the release notes and the text of `docs/amo-reviewer-notes.md`. |
+| `klikkikuri-paatti-chrome.zip` | Chrome Web Store developer dashboard, as the new package. |
+| `source-code.zip` | AMO, with `klikkikuri-paatti-firefox.zip`. |
+
+Check out the release tag first. The packages carry the version of `manifest.json` plus the store revision.
+A store build always includes the non-OSS assets and downloads the attested `suola` artifacts of the pinned
+tag; it does not compile `suola`.
+
+The two zip files have the same names as the output of `make package` and `make build`, which write the GitHub
+channel builds. The file on disk is the output of the make target that ran last. Run `make store-build`
+directly before an upload, and do not run another make target in between.
+
 ### Publish Again After a Rejection
 
 1. Correct the cause of the rejection. A change to the code needs a new release. A change to the store listing
@@ -135,8 +160,10 @@ When you add a key to `manifest.json` that only one browser accepts, put the key
 overlay with the value `null`. The test `tests/manifest.test.mjs` compares the merged manifests with the base.
 
 `make store-chrome` and `make store-firefox` make the store trees. They apply the same merge, then set the
-store version and remove `update_url`. Do not edit the merged manifests under `build/`. Each build writes them
-again.
+store version, remove `update_url` and remove the wildcard `*://*/*` from `optional_host_permissions`. The
+wildcard lets the GitHub build request access to a database URL on any host, and a store review flags it. They
+set `NON_OSS=1` and `USE_RELEASE_ARTIFACTS=1` themselves. Do not edit the merged manifests under `build/`. Each
+build writes them again.
 
 `make lint-webext` lints the Firefox tree with `--self-hosted`. The flag permits `update_url`, which the
 self-hosted `.xpi` needs. The store tree has no `update_url` and lints without the flag.

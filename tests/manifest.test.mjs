@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const { mergeManifest, storeManifest, buildManifest } = await import('../tools/manifest.mjs');
+const { ARBITRARY_ORIGINS } = await import('../src/options/origins.js');
 
 const base = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
 
@@ -39,6 +40,14 @@ describe('storeManifest', () => {
         assert.deepEqual(storeManifest({ version: '1.2.3' }, '1'), { version: '1.2.3.1' });
     });
 
+    test('drops the wildcard origin and keeps the named optional origins', () => {
+        for (const browser of ['chrome', 'firefox']) {
+            const store = storeManifest(buildManifest(browser), '1');
+            assert.ok(!store.optional_host_permissions.includes(ARBITRARY_ORIGINS));
+            assert.ok(store.optional_host_permissions.includes('https://www.ampparit.com/*'));
+        }
+    });
+
     test('rejects a revision that is not a number above zero, and a version with more than four parts', () => {
         for (const bad of ['x', '', '0', '01']) {
             assert.throws(() => storeManifest({ version: '1.2.3' }, bad), /not a number above zero/);
@@ -68,11 +77,13 @@ describe('the real overlays', () => {
     });
 
     test('both keep what the extension needs at runtime', () => {
+        assert.ok(base.optional_host_permissions.includes(ARBITRARY_ORIGINS));
         for (const browser of ['chrome', 'firefox']) {
             const merged = buildManifest(browser);
             assert.equal(merged.version, base.version);
             assert.deepEqual(merged.permissions, base.permissions);
             assert.deepEqual(merged.host_permissions, base.host_permissions);
+            assert.deepEqual(merged.optional_host_permissions, base.optional_host_permissions);
             assert.deepEqual(merged.web_accessible_resources, base.web_accessible_resources);
         }
     });

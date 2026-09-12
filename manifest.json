@@ -101,7 +101,7 @@
   ],
   "optional_host_permissions": [
     "https://www.ampparit.com/*",
-    "http://localhost/*"
+    "*://*/*"
   ],
   "permissions": [
     "storage",

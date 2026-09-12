@@ -220,7 +220,10 @@ the directory through `chrome://extensions` → **Developer mode** → **Load un
   `raw.githubusercontent.com/Klikkikuri/rahti/*`, which is where Paatti downloads the correction database
   from.
 - `optional_host_permissions`: Paatti asks for these only when you need them. `www.ampparit.com` is requested
-  when you switch that site on. `http://localhost/*` is requested only for local development.
+  when you switch that site on. The GitHub build also declares `*://*/*`, so that the **Request access
+  permission** button under Debug Settings can grant a database URL on any host. Paatti requests access only for
+  the URLs in your list. Firefox limits the grant to the path of each URL; Chrome grants the whole host. The
+  store build does not declare the wildcard.
 - `alarms`: Paatti schedules the database download in the background. The alarm lets the background service
   worker sleep between downloads, which saves system resources.
 - `storage`: Paatti keeps the downloaded correction database, your settings, your statistics and the site icon
@@ -341,8 +344,10 @@ make build NON_OSS=1
 ```
 
 Other targets: `make package` zips the per-browser trees, `make dist-chrome` and `make dist-firefox` stage one
-browser's tree, `make source-dist` packages the source for review, `make rebuild-suola` forces a WebAssembly
-rebuild, and `make test-wasm` runs suola's own smoke test.
+browser's tree, `make store-build` overwrites the two zips with the store packages (always with `NON_OSS=1` and
+`USE_RELEASE_ARTIFACTS=1`) and adds the source archive for a manual store upload,
+`make source-dist` packages the source for review, `make rebuild-suola` forces a WebAssembly rebuild, and
+`make test-wasm` runs suola's own smoke test.
 
 `manifest.json` is the base for both browsers; `manifest.chrome.json` and `manifest.firefox.json` remove what the
 other browser does not accept. See [Browser Manifests](docs/release.md#browser-manifests) for the merge rules.
@@ -509,9 +514,11 @@ To add support for a new site, see
    ```
 
 5. **Point the extension at it.** Set the environment to **Development**, which adds
-   `http://localhost:3000/data.json` to the database URLs. In Firefox, `localhost` is an optional permission, so
-   also open `about:addons` → **Klikkikuri Paatti** → **Permissions** and turn **Access your data for localhost**
-   on. You can enter further URLs under **Developer Settings** on the settings page.
+   `http://localhost:3000/data.json` to the database URLs. Under **Debug Settings** on the settings page, a
+   warning lists each database URL that the browser has not granted. Select **Request access permission** and
+   accept the browser prompt. When you save further URLs in the same place, Paatti asks for their permission at
+   once; if you refuse, the warning stays and **Request access permission** asks again. The button exists on the
+   GitHub and unpacked builds only.
 
 ### Architecture
 
