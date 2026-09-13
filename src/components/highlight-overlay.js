@@ -8,11 +8,11 @@
  * page's own DOM is never styled, which is why nothing in here needs `!important` — only the host does, to
  * survive the page's stylesheet.
  *
- * NOTE: unlike the badges beside it, this is NOT a custom element. Badges are injected into the page's main
- * world so the page's registry upgrades them; this module is driven from the content script's isolated world,
- * where a registration would never upgrade a node the page can see. `attachShadow` is a DOM API and works from
- * either world, so an unregistered tag name sidesteps the registry entirely. The name is still hyphenated so
- * the host is obvious in devtools.
+ * NOTE: this is NOT a custom element, and neither are the badges beside it. A content script has no registry
+ * it can use for the page -- Chromium gives the isolated world none at all -- and reaching the page's own
+ * registry would mean putting the extension's URL in the page, which in Firefox is a per-install identifier.
+ * `attachShadow` is a DOM API and works from either world, so an unregistered tag name sidesteps the registry
+ * entirely. The name is still hyphenated so the host is obvious in devtools. See docs/fingerprinting.md.
  *
  * The status strings stay English on purpose: they are debug signals, and `browser.i18n` would give this
  * module its only import, and with it a `web_accessible_resources` dependency.

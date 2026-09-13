@@ -84,6 +84,9 @@ export const BADGE_CSS = `
 /** Built on first use, and only where it can be: see `adoptBadgeStyles`. */
 let sharedSheet = null;
 
+/** Cleared the first time a realm refuses a constructable sheet, so no later badge retries it. */
+let sheetsAdoptable = true;
+
 /**
  * Put the badge styles into `shadow`.
  *
@@ -95,16 +98,21 @@ let sharedSheet = null;
  * @param {ShadowRoot} shadow
  */
 export function adoptBadgeStyles(shadow) {
-    try {
-        if (!sharedSheet) {
-            sharedSheet = new CSSStyleSheet();
-            sharedSheet.replaceSync(BADGE_CSS);
+    if (sheetsAdoptable) {
+        try {
+            if (!sharedSheet) {
+                sharedSheet = new CSSStyleSheet();
+                sharedSheet.replaceSync(BADGE_CSS);
+            }
+            shadow.adoptedStyleSheets = [sharedSheet];
+            return;
+        } catch {
+            // Firefox, from a content script. Whether a realm allows this cannot change while the
+            // realm lives, so it is asked once: a page can carry dozens of badges, and retrying would
+            // parse a sheet and throw for every one of them.
+            sheetsAdoptable = false;
+            sharedSheet = null;
         }
-        shadow.adoptedStyleSheets = [sharedSheet];
-        return;
-    } catch {
-        // Firefox, from a content script. The <style> node below is the same rules, per instance.
-        sharedSheet = null;
     }
 
     const style = document.createElement("style");
