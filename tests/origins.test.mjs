@@ -14,16 +14,25 @@ function fakeContains(covered = []) {
 }
 
 describe('originPatterns', () => {
-    test('keeps scheme, host and path plus a wildcard, without the port or the query', () => {
-        assert.deepEqual(originPatterns(['http://localhost:3000/data.json?v=2']), ['http://localhost/data.json*']);
+    test('covers the whole host, dropping the path, the port and the query', () => {
+        // Not a narrowing that was lost: a host permission ignores the path, so the pattern now says what
+        // the browser actually grants and what the missing-permission warning shows.
+        assert.deepEqual(originPatterns(['http://localhost:3000/data.json?v=2']), ['http://localhost/*']);
     });
 
-    test('deduplicates URLs that differ only by query, and keeps first-seen order', () => {
+    test('deduplicates URLs on one host that differ by path or query, and keeps first-seen order', () => {
         assert.deepEqual(originPatterns([
             'http://b.test/data.json?x=1',
             'http://a.test/data.json',
-            'http://b.test/data.json?x=2',
-        ]), ['http://b.test/data.json*', 'http://a.test/data.json*']);
+            'http://b.test/other.json?x=2',
+        ]), ['http://b.test/*', 'http://a.test/*']);
+    });
+
+    test('separates hosts that differ only by subdomain', () => {
+        assert.deepEqual(originPatterns([
+            'https://raw.githubusercontent.com/o/r/data.json',
+            'https://githubusercontent.com/o/r/data.json',
+        ]), ['https://raw.githubusercontent.com/*', 'https://githubusercontent.com/*']);
     });
 
     test('skips what is not an http(s) URL', () => {
@@ -34,15 +43,15 @@ describe('originPatterns', () => {
 
 describe('missingOrigins', () => {
     test('asks per pattern and drops a URL the browser already covers', async () => {
-        const github = 'https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json*';
+        const github = 'https://raw.githubusercontent.com/*';
         const { asked, contains } = fakeContains([github]);
         const missing = await missingOrigins([
             'https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json',
             'http://localhost:3000/data.json',
         ], contains);
 
-        assert.deepEqual(asked, [github, 'http://localhost/data.json*']);
-        assert.deepEqual(missing, ['http://localhost/data.json*']);
+        assert.deepEqual(asked, [github, 'http://localhost/*']);
+        assert.deepEqual(missing, ['http://localhost/*']);
     });
 
     test('asks nothing for an empty list', async () => {
