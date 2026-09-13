@@ -226,7 +226,8 @@ const OVERLAY_CSS = `
  * @returns {{
  *   setStatusVisible: (visible: boolean) => void,
  *   setFeedback: (elements: Iterable<Element>, on: boolean) => void,
- *   clearFeedback: () => void,
+ *   setHover: (elements: Iterable<Element>, on: boolean) => void,
+ *   clearHover: () => void,
  *   refresh: () => void
  * }}
  */
@@ -251,12 +252,25 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
     const boxes = new Map();
     /** @type {Set<Element>} The article an open feedback card reports on. Never more than one in practice. */
     const feedback = new Set();
+    /** @type {Set<Element>} The articles the popup's <feedback-item> rows are hovering. */
+    const hovered = new Set();
+    /** @type {Element|null} The element whose pill is pressed, kept drawn until the press ends. */
+    let pressed = null;
 
     let statusVisible = false;
     let frame = 0;
     let listening = false;
 
     const resizeObserver = new ResizeObserver(() => scheduleRefresh());
+
+    // The click follows pointerup in the same task and the redraw waits for a frame, so the click lands first.
+    for (const type of ["pointerup", "pointercancel"]) {
+        window.addEventListener(type, () => {
+            if (!pressed) return;
+            pressed = null;
+            scheduleRefresh();
+        }, { capture: true });
+    }
 
     function scheduleRefresh() {
         if (frame) return;
@@ -282,8 +296,8 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
     }
 
     /**
-     * Every element that should carry a box right now. Hover survives with status highlighting off, so the two
-     * sources are independent.
+     * Every element that should carry a box right now. The card, the popup's hover and a pressed pill each
+     * survive with status highlighting off, so every source is independent.
      */
     function collectTargets() {
         const targets = new Set();
@@ -292,14 +306,17 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
                 targets.add(element);
             }
         }
-        for (const element of feedback) {
-            // A page that recycles its DOM would otherwise leave us holding detached nodes for the tab's life.
-            if (element.isConnected) {
-                targets.add(element);
-            } else {
-                feedback.delete(element);
+        for (const source of [feedback, hovered]) {
+            for (const element of source) {
+                // A page that recycles its DOM would otherwise leave us holding detached nodes for the tab's life.
+                if (element.isConnected) {
+                    targets.add(element);
+                } else {
+                    source.delete(element);
+                }
             }
         }
+        if (pressed?.isConnected) targets.add(pressed);
         return targets;
     }
 
@@ -328,6 +345,10 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
 
         if (onLabelActivate) {
             label.title = LABEL_ACTION;
+            // This press closes the popup, and its disconnect hides the status boxes before the click arrives.
+            label.addEventListener("pointerdown", () => {
+                if (!label.disabled) pressed = element;
+            });
             label.addEventListener("click", (event) => {
                 // The box sits on top of a link. Without both of these the click would navigate, and the
                 // page's own document listeners would see a click they cannot explain.
@@ -400,10 +421,21 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
             // can arrive after the status, and a page that recycles a headline keeps the box it has.
             label.disabled = !onLabelActivate || (canActivate ? !canActivate(element) : false);
 
-            box.classList.toggle("feedback", feedback.has(element));
+            box.classList.toggle("feedback", feedback.has(element) || hovered.has(element));
         }
 
         setListening(targets.size > 0);
+    }
+
+    function toggle(source, elements, on) {
+        for (const element of elements) {
+            if (on) {
+                source.add(element);
+            } else {
+                source.delete(element);
+            }
+        }
+        scheduleRefresh();
     }
 
     return {
@@ -415,25 +447,29 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
 
         /**
          * The feedback highlight: a pulsing ring, plus the pill's icon held on its feedback face for as long
-         * as feedback is being given. Both the in-page card and the popup's <feedback-item> raise it.
+         * as feedback is being given. Raised by the in-page card.
          *
          * @param {Iterable<Element>} elements - The articles the card reports on.
          * @param {boolean} on
          */
         setFeedback(elements, on) {
-            for (const element of elements) {
-                if (on) {
-                    feedback.add(element);
-                } else {
-                    feedback.delete(element);
-                }
-            }
-            scheduleRefresh();
+            toggle(feedback, elements, on);
         },
 
-        /** Drop every feedback highlight at once, for when the card that raised one goes without saying so. */
-        clearFeedback() {
-            feedback.clear();
+        /**
+         * The same highlight, raised by the popup's <feedback-item> rows. Kept apart from the card's, so a
+         * closing popup cannot clear the highlight of a card that is still up.
+         *
+         * @param {Iterable<Element>} elements
+         * @param {boolean} on
+         */
+        setHover(elements, on) {
+            toggle(hovered, elements, on);
+        },
+
+        /** Drop every hover highlight at once, for when the popup that raised them goes without saying so. */
+        clearHover() {
+            hovered.clear();
             scheduleRefresh();
         },
 

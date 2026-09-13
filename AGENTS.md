@@ -105,8 +105,8 @@ utilities (`.push-button`, `.raised`, `.hidden`, `.visually-hidden`) do not cros
 properties do; `<label for>` does not cross it either, and `site-toggle` points a label at a `toggle-button`; and
 `popup.js`, `options.js` and `localizeDocument()` reach into component subtrees on purpose. Do not migrate them.
 
-**`src/components/highlight-overlay.js` — shadow DOM, isolated world.** Debug outlines and the popup's hover
-highlight. No shadow root can enclose an element the page owns, so it is an overlay rather than a wrapper: one host
+**`src/components/highlight-overlay.js` — shadow DOM, isolated world.** Debug outlines, the popup's hover
+highlight and the feedback card's highlight. No shadow root can enclose an element the page owns, so it is an overlay rather than a wrapper: one host
 under `<html>` carrying a box per highlighted element, placed over it in document coordinates. Nothing inside the
 shadow root needs `!important`; only the host does, inline, to survive the page's stylesheet.
 

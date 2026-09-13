@@ -253,8 +253,8 @@ function deepActiveElement() {
  * @param {() => Promise<string>} deps.getDatabaseUpdated
  * @param {(...args: unknown[]) => void} deps.log
  * @param {(element: Element, on: boolean) => void} [deps.setHighlighted] - Marks the article the card reports
- *   on, so it stands out for as long as the card is up. The content script points this at the same overlay
- *   call the popup's <feedback-item> reaches over a message when it is hovered.
+ *   on, so it stands out for as long as the card is up. The content script points this at the overlay's card
+ *   highlight, which is kept apart from the popup's hover so a closing popup does not clear it.
  * @returns {{ open: (target: Element, activator?: Element) => void, close: () => void }}
  */
 export function createFeedbackDialog({ browser, getDatabaseUpdated, log, setHighlighted = () => {} }) {
