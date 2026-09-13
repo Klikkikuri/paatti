@@ -5,9 +5,10 @@ import { installDom } from './helpers/dom.mjs';
 import { createFakeBrowser } from './helpers/fake-browser.mjs';
 
 const GITHUB = 'https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json';
-const GITHUB_PATTERN = `${GITHUB}*`;
+// The pattern covers the host, not the URL: a host permission ignores the path. See src/options/origins.js.
+const GITHUB_PATTERN = 'https://raw.githubusercontent.com/*';
 const LOCALHOST = 'http://localhost:3000/data.json';
-const LOCALHOST_PATTERN = 'http://localhost/data.json*';
+const LOCALHOST_PATTERN = 'http://localhost/*';
 const WILDCARD_MANIFEST = { optional_host_permissions: ['https://www.ampparit.com/*', '*://*/*'] };
 
 const dom = installDom();
@@ -216,7 +217,7 @@ describe('request(urls), for the save button', () => {
         await settled();
 
         assert.equal(granted, true);
-        assert.deepEqual(requests, [['http://other.test/db.json*']]);
+        assert.deepEqual(requests, [['http://other.test/*']]);
         assert.deepEqual(r.seen, []);
         r.stop();
     });

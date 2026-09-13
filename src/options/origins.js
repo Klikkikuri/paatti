@@ -12,9 +12,14 @@
 export const ARBITRARY_ORIGINS = "*://*/*";
 
 /**
- * The match pattern that covers `url`: scheme, host and path, with a trailing wildcard so a query string
- * still matches. No port: a pattern without one matches every port in both browsers. The path narrows the
- * grant in Firefox only; Chrome ignores the path of a host permission and grants the whole host.
+ * The match pattern that covers `url`: scheme and host, granted whole. No port either, since a pattern
+ * without one matches every port.
+ *
+ * The path is left out because a host permission does not honour one. Chrome's match-pattern reference
+ * says it is "required but ignored", and this extension demonstrates it: the manifest asks for
+ * `https://raw.githubusercontent.com/Klikkikuri/rahti/*`, and `permissions.contains` answers true for any
+ * other path on that host. Carrying the path over would ask for one thing, be granted a second, and show
+ * the user a third -- and it is the third that reaches them, in the warning listing what is not granted.
  *
  * @param {string} url
  * @returns {string|null} Null for a string that is not an http(s) URL.
@@ -28,7 +33,7 @@ function originPattern(url) {
     }
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
 
-    return `${parsed.protocol}//${parsed.hostname}${parsed.pathname}*`;
+    return `${parsed.protocol}//${parsed.hostname}/*`;
 }
 
 /**
