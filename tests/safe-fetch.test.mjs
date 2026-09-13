@@ -31,6 +31,12 @@ const BLOCKED = [
     ['http://[64:ff9b::1.2.3.4]/', 'NAT64'],
     ['http://[2001:db8::1]/', 'documentation, v6'],
     ['http://192.0.2.1/', 'documentation'],
+    ['http://192.0.0.1/', 'IETF protocol assignments'],
+    ['http://192.88.99.1/', '6to4 relay anycast'],
+    ['http://198.18.0.1/', 'benchmarking'],
+    ['http://198.19.255.255/', 'benchmarking, top of the range'],
+    ['http://[2002:c0a8:101::]/', '6to4 carrying a private IPv4 address'],
+    ['http://[2001:0:1:2:3:4:5:6]/', 'Teredo'],
     ['http://localhost/', 'localhost'],
     ['http://LOCALHOST/', 'localhost, upper case'],
     ['http://localhost./', 'localhost, fully qualified'],
@@ -59,6 +65,10 @@ const ALLOWED = [
     'https://126.255.255.255/',
     'https://128.0.0.1/',
     'https://223.255.255.255/',
+    'https://198.17.255.255/',
+    'https://198.20.0.1/',
+    'https://192.0.1.1/',
+    'https://[2003::1]/',
     'https://[2606:4700::1]/',
     'https://[fbff::1]/',
     'https://[fec0::1]/',
@@ -129,16 +139,24 @@ describe('safeFetch', () => {
         }
     });
 
-    test('lets the caller add to the init but never relax the redirect', async () => {
+    test('lets the caller add to the init but never relax what this function owns', async () => {
         const { calls, restore } = recordFetch();
         try {
             await safeFetch('https://example.test/', {
-                init: { method: 'POST', redirect: 'follow', body: 'x' }
+                init: {
+                    method: 'POST',
+                    body: 'x',
+                    redirect: 'follow',
+                    credentials: 'include',
+                    referrerPolicy: 'unsafe-url'
+                }
             });
 
-            assert.equal(calls[0].init.method, 'POST');
-            assert.equal(calls[0].init.body, 'x');
+            assert.equal(calls[0].init.method, 'POST', 'the caller could not add a method');
+            assert.equal(calls[0].init.body, 'x', 'the caller could not add a body');
             assert.equal(calls[0].init.redirect, 'error', 'the caller relaxed the redirect mode');
+            assert.equal(calls[0].init.credentials, 'omit', 'the caller sent the user credentials');
+            assert.equal(calls[0].init.referrerPolicy, 'no-referrer', 'the caller leaked the referrer');
         } finally {
             restore();
         }

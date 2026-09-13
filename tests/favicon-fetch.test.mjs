@@ -167,19 +167,35 @@ describe('storeFavicon rate limit', () => {
     test('rotating subdomains do not defeat it', async () => {
         // The TTL and the in-flight guard both key on the domain, which a page varies freely by serving
         // the content script from a fresh subdomain. This is the guard that does not.
-        const { MAX_FAVICON_DOMAINS, storeFavicon, calls } = await scenario({
+        const { MAX_FAVICON_FETCHES, storeFavicon, calls } = await scenario({
             response: () => imageResponse()
         });
 
-        for (let index = 0; index < MAX_FAVICON_DOMAINS + 10; index++) {
+        for (let index = 0; index < MAX_FAVICON_FETCHES + 10; index++) {
             const origin = `https://sub${index}.example.test`;
             await storeFavicon(`${origin}/article`, `${origin}/favicon.ico`);
         }
 
-        assert.equal(calls.length, MAX_FAVICON_DOMAINS, 'more domains were fetched than the window allows');
+        assert.equal(calls.length, MAX_FAVICON_FETCHES, 'more was fetched than the window allows');
     });
 
-    test('a domain already inside the window is not blocked by it', async () => {
+    test('one domain retrying a failing URL does not defeat it either', async () => {
+        // A refused or failed fetch caches nothing, so the TTL never closes behind it. Without counting
+        // every attempt, a single page naming a fresh URL on each reload would be waved through for ever
+        // on the strength of having been seen once.
+        const { MAX_FAVICON_FETCHES, storeFavicon, calls, stored } = await scenario({
+            response: () => { throw new Error('network down'); }
+        });
+
+        for (let index = 0; index < MAX_FAVICON_FETCHES + 10; index++) {
+            await storeFavicon('https://www.hs.fi/article', `https://tracker.test/${index}.ico`);
+        }
+
+        assert.deepEqual(await stored(), {}, 'a failed fetch was cached');
+        assert.equal(calls.length, MAX_FAVICON_FETCHES, 'one domain retried past the window');
+    });
+
+    test('a second fetch inside the window is allowed while under the cap', async () => {
         const { storeFavicon, calls } = await scenario({ response: () => imageResponse() });
 
         await storeFavicon('https://www.hs.fi/a', 'https://www.hs.fi/favicon.ico');

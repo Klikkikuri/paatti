@@ -21,6 +21,9 @@ import { getFaviconKey, makeFaviconEntry, isFaviconExpired } from "./faviconCach
  * The storage key is the exception, and comes from the sender rather than the message: a page may
  * write the favicon shown for its own host, and for no other.
  *
+ * How often a page may steer a request is bounded by the rate limit alone. The TTL and the in-flight
+ * set do not help there: neither survives a refused fetch, which writes nothing.
+ *
  * Tier one is `_favicon/` in the options page; this exists because Firefox has no such permission.
  */
 
@@ -30,30 +33,30 @@ const log = getLogger("favicon");
 export const MAX_FAVICON_BYTES = 64 * 1024;
 
 /**
- * How many distinct domains this worker fetches for inside one window. Distinct domains are what a
- * page can still grow -- the TTL and the in-flight guard already stop one domain being fetched twice
- * -- and the count resets with the worker, as every other guard here does.
+ * How many fetches this worker issues inside one window, counted across every domain.
+ *
+ * Every attempt counts, a failed one included. Nothing is cached when a fetch throws or the response
+ * is refused, so a limit that admitted a domain once and then waved it through would bound nothing:
+ * a page that reloads with a different URL each time never needs a second domain. A legitimate fetch
+ * is rare next to this -- one per site per TTL, which is thirty days.
  */
-export const MAX_FAVICON_DOMAINS = 16;
+export const MAX_FAVICON_FETCHES = 16;
 const RATE_WINDOW_MS = 10 * 60 * 1000;
 
 /** Domains with a fetch in flight in this worker lifecycle. */
 const pending = new Set();
 
-/** When each domain was last fetched, kept only for the length of the window. */
-const fetchedAt = new Map();
+/** When each fetch inside the current window was issued, oldest first. */
+const issuedAt = [];
 
-/** Whether a fetch for `domain` fits inside the window, counting it when it does. */
-function withinRateLimit(domain) {
+/** Whether another fetch fits inside the window, counting it when it does. */
+function withinRateLimit() {
     const cutoff = Date.now() - RATE_WINDOW_MS;
-    for (const [seen, at] of fetchedAt) {
-        if (at < cutoff) fetchedAt.delete(seen);
-    }
+    while (issuedAt.length > 0 && issuedAt[0] < cutoff) issuedAt.shift();
 
-    if (fetchedAt.has(domain)) return true;
-    if (fetchedAt.size >= MAX_FAVICON_DOMAINS) return false;
+    if (issuedAt.length >= MAX_FAVICON_FETCHES) return false;
 
-    fetchedAt.set(domain, Date.now());
+    issuedAt.push(Date.now());
     return true;
 }
 
@@ -112,8 +115,8 @@ export async function storeFavicon(senderUrl, faviconUrl) {
         const stored = await browser.storage.local.get(getFaviconKey(domain));
         if (!isFaviconExpired(stored[getFaviconKey(domain)])) return;
 
-        if (!withinRateLimit(domain)) {
-            log(`Favicon fetch for ${domain} skipped: over ${MAX_FAVICON_DOMAINS} domains in the window.`);
+        if (!withinRateLimit()) {
+            log(`Favicon fetch for ${domain} skipped: over ${MAX_FAVICON_FETCHES} fetches in the window.`);
             return;
         }
 

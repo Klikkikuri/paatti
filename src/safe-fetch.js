@@ -91,8 +91,11 @@ const BLOCKED_V4 = [
     ["127.0.0.0", 8],       // loopback
     ["169.254.0.0", 16],    // link-local
     ["172.16.0.0", 12],     // private
+    ["192.0.0.0", 24],      // IETF protocol assignments
     ["192.0.2.0", 24],      // documentation
+    ["192.88.99.0", 24],    // 6to4 relay anycast
     ["192.168.0.0", 16],    // private
+    ["198.18.0.0", 15],     // benchmarking
     ["198.51.100.0", 24],   // documentation
     ["203.0.113.0", 24],    // documentation
     ["224.0.0.0", 4],       // multicast
@@ -104,7 +107,9 @@ const BLOCKED_V6 = [
     ["::1", 128],           // loopback
     ["64:ff9b::", 96],      // NAT64, which reaches an IPv4 address through a v6 spelling
     ["100::", 64],          // discard-only
+    ["2001::", 32],         // Teredo, which carries an IPv4 address
     ["2001:db8::", 32],     // documentation
+    ["2002::", 16],         // 6to4, which carries an IPv4 address
     ["fc00::", 7],          // unique local
     ["fe80::", 10],         // link-local
     ["ff00::", 8],          // multicast
@@ -157,12 +162,14 @@ export function blockReason(url) {
 /**
  * Fetch `url`, refusing it outright unless `blockReason` passes it.
  *
- * `redirect: "error"` is not negotiable and overrides the caller: filtering the URL written is not
- * filtering the URL reached, and a 302 into `192.168.0.0/16` would otherwise be followed.
+ * The redirect mode, the credentials, the referrer policy and the timeout all overrule the caller's
+ * init rather than defaulting under it. `redirect: "error"` because filtering the URL written is not
+ * filtering the URL reached, and a 302 into `192.168.0.0/16` would otherwise be followed; the other
+ * two because a URL a page chose must not be sent the user's cookies or told where they came from.
  *
  * @param {string} url
  * @param {object} [options]
- * @param {RequestInit} [options.init] - Laid over the defaults below.
+ * @param {RequestInit} [options.init] - Laid *under* the four fields above, which it cannot relax.
  * @param {number} [options.timeoutMs]
  * @returns {Promise<Response>}
  */
@@ -171,9 +178,9 @@ export async function safeFetch(url, { init = {}, timeoutMs = DEFAULT_TIMEOUT_MS
     if (reason) throw new Error(`Refused to fetch: ${reason}`);
 
     return fetch(url, {
+        ...init,
         credentials: "omit",
         referrerPolicy: "no-referrer",
-        ...init,
         redirect: "error",
         signal: AbortSignal.timeout(timeoutMs)
     });
