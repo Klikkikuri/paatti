@@ -27,8 +27,10 @@ const svgMarkup = `
 `;
 // END GENERATED ICON
 
-export class KlikkikuriVideoBadge extends createBadgeClass(svgMarkup, "Video content") {}
+/** The icon, for a caller that builds a badge without the custom element. */
+export { svgMarkup };
 
-if (typeof window !== "undefined" && window.customElements && !window.customElements.get("klikkikuri-video-badge")) {
-    window.customElements.define("klikkikuri-video-badge", KlikkikuriVideoBadge);
-}
+/** Fallback aria-label, when neither `label` nor `tooltip` is set. */
+export const defaultLabel = "Video content";
+
+export class KlikkikuriVideoBadge extends createBadgeClass(svgMarkup, defaultLabel) {}

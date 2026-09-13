@@ -1,15 +1,22 @@
 import browser from '../../browser-api.js';
 import { controller } from '../../controller.js';
 import { onConfigValue } from '../../config.js';
-import '../../components/klikkikuri-ai-badge.js';
-import '../../components/klikkikuri-video-badge.js';
-import '../../components/klikkikuri-converted-badge.js';
+import { KlikkikuriAiBadge } from '../../components/klikkikuri-ai-badge.js';
+import { KlikkikuriVideoBadge } from '../../components/klikkikuri-video-badge.js';
+import { KlikkikuriConvertedBadge } from '../../components/klikkikuri-converted-badge.js';
 import { defineComponent } from './component-utils.js';
 import { createToggleSetting } from './toggle-setting.js';
 
+// The badges register here rather than registering themselves on import. A content script must be
+// able to read a badge's markup without registering it: Firefox gives the isolated world a registry,
+// and an upgrade there would fight the element the content script builds by hand. See badge-base.js.
+defineComponent('klikkikuri-ai-badge', KlikkikuriAiBadge);
+defineComponent('klikkikuri-video-badge', KlikkikuriVideoBadge);
+defineComponent('klikkikuri-converted-badge', KlikkikuriConvertedBadge);
+
 /**
  * Per-modifier metadata used to populate labels, descriptions, and badge previews.
- * When registering a new modifier, add an entry here and ensure the corresponding badge Web Component is imported/registered (so `badgeTag` is defined).
+ * When registering a new modifier, add an entry here and register the matching badge above, so `badgeTag` is defined.
  *
  * @type {Record<string, {labelKey: string, labelFallback: string, titleKey: string, titleFallback: string, descKey: string, descFallback: string, badgeTag: string}>}
  */

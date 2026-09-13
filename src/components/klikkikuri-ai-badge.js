@@ -35,8 +35,10 @@ const svgMarkup = `
 `;
 // END GENERATED ICON
 
-export class KlikkikuriAiBadge extends createBadgeClass(svgMarkup, "AI content") {}
+/** The icon, for a caller that builds a badge without the custom element. */
+export { svgMarkup };
 
-if (typeof window !== "undefined" && window.customElements && !window.customElements.get("klikkikuri-ai-badge")) {
-    window.customElements.define("klikkikuri-ai-badge", KlikkikuriAiBadge);
-}
+/** Fallback aria-label, when neither `label` nor `tooltip` is set. */
+export const defaultLabel = "AI content";
+
+export class KlikkikuriAiBadge extends createBadgeClass(svgMarkup, defaultLabel) {}

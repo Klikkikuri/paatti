@@ -20,18 +20,8 @@
  * it on hover cannot reflow the headline it sits in.
  */
 
-/**
- * The badge stylesheet, parsed once and adopted by every badge's shadow root
- * rather than injected as a `<style>` element per instance.
- *
- * Constructable stylesheets need Chrome 73 / Firefox 101; the manifest already
- * requires far newer than that.
- *
- * @type {CSSStyleSheet}
- */
-export const badgeStyleSheet = new CSSStyleSheet();
-
-badgeStyleSheet.replaceSync(`
+/** The badge styles, as text, so a `<style>` node can carry them where a constructable sheet cannot. */
+export const BADGE_CSS = `
 :host {
     /* No colour declaration here on purpose: inherit it from the headline. */
     display: inline-flex !important;
@@ -89,4 +79,35 @@ badgeStyleSheet.replaceSync(`
     font-weight: 800;
     font-size: 11px;
 }
-`);
+`;
+
+/** Built on first use, and only where it can be: see `adoptBadgeStyles`. */
+let sharedSheet = null;
+
+/**
+ * Put the badge styles into `shadow`.
+ *
+ * One constructable sheet parsed once and shared by every badge is what a news page wants, since it
+ * can carry dozens. A content script cannot have that in Firefox: the sheet belongs to the page's
+ * realm and assigning one across the Xray boundary throws, so a `<style>` node carries the same text
+ * there. Chromium takes the shared sheet in either world.
+ *
+ * @param {ShadowRoot} shadow
+ */
+export function adoptBadgeStyles(shadow) {
+    try {
+        if (!sharedSheet) {
+            sharedSheet = new CSSStyleSheet();
+            sharedSheet.replaceSync(BADGE_CSS);
+        }
+        shadow.adoptedStyleSheets = [sharedSheet];
+        return;
+    } catch {
+        // Firefox, from a content script. The <style> node below is the same rules, per instance.
+        sharedSheet = null;
+    }
+
+    const style = document.createElement("style");
+    style.textContent = BADGE_CSS;
+    shadow.appendChild(style);
+}
