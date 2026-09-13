@@ -21,7 +21,6 @@ let hrefSign;
 
     const { createHighlightOverlay } = await import(browser.runtime.getURL("src/components/highlight-overlay.js"));
     const { createFeedbackDialog } = await import(browser.runtime.getURL("src/components/feedback-dialog.js"));
-    const { getConfig } = await import(browser.runtime.getURL("src/config.js"));
 
     const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
     const { applyModifiers, LABEL_CONVERTED } = await import(browser.runtime.getURL("src/modifiers.js"));
@@ -55,15 +54,6 @@ let hrefSign;
     const feedbackDialog = createFeedbackDialog({
         browser,
         log,
-        getFeedbackServerUrl: async () => {
-            try {
-                const config = await getConfig();
-                if (config?.feedbackServerUrl) return config.feedbackServerUrl;
-            } catch (err) {
-                log("Error loading config for feedback server URL:", err);
-            }
-            return "https://api.klikkikuri.fi/v1/feedback";
-        },
         getDatabaseUpdated: async () => {
             const status = await model.read.getDatabaseStatus();
             return status.lastDatabaseUpdate ? new Date(status.lastDatabaseUpdate).toISOString() : "Unknown";
@@ -108,9 +98,10 @@ let hrefSign;
     };
 
     // Dispatch favicon URL to background for caching. Non-blocking, non-fatal.
+    // No domain travels with it: the worker takes that from the sender, so a page cannot name the key
+    // its favicon is written under.
     browser.runtime.sendMessage({
         action: "storeFavicon",
-        domain: window.location.hostname,
         url: extractFaviconUrl()
     }).catch((err) => {
         log("storeFavicon message failed (non-fatal):", err);

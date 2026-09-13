@@ -16,7 +16,7 @@
  * shadow root adopts alongside theme.css.
  */
 
-import { buildFeedbackPayload, buildFeedbackRequest, clickbaitBadgeIndex } from "../feedback.js";
+import { buildFeedbackPayload, clickbaitBadgeIndex } from "../feedback.js";
 
 /**
  * Inline on the host, all `!important`: an inline important declaration outranks any page author rule. The
@@ -250,7 +250,6 @@ function deepActiveElement() {
  *
  * @param {object} deps
  * @param {typeof globalThis.browser} deps.browser - Extension namespace, resolved by the content script.
- * @param {() => Promise<string>} deps.getFeedbackServerUrl
  * @param {() => Promise<string>} deps.getDatabaseUpdated
  * @param {(...args: unknown[]) => void} deps.log
  * @param {(element: Element, on: boolean) => void} [deps.setHighlighted] - Marks the article the card reports
@@ -258,7 +257,7 @@ function deepActiveElement() {
  *   call the popup's <feedback-item> reaches over a message when it is hovered.
  * @returns {{ open: (target: Element, activator?: Element) => void, close: () => void }}
  */
-export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabaseUpdated, log, setHighlighted = () => {} }) {
+export function createFeedbackDialog({ browser, getDatabaseUpdated, log, setHighlighted = () => {} }) {
     const host = document.createElement("klikkikuri-feedback-dialog");
     // Manual, not auto: the card keeps its own Escape and outside-click handling rather than taking the
     // light-dismiss behaviour, which would also tie it to the page's own popover stack.
@@ -475,10 +474,10 @@ export function createFeedbackDialog({ browser, getFeedbackServerUrl, getDatabas
             return false;
         }
 
-        // Posted by the worker, not here, so this and the popup's list share one network path.
-        const { url, init } = buildFeedbackRequest(await getFeedbackServerUrl(), payload);
+        // Posted by the worker, not here: it owns the endpoint as well as the network path this and the
+        // popup's list share.
         try {
-            const result = await browser.runtime.sendMessage({ action: "submitFeedback", url, init });
+            const result = await browser.runtime.sendMessage({ action: "submitFeedback", payload });
             return result?.success === true;
         } catch (err) {
             log("Failed to submit feedback:", err);

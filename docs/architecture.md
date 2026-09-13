@@ -72,8 +72,8 @@ classDiagram
         +alarms
         +initSuola()
         +hashUrls(urls)
-        +submitFeedback(url, init)
-        +storeFavicon(domain, url)
+        +submitFeedback(payload)
+        +storeFavicon(url)
     }
     class ContentScript {
         +MutationObserver
@@ -83,7 +83,7 @@ classDiagram
     }
     class FeedbackDialog {
         +open(entry)
-        +buildFeedbackRequest()
+        +buildFeedbackPayload()
     }
     class StatsModule {
         +buildPageSnapshot()

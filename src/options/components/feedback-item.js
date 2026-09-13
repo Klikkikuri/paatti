@@ -1,8 +1,7 @@
 import browser from '../../browser-api.js';
 import { getLogger } from '../../utils.js';
-import { getConfig } from '../../config.js';
 import { model } from '../../model.js';
-import { buildFeedbackPayload, buildFeedbackRequest, clickbaitBadgeIndex } from '../../feedback.js';
+import { buildFeedbackPayload, clickbaitBadgeIndex } from '../../feedback.js';
 import { adoptComponentStyleSheet, defineComponent } from './component-utils.js';
 
 // Not co-located like the other components' sheets: the in-page dialog adopts this same file into its shadow
@@ -181,16 +180,6 @@ class FeedbackItem extends HTMLElement {
         const feedbackItemEl = this.querySelector(".feedback-card");
 
         const submitFeedback = async (type, comment = "") => {
-            let feedbackServerUrl = "https://api.klikkikuri.fi/v1/feedback";
-            try {
-                const config = await getConfig();
-                if (config && config.feedbackServerUrl) {
-                    feedbackServerUrl = config.feedbackServerUrl;
-                }
-            } catch (err) {
-                log("Error loading config for feedback server URL:", err);
-            }
-
             const dbStatus = await model.read.getDatabaseStatus();
 
             const payload = buildFeedbackPayload({
@@ -209,10 +198,10 @@ class FeedbackItem extends HTMLElement {
                 return false;
             }
 
-            // Posted by the worker, not here, so this and the in-page dialog share one network path.
-            const { url, init } = buildFeedbackRequest(feedbackServerUrl, payload);
+            // Posted by the worker, not here: it owns the endpoint as well as the network path this and
+            // the in-page dialog share.
             try {
-                const result = await browser.runtime.sendMessage({ action: "submitFeedback", url, init });
+                const result = await browser.runtime.sendMessage({ action: "submitFeedback", payload });
                 return result?.success === true;
             } catch (err) {
                 log("Failed to submit feedback:", err);
