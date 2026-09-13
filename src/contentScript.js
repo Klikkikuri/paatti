@@ -57,7 +57,7 @@ let hrefSign;
         setHighlighted: (element, on) => highlightOverlay.setFeedback([element], on)
     });
 
-    // Draws the debug outlines and the popup's hover highlight, in a shadow root of its own.
+    // Draws the debug outlines, the popup's hover highlight and the card's highlight, in a shadow root of its own.
     const highlightOverlay = createHighlightOverlay({
         canActivate: (element) => Boolean(convertedTitleOf(element)),
         onLabelActivate: (element, label) => feedbackDialog.open(element, label)
@@ -180,7 +180,7 @@ let hrefSign;
                 updateStatusHighlighting();
 
                 // A popup that closes mid-hover never sends its mouseleave, so drop what it raised.
-                highlightOverlay.clearFeedback();
+                highlightOverlay.clearHover();
             });
         }
     });
@@ -621,11 +621,11 @@ let hrefSign;
                 return true;
             }
             case "highlightElement": {
-                highlightOverlay.setFeedback(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`), true);
+                highlightOverlay.setHover(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`), true);
                 break;
             }
             case "unhighlightElement": {
-                highlightOverlay.setFeedback(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`), false);
+                highlightOverlay.setHover(document.querySelectorAll(`[data-klikkikuri-highlight-id="${message.highlightId}"]`), false);
                 break;
             }
             default:
