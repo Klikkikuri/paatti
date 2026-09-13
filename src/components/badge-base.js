@@ -1,6 +1,6 @@
 "use strict";
 
-import { badgeStyleSheet } from "./badge-style.js";
+import { adoptBadgeStyles } from "./badge-style.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -36,22 +36,154 @@ function parseBadgeSvg(markup) {
     return document.importNode(root, true);
 }
 
+/** Parsed once per markup string: a page can carry dozens of badges, all cloning the same icon. */
+const parsedIcons = new Map();
+
+function iconFor(svgMarkup) {
+    let icon = parsedIcons.get(svgMarkup);
+    if (!icon) {
+        icon = parseBadgeSvg(svgMarkup);
+        parsedIcons.set(svgMarkup, icon);
+    }
+    return icon;
+}
+
+/** Give `element` its shadow root: the shared styles and a clone of the icon. Idempotent. */
+function dressBadge(element, svgMarkup) {
+    if (element.shadowRoot) return;
+
+    const shadow = element.attachShadow({ mode: "open" });
+    adoptBadgeStyles(shadow);
+    shadow.appendChild(iconFor(svgMarkup).cloneNode(true));
+}
+
 /**
- * Factory that creates a badge Web Component class sharing common badge behaviour.
- * Each badge only needs to supply its own SVG markup and a fallback label string;
- * the styling comes from the shared stylesheet in badge-style.js.
+ * Sync a badge's labelling and its role from its attributes.
  *
- * The returned class handles:
- *  - Shadow root attachment, stylesheet adoption and icon cloning
- *  - `label` / `tooltip` / `action` attribute observation
- *  - SVG aria-label and <title> synchronisation
- *  - Forcing display:inline-flex via inline style so host-page stylesheets
- *    (which take precedence over shadow-internal :host rules) cannot hide the badge
+ * @param {Element} element
+ * @param {string} defaultLabel - Fallback aria-label when no attribute is set.
+ */
+function updateBadgeLabels(element, defaultLabel) {
+    const svg = element.shadowRoot?.querySelector("svg");
+    if (!svg) return;
+
+    const label = element.getAttribute("label") || element.getAttribute("tooltip") || defaultLabel;
+    const tooltip = element.getAttribute("tooltip") || label;
+    const action = element.getAttribute("action");
+
+    svg.setAttribute("aria-label", label);
+
+    let titleElement = svg.querySelector("title");
+    if (tooltip) {
+        if (!titleElement) {
+            titleElement = document.createElementNS(SVG_NS, "title");
+            svg.prepend(titleElement);
+        }
+        titleElement.textContent = tooltip;
+    } else if (titleElement) {
+        titleElement.remove();
+    }
+
+    // An action badge is a control rather than a picture, so it is announced and reached as one.
+    // The icon is hidden from the accessibility tree while it is: the button carries the name, and
+    // an image with a name of its own inside it would be read out a second time.
+    if (action) {
+        element.setAttribute("role", "button");
+        element.setAttribute("tabindex", "0");
+        element.setAttribute("aria-label", action);
+        svg.setAttribute("aria-hidden", "true");
+    } else {
+        element.removeAttribute("role");
+        element.removeAttribute("tabindex");
+        element.removeAttribute("aria-label");
+        svg.removeAttribute("aria-hidden");
+    }
+}
+
+/**
+ * Keyboard activation, routed through `click()` so the pointer and the keyboard arrive at the one
+ * listener the badge's owner registered.
+ *
+ * A button's two keys do not behave alike, and these follow the native contract: Enter acts on the
+ * way down, Space on the way up. Acting on every Space keydown would activate once per repeat while
+ * the key is held. The keydown is still swallowed on those repeats, or the page scrolls under a held
+ * key -- and Enter's default is swallowed too, or it submits a form the badge happens to sit in.
+ *
+ * @param {Element} element
+ * @returns {{onKeydown: (event: KeyboardEvent) => void, onKeyup: (event: KeyboardEvent) => void}}
+ */
+function badgeKeyHandlers(element) {
+    return {
+        onKeydown: (event) => {
+            if (!element.hasAttribute("action")) return;
+            if (event.key === " ") {
+                event.preventDefault();
+            } else if (event.key === "Enter" && !event.repeat) {
+                event.preventDefault();
+                element.click();
+            }
+        },
+        onKeyup: (event) => {
+            if (!element.hasAttribute("action") || event.key !== " ") return;
+            event.preventDefault();
+            element.click();
+        }
+    };
+}
+
+/**
+ * A badge built for a page the extension does not own, without the page's custom element registry.
+ *
+ * The registry is not available to reach for. Chromium gives a content script no `customElements` at
+ * all, and registering one from the page's own world means putting the extension's URL in the page's
+ * DOM -- which in Firefox is a per-install identifier any page could then read. So the content script
+ * builds the element itself, exactly as highlight-overlay.js does, and the tag name stays unregistered.
+ *
+ * The element is built complete and is not updated afterwards: a conversion pass replaces every badge
+ * on the page rather than editing the ones already there.
+ *
+ * @param {object} badge
+ * @param {string} badge.tagName - The unregistered tag to carry the badge; also what a click delegate matches.
+ * @param {string} badge.svgMarkup
+ * @param {string} badge.defaultLabel
+ * @param {string} [badge.label]
+ * @param {string} [badge.tooltip]
+ * @param {string} [badge.action] - Naming an action turns the badge from an image into a button.
+ * @returns {HTMLElement}
+ */
+export function buildBadge({ tagName, svgMarkup, defaultLabel, label, tooltip, action }) {
+    const element = document.createElement(tagName);
+    dressBadge(element, svgMarkup);
+
+    if (label) element.setAttribute("label", label);
+    if (tooltip) {
+        element.setAttribute("tooltip", tooltip);
+        element.setAttribute("title", tooltip);
+    }
+    if (action) element.setAttribute("action", action);
+
+    // Inline !important wins over any host-page stylesheet rules targeting the element.
+    element.style.setProperty("display", "inline-flex", "important");
+
+    const { onKeydown, onKeyup } = badgeKeyHandlers(element);
+    element.addEventListener("keydown", onKeydown);
+    element.addEventListener("keyup", onKeyup);
+
+    updateBadgeLabels(element, defaultLabel);
+    return element;
+}
+
+/**
+ * The badge as a custom element, for the extension's own pages, where the registry is ours to use.
+ * A page the extension does not own gets `buildBadge` instead, and both share the behaviour above.
+ *
+ * The class adds what only a registered element can have: attribute observation, so a badge already
+ * on screen re-labels itself when an attribute changes, and connect/disconnect for its listeners.
  *
  * `action` names the control the badge becomes: giving it turns the badge from an image into a button,
  * with a tab stop, a role, that name, and Enter or Space. The badge does not know what the action is --
- * whoever set the attribute listens for the click. Badges run in the page's main world, where
- * `browser.i18n` does not exist, so the name arrives already translated, as `label` and `tooltip` do.
+ * whoever set the attribute listens for the click. The name arrives already translated, as `label` and
+ * `tooltip` do: a badge never reads `browser.i18n` itself.
  *
  * Name it as a noun phrase, not as a command. A badge sits inside the headline's link, and a link takes
  * its own name from the text it contains -- so whatever this says is read twice: once as the button, and
@@ -60,64 +192,33 @@ function parseBadgeSvg(markup) {
  *
  * @param {string} svgMarkup - The badge's `<svg>` markup.
  * @param {string} defaultLabel - Fallback aria-label when no attribute is set.
- * @returns {typeof HTMLElement} A custom element class ready for registration.
+ * @returns {typeof HTMLElement} A custom element class, for a caller to register.
  */
 export function createBadgeClass(svgMarkup, defaultLabel) {
-    // Parsed once per badge class; every instance gets a clone of this one node.
-    const badgeSvg = parseBadgeSvg(svgMarkup);
-
     return class extends HTMLElement {
         static get observedAttributes() {
             return ["label", "tooltip", "action"];
         }
 
-        /**
-         * Keyboard activation, routed through `click()` so the pointer and the keyboard arrive at the one
-         * listener the badge's owner registered. Fields, not methods, so add and remove see one function.
-         *
-         * A button's two keys do not behave alike, and these follow the native contract: Enter acts on the
-         * way down, Space on the way up. Acting on every Space keydown would activate once per repeat while
-         * the key is held. The keydown is still swallowed on those repeats, or the page scrolls under a held
-         * key -- and Enter's default is swallowed too, or it submits a form the badge happens to sit in.
-         */
-        _onKeydown = (event) => {
-            if (!this.hasAttribute("action")) return;
-            if (event.key === " ") {
-                event.preventDefault();
-            } else if (event.key === "Enter" && !event.repeat) {
-                event.preventDefault();
-                this.click();
-            }
-        };
-
-        _onKeyup = (event) => {
-            if (!this.hasAttribute("action") || event.key !== " ") return;
-            event.preventDefault();
-            this.click();
-        };
+        /** Fields, not methods, so add and remove see one function. */
+        _keys = badgeKeyHandlers(this);
 
         constructor() {
             super();
-            if (!this.shadowRoot) {
-                this.attachShadow({ mode: "open" });
-                // One parsed stylesheet shared by every badge, rather than a
-                // <style> element cloned into each instance.
-                this.shadowRoot.adoptedStyleSheets = [badgeStyleSheet];
-                this.shadowRoot.appendChild(badgeSvg.cloneNode(true));
-            }
+            dressBadge(this, svgMarkup);
         }
 
         connectedCallback() {
             // Inline !important wins over any host-page stylesheet rules targeting the element.
             this.style.setProperty("display", "inline-flex", "important");
-            this.addEventListener("keydown", this._onKeydown);
-            this.addEventListener("keyup", this._onKeyup);
+            this.addEventListener("keydown", this._keys.onKeydown);
+            this.addEventListener("keyup", this._keys.onKeyup);
             this._updateLabels();
         }
 
         disconnectedCallback() {
-            this.removeEventListener("keydown", this._onKeydown);
-            this.removeEventListener("keyup", this._onKeyup);
+            this.removeEventListener("keydown", this._keys.onKeydown);
+            this.removeEventListener("keyup", this._keys.onKeyup);
         }
 
         attributeChangedCallback(name, oldValue, newValue) {
@@ -126,44 +227,8 @@ export function createBadgeClass(svgMarkup, defaultLabel) {
             }
         }
 
-        /**
-         * Sync the badge's labelling and its role from the component's attributes.
-         */
         _updateLabels() {
-            const svg = this.shadowRoot.querySelector("svg");
-            if (!svg) return;
-
-            const label = this.getAttribute("label") || this.getAttribute("tooltip") || defaultLabel;
-            const tooltip = this.getAttribute("tooltip") || label;
-            const action = this.getAttribute("action");
-
-            svg.setAttribute("aria-label", label);
-
-            let titleElement = svg.querySelector("title");
-            if (tooltip) {
-                if (!titleElement) {
-                    titleElement = document.createElementNS(SVG_NS, "title");
-                    svg.prepend(titleElement);
-                }
-                titleElement.textContent = tooltip;
-            } else if (titleElement) {
-                titleElement.remove();
-            }
-
-            // An action badge is a control rather than a picture, so it is announced and reached as one.
-            // The icon is hidden from the accessibility tree while it is: the button carries the name, and
-            // an image with a name of its own inside it would be read out a second time.
-            if (action) {
-                this.setAttribute("role", "button");
-                this.setAttribute("tabindex", "0");
-                this.setAttribute("aria-label", action);
-                svg.setAttribute("aria-hidden", "true");
-            } else {
-                this.removeAttribute("role");
-                this.removeAttribute("tabindex");
-                this.removeAttribute("aria-label");
-                svg.removeAttribute("aria-hidden");
-            }
+            updateBadgeLabels(this, defaultLabel);
         }
     };
 }

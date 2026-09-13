@@ -67,9 +67,9 @@ function adoptComponentStyleSheet(url) {
  * assets/non-oss/by-kagi/src/ onto src/, so two definitions of a tag can both be
  * reachable and the second would throw.
  *
- * The badges in src/components keep an inline guard instead of calling this. They are
- * content-script reachable, and every module they import needs its own
- * `web_accessible_resources` entry -- see AGENTS.md.
+ * The badges in src/components register nothing themselves, because a content script has to
+ * read a badge's markup without registering it. Whoever wants them as custom elements calls
+ * this -- title-modifier-setting.js is the one place that does.
  *
  * @param {string} tag - Custom element name.
  * @param {typeof HTMLElement} ctor - Class to register.

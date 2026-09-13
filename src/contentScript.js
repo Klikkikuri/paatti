@@ -26,23 +26,18 @@ let hrefSign;
     const { applyModifiers, LABEL_CONVERTED } = await import(browser.runtime.getURL("src/modifiers.js"));
     const { buildPageSnapshot, createSessionTracker } = await import(browser.runtime.getURL("src/stats.js"));
 
-    // Inject Web Components into page's main world context
-    const badgeComponents = [
-        "src/components/klikkikuri-ai-badge.js",
-        "src/components/klikkikuri-video-badge.js",
-        "src/components/klikkikuri-converted-badge.js"
-    ];
-    for (const componentPath of badgeComponents) {
-        try {
-            const scriptElem = document.createElement("script");
-            scriptElem.type = "module";
-            scriptElem.src = browser.runtime.getURL(componentPath);
-            (document.head || document.documentElement).appendChild(scriptElem);
-        } catch (e) {
-            // Fallback for isolated environment
-            await import(browser.runtime.getURL(componentPath));
-        }
-    }
+    // Badges are built here, in the isolated world, and never registered in the page.
+    //
+    // Registering them meant putting <script src="moz-extension://<uuid>/..."> in the page's head, and
+    // Firefox generates that UUID per install -- so every supported page could read a stable identifier
+    // for this user with one querySelector, in an extension whose point is not tracking people. Nothing
+    // of the extension's own URL enters the page now; these imports stay in the isolated world.
+    const { buildBadge } = await import(browser.runtime.getURL("src/components/badge-base.js"));
+    const badgeIcons = new Map(await Promise.all([
+        "klikkikuri-ai-badge",
+        "klikkikuri-video-badge",
+        "klikkikuri-converted-badge"
+    ].map(async (tagName) => [tagName, await import(browser.runtime.getURL(`src/components/${tagName}.js`))])));
 
     const log = getLogger("content_script");
 
@@ -349,20 +344,18 @@ let hrefSign;
                     if (canAppendSpan(titleElem)) {
                         const children = [];
                         for (const b of badges) {
-                            if (!b.tagName) continue;
-                            const badgeElem = document.createElement(b.tagName);
-                            if (b.badgeText) {
-                                badgeElem.setAttribute("label", b.badgeText);
-                            }
-                            if (b.tooltip) {
-                                badgeElem.setAttribute("tooltip", b.tooltip);
-                                badgeElem.setAttribute("title", b.tooltip);
-                            }
-                            // Turns the badge into a button, named by whichever modifier claimed an action.
-                            if (b.action) {
-                                badgeElem.setAttribute("action", b.action);
-                            }
-                            children.push(badgeElem);
+                            const icon = badgeIcons.get(b.tagName);
+                            if (!icon) continue;
+
+                            // `action` turns the badge into a button, named by whichever modifier claimed one.
+                            children.push(buildBadge({
+                                tagName: b.tagName,
+                                svgMarkup: icon.svgMarkup,
+                                defaultLabel: icon.defaultLabel,
+                                label: b.badgeText,
+                                tooltip: b.tooltip,
+                                action: b.action
+                            }));
                         }
                         children.push(document.createTextNode(modifiedTitle));
                         titleElem.replaceChildren(...children);

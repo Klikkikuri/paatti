@@ -77,7 +77,7 @@ rejected, and neither exemption is needed. `TODO.md` carries the rest of that ch
 Two traps around it:
 
 - The extension must never declare `devtools_page`. That turns the `browser` namespace off for the *entire*
-  extension, not just the DevTools page. See `docs/guides/browser-namespace-chrome.md`.
+  extension, not just the DevTools page.
 - A new module under `src/` that the content script can reach must be added to `web_accessible_resources` in
   `manifest.json`. Nothing in `make test` checks this; a missing entry 404s the import and kills the content
   script on real pages only.
@@ -93,11 +93,11 @@ the module a `browser` to find, so a suite that mocks `chrome` tests a path none
 Three populations, taking different decisions. Pick by where the markup lands, not by what is fashionable
 elsewhere.
 
-**`src/components/` — shadow DOM.** The badges are injected into third-party pages listed in the manifest's
-`web_accessible_resources.matches`. Hostile CSS is a real threat there, so they attach a shadow root and adopt a
-constructable stylesheet (`badge-style.js`), and force `display: inline-flex` with an inline `!important` because a
-host rule outranks a `:host` rule. Every module a badge imports needs its own `web_accessible_resources` entry, so
-keep their dependencies inside `src/components/`.
+**`src/components/` — shadow DOM.** The badges are placed into third-party pages listed in the manifest's
+`web_accessible_resources.matches`. Hostile CSS is a real threat there, so they attach a shadow root and take their
+styles through `adoptBadgeStyles` (`badge-style.js`), and force `display: inline-flex` with an inline `!important`
+because a host rule outranks a `:host` rule. Every module a badge imports needs its own `web_accessible_resources`
+entry — the content script imports them all — so keep their dependencies inside `src/components/`.
 
 **`src/options/components/` — light DOM.** These appear only on `index.html` and `popup.html`, where the only CSS in
 the document is ours. There is nothing to encapsulate against, and a shadow root would cost more than it buys: class
@@ -110,12 +110,26 @@ highlight. No shadow root can enclose an element the page owns, so it is an over
 under `<html>` carrying a box per highlighted element, placed over it in document coordinates. Nothing inside the
 shadow root needs `!important`; only the host does, inline, to survive the page's stylesheet.
 
-It is deliberately **not** a custom element, and that is the one thing to preserve when editing it. Badges are
-upgraded by the page's registry, which is why they are injected into the main world. This module is driven from the
-content script's isolated world, where a registration would never upgrade a node the page can see — so it uses an
-unregistered tag name and calls `attachShadow` itself, which works from either world. It also holds a single
-`<style>` node rather than a shared constructable sheet: there is one instance, so nothing is cloned per instance,
-and it sidesteps the question of whether a sheet constructed in the isolated world adopts into a page shadow root.
+It is deliberately **not** a custom element, and that is the one thing to preserve when editing it. It uses an
+unregistered tag name and calls `attachShadow` itself, which works from either world — and the badges now do the
+same, for the reason below. It also holds a single `<style>` node rather than a shared constructable sheet: there is
+one instance, so nothing is cloned per instance.
+
+**What the registry does in a content script, measured rather than assumed.** Chromium gives the isolated world no
+`customElements` at all — the property is `null`, so nothing can be registered there. Firefox does give it one, and a
+registration there *does* upgrade a node the page can see: the constructor runs. Neither browser is a route to
+registering a badge for the page itself, so nothing tries: `buildBadge` in `badge-base.js` builds the element and
+attaches its shadow root by hand, and the tag name stays unregistered in the page. Registering it would have meant
+putting `<script src="moz-extension://<uuid>/…">` in the page's DOM, and that UUID is per install — a stable
+identifier for the user, readable by any page with one `querySelector`.
+
+`docs/fingerprinting.md` carries the rule the whole design answers to: what enters the page must be the same for
+every user, and what differs per installation stays out of it. Read it before you put anything new into a page —
+an element, an attribute, a URL, or a random value.
+
+The constructable-sheet question is settled too, and it is why `adoptBadgeStyles` has a fallback: assigning one from
+a content script throws in Firefox (*"Accessing from Xray wrapper is not supported"*), while Chromium accepts it. A
+`<style>` node works in both.
 
 The host goes under `document.documentElement`, not `document.body`. The content script's MutationObserver watches
 `document.body`, and its "is this our own change" guard would not recognise the host; changes inside a shadow root
@@ -185,8 +199,8 @@ from outside means the child is missing an API.
   in `connectedCallback`, which runs again after a re-attach.
 - Register with `defineComponent(tag, class)`. The guard is load-bearing, not defensive: `make dist NON_OSS=1`
   overlays `assets/non-oss/by-kagi/src/` onto `src/`, so two definitions of a tag can both be reachable. The badges
-  keep an inline `customElements.get` guard instead, because importing `component-utils.js` would need a
-  `web_accessible_resources` entry.
+  register nothing of their own — a content script has to read a badge's markup without registering it — so whoever
+  wants them as custom elements registers them, and `title-modifier-setting.js` is the one place that does.
 - Announce a written setting with `emitSettingSaved(this, { key, value })`. The payload is built by
   `settingSavedDetail` in `setting-message.js`, which is DOM-free and covered by `make test`.
 
