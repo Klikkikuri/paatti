@@ -5,13 +5,11 @@ import { getLogger, getActiveTab } from "./utils.js";
 import { getConfig } from "./config.js";
 import { fetchRahtiData, fetchRahtiDataWithRetry } from "./rahti.js";
 import { controller } from "./controller.js";
-import { getFaviconKey, makeFaviconEntry, isFaviconExpired } from "./faviconCache.js";
+import { storeFavicon } from "./favicon-fetch.js";
+import { buildFeedbackRequest } from "./feedback.js";
 import "./../build/wasm_exec.js";
 
 const log = getLogger("background");
-
-/** Tracks domains whose favicon fetch is currently in-flight within this SW lifecycle. */
-const pendingFaviconDomains = new Set();
 
 const DEFAULT_ENVIRONMENT = "free";
 const PULL_ALARM_NAME = "periodic-data-pull";
@@ -219,6 +217,28 @@ async function initSuola() {
     return suolaPromise;
 }
 
+/**
+ * Post one feedback payload to the endpoint in configuration.
+ *
+ * A message decides what is submitted, never where it goes. The endpoint belongs to configuration
+ * because this handler is reachable from a content script, and one that fetched a URL and a request
+ * init of its caller's choosing would be a request-forgery primitive waiting for something hostile to
+ * reach it.
+ *
+ * Not routed through `safeFetch`: a configured endpoint is legitimately localhost during development,
+ * which is the address `safeFetch` exists to refuse.
+ *
+ * @param {object} payload - From `buildFeedbackPayload`.
+ * @returns {Promise<Response>}
+ */
+async function submitFeedback(payload) {
+    if (!payload || typeof payload !== "object") throw new Error("No feedback payload in the message");
+
+    const config = await getConfig();
+    const { url, init } = buildFeedbackRequest(config.feedbackServerUrl, payload);
+    return fetch(url, init);
+}
+
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "updateDatabase") {
         log("Manual database update requested.");
@@ -263,10 +283,9 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.action === "submitFeedback") {
-        // The worker owns this fetch so the popup and the in-page dialog submit through one path, and so no
-        // submission depends on the visited page's context at all.
-        // `mode: "no-cors"` makes the response opaque, so success here means the request left, nothing more.
-        fetch(message.url, message.init)
+        // One path for the popup and the in-page dialog both, in the one context that does not depend on
+        // the visited page. `mode: "no-cors"` makes the response opaque: success means the request left.
+        submitFeedback(message.payload)
             .then(() => sendResponse({ success: true }))
             .catch((err) => {
                 log("Failed to submit feedback:", err);
@@ -276,64 +295,9 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.action === "storeFavicon") {
-        const { domain, url } = message;
-        if (!domain || !url) return;
-
-        // In-flight guard: skip if a fetch for this domain is already running
-        if (pendingFaviconDomains.has(domain)) return;
-
-        const key = getFaviconKey(domain);
-        (async () => {
-            // In-flight guard inside async flow to avoid race before the first await
-            if (pendingFaviconDomains.has(domain)) return;
-            pendingFaviconDomains.add(domain);
-            try {
-                // Persistent cache check: skip if valid and not expired
-                const stored = await browser.storage.local.get(key);
-                const existing = stored[key];
-                if (!isFaviconExpired(existing)) return;
-
-                const response = await fetch(url, {
-                    credentials: "omit",
-                    referrerPolicy: "no-referrer"
-                });
-                const altDomain = domain.startsWith("www.") ? domain.slice(4) : `www.${domain}`;
-                if (!response.ok) {
-                    // Negatively cache: prevents retry on every page load
-                    const negEntry = makeFaviconEntry(null);
-                    await browser.storage.local.set({
-                        [key]: negEntry,
-                        [getFaviconKey(altDomain)]: negEntry
-                    });
-                    log(`Favicon fetch failed for ${domain} (HTTP ${response.status}), negatively cached.`);
-                    return;
-                }
-
-                const buffer = await response.arrayBuffer();
-                const contentType = response.headers.get("content-type") || "image/x-icon";
-
-                // Manual Base64 conversion — FileReader is unavailable in Service Workers
-                const bytes = new Uint8Array(buffer);
-                let binary = "";
-                const chunk = 8192;
-                for (let i = 0; i < bytes.byteLength; i += chunk) {
-                    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-                }
-                const dataUri = `data:${contentType};base64,${btoa(binary)}`;
-                const favEntry = makeFaviconEntry(dataUri);
-
-                await browser.storage.local.set({
-                    [key]: favEntry,
-                    [getFaviconKey(altDomain)]: favEntry
-                });
-                log(`Favicon cached for ${domain}.`);
-            } catch (err) {
-                // Transient network error — do NOT negatively cache; will retry next page load
-                log(`Favicon fetch error for ${domain}:`, err);
-            } finally {
-                pendingFaviconDomains.delete(domain);
-            }
-        })();
+        // The page chose this URL, so nothing here is taken from the message but the URL itself:
+        // favicon-fetch.js writes under the sender's domain and validates the URL against it.
+        storeFavicon(sender?.url, message.url);
         // No return true — sendResponse is never called for this action
         return;
     }
