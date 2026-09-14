@@ -178,14 +178,29 @@ function knownResources(manifest) {
     return manifest.resources.filter((resource) => resource.known);
 }
 
-/** `href` resolved against the manifest's own URL -- the only base a resource document ever gets. */
+/**
+ * `href` resolved against the manifest's own URL -- the only base a resource document ever gets. Null
+ * rather than a throw: a provider's `href` is untrusted content, and a resource with one malformed
+ * entry must be isolated like any other failure, not crash the whole resolution.
+ */
 function resolveHref(manifestUrl, href) {
-    return new URL(href, manifestUrl).href;
+    try {
+        return new URL(href, manifestUrl).href;
+    } catch {
+        return null;
+    }
 }
 
-/** Whether every one of `resource`'s hrefs shares the manifest's own origin. True for a purely inline resource. */
+/**
+ * Whether every one of `resource`'s hrefs resolves and shares the manifest's own origin. True for a
+ * purely inline resource; false (not a throw) the moment one href is malformed, which then falls to
+ * the cross-origin path and is refused or reported there rather than here.
+ */
 function isSameOrigin(resource, manifestUrl, manifestOrigin) {
-    return resource.href.every((href) => new URL(resolveHref(manifestUrl, href)).origin === manifestOrigin);
+    return resource.href.every((href) => {
+        const absolute = resolveHref(manifestUrl, href);
+        return absolute !== null && new URL(absolute).origin === manifestOrigin;
+    });
 }
 
 /**
@@ -201,11 +216,9 @@ function resourceOrigins(manifest, manifestUrl) {
     const origins = new Set();
     for (const resource of knownResources(manifest)) {
         for (const href of resource.href) {
-            try {
-                origins.add(new URL(resolveHref(manifestUrl, href)).origin);
-            } catch {
-                // Reported against the resource when resolve() actually fetches it.
-            }
+            const absolute = resolveHref(manifestUrl, href);
+            // A malformed href contributes no origin; resolve() reports it against the resource instead.
+            if (absolute) origins.add(new URL(absolute).origin);
         }
     }
     return origins;
@@ -356,6 +369,25 @@ function computeDeclaredScope(siteConfigs) {
 }
 
 /**
+ * Fetch and parse the manifest itself -- the one step every caller needs, whether it goes on to
+ * disclose same-origin sites (`inspect`) or fetch every resource (a refresh cycle that already holds
+ * the grants `inspect` was for).
+ *
+ * @param {string} manifestUrl
+ * @param {boolean} loopbackProvidersEnabled
+ * @returns {Promise<{manifest: object}|{error: string}>}
+ */
+async function fetchManifest(manifestUrl, loopbackProvidersEnabled) {
+    const reason = providerBlockReason(manifestUrl, loopbackProvidersEnabled);
+    if (reason) return { error: `manifest URL refused: ${reason}` };
+
+    const fetched = await fetchDocument(manifestUrl, loopbackProvidersEnabled, MAX_MANIFEST_BYTES);
+    if (fetched.error) return { error: `manifest fetch failed: ${fetched.error}` };
+
+    return parseManifest(fetched.content);
+}
+
+/**
  * Gesture one: fetch only the manifest URL, plus any same-origin `site-configs` document, and report
  * what a confirmation UI must disclose before the user grants anything else.
  *
@@ -366,13 +398,7 @@ function computeDeclaredScope(siteConfigs) {
  *   ignoredCount: number}|{error: string}>}
  */
 async function inspect(manifestUrl, { loopbackProvidersEnabled = false } = {}) {
-    const reason = providerBlockReason(manifestUrl, loopbackProvidersEnabled);
-    if (reason) return { error: `manifest URL refused: ${reason}` };
-
-    const fetched = await fetchDocument(manifestUrl, loopbackProvidersEnabled, MAX_MANIFEST_BYTES);
-    if (fetched.error) return { error: `manifest fetch failed: ${fetched.error}` };
-
-    const { manifest, error } = parseManifest(fetched.content);
+    const { manifest, error } = await fetchManifest(manifestUrl, loopbackProvidersEnabled);
     if (error) return { error };
 
     const manifestOrigin = new URL(manifestUrl).origin;
@@ -385,6 +411,13 @@ async function inspect(manifestUrl, { loopbackProvidersEnabled = false } = {}) {
 
     for (const resource of knownResources(manifest)) {
         if (resource.type !== "site-configs" || !isSameOrigin(resource, manifestUrl, manifestOrigin)) continue;
+
+        // Mirrors the same check in resolve(), so a resource this preview shows is never one resolve()
+        // would go on to reject outright -- the disclosure and the outcome must agree.
+        if (resource.origins !== undefined) {
+            rejected.push({ key: null, reason: "same-origin resource must not declare origins" });
+            continue;
+        }
 
         for (const href of resource.href) {
             const doc = await fetchDocument(resolveHref(manifestUrl, href), loopbackProvidersEnabled);
@@ -458,6 +491,10 @@ async function resolve(manifest, manifestUrl, options = {}) {
         const documents = [];
         for (const href of resource.href) {
             const absolute = resolveHref(manifestUrl, href);
+            if (!absolute) {
+                errors.push({ type: resource.type, href, message: "malformed href" });
+                continue;
+            }
 
             if (!visited.has(absolute)) {
                 if (fetchCount >= MAX_FETCHES) {
@@ -519,6 +556,7 @@ export {
     caretCompatible,
     providerBlockReason,
     parseManifest,
+    fetchManifest,
     originsMatchKey,
     computeDeclaredScope,
     inspect,

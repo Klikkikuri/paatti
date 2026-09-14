@@ -15,6 +15,11 @@ const DEFAULT_ENV = {
     "email": "",
     "titleDataUrls": ["https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"],
     "feedbackServerUrl": "https://docs.google.com/forms/d/e/1FAIpQLSf_vo9tpXAjbP1JyhNlgRdPnpPD1K3w6aPfern_jZfJVcHtCw/formResponse",
+    // Whether a provider may take over a site key or origin the bundled set or another provider
+    // already claims, and whether one may be reached at a loopback address. Two independent powers,
+    // neither implied by the environment -- see getConfig() for why they must stay local, not synced.
+    "providerShadowingEnabled": false,
+    "loopbackProvidersEnabled": false,
 }
 
 const DEFAULT_CONFIG = {
@@ -308,6 +313,9 @@ const DEFAULT_CONFIG = {
             ...DEFAULT_ENV,
             "debugVisualsEnabled": true,
             "refreshIntervalMinutes": 1,
+            // On by default only here; loopbackProvidersEnabled is not, since reaching the user's
+            // own machine is an orthogonal power nothing about "development" implies.
+            "providerShadowingEnabled": true,
             "modifiers": {
                 "video": true,
                 "converted": true
@@ -433,11 +441,17 @@ async function getConfig() {
         const mergedEnvConfigs = {};
         const environments = ["free", "paid", "development"];
         for (const env of environments) {
+            // These two relax security, so they must be decided by the device they affect. Stripped
+            // out of the synced layer before the spread below, so a value arriving through sync --
+            // from a future change that syncs environmentConfigs wholesale, or a stale profile --
+            // can never override the local choice, in either direction.
+            const { providerShadowingEnabled: _ignoredShadow, loopbackProvidersEnabled: _ignoredLoopback, ...syncedEnv } = syncEnvConfigs[env] || {};
+
             mergedEnvConfigs[env] = {
                 ...DEFAULT_CONFIG.environmentConfigs[env],
                 ...(userPreferences.environmentConfigs?.[env] || {}),
                 // Synced settings win over the local ones, as with modifiers below.
-                ...(syncEnvConfigs[env] || {})
+                ...syncedEnv
             };
         }
 

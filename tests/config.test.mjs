@@ -146,6 +146,58 @@ describe('merging stored values over the defaults', () => {
     });
 });
 
+describe('the provider safety toggles', () => {
+    test('free and paid default both toggles off', async () => {
+        await sync.remove(['environmentConfigs']);
+
+        for (const env of ['free', 'paid']) {
+            await local.set({ userPreferences: { environment: env } });
+            const config = await getConfig();
+            assert.equal(config.providerShadowingEnabled, false, env);
+            assert.equal(config.loopbackProvidersEnabled, false, env);
+        }
+    });
+
+    test('development defaults shadowing on, loopback off', async () => {
+        await sync.remove(['environmentConfigs']);
+        await local.set({ userPreferences: { environment: 'development' } });
+        const config = await getConfig();
+
+        assert.equal(config.providerShadowingEnabled, true);
+        assert.equal(config.loopbackProvidersEnabled, false);
+    });
+
+    test('a local override in development wins over the environment default', async () => {
+        await sync.remove(['environmentConfigs']);
+        await local.set({
+            userPreferences: {
+                environment: 'development',
+                environmentConfigs: { development: { providerShadowingEnabled: false, loopbackProvidersEnabled: true } }
+            }
+        });
+        const config = await getConfig();
+
+        assert.equal(config.providerShadowingEnabled, false);
+        assert.equal(config.loopbackProvidersEnabled, true);
+    });
+
+    test('a synced value for either toggle is ignored, even while the local value is false', async () => {
+        await local.set({
+            userPreferences: {
+                environment: 'free',
+                environmentConfigs: { free: { providerShadowingEnabled: false, loopbackProvidersEnabled: false } }
+            }
+        });
+        await sync.set({
+            environmentConfigs: { free: { providerShadowingEnabled: true, loopbackProvidersEnabled: true } }
+        });
+        const config = await getConfig();
+
+        assert.equal(config.providerShadowingEnabled, false, 'a synced value turned shadowing on');
+        assert.equal(config.loopbackProvidersEnabled, false, 'a synced value turned loopback providers on');
+    });
+});
+
 /** Drain every pending microtask, so a publish that is going to happen has happened. */
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 

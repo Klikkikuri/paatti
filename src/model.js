@@ -199,6 +199,38 @@ const model = (() => {
                 await browser.storage.local.set({ userPreferences });
             },
 
+            /**
+             * Whether a provider may claim a site key or origin the bundled set or an earlier
+             * provider already claims. Per environment, local, and read only from
+             * `userPreferences.environmentConfigs[env]` -- see `getConfig()`, which strips this key
+             * out of anything arriving through sync so the device it protects is always the one that
+             * decides it.
+             */
+            setProviderShadowingEnabled: async (value, env) => {
+                if (!env) env = await getConfig().then(cfg => cfg.activeEnv);
+                log(`Setting provider shadowing for environment '${env}' to ${value}`);
+
+                const data = await browser.storage.local.get("userPreferences");
+                const userPreferences = data.userPreferences || {};
+                if (!userPreferences.environmentConfigs) userPreferences.environmentConfigs = {};
+                if (!userPreferences.environmentConfigs[env]) userPreferences.environmentConfigs[env] = {};
+                userPreferences.environmentConfigs[env].providerShadowingEnabled = value;
+                await browser.storage.local.set({ userPreferences });
+            },
+
+            /** Whether a provider may be reached at a loopback address. Same storage shape and reasoning as above. */
+            setLoopbackProvidersEnabled: async (value, env) => {
+                if (!env) env = await getConfig().then(cfg => cfg.activeEnv);
+                log(`Setting loopback providers for environment '${env}' to ${value}`);
+
+                const data = await browser.storage.local.get("userPreferences");
+                const userPreferences = data.userPreferences || {};
+                if (!userPreferences.environmentConfigs) userPreferences.environmentConfigs = {};
+                if (!userPreferences.environmentConfigs[env]) userPreferences.environmentConfigs[env] = {};
+                userPreferences.environmentConfigs[env].loopbackProvidersEnabled = value;
+                await browser.storage.local.set({ userPreferences });
+            },
+
             setEasterEggProbability: async (value, env) => {
                 // Property of an environment, like the email below, but kept in sync
                 // storage so the odds follow the user between their browsers.

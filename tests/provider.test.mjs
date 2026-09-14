@@ -137,6 +137,26 @@ describe('inspect', () => {
         assert.ok(result.origins.has('https://data.example'), 'rahti-data origin still disclosed though not fetched');
     });
 
+    test('never discloses a same-origin site that resolve() would go on to reject', async () => {
+        const manifestUrl = 'https://provider.example/manifest.json';
+        installed = mockFetch({
+            [manifestUrl]: jsonResponse(manifestDoc([{
+                type: 'site-configs',
+                sites: { 'news.example': site('news.example') },
+                origins: ['https://news.example/*'] // same-origin resources must not declare this
+            }]))
+        });
+
+        const inspected = await inspect(manifestUrl, {});
+        assert.deepEqual(inspected.sites, {});
+
+        const { manifest } = parseManifest(manifestDoc([{
+            type: 'site-configs', sites: { 'news.example': site('news.example') }, origins: ['https://news.example/*']
+        }]));
+        const resolved = await resolve(manifest, manifestUrl);
+        assert.deepEqual(resolved.siteConfigs, {});
+    });
+
     test('an all-relative manifest declares no cross-origin resource and resolves inline site-configs', async () => {
         const manifestUrl = 'https://provider.example/manifest.json';
         installed = mockFetch({
@@ -252,6 +272,28 @@ describe('resolve: fetch discipline and isolation', () => {
 
         assert.equal(installed.calls.length, 1);
         assert.deepEqual(result.suolaRules.sites, [{ domain: 'a.example' }, { domain: 'a.example' }]);
+    });
+
+    test('a malformed href is reported against its resource rather than crashing resolve', async () => {
+        const good = 'https://provider.example/good.json';
+        installed = mockFetch({ [good]: jsonResponse({ sites: [{ domain: 'a.example' }] }) });
+        const manifest = await parsedManifest([{ type: 'suola-rules', href: ['http://[::1', good] }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(result.suolaRules.sites, [{ domain: 'a.example' }]);
+        assert.ok(result.errors.some((e) => /malformed href/.test(e.message)));
+    });
+
+    test('a malformed href does not crash inspect either', async () => {
+        const manifestUrl = 'https://provider.example/manifest.json';
+        installed = mockFetch({
+            [manifestUrl]: jsonResponse(manifestDoc([{ type: 'suola-rules', href: 'http://[::1' }]))
+        });
+
+        const result = await inspect(manifestUrl, {});
+
+        assert.equal(result.error, undefined);
     });
 
     test('resources are fetched in (weight, document order)', async () => {
@@ -370,6 +412,18 @@ describe('resolve: site-configs safety', () => {
 
         assert.deepEqual(result.siteConfigs, {});
         assert.ok(result.rejected.some((r) => /must not declare/.test(r.reason)));
+    });
+
+    test('a malformed site-configs href does not crash resolve either', async () => {
+        // An unparsable href can't be proven same-origin, so it takes the cross-origin path and is
+        // refused there for lacking a declared `origins` -- the point under test is that this reports
+        // cleanly rather than throwing out of isSameOrigin().
+        const manifest = await parsedManifest([{ type: 'site-configs', href: 'http://[::1' }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(result.siteConfigs, {});
+        assert.ok(result.rejected.some((r) => /cross-origin/.test(r.reason)));
     });
 
     test('cross-origin site-configs without declared origins is refused', async () => {
