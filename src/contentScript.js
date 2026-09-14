@@ -22,7 +22,7 @@ let hrefSign;
     const { createHighlightOverlay } = await import(browser.runtime.getURL("src/components/highlight-overlay.js"));
     const { createFeedbackDialog } = await import(browser.runtime.getURL("src/components/feedback-dialog.js"));
 
-    const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
+    const { rahtiStorage, getRahtiEntry } = await import(browser.runtime.getURL("src/rahti.js"));
     const { applyModifiers, LABEL_CONVERTED } = await import(browser.runtime.getURL("src/modifiers.js"));
     const { buildPageSnapshot, createSessionTracker } = await import(browser.runtime.getURL("src/stats.js"));
 
@@ -271,7 +271,9 @@ let hrefSign;
                 }
                 container.dataset.klikkikuriUrlSign = urlSign;
 
-                const rahtiEntry = await rahti.get(urlSign);
+                // Scoped by the link's own host, not the page's: a provider must not be able to
+                // answer for a link to a site it does not run, however it is linked to.
+                const rahtiEntry = await getRahtiEntry(urlSign, new URL(href).hostname);
                 if (!rahtiEntry) {
                     why = `No Rahti entry found for hash '${urlSign}'`;
                     container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
@@ -586,7 +588,7 @@ let hrefSign;
                             const pageUrl = window.location.href;
                             const pageSign = await hrefSign(pageUrl);
                             if (pageSign) {
-                                const pageRahtiEntry = await rahti.get(pageSign);
+                                const pageRahtiEntry = await getRahtiEntry(pageSign, newsSite);
                                 if (pageRahtiEntry) {
                                     const pageOriginalTitle = document.querySelector("h1")?.textContent?.trim() || document.title;
                                     const h1 = document.querySelector("h1");

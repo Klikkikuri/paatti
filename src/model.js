@@ -131,6 +131,23 @@ function matchesAnyOrigin(hostname, origins) {
 }
 
 /**
+ * The `[domain, siteConfig]` entry of `siteConfigs` whose origins cover `hostname`, or `[null, null]`.
+ * The one host-matching lookup `isEnabled`, `getMatchingSiteDomain`, `getSiteRules` and
+ * `getSourceForHost` all need, each just reading a different field off the result.
+ *
+ * @param {object} siteConfigs
+ * @param {string} hostname
+ * @returns {[string, object]|[null, null]}
+ */
+function findSiteConfig(siteConfigs, hostname) {
+    for (const entry of Object.entries(siteConfigs)) {
+        const [, siteConfig] = entry;
+        if (siteConfig.origins && matchesAnyOrigin(hostname, siteConfig.origins)) return entry;
+    }
+    return [null, null];
+}
+
+/**
  * Namespace for __model__ of model-view-controller.
  */
 const model = (() => {
@@ -361,14 +378,8 @@ const model = (() => {
                     return isGloballyEnabled;
                 }
 
-                // Find matching site config by checking if hostname matches any origin pattern
-                for (const [domain, siteConfig] of Object.entries(config.siteConfigs)) {
-                    if (siteConfig.origins && matchesAnyOrigin(hostname, siteConfig.origins)) {
-                        return isGloballyEnabled && siteConfig.enabled;
-                    }
-                }
-
-                return false;
+                const [, siteConfig] = findSiteConfig(config.siteConfigs, hostname);
+                return siteConfig ? isGloballyEnabled && siteConfig.enabled : false;
             },
 
 
@@ -461,22 +472,29 @@ const model = (() => {
             getMatchingSiteDomain: async (hostname) => {
                 if (!hostname) return null;
                 const config = await getConfig();
-                for (const [domain, siteConfig] of Object.entries(config.siteConfigs)) {
-                    if (siteConfig.origins && matchesAnyOrigin(hostname, siteConfig.origins)) {
-                        return domain;
-                    }
-                }
-                return null;
+                const [domain] = findSiteConfig(config.siteConfigs, hostname);
+                return domain;
             },
 
             getSiteRules: async (hostname) => {
                 const config = await getConfig();
-                for (const [domain, siteConfig] of Object.entries(config.siteConfigs)) {
-                    if (siteConfig.origins && matchesAnyOrigin(hostname, siteConfig.origins)) {
-                        return siteConfig.rules;
-                    }
-                }
-                return null;
+                const [, siteConfig] = findSiteConfig(config.siteConfigs, hostname);
+                return siteConfig ? siteConfig.rules : null;
+            },
+
+            /**
+             * Which source is authoritative for `hostname`: a provider's manifest URL, or null for the
+             * bundled set (or no site claiming it at all). The one place this precedence is decided --
+             * background.js's Suola naming and rahti.js's scoped lookup both call this rather than each
+             * re-deriving it from siteConfigs/siteConfigSource themselves.
+             *
+             * @param {string} hostname
+             * @returns {Promise<string|null>}
+             */
+            getSourceForHost: async (hostname) => {
+                const config = await getConfig();
+                const [domain] = findSiteConfig(config.siteConfigs, hostname);
+                return domain ? (config.siteConfigSource[domain] || null) : null;
             },
 
 
@@ -554,4 +572,4 @@ const model = (() => {
     };
 })();
 
-export { model, klikkikuriStatus, Clickbaitiness, clampProbability };
+export { model, klikkikuriStatus, Clickbaitiness, clampProbability, matchesAnyOrigin };

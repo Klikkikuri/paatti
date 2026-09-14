@@ -459,9 +459,8 @@ async function getConfig() {
         // provider -- src/providers.js is the read/write API for everything about that shape.
         const providers = Array.isArray(syncData.providers) ? syncData.providers : [];
         const enabledProviders = providers.filter((provider) => provider?.enabled && provider?.url);
-        const providerData = enabledProviders.length > 0
-            ? await browser.storage.local.get(enabledProviders.map((provider) => `${PROVIDER_KEY_PREFIX}${provider.url}`))
-            : {};
+        const providerKeys = enabledProviders.map((provider) => `${PROVIDER_KEY_PREFIX}${provider.url}`);
+        const providerData = providerKeys.length > 0 ? await browser.storage.local.get(providerKeys) : {};
 
         const activeEnv = userPreferences.environment || DEFAULT_CONFIG.environment || "free";
 
@@ -473,7 +472,11 @@ async function getConfig() {
             // out of the synced layer before the spread below, so a value arriving through sync --
             // from a future change that syncs environmentConfigs wholesale, or a stale profile --
             // can never override the local choice, in either direction.
-            const { providerShadowingEnabled: _ignoredShadow, loopbackProvidersEnabled: _ignoredLoopback, ...syncedEnv } = syncEnvConfigs[env] || {};
+            const {
+                providerShadowingEnabled: _ignoredShadow,
+                loopbackProvidersEnabled: _ignoredLoopback,
+                ...syncedEnv
+            } = syncEnvConfigs[env] || {};
 
             mergedEnvConfigs[env] = {
                 ...DEFAULT_CONFIG.environmentConfigs[env],
@@ -486,6 +489,9 @@ async function getConfig() {
         const envData = mergedEnvConfigs[activeEnv];
 
         const mergedSiteConfigs = { ...DEFAULT_CONFIG.siteConfigs };
+        // Which provider (if any) a domain came from -- absent means the bundled set. Suola naming and
+        // the Rahti scoped lookup both key off this, through model.js's getSourceForHost().
+        const siteConfigSource = {};
 
         // Folded in before the override loop below, not after: that loop is what applies
         // userSiteOverrides and fills in a default origin, and a provider-only site needs both. A
@@ -496,6 +502,7 @@ async function getConfig() {
             const data = providerData[`${PROVIDER_KEY_PREFIX}${provider.url}`];
             for (const [domain, siteConfig] of Object.entries(data?.siteConfigs || {})) {
                 mergedSiteConfigs[domain] = siteConfig;
+                siteConfigSource[domain] = provider.url;
             }
         }
 
@@ -527,6 +534,7 @@ async function getConfig() {
             },
             environmentConfigs: mergedEnvConfigs,
             siteConfigs: mergedSiteConfigs, // Use properly merged site configs
+            siteConfigSource,
             activeEnv: activeEnv,
             // Synced, so the warning about the "all headlines" level is dismissed once per person
             // rather than once per device.

@@ -1,4 +1,4 @@
-import test, { beforeEach } from 'node:test';
+import test, { describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createFakeBrowser } from './helpers/fake-browser.mjs';
@@ -6,7 +6,7 @@ import { createFakeBrowser } from './helpers/fake-browser.mjs';
 const fake = createFakeBrowser();
 globalThis.browser = fake.browser;
 
-const { fetchRahtiData, fetchRahtiDataWithRetry } = await import('../src/rahti.js');
+const { fetchRahtiData, fetchRahtiDataWithRetry, rahtiStorage, getRahtiEntry } = await import('../src/rahti.js');
 
 let fetchAttempts = 0;
 
@@ -30,6 +30,7 @@ beforeEach(async () => {
     fetchAttempts = 0;
     // The namespace object is resolved once at import, so empty the store rather than replace it.
     await fake.browser.storage.local.clear();
+    await fake.browser.storage.sync.clear();
 });
 
 test('fetchRahtiDataWithRetry succeeds on the 2nd attempt after a network reconnect', async () => {
@@ -81,4 +82,43 @@ test('the in-flight lock deduplicates concurrent calls into one execution', asyn
 
     assert.equal(fetchAttempts, 1);
     assert.deepEqual(results, [true, true, true]);
+});
+
+const providerUrl = 'https://provider.example/manifest.json';
+const site = (key) => ({ name: key, enabled: true, origins: [`https://${key}/*`], rules: [] });
+
+/** Registers a provider whose declared scope covers `key`, with the given resolved rahtiData. */
+async function seedProvider(key, rahtiData) {
+    await fake.browser.storage.sync.set({ providers: [{ url: providerUrl, enabled: true }] });
+    await fake.browser.storage.local.set({
+        [`provider:${providerUrl}`]: { siteConfigs: { [key]: site(key) }, rahtiData }
+    });
+}
+
+describe('getRahtiEntry', () => {
+    test('a sign with no provider covering the link host resolves against the bundled set', async () => {
+        (await rahtiStorage).store({ 'getRahtiEntry-bundled-1': { title: 'Bundled entry' } });
+
+        const entry = await getRahtiEntry('getRahtiEntry-bundled-1', 'no-provider-covers-this.example');
+
+        assert.deepEqual(entry, { title: 'Bundled entry' });
+    });
+
+    test('a link host a provider declares resolves against that provider\'s own data, not the bundled set', async () => {
+        (await rahtiStorage).store({ 'getRahtiEntry-shared-sign': { title: 'Bundled entry' } });
+        await seedProvider('provider-only.example', { 'getRahtiEntry-shared-sign': { title: 'Provider entry' } });
+
+        const entry = await getRahtiEntry('getRahtiEntry-shared-sign', 'provider-only.example');
+
+        assert.deepEqual(entry, { title: 'Provider entry' });
+    });
+
+    test('a provider covering the host but lacking the sign returns null, not the bundled entry', async () => {
+        (await rahtiStorage).store({ 'getRahtiEntry-not-in-provider': { title: 'Bundled entry' } });
+        await seedProvider('provider-only-2.example', {});
+
+        const entry = await getRahtiEntry('getRahtiEntry-not-in-provider', 'provider-only-2.example');
+
+        assert.equal(entry, null);
+    });
 });

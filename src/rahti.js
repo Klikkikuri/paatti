@@ -10,11 +10,35 @@ import { initStorage } from "./storage.js";
 import { validRahtiData, rahtiToKeyed } from "./rahti/schema.js";
 import { fetchAndResolvePayloads } from "./rahti/fetcher.js";
 import { applyDataToStorage, saveUpdateMetadata, isDatabaseRecentlyUpdated } from "./rahti/sync.js";
+import { model } from "./model.js";
+import { namespaceFor } from "./providers.js";
 
 const log = getLogger("rahti");
 
 let rahtiStorage = initStorage("rahtiData");
 let activeFetchPromise = null;
+
+/**
+ * The Rahti entry for `sign`, scoped by the host of the link it signs rather than the page's -- so a
+ * provider can correct a site it does not run without also being able to answer for a link on any page
+ * that happens to reference it. See model.read.getSourceForHost for the precedence this follows: the
+ * bundled set unless a provider's declared scope covers `linkHost`.
+ *
+ * @param {string} sign
+ * @param {string} linkHost
+ * @returns {Promise<object|null>}
+ */
+async function getRahtiEntry(sign, linkHost) {
+    const source = await model.read.getSourceForHost(linkHost);
+    if (!source) {
+        const storage = await rahtiStorage;
+        return storage.get(sign);
+    }
+
+    const providerStorage = await initStorage(namespaceFor(source));
+    const providerRahtiData = await providerStorage.get("rahtiData");
+    return providerRahtiData?.[sign] ?? null;
+}
 
 /**
  * Core execution of Rahti data fetch across configured URLs.
@@ -163,4 +187,4 @@ async function fetchRahtiDataWithRetry(options = {}, retryConfig = {}) {
     return false;
 }
 
-export { fetchRahtiData, fetchRahtiDataWithRetry, rahtiStorage };
+export { fetchRahtiData, fetchRahtiDataWithRetry, rahtiStorage, getRahtiEntry };

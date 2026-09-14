@@ -167,7 +167,9 @@ async function refreshProviders() {
 
     const results = [];
     for (const provider of providers) {
-        if (!provider.enabled) continue;
+        // Same validity check getConfig() applies to enabledProviders: a URL-less entry (a
+        // partially-written sync record) must be skipped by both in the same way, not just one.
+        if (!provider.enabled || !provider.url) continue;
 
         const outcome = await refreshOne(provider.url, config, claimedSiteKeys);
         results.push({ url: provider.url, ...outcome });
@@ -177,4 +179,75 @@ async function refreshProviders() {
     return results;
 }
 
-export { MAX_PROVIDERS, getProviders, addProvider, removeProvider, setProviderEnabled, getProviderData, refreshProviders };
+/**
+ * Install each enabled provider's Suola rules as its own named set, keyed by its manifest URL, and drop
+ * any currently-defined name that no longer belongs to one -- a removed provider, a disabled one, or
+ * one whose latest resolve produced no rules at all.
+ *
+ * Named sets do not survive a service-worker restart, so the caller must run this again on every
+ * `initSuola()` wake, after awaiting it: this assumes `defineRules`/`dropRules`/`listRules` already
+ * exist on `globalThis` and does not load the WASM module itself, so it can be tested without it by
+ * stubbing those three.
+ *
+ * Never throws: this runs ahead of every `hashUrls` request, and a provider-bookkeeping failure --
+ * a transient storage error, a malformed entry -- must degrade only the provider it belongs to, not
+ * block hashing a page that may not even reference a provider's site.
+ *
+ * @returns {Promise<void>}
+ */
+async function reconcileSuolaRules() {
+    let providers;
+    try {
+        providers = (await getProviders()).filter((provider) => provider?.enabled && provider?.url);
+    } catch (err) {
+        log("Failed to read the provider list; leaving Suola rule sets as they are:", err);
+        return;
+    }
+
+    const results = await Promise.all(providers.map(async (provider) => {
+        try {
+            const data = await getProviderData(provider.url);
+            return { url: provider.url, suolaRules: data.suolaRules };
+        } catch (err) {
+            log(`Failed to read resolved data for ${provider.url}:`, err);
+            return { url: provider.url, suolaRules: null };
+        }
+    }));
+
+    const activeNames = new Set();
+    for (const { url, suolaRules } of results) {
+        if (!suolaRules) continue;
+
+        try {
+            const refused = globalThis.defineRules(url, JSON.stringify(suolaRules));
+            if (refused) {
+                log(`defineRules refused the rules for ${url}:`, refused);
+                continue;
+            }
+            activeNames.add(url);
+        } catch (err) {
+            log(`defineRules threw for ${url}:`, err);
+        }
+    }
+
+    let defined = [];
+    try {
+        defined = typeof globalThis.listRules === "function" ? globalThis.listRules() : [];
+    } catch (err) {
+        log("listRules threw; stale named sets may remain defined this cycle:", err);
+    }
+
+    for (const name of defined) {
+        if (activeNames.has(name)) continue;
+        try {
+            globalThis.dropRules(name);
+        } catch (err) {
+            log(`dropRules failed for ${name}:`, err);
+        }
+    }
+}
+
+export {
+    MAX_PROVIDERS, namespaceFor, getProviders, addProvider, removeProvider, setProviderEnabled,
+    getProviderData, refreshProviders, reconcileSuolaRules
+};

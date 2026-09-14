@@ -8,8 +8,37 @@ globalThis.browser = fake.browser;
 
 const {
     MAX_PROVIDERS, getProviders, addProvider, removeProvider, setProviderEnabled,
-    getProviderData, refreshProviders
+    getProviderData, refreshProviders, reconcileSuolaRules
 } = await import('../src/providers.js');
+
+/** Stubs the three Suola WASM globals reconcileSuolaRules() assumes are already installed. */
+function mockSuola({ refuse = new Set() } = {}) {
+    const defineCalls = [];
+    const dropCalls = [];
+    const defined = new Set();
+    const originals = { defineRules: globalThis.defineRules, dropRules: globalThis.dropRules, listRules: globalThis.listRules };
+
+    globalThis.defineRules = (name, json) => {
+        defineCalls.push({ name, json });
+        if (refuse.has(name)) return `refused: ${name}`;
+        defined.add(name);
+        return null;
+    };
+    globalThis.dropRules = (name) => {
+        dropCalls.push(name);
+        defined.delete(name);
+    };
+    globalThis.listRules = () => [...defined].sort();
+
+    return {
+        defineCalls, dropCalls, defined,
+        restore: () => {
+            globalThis.defineRules = originals.defineRules;
+            globalThis.dropRules = originals.dropRules;
+            globalThis.listRules = originals.listRules;
+        }
+    };
+}
 
 /** Replaces global fetch with a strict router: any URL not listed throws, so a stray fetch fails loudly. */
 function mockFetch(map) {
@@ -34,11 +63,15 @@ const manifestDoc = (resources) => ({
 const site = (key, extra = {}) => ({ name: key, enabled: true, origins: [`https://${key}/*`], rules: [], ...extra });
 
 let installed;
+let suola;
 beforeEach(async () => {
     await fake.browser.storage.local.clear();
     await fake.browser.storage.sync.clear();
 });
-afterEach(() => { if (installed) { installed.restore(); installed = null; } });
+afterEach(() => {
+    if (installed) { installed.restore(); installed = null; }
+    if (suola) { suola.restore(); suola = null; }
+});
 
 describe('the provider list', () => {
     test('starts empty', async () => {
@@ -227,5 +260,110 @@ describe('refreshProviders', () => {
         assert.ok(firstData.siteConfigs['news.example'], 'the first provider to add a new key wins it');
         assert.equal(secondData.siteConfigs['news.example'], undefined);
         assert.ok(secondData.rejected.some((r) => r.key === 'news.example'));
+    });
+});
+
+describe('reconcileSuolaRules', () => {
+    async function seedProvider(url, suolaRules) {
+        await addProvider(url);
+        await fake.browser.storage.local.set({ [`provider:${url}`]: { suolaRules } });
+    }
+
+    test('defines a named set for each enabled provider with rules', async () => {
+        await seedProvider('https://a.example/manifest.json', { sites: [{ domain: 'a' }] });
+        suola = mockSuola();
+
+        await reconcileSuolaRules();
+
+        assert.equal(suola.defineCalls.length, 1);
+        assert.equal(suola.defineCalls[0].name, 'https://a.example/manifest.json');
+        assert.deepEqual(JSON.parse(suola.defineCalls[0].json), { sites: [{ domain: 'a' }] });
+    });
+
+    test('skips a disabled provider and one with no resolved rules', async () => {
+        await seedProvider('https://disabled.example/manifest.json', { sites: [{ domain: 'a' }] });
+        await setProviderEnabled('https://disabled.example/manifest.json', false);
+        await seedProvider('https://norules.example/manifest.json', null);
+        suola = mockSuola();
+
+        await reconcileSuolaRules();
+
+        assert.deepEqual(suola.defineCalls, []);
+    });
+
+    test('drops a name no longer backed by an active provider', async () => {
+        suola = mockSuola();
+        globalThis.defineRules('https://gone.example/manifest.json', '{"sites":[]}');
+        assert.ok(suola.defined.has('https://gone.example/manifest.json'));
+
+        await reconcileSuolaRules();
+
+        assert.deepEqual(suola.dropCalls, ['https://gone.example/manifest.json']);
+    });
+
+    test('a refused defineRules call is not counted as active and does not stop the others', async () => {
+        await seedProvider('https://bad.example/manifest.json', { sites: 'not an array' });
+        await seedProvider('https://good.example/manifest.json', { sites: [{ domain: 'a' }] });
+        suola = mockSuola({ refuse: new Set(['https://bad.example/manifest.json']) });
+
+        await reconcileSuolaRules();
+
+        assert.ok(!suola.defined.has('https://bad.example/manifest.json'));
+        assert.ok(suola.defined.has('https://good.example/manifest.json'));
+    });
+
+    test('removing a provider drops its named set on the next reconcile', async () => {
+        const url = 'https://provider.example/manifest.json';
+        await seedProvider(url, { sites: [{ domain: 'a' }] });
+        suola = mockSuola();
+        await reconcileSuolaRules();
+        assert.ok(suola.defined.has(url));
+
+        await removeProvider(url);
+        await reconcileSuolaRules();
+
+        assert.ok(!suola.defined.has(url));
+        assert.ok(suola.dropCalls.includes(url));
+    });
+
+    test('never throws: a storage failure reading the provider list degrades to a no-op', async () => {
+        const originalGet = fake.browser.storage.sync.get;
+        fake.browser.storage.sync.get = async () => { throw new Error('storage unavailable'); };
+        suola = mockSuola();
+
+        try {
+            await assert.doesNotReject(reconcileSuolaRules());
+        } finally {
+            fake.browser.storage.sync.get = originalGet;
+        }
+    });
+
+    test('one provider\'s storage failure does not stop another from being installed', async () => {
+        await seedProvider('https://good.example/manifest.json', { sites: [{ domain: 'a' }] });
+        await addProvider('https://bad.example/manifest.json');
+        suola = mockSuola();
+
+        const originalGet = fake.browser.storage.local.get;
+        fake.browser.storage.local.get = async (query) => {
+            if (String(query).includes('bad.example')) throw new Error('storage unavailable');
+            return originalGet(query);
+        };
+
+        try {
+            await assert.doesNotReject(reconcileSuolaRules());
+            assert.ok(suola.defined.has('https://good.example/manifest.json'));
+        } finally {
+            fake.browser.storage.local.get = originalGet;
+        }
+    });
+
+    test('a throwing listRules does not stop defineRules from having run', async () => {
+        await seedProvider('https://a.example/manifest.json', { sites: [{ domain: 'a' }] });
+        suola = mockSuola();
+        globalThis.listRules = () => { throw new Error('listRules exploded'); };
+
+        await assert.doesNotReject(reconcileSuolaRules());
+
+        assert.equal(suola.defineCalls.length, 1);
     });
 });

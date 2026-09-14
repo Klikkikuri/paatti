@@ -109,8 +109,8 @@ async function fetchDocument(url, loopbackProvidersEnabled, maxBytes = MAX_RESOU
 
 /** `entry.href` as a list, whatever shape it arrived in. */
 function hrefList(entry) {
-    if (typeof entry.href === "string") return [entry.href];
-    if (Array.isArray(entry.href)) return entry.href.filter((href) => typeof href === "string");
+    if (typeof entry.href === "string") return entry.href === "" ? [] : [entry.href];
+    if (Array.isArray(entry.href)) return entry.href.filter((href) => typeof href === "string" && href !== "");
     return [];
 }
 
@@ -119,7 +119,7 @@ function hrefList(entry) {
  *
  * @returns {object|null} null when the entry is malformed in a way the manifest cannot recover from.
  */
-function parseResourceEnvelope(entry, index) {
+function parseResourceEnvelope(entry) {
     if (!entry || typeof entry !== "object" || typeof entry.type !== "string") return null;
 
     const weight = Object.hasOwn(entry, "weight") ? entry.weight : 0;
@@ -138,8 +138,7 @@ function parseResourceEnvelope(entry, index) {
         inline,
         weight,
         origins: Array.isArray(entry.origins) ? entry.origins : undefined,
-        description: typeof entry.description === "string" ? entry.description : undefined,
-        index
+        description: typeof entry.description === "string" ? entry.description : undefined
     };
 }
 
@@ -161,7 +160,7 @@ function parseManifest(raw) {
 
     const resources = [];
     for (const [index, entry] of raw.resources.entries()) {
-        const resource = parseResourceEnvelope(entry, index);
+        const resource = parseResourceEnvelope(entry);
         if (!resource) return { error: `resource ${index} is malformed` };
         resources.push(resource);
     }
@@ -235,6 +234,30 @@ function isHttpUrl(value) {
 }
 
 /**
+ * Whether `key` is exactly a bare hostname -- no scheme, path, port or credentials. Load-bearing for
+ * the declared-scope/shadowing gate: that gate compares `key` as a literal string, but a host is looked
+ * up later by `matchesOrigin`, which reads only the authority up to the first `/` and so ignores any
+ * path a key was allowed to carry. Without this check, a provider could claim `www.hs.fi/x` -- a
+ * string `claimedSiteKeys` has never seen, so the shadowing gate never fires -- whose default origin
+ * `https://www.hs.fi/x/*` still matches the real `www.hs.fi` at lookup time, taking over an
+ * already-claimed host while the check meant to gate exactly that never ran.
+ *
+ * A key must round-trip unchanged through hostname parsing: `new URL("https://KEY/").hostname === KEY`
+ * fails for anything that is not already a bare, lowercase, portless host.
+ *
+ * @param {string} key
+ * @returns {boolean}
+ */
+function isBareHostname(key) {
+    if (typeof key !== "string" || key === "") return false;
+    try {
+        return new URL(`https://${key}/`).hostname === key;
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Whether every entry of `origins` is exactly `http(s)://<key>/*`.
  *
  * No Public Suffix List exists to tell a bare public suffix from a real one, so a host wildcard is
@@ -271,6 +294,7 @@ function coverageHostsOf(resource) {
  * @returns {{site: object}|{reason: string}}
  */
 function validateSiteEntry(key, entry) {
+    if (!isBareHostname(key)) return { reason: `site key is not a bare hostname: ${key}` };
     if (!entry || typeof entry !== "object" || typeof entry.name !== "string") {
         return { reason: "malformed site entry" };
     }
@@ -471,9 +495,9 @@ async function resolve(manifest, manifestUrl, options = {}) {
     } = options;
 
     const manifestOrigin = new URL(manifestUrl).origin;
-    const ordered = knownResources(manifest)
-        .slice()
-        .sort((a, b) => (a.weight - b.weight) || (a.index - b.index));
+    // .sort() has been a stable sort since ES2019, so this alone preserves document order for equal
+    // weights -- knownResources() filters out of manifest.resources without reordering.
+    const ordered = knownResources(manifest).slice().sort((a, b) => a.weight - b.weight);
 
     const errors = [];
     const rejected = [];

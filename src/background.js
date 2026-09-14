@@ -4,6 +4,8 @@ import browser from "./browser-api.js";
 import { getLogger, getActiveTab } from "./utils.js";
 import { getConfig } from "./config.js";
 import { fetchRahtiData, fetchRahtiDataWithRetry } from "./rahti.js";
+import { refreshProviders, reconcileSuolaRules } from "./providers.js";
+import { model } from "./model.js";
 import { controller } from "./controller.js";
 import { storeFavicon } from "./favicon-fetch.js";
 import { buildFeedbackRequest } from "./feedback.js";
@@ -21,6 +23,12 @@ const PULL_ALARM_NAME = "periodic-data-pull";
  * Collects enabled site origins from config, unregisters any previously
  * registered script, and registers it again only when there are enabled
  * origins.
+ *
+ * Filtered to origins the browser has actually granted before it reaches registerContentScripts():
+ * every bundled origin is covered by the static host_permissions and always passes this, but a
+ * provider's origin may not be granted yet (or ever), and registerContentScripts() refuses its whole
+ * array over one ungranted pattern -- which would otherwise silently stop correction on every bundled
+ * site too, not only the provider's.
  */
 async function updateDynamicContentScripts() {
     try {
@@ -35,14 +43,27 @@ async function updateDynamicContentScripts() {
             }
         }
 
+        const grantedOrigins = [];
+        for (const origin of enabledOrigins) {
+            try {
+                if (await browser.permissions.contains({ origins: [origin] })) grantedOrigins.push(origin);
+            } catch (e) {
+                log(`Permission check failed for ${origin}, treating it as ungranted:`, e);
+            }
+        }
+        if (grantedOrigins.length < enabledOrigins.length) {
+            log("Some enabled origins are not yet granted and will not get a content script:",
+                enabledOrigins.filter((origin) => !grantedOrigins.includes(origin)));
+        }
+
         try {
             await browser.scripting.unregisterContentScripts({ ids: ["paatti-content-script"] });
         } catch (e) {
             // Ignore if not registered yet
         }
 
-        if (enabledOrigins.length > 0) {
-            log("Registering content scripts for origins:", enabledOrigins);
+        if (grantedOrigins.length > 0) {
+            log("Registering content scripts for origins:", grantedOrigins);
             // For rewiews grep: chrome.scripting.registerContentScripts()
             // For rewiews grep: browser.scripting.registerContentScripts()
 
@@ -51,11 +72,11 @@ async function updateDynamicContentScripts() {
                 js: [
                     "src/contentScript.js"
                 ],
-                matches: enabledOrigins,
+                matches: grantedOrigins,
                 runAt: "document_idle"
             }]);
         } else {
-            log("No origins enabled, no content scripts registered.");
+            log("No granted origins, no content scripts registered.");
         }
     } catch (err) {
         log("Error updating dynamic content scripts:", err);
@@ -156,13 +177,18 @@ browser.runtime.onInstalled.addListener(async ({ reason }) => {
         }
     }
 
-    // Run an initial Rahti data fetch on install so the extension has data immediately.
-    // Initial fetch of Rahti data
-    try {
-        await fetchRahtiDataWithRetry();
-    } catch (err) {
-        log("Failed to perform initial fetch of Rahti data on install:", err);
-    }
+    // Run an initial Rahti data fetch and provider refresh on install, concurrently: neither depends
+    // on the other, and the Rahti retry backoff alone can take the better part of a minute, which
+    // would otherwise delay providers -- and everything after this block -- for no reason. Each
+    // branch catches its own failure, so neither ever rejects Promise.all.
+    await Promise.all([
+        fetchRahtiDataWithRetry().catch((err) => {
+            log("Failed to perform initial fetch of Rahti data on install:", err);
+        }),
+        refreshProviders().then(() => reconcileSuola()).catch((err) => {
+            log("Failed to refresh providers on install:", err);
+        })
+    ]);
 
     // Set up periodic fetching of Rahti data
     const config = await getConfig();
@@ -178,6 +204,10 @@ browser.alarms.onAlarm.addListener((alarm) => {
         log("Alarm triggered: fetching Rahti data.");
         fetchRahtiDataWithRetry().catch((err) => {
             log("Failed to fetch Rahti data on alarm:", err);
+        });
+
+        refreshProviders().then(() => reconcileSuola()).catch((err) => {
+            log("Failed to refresh providers on alarm:", err);
         });
     }
 });
@@ -215,6 +245,18 @@ async function initSuola() {
         }
     })();
     return suolaPromise;
+}
+
+/**
+ * Suola ready, with every active provider's rules installed as their own named set.
+ *
+ * Named sets do not survive a service-worker restart, so this reconciles them fresh on every call
+ * rather than once: initSuola() itself is idempotent (a second call joins the same promise), but
+ * reconcileSuolaRules() is not a one-time bootstrap step the way loading the module is.
+ */
+async function reconcileSuola() {
+    await initSuola();
+    await reconcileSuolaRules();
 }
 
 /**
@@ -261,21 +303,38 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.action === "hashUrls") {
-        initSuola().then(() => {
-            if (typeof globalThis.hashUrl === "function") {
-                const results = {};
-                for (const url of message.urls) {
-                    try {
-                        results[url] = globalThis.hashUrl(url);
-                    } catch (e) {
-                        log(`Error hashing URL '${url}':`, e);
-                        results[url] = null;
-                    }
-                }
-                sendResponse({ success: true, hashes: results });
-            } else {
+        reconcileSuola().then(async () => {
+            if (typeof globalThis.hashUrl !== "function") {
                 sendResponse({ success: false, error: "hashUrl function not found after initialization" });
+                return;
             }
+
+            // The name a link signs under is the source that owns its host, not the page's: a
+            // provider must not be able to answer for a link to a site it does not run. Resolved
+            // per URL, since a page can link to hosts several sources are authoritative for.
+            //
+            // A source is only passed as a name when it actually has a named set defined: a
+            // provider can shadow a domain's site-configs alone, with no suola-rules resource of its
+            // own, and hashUrl(url, name) fails closed (null) for a name with nothing behind it --
+            // falling back to the bundled/catch-all signature is correct here, not a bug to surface.
+            const activeNames = new Set(typeof globalThis.listRules === "function" ? globalThis.listRules() : []);
+            const results = {};
+            for (const url of message.urls) {
+                try {
+                    let source = null;
+                    try {
+                        source = await model.read.getSourceForHost(new URL(url).hostname);
+                    } catch {
+                        // Not a parseable URL; hashUrl below rejects it on its own terms.
+                    }
+                    const name = source && activeNames.has(source) ? source : null;
+                    results[url] = name ? globalThis.hashUrl(url, name) : globalThis.hashUrl(url);
+                } catch (e) {
+                    log(`Error hashing URL '${url}':`, e);
+                    results[url] = null;
+                }
+            }
+            sendResponse({ success: true, hashes: results });
         }).catch((err) => {
             sendResponse({ success: false, error: err.message || String(err) });
         });

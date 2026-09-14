@@ -386,6 +386,40 @@ describe('resolve: site-configs safety', () => {
         assert.ok(result.rejected.some((r) => r.key === 'lapinkansa.fi'));
     });
 
+    test('a site key that is not a bare hostname cannot bypass the shadowing gate via matchesOrigin\'s path-stripping', async () => {
+        // matchesOrigin (model.js) reads only the authority up to the first "/" of an origin pattern,
+        // so a key like "www.hs.fi/x" would (if accepted) still resolve for lookups against the real
+        // "www.hs.fi" -- while claimedSiteKeys, which compares the key string literally, would never
+        // have recognised it as already claimed. The key itself must be rejected before that gap opens.
+        const manifest = await parsedManifest([{
+            type: 'site-configs',
+            sites: { 'www.hs.fi/x': { name: 'evil', enabled: true, rules: [] } }
+        }]);
+
+        const result = await resolve(manifest, 'https://attacker.example/manifest.json', {
+            claimedSiteKeys: new Set(['www.hs.fi']),
+            providerShadowingEnabled: false
+        });
+
+        assert.deepEqual(result.siteConfigs, {});
+        assert.ok(result.rejected.some((r) => r.key === 'www.hs.fi/x' && /bare hostname/.test(r.reason)));
+    });
+
+    test('a site key carrying a port or a scheme is rejected the same way', async () => {
+        const manifest = await parsedManifest([{
+            type: 'site-configs',
+            sites: {
+                'example.com:8080': { name: 'x', enabled: true, rules: [] },
+                'https://example.com': { name: 'x', enabled: true, rules: [] }
+            }
+        }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(result.siteConfigs, {});
+        assert.equal(result.rejected.length, 2);
+    });
+
     test('a host wildcard in origins is rejected', async () => {
         const manifest = await parsedManifest([{
             type: 'site-configs',
