@@ -74,6 +74,14 @@ export function storeManifest(manifest, revision) {
     if (copy.optional_host_permissions !== undefined) {
         copy.optional_host_permissions = copy.optional_host_permissions.filter((origin) => origin !== ARBITRARY_ORIGINS);
     }
+    // The wildcard web_accessible_resources group exists only for a runtime-added provider site,
+    // which needs the wildcard host permission above to ever be requested. A store build carries
+    // neither: providers work on the GitHub build only.
+    if (copy.web_accessible_resources !== undefined) {
+        copy.web_accessible_resources = copy.web_accessible_resources.filter(
+            (group) => !group.matches?.includes(ARBITRARY_ORIGINS)
+        );
+    }
 
     return copy;
 }

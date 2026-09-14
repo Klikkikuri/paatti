@@ -48,6 +48,15 @@ describe('storeManifest', () => {
         }
     });
 
+    test('drops the wildcard web_accessible_resources group but keeps the named one', () => {
+        for (const browser of ['chrome', 'firefox']) {
+            const store = storeManifest(buildManifest(browser), '1');
+            assert.equal(store.web_accessible_resources.length, 1);
+            assert.ok(!store.web_accessible_resources[0].matches.includes(ARBITRARY_ORIGINS));
+            assert.ok(store.web_accessible_resources[0].matches.includes('https://www.hs.fi/*'));
+        }
+    });
+
     test('rejects a revision that is not a number above zero, and a version with more than four parts', () => {
         for (const bad of ['x', '', '0', '01']) {
             assert.throws(() => storeManifest({ version: '1.2.3' }, bad), /not a number above zero/);
@@ -90,5 +99,27 @@ describe('the real overlays', () => {
 
     test('a missing overlay names the file', () => {
         assert.throws(() => buildManifest('opera'), /manifest\.opera\.json/);
+    });
+});
+
+describe('the wildcard web_accessible_resources group', () => {
+    // Not needed by a runtime-added site's content script: the wasm module is fetched by the
+    // background page alone, and nothing under src/ references the icon via runtime.getURL().
+    const NOT_NEEDED_AT_RUNTIME = new Set(['build/js.wasm', 'icons/klikkikuri-48.png']);
+
+    const [named, wildcard] = base.web_accessible_resources;
+
+    test('matches only the wildcard host pattern, distinct from the named group', () => {
+        assert.deepEqual(wildcard.matches, [ARBITRARY_ORIGINS]);
+        assert.ok(!named.matches.includes(ARBITRARY_ORIGINS));
+    });
+
+    test('carries exactly the named group\'s resources minus what only the background page needs', () => {
+        const expected = named.resources.filter((resource) => !NOT_NEEDED_AT_RUNTIME.has(resource));
+        assert.deepEqual(wildcard.resources, expected);
+    });
+
+    test('never carries build/js.wasm: a provider site has no business loading the wasm module directly', () => {
+        assert.ok(!wildcard.resources.includes('build/js.wasm'));
     });
 });
