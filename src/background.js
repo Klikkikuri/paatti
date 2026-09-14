@@ -2,7 +2,7 @@
 
 import browser from "./browser-api.js";
 import { getLogger, getActiveTab } from "./utils.js";
-import { getConfig } from "./config.js";
+import { getConfig, PROVIDER_KEY_PREFIX } from "./config.js";
 import { fetchRahtiData, fetchRahtiDataWithRetry } from "./rahti.js";
 import { refreshProviders, reconcileSuolaRules } from "./providers.js";
 import { model } from "./model.js";
@@ -115,8 +115,13 @@ browser.storage.onChanged.addListener(async (changes, area) => {
     const isPreferencesChanged = area === 'local' && changes.userPreferences;
     const isOverridesChanged = area === 'sync' && changes.userSiteOverrides;
     const isModifiersChanged = area === 'sync' && changes.modifiers;
+    // A provider's origins can change with every refresh, not just when it is added or removed --
+    // without this, a registered content script keeps a stale matches array until some unrelated
+    // change happens to touch userPreferences/userSiteOverrides too.
+    const isProvidersChanged = area === 'sync' && Boolean(changes.providers);
+    const isProviderDataChanged = area === 'local' && Object.keys(changes).some((key) => key.startsWith(PROVIDER_KEY_PREFIX));
 
-    if (isPreferencesChanged || isOverridesChanged) {
+    if (isPreferencesChanged || isOverridesChanged || isProvidersChanged || isProviderDataChanged) {
         log("Config changed, updating dynamic content scripts...");
         await updateDynamicContentScripts();
     }

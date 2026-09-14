@@ -172,10 +172,37 @@ describe('providers folded into siteConfigs', () => {
         assert.equal(config.siteConfigs['news.example'], undefined);
     });
 
+    test('a provider site is offered but off by default, even though the provider marked it enabled', async () => {
+        await sync.set({ providers: [{ url, enabled: true }] });
+        await local.set({
+            [`provider:${url}`]: {
+                siteConfigs: { 'news.example': { name: 'News', enabled: true, origins: ['https://news.example/*'], rules: [] } }
+            }
+        });
+
+        const config = await getConfig();
+
+        assert.ok(config.siteConfigs['news.example'], 'the site should still be offered, i.e. present');
+        assert.equal(config.siteConfigs['news.example'].enabled, false);
+    });
+
+    test('a provider marking a site enabled: false withdraws the offer entirely, not just turns it off', async () => {
+        await sync.set({ providers: [{ url, enabled: true }] });
+        await local.set({
+            [`provider:${url}`]: {
+                siteConfigs: { 'news.example': { name: 'News', enabled: false, origins: ['https://news.example/*'], rules: [] } }
+            }
+        });
+
+        const config = await getConfig();
+
+        assert.equal(config.siteConfigs['news.example'], undefined);
+    });
+
     test('a sync override reaches a provider-only domain, exactly as it does a bundled one', async () => {
         await sync.set({
             providers: [{ url, enabled: true }],
-            userSiteOverrides: { 'news.example': { enabled: false } }
+            userSiteOverrides: { 'news.example': { enabled: true } }
         });
         await local.set({
             [`provider:${url}`]: {
@@ -185,7 +212,7 @@ describe('providers folded into siteConfigs', () => {
 
         const config = await getConfig();
 
-        assert.equal(config.siteConfigs['news.example'].enabled, false);
+        assert.equal(config.siteConfigs['news.example'].enabled, true, 'the user\'s own choice must be able to turn it on');
     });
 
     test('a provider claiming an existing bundled key replaces it outright', async () => {

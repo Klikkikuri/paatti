@@ -16,6 +16,9 @@ import './components/favicon-img.js';
 import './components/statistics-totals.js';
 import './components/page-background.js';
 import './components/easter-egg-setting.js';
+import './components/providers-setting.js';
+import './components/provider-shadowing-setting.js';
+import './components/loopback-providers-setting.js';
 
 // Load settings on page load
 document.addEventListener('DOMContentLoaded', async () => {

@@ -148,6 +148,28 @@ function findSiteConfig(siteConfigs, hostname) {
 }
 
 /**
+ * Write one field under `userPreferences.environmentConfigs[env]`, in storage.local. The shape every
+ * per-environment, device-local setting uses -- currently the two provider safety toggles, which must
+ * never be decided anywhere but the device they affect. See config.js's getConfig() for why this is
+ * local rather than sync.
+ *
+ * @param {string} field
+ * @param {*} value
+ * @param {string} [env] - Defaults to the active environment.
+ */
+async function setLocalEnvField(field, value, env) {
+    if (!env) env = await getConfig().then((cfg) => cfg.activeEnv);
+    log(`Setting ${field} for environment '${env}' to ${value}`);
+
+    const data = await browser.storage.local.get("userPreferences");
+    const userPreferences = data.userPreferences || {};
+    if (!userPreferences.environmentConfigs) userPreferences.environmentConfigs = {};
+    if (!userPreferences.environmentConfigs[env]) userPreferences.environmentConfigs[env] = {};
+    userPreferences.environmentConfigs[env][field] = value;
+    await browser.storage.local.set({ userPreferences });
+}
+
+/**
  * Namespace for __model__ of model-view-controller.
  */
 const model = (() => {
@@ -223,30 +245,10 @@ const model = (() => {
              * out of anything arriving through sync so the device it protects is always the one that
              * decides it.
              */
-            setProviderShadowingEnabled: async (value, env) => {
-                if (!env) env = await getConfig().then(cfg => cfg.activeEnv);
-                log(`Setting provider shadowing for environment '${env}' to ${value}`);
-
-                const data = await browser.storage.local.get("userPreferences");
-                const userPreferences = data.userPreferences || {};
-                if (!userPreferences.environmentConfigs) userPreferences.environmentConfigs = {};
-                if (!userPreferences.environmentConfigs[env]) userPreferences.environmentConfigs[env] = {};
-                userPreferences.environmentConfigs[env].providerShadowingEnabled = value;
-                await browser.storage.local.set({ userPreferences });
-            },
+            setProviderShadowingEnabled: async (value, env) => setLocalEnvField("providerShadowingEnabled", value, env),
 
             /** Whether a provider may be reached at a loopback address. Same storage shape and reasoning as above. */
-            setLoopbackProvidersEnabled: async (value, env) => {
-                if (!env) env = await getConfig().then(cfg => cfg.activeEnv);
-                log(`Setting loopback providers for environment '${env}' to ${value}`);
-
-                const data = await browser.storage.local.get("userPreferences");
-                const userPreferences = data.userPreferences || {};
-                if (!userPreferences.environmentConfigs) userPreferences.environmentConfigs = {};
-                if (!userPreferences.environmentConfigs[env]) userPreferences.environmentConfigs[env] = {};
-                userPreferences.environmentConfigs[env].loopbackProvidersEnabled = value;
-                await browser.storage.local.set({ userPreferences });
-            },
+            setLoopbackProvidersEnabled: async (value, env) => setLocalEnvField("loopbackProvidersEnabled", value, env),
 
             setEasterEggProbability: async (value, env) => {
                 // Property of an environment, like the email below, but kept in sync

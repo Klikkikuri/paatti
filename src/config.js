@@ -498,10 +498,17 @@ async function getConfig() {
         // domain here was already resolved against the declared-scope and shadowing rules in
         // providers.js's own refresh cycle, so it is simply layered on top -- a shadowing claim
         // replaces the bundled entry outright, exactly as a provider replacing its own is expected to.
+        //
+        // enabled: true means something different here than it does for the bundled set below: not
+        // "on", but "offered". A provider site always starts off regardless of what the provider
+        // declared, and only userSiteOverrides -- the user's own choice, made through the ordinary
+        // site toggle -- can turn it on; enabled: false in the provider's own data instead withdraws
+        // the offer entirely, so the site never appears at all.
         for (const provider of enabledProviders) {
             const data = providerData[`${PROVIDER_KEY_PREFIX}${provider.url}`];
             for (const [domain, siteConfig] of Object.entries(data?.siteConfigs || {})) {
-                mergedSiteConfigs[domain] = siteConfig;
+                if (!siteConfig.enabled) continue;
+                mergedSiteConfigs[domain] = { ...siteConfig, enabled: false };
                 siteConfigSource[domain] = provider.url;
             }
         }

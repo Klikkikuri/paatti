@@ -261,6 +261,19 @@ describe('refreshProviders', () => {
         assert.equal(secondData.siteConfigs['news.example'], undefined);
         assert.ok(secondData.rejected.some((r) => r.key === 'news.example'));
     });
+
+    test('two concurrent calls join into one pass instead of racing each other', async () => {
+        const url = 'https://provider.example/manifest.json';
+        await addProvider(url);
+        installed = mockFetch({
+            [url]: jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'news.example': site('news.example') } }]))
+        });
+
+        const [first, second] = await Promise.all([refreshProviders(), refreshProviders()]);
+
+        assert.equal(installed.calls.length, 1, 'the second call joined the first rather than starting its own pass');
+        assert.deepEqual(first, second);
+    });
 });
 
 describe('reconcileSuolaRules', () => {
@@ -365,5 +378,14 @@ describe('reconcileSuolaRules', () => {
         await assert.doesNotReject(reconcileSuolaRules());
 
         assert.equal(suola.defineCalls.length, 1);
+    });
+
+    test('two concurrent calls join into one pass instead of racing each other', async () => {
+        await seedProvider('https://a.example/manifest.json', { sites: [{ domain: 'a' }] });
+        suola = mockSuola();
+
+        await Promise.all([reconcileSuolaRules(), reconcileSuolaRules()]);
+
+        assert.equal(suola.defineCalls.length, 1, 'the second call joined the first rather than starting its own pass');
     });
 });

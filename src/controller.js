@@ -55,6 +55,16 @@ const controller = {
         await model.write.setVisualHighlightEnabled(value);
     },
 
+    setProviderShadowingEnabled: async (value) => {
+        log(`Setting provider shadowing to ${value}`);
+        await model.write.setProviderShadowingEnabled(value);
+    },
+
+    setLoopbackProvidersEnabled: async (value) => {
+        log(`Setting loopback providers to ${value}`);
+        await model.write.setLoopbackProvidersEnabled(value);
+    },
+
     setRefreshIntervalMinutes: async (value) => {
         log(`Setting refresh interval minutes to ${value}`);
         await model.write.setRefreshIntervalMinutes(value);

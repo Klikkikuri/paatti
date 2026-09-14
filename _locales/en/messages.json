@@ -1077,5 +1077,133 @@
   "optionsErrorLoadingSettings": {
     "message": "Error loading settings",
     "description": "Notification message when options page fails to load settings"
+  },
+  "legendProviders": {
+    "message": "🔌 Providers",
+    "description": "Legend of the options page Providers section"
+  },
+  "descProviders": {
+    "message": "Add a third-party provider manifest for more sites, correction data or URL-normalization rules",
+    "description": "Description of the options page Providers section"
+  },
+  "providerUrlPlaceholder": {
+    "message": "https://example.com/manifest.json",
+    "description": "Placeholder text for the provider manifest URL input"
+  },
+  "providerAddBtn": {
+    "message": "Add",
+    "description": "Button that inspects a provider manifest URL, the first of the two add steps"
+  },
+  "providerCancelBtn": {
+    "message": "Cancel",
+    "description": "Button that discards a provider add in progress"
+  },
+  "providerConfirmBtn": {
+    "message": "Add provider",
+    "description": "Button that resolves and saves a provider after its disclosure is shown, the second of the two add steps"
+  },
+  "providerRemoveBtn": {
+    "message": "Remove",
+    "description": "Button that removes an added provider"
+  },
+  "providerDisclosureOriginsIntro": {
+    "message": "This provider will be fetched from:",
+    "description": "Introduces the list of origins a provider manifest names, shown before it is added"
+  },
+  "providerDisclosureSitesIntro": {
+    "message": "It already offers these sites:",
+    "description": "Introduces the list of sites a provider manifest already reveals, shown before it is added"
+  },
+  "providersEmpty": {
+    "message": "No providers added yet.",
+    "description": "Shown in the Providers list when none have been added"
+  },
+  "providerSiteCount": {
+    "message": "$1 site(s)",
+    "description": "How many sites an added provider currently offers",
+    "placeholders": { "count": { "content": "$1", "example": "3" } }
+  },
+  "providerUpdatedAt": {
+    "message": "updated $1",
+    "description": "When an added provider's data was last resolved",
+    "placeholders": { "when": { "content": "$1", "example": "1/2/2026, 10:00:00 AM" } }
+  },
+  "providerNeverResolved": {
+    "message": "never resolved yet",
+    "description": "Shown for an added provider that has not completed its first refresh"
+  },
+  "providerBundledSet": {
+    "message": "the bundled set",
+    "description": "Names the built-in site list as the current holder of a domain a provider tried to claim"
+  },
+  "providerClaimedBy": {
+    "message": "$1: claimed by $2",
+    "description": "Explains why a provider's site was rejected: another source already holds that domain",
+    "placeholders": { "key": { "content": "$1", "example": "yle.fi" }, "winner": { "content": "$2", "example": "the bundled set" } }
+  },
+  "providerIgnoredCount": {
+    "message": "$1 resource(s) ignored (unknown type)",
+    "description": "How many resources in a provider manifest were of a type this version does not understand",
+    "placeholders": { "count": { "content": "$1", "example": "2" } }
+  },
+  "providerAlreadyAdded": {
+    "message": "This provider is already added.",
+    "description": "Shown when the URL entered is already in the provider list"
+  },
+  "providerLimitReached": {
+    "message": "The provider limit has been reached.",
+    "description": "Shown when adding a provider would exceed the maximum allowed"
+  },
+  "providerInvalidUrl": {
+    "message": "Enter a valid https:// URL.",
+    "description": "Shown when the entered provider manifest URL cannot be used"
+  },
+  "providerAdded": {
+    "message": "Provider added",
+    "description": "Notification message when a provider is added successfully"
+  },
+  "providerRemoved": {
+    "message": "Provider removed",
+    "description": "Notification message when a provider is removed"
+  },
+  "providerShadowingLabel": {
+    "message": "Allow providers to override sites",
+    "description": "Compact-layout label for the provider shadowing toggle"
+  },
+  "providerShadowingTitle": {
+    "message": "Allow providers to override sites",
+    "description": "Title of the provider shadowing toggle"
+  },
+  "providerShadowingDesc": {
+    "message": "Lets an added provider take over a site the bundled set or an earlier provider already claims",
+    "description": "Description of the provider shadowing toggle"
+  },
+  "providerShadowingSaved": {
+    "message": "Provider shadowing setting saved!",
+    "description": "Notification message when the provider shadowing setting is saved"
+  },
+  "providerShadowingSaveError": {
+    "message": "Error saving provider shadowing setting",
+    "description": "Notification message when saving the provider shadowing setting fails"
+  },
+  "loopbackProvidersLabel": {
+    "message": "Allow providers on this machine",
+    "description": "Compact-layout label for the loopback providers toggle"
+  },
+  "loopbackProvidersTitle": {
+    "message": "Allow providers on this machine",
+    "description": "Title of the loopback providers toggle"
+  },
+  "loopbackProvidersDesc": {
+    "message": "Lets a provider manifest be fetched from localhost, for running one during development",
+    "description": "Description of the loopback providers toggle"
+  },
+  "loopbackProvidersSaved": {
+    "message": "Loopback provider setting saved!",
+    "description": "Notification message when the loopback providers setting is saved"
+  },
+  "loopbackProvidersSaveError": {
+    "message": "Error saving loopback provider setting",
+    "description": "Notification message when saving the loopback providers setting fails"
   }
 }

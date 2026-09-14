@@ -155,9 +155,23 @@ async function refreshOne(url, config, claimedSiteKeys) {
  * precedence the design calls for. The bundled set's own keys seed the claim before any provider runs,
  * so weight `0` still claims no precedence over it.
  *
+ * Single-flight within this execution context: an overlapping call joins the one already running
+ * rather than starting a second pass that would race it over the same providers' storage writes.
+ * This does not reach across contexts -- the background service worker and an open options page
+ * each hold their own promise -- so a refresh started in one can still race one started in the
+ * other; that is accepted as a rare, self-healing staleness rather than solved with a storage lock.
+ *
  * @returns {Promise<Array<{url: string, scope: Set<string>, error?: string}>>}
  */
 async function refreshProviders() {
+    if (refreshInFlight) return refreshInFlight;
+    refreshInFlight = _refreshProviders().finally(() => { refreshInFlight = null; });
+    return refreshInFlight;
+}
+
+let refreshInFlight = null;
+
+async function _refreshProviders() {
     const config = await getConfig();
     const providers = await getProviders();
     // Bundled keys only -- getConfig().siteConfigs already folds every enabled provider's own
@@ -193,9 +207,21 @@ async function refreshProviders() {
  * a transient storage error, a malformed entry -- must degrade only the provider it belongs to, not
  * block hashing a page that may not even reference a provider's site.
  *
+ * Single-flight, for the same reason as `refreshProviders()`: this runs on every `hashUrls` request,
+ * and two overlapping passes reading `listRules()` at different points could each act on a different
+ * snapshot of what the other just defined or dropped.
+ *
  * @returns {Promise<void>}
  */
 async function reconcileSuolaRules() {
+    if (reconcileInFlight) return reconcileInFlight;
+    reconcileInFlight = _reconcileSuolaRules().finally(() => { reconcileInFlight = null; });
+    return reconcileInFlight;
+}
+
+let reconcileInFlight = null;
+
+async function _reconcileSuolaRules() {
     let providers;
     try {
         providers = (await getProviders()).filter((provider) => provider?.enabled && provider?.url);
