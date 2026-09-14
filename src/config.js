@@ -330,12 +330,26 @@ const DEFAULT_CONFIG = {
     "statistics": {},
 };
 
-// The keys getConfig() reads below. Everything else -- statistics above all, which are
-// written on every conversion batch -- leaves the cache alone.
+/**
+ * The domain keys the bundled set alone claims -- refreshProviders() seeds its precedence check from
+ * this, not from getConfig().siteConfigs. That merged view already folds every enabled provider's own
+ * previously-resolved sites back in, so seeding from it would make a provider look like it is
+ * shadowing its own prior claim on every refresh after the first.
+ */
+const BUNDLED_SITE_KEYS = new Set(Object.keys(DEFAULT_CONFIG.siteConfigs));
+
+// The keys getConfig() reads below -- used both for the storage.sync.get() call itself and for cache
+// invalidation, so the two can never drift out of step the way they once did. Everything else --
+// statistics above all, which are written on every conversion batch -- leaves the cache alone.
 const WATCHED_KEYS = {
     local: ["userPreferences"],
-    sync: ["userSiteOverrides", "modifiers", "environmentConfigs", "clickbaitLevelWarningSeen"],
+    sync: ["userSiteOverrides", "modifiers", "environmentConfigs", "clickbaitLevelWarningSeen", "providers"],
 };
+
+// Where a provider's resolved content lives in storage.local: provider:<manifest url>. The source of
+// truth for the prefix: providers.js imports it from here rather than the other way around, since it
+// already depends on this module for settings.
+const PROVIDER_KEY_PREFIX = "provider:";
 
 let cachedConfig = null;
 let pendingConfigPromise = null;
@@ -347,7 +361,12 @@ const NOTHING = Symbol("nothing");
 
 // Registered on import, so it precedes every listener a module importing this one can add.
 browser.storage.onChanged.addListener((changes, areaName) => {
-    if (!WATCHED_KEYS[areaName]?.some((key) => key in changes)) return;
+    const watchedKeyChanged = WATCHED_KEYS[areaName]?.some((key) => key in changes);
+    // A provider's own namespace isn't a fixed key name, so it can't sit in WATCHED_KEYS -- caught by
+    // prefix instead, the same way its content is folded into siteConfigs below.
+    const providerDataChanged = areaName === "local"
+        && Object.keys(changes).some((key) => key.startsWith(PROVIDER_KEY_PREFIX));
+    if (!watchedKeyChanged && !providerDataChanged) return;
 
     log("Watched key changed in", areaName, "- invalidating config cache.");
     cachedConfig = null;
@@ -427,13 +446,22 @@ async function getConfig() {
     const currentPromise = (async () => {
         const [localData, syncData] = await Promise.all([
             browser.storage.local.get("userPreferences"),
-            browser.storage.sync.get(["userSiteOverrides", "modifiers", "environmentConfigs", "clickbaitLevelWarningSeen"])
+            browser.storage.sync.get(WATCHED_KEYS.sync)
         ]);
 
         const userPreferences = localData.userPreferences || {};
         const syncOverrides = syncData.userSiteOverrides || {}; // Structure: { "yle.fi": false }
         const syncModifiers = syncData.modifiers || {};
         const syncEnvConfigs = syncData.environmentConfigs || {}; // Structure: { "free": { "easterEggProbability": 0.05 } }
+
+        // Providers own only their URL, order and enabled flag here; what each one resolved to lives
+        // in its own storage.local namespace and is read as one batched call below, not one per
+        // provider -- src/providers.js is the read/write API for everything about that shape.
+        const providers = Array.isArray(syncData.providers) ? syncData.providers : [];
+        const enabledProviders = providers.filter((provider) => provider?.enabled && provider?.url);
+        const providerData = enabledProviders.length > 0
+            ? await browser.storage.local.get(enabledProviders.map((provider) => `${PROVIDER_KEY_PREFIX}${provider.url}`))
+            : {};
 
         const activeEnv = userPreferences.environment || DEFAULT_CONFIG.environment || "free";
 
@@ -458,6 +486,19 @@ async function getConfig() {
         const envData = mergedEnvConfigs[activeEnv];
 
         const mergedSiteConfigs = { ...DEFAULT_CONFIG.siteConfigs };
+
+        // Folded in before the override loop below, not after: that loop is what applies
+        // userSiteOverrides and fills in a default origin, and a provider-only site needs both. A
+        // domain here was already resolved against the declared-scope and shadowing rules in
+        // providers.js's own refresh cycle, so it is simply layered on top -- a shadowing claim
+        // replaces the bundled entry outright, exactly as a provider replacing its own is expected to.
+        for (const provider of enabledProviders) {
+            const data = providerData[`${PROVIDER_KEY_PREFIX}${provider.url}`];
+            for (const [domain, siteConfig] of Object.entries(data?.siteConfigs || {})) {
+                mergedSiteConfigs[domain] = siteConfig;
+            }
+        }
+
         for (const [domain, siteConfig] of Object.entries(mergedSiteConfigs)) {
             // Merge siteConfigs with sync overrides
             if (syncOverrides.hasOwnProperty(domain)) {
@@ -505,4 +546,4 @@ async function getConfig() {
     return pendingConfigPromise;
 }
 
-export { getConfig, onConfigValue };
+export { getConfig, onConfigValue, PROVIDER_KEY_PREFIX, BUNDLED_SITE_KEYS };

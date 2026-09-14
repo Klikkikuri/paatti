@@ -157,6 +157,18 @@ describe('inspect', () => {
         assert.deepEqual(resolved.siteConfigs, {});
     });
 
+    test('reflects a shadowing rejection too, when the caller passes the same claimed keys resolve() would', async () => {
+        const manifestUrl = 'https://provider.example/manifest.json';
+        installed = mockFetch({
+            [manifestUrl]: jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'yle.fi': site('yle.fi') } }]))
+        });
+
+        const result = await inspect(manifestUrl, { claimedSiteKeys: new Set(['yle.fi']), providerShadowingEnabled: false });
+
+        assert.deepEqual(result.sites, {});
+        assert.ok(result.rejected.some((r) => r.key === 'yle.fi'));
+    });
+
     test('an all-relative manifest declares no cross-origin resource and resolves inline site-configs', async () => {
         const manifestUrl = 'https://provider.example/manifest.json';
         installed = mockFetch({

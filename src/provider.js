@@ -391,13 +391,24 @@ async function fetchManifest(manifestUrl, loopbackProvidersEnabled) {
  * Gesture one: fetch only the manifest URL, plus any same-origin `site-configs` document, and report
  * what a confirmation UI must disclose before the user grants anything else.
  *
+ * The shape-level checks resolve() also applies to a same-origin resource (origins declared where it
+ * must not be, a malformed site, a host mismatch) are applied here too, so what this discloses can
+ * never be less strict than the resolution that follows it. The declared-scope/shadowing check is the
+ * one exception: it depends on state resolve() reads fresh at its own call time (the bundled set plus
+ * every other currently-resolved provider), so it only matches resolve()'s outcome when the caller
+ * passes the same `claimedSiteKeys`/`providerShadowingEnabled` resolve() will be called with -- with
+ * the defaults below, a site already claimed elsewhere is disclosed here but may still be rejected then.
+ *
  * @param {string} manifestUrl
  * @param {object} [options]
  * @param {boolean} [options.loopbackProvidersEnabled]
+ * @param {boolean} [options.providerShadowingEnabled]
+ * @param {Set<string>} [options.claimedSiteKeys] - See `resolve()`.
  * @returns {Promise<{manifest: object, origins: Set<string>, sites: object, rejected: Array,
  *   ignoredCount: number}|{error: string}>}
  */
-async function inspect(manifestUrl, { loopbackProvidersEnabled = false } = {}) {
+async function inspect(manifestUrl, options = {}) {
+    const { loopbackProvidersEnabled = false, providerShadowingEnabled = false, claimedSiteKeys = new Set() } = options;
     const { manifest, error } = await fetchManifest(manifestUrl, loopbackProvidersEnabled);
     if (error) return { error };
 
@@ -407,7 +418,7 @@ async function inspect(manifestUrl, { loopbackProvidersEnabled = false } = {}) {
 
     let sites = {};
     const rejected = [];
-    const mergeOptions = { coverageHosts: null, claimedSiteKeys: new Set(), providerShadowingEnabled: false };
+    const mergeOptions = { coverageHosts: null, claimedSiteKeys, providerShadowingEnabled };
 
     for (const resource of knownResources(manifest)) {
         if (resource.type !== "site-configs" || !isSameOrigin(resource, manifestUrl, manifestOrigin)) continue;
@@ -466,12 +477,13 @@ async function resolve(manifest, manifestUrl, options = {}) {
 
     const errors = [];
     const rejected = [];
-    const visited = new Map();
-    let fetchCount = 0;
 
-    let siteConfigs = {};
-    let rahtiData = {};
-    let suolaSites = [];
+    // Phase 1: plan. Resource-level checks that need no fetched content run here, and every href that
+    // will actually be requested is collected up front -- deduped and capped at MAX_FETCHES -- so phase
+    // 2 can fetch them all at once instead of paying each one's latency back-to-back.
+    const toFetch = [];
+    const budgeted = new Set();
+    const plans = [];
 
     for (const resource of ordered) {
         const sameOrigin = isSameOrigin(resource, manifestUrl, manifestOrigin);
@@ -488,26 +500,45 @@ async function resolve(manifest, manifestUrl, options = {}) {
             }
         }
 
-        const documents = [];
+        const absoluteHrefs = [];
         for (const href of resource.href) {
             const absolute = resolveHref(manifestUrl, href);
             if (!absolute) {
                 errors.push({ type: resource.type, href, message: "malformed href" });
                 continue;
             }
+            absoluteHrefs.push(absolute);
 
-            if (!visited.has(absolute)) {
-                if (fetchCount >= MAX_FETCHES) {
-                    errors.push({ type: resource.type, href: absolute, message: "fetch budget exhausted" });
-                    continue;
-                }
-                fetchCount++;
-                visited.set(absolute, await fetchDocument(absolute, loopbackProvidersEnabled));
+            if (budgeted.has(absolute)) continue;
+            if (toFetch.length >= MAX_FETCHES) continue; // stays unbudgeted; reported once fetches resolve
+            budgeted.add(absolute);
+            toFetch.push(absolute);
+        }
+
+        plans.push({ resource, sameOrigin, absoluteHrefs });
+    }
+
+    // Phase 2: fetch the plan, concurrently. Promise.all preserves toFetch's order in its result, but
+    // phase 3 reads through the map below by URL, so the actual arrival order never matters.
+    const fetched = new Map(
+        await Promise.all(toFetch.map(async (url) => [url, await fetchDocument(url, loopbackProvidersEnabled)]))
+    );
+
+    // Phase 3: merge, in the same (weight, document order) the plan was built in.
+    let siteConfigs = {};
+    let rahtiData = {};
+    let suolaSites = [];
+
+    for (const { resource, sameOrigin, absoluteHrefs } of plans) {
+        const documents = [];
+        for (const absolute of absoluteHrefs) {
+            if (!budgeted.has(absolute)) {
+                errors.push({ type: resource.type, href: absolute, message: "fetch budget exhausted" });
+                continue;
             }
-
-            const fetched = visited.get(absolute);
-            if (fetched.error) errors.push({ type: resource.type, href: absolute, message: fetched.error });
-            else documents.push(fetched.content);
+            const result = fetched.get(absolute);
+            if (result.error) errors.push({ type: resource.type, href: absolute, message: result.error });
+            else documents.push(result.content);
         }
 
         if (resource.inline !== undefined) {

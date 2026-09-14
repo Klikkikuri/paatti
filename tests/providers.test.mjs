@@ -195,6 +195,21 @@ describe('refreshProviders', () => {
         assert.ok(data.rejected.some((r) => r.key === 'yle.fi'));
     });
 
+    test('a provider does not shadow its own prior claim on a second refresh', async () => {
+        const url = 'https://provider.example/manifest.json';
+        await addProvider(url);
+        installed = mockFetch({
+            [url]: jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'extra.example': site('extra.example') } }]))
+        });
+
+        for (let round = 1; round <= 3; round++) {
+            await refreshProviders();
+            const data = await getProviderData(url);
+            assert.ok(data.siteConfigs['extra.example'], `lost after refresh round ${round}`);
+            assert.deepEqual(data.rejected, [], `round ${round} rejected its own prior claim`);
+        }
+    });
+
     test('claims accumulate across providers in the order they were added', async () => {
         const first = 'https://first.example/manifest.json';
         const second = 'https://second.example/manifest.json';

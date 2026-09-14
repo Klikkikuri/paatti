@@ -2,7 +2,7 @@
 
 import browser from "./browser-api.js";
 import { getLogger } from "./utils.js";
-import { getConfig } from "./config.js";
+import { getConfig, PROVIDER_KEY_PREFIX, BUNDLED_SITE_KEYS } from "./config.js";
 import { initStorage } from "./storage.js";
 import { fetchManifest, resolve } from "./provider.js";
 
@@ -22,9 +22,9 @@ const log = getLogger("providers");
 /** "16 is generous" -- keeps the sync list far under its quota and bounds refreshProviders() too. */
 const MAX_PROVIDERS = 16;
 
-/** The local storage namespace one provider's resolved content lives in. */
+/** The local storage namespace one provider's resolved content lives in. Read too by config.js's own merge. */
 function namespaceFor(url) {
-    return `provider:${url}`;
+    return `${PROVIDER_KEY_PREFIX}${url}`;
 }
 
 /** The sync provider list: `{ url, enabled }` in the order the user added them. */
@@ -160,7 +160,10 @@ async function refreshOne(url, config, claimedSiteKeys) {
 async function refreshProviders() {
     const config = await getConfig();
     const providers = await getProviders();
-    const claimedSiteKeys = new Set(Object.keys(config.siteConfigs));
+    // Bundled keys only -- getConfig().siteConfigs already folds every enabled provider's own
+    // previously-resolved sites back in, which would make a provider look like it is shadowing its
+    // own prior claim on every refresh after the first and never keep it.
+    const claimedSiteKeys = new Set(BUNDLED_SITE_KEYS);
 
     const results = [];
     for (const provider of providers) {
