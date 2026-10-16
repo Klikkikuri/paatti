@@ -199,44 +199,6 @@ legend {
     opacity: 0.8;
 }
 
-/* Buttons */
-.button-group {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-button {
-    flex: 1;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-weight: bold;
-}
-
-.btn-primary {
-    background: var(--color-brand);
-    color: var(--color-on-brand);
-}
-
-.btn-primary:hover {
-    background: var(--color-brand-alt);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--color-brand) 40%, transparent);
-}
-
-.btn-secondary {
-    background: var(--color-neutral);
-    color: var(--color-on-accent);
-}
-
-.btn-secondary:hover {
-    background: var(--color-neutral-hover);
-}
-
 /* Status message */
 .status-message {
     position: fixed;
@@ -336,31 +298,15 @@ footer a:hover {
     margin-top: 25px;
 }
 
-/* Email input with icon */
+/* The invitation field: an .input-group with a leading mail icon. */
 .email-input-wrapper {
-    position: relative;
     margin-top: 15px;
 }
 
-.email-input-wrapper input[type="email"] {
-    width: 100%;
-    padding: 12px 90px 12px 45px;
-    border: 2px solid var(--color-border);
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: border-color 0.2s;
-}
-
-.email-input-wrapper input[type="email"]:focus {
-    outline: none;
-    border-color: var(--color-brand);
-}
-
 .email-input-wrapper .email-icon {
-    position: absolute;
-    top: 50%;
-    left: 12px;
-    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
     pointer-events: none;
 }
 
@@ -370,42 +316,9 @@ footer a:hover {
     color: var(--color-text-secondary);
 }
 
-.email-submit-btn {
-    position: absolute;
-    right: 0.5rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: var(--color-brand);
-    color: var(--color-on-brand);
-    border: 1px solid transparent;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    line-height: 1.25;
-    cursor: pointer;
-    transition: background 3s ease-out;
-    box-shadow: 0 1px 2px var(--shadow-ambient);
-}
-
-.email-submit-btn:hover {
-    background: var(--color-brand-hover);
-    transition: background 0.2s;
-}
-
-.email-submit-btn:focus {
-    outline: none;
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-brand) 30%, transparent);
-}
-
 .email-submit-btn.success {
     background: var(--color-success);
-    transition: background 0.2s ease-in;
-}
-
-.email-submit-btn:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
+    color: var(--color-on-accent);
 }
 
 /* Mobile responsiveness */

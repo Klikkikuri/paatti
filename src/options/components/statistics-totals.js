@@ -73,7 +73,7 @@ template.innerHTML = `
             <ul class="totals-site-list"></ul>
         </div>
 
-        <button type="button" class="totals-reset btn-secondary" aria-live="polite" data-i18n="statsTotalsResetButton"></button>
+        <button type="button" class="totals-reset push-button" aria-live="polite" data-i18n="statsTotalsResetButton"></button>
     </div>
 
     <p class="totals-empty hidden" tabindex="-1" data-i18n="statsTotalsEmpty"></p>

@@ -315,13 +315,9 @@ statistics-totals .totals-site-domain {
 }
 
 /* The name is the control that opens the site's breakdown, so it is stripped back to the cell it
- * already was. The chip sits outside it: pressing the reading must not open the panel.
- *
- * The flex reset is load-bearing: options.css gives every button on the page `flex: 1`, which
- * would grow this one across its cell and push the chip to the far edge. */
+ * already was. The chip sits outside it: pressing the reading must not open the panel. */
 statistics-totals .totals-site-toggle {
     appearance: none;
-    flex: 0 1 auto;
     background: none;
     border: 0;
     padding: 0;
@@ -489,16 +485,15 @@ statistics-totals .totals-empty {
  * the width they were read on. */
 /* --- Reset --- */
 
-/* A footnote to the table, not a form action: options.css gives every button flex: 1 and a
- * 12px/24px pad, sized for the page's action row. Sized down and pushed to the end of the line. */
+/* A footnote to the table, not a form action: a push button sized down so it casts and travels less,
+ * and pushed to the end of the line. */
 statistics-totals .totals-reset {
+    --push-offset: 2px;
     display: block;
-    flex: 0 0 auto;
-    width: auto;
+    min-width: 0;
     margin: 10px 0 0 auto;
-    padding: 6px 12px;
+    padding: 5px 12px;
     font-size: 0.85em;
-    font-weight: normal;
 }
 
 /* Armed: the label already says "click again"; the colour says it is no longer a safe press, and
@@ -509,6 +504,7 @@ statistics-totals .totals-reset[data-armed] {
     overflow: hidden;
     background: var(--color-danger);
     color: var(--color-on-accent);
+    outline-color: var(--color-danger);
 }
 
 statistics-totals .totals-reset[data-armed]::after {

@@ -42,7 +42,7 @@ detailedTemplate.innerHTML = `
                     <span id="dbGenerationDateText">—</span>
                 </div>
             </div>
-            <button type="button" class="btn-secondary" id="manualUpdateBtn" style="flex: 0 0 auto; width: auto; min-width: 150px; padding: 8px 16px; margin: 0;" data-i18n="databaseUpdateBtn">Update Database</button>
+            <button type="button" class="push-button" id="manualUpdateBtn" style="padding: 8px 16px;" data-i18n="databaseUpdateBtn">Update Database</button>
         </div>
     </div>
 `;
