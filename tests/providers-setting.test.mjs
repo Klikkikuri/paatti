@@ -240,6 +240,35 @@ describe('the add flow', () => {
         }
     });
 
+    test('requests both permissions while the click is still being handled, as Firefox requires', async () => {
+        fetchMap[url] = jsonResponse(manifestDoc([
+            { type: 'rahti-data', href: 'https://data.example/data.json' }
+        ]));
+        await fake.browser.storage.sync.set({ providers: [{ url: 'https://other.example/m.json', enabled: true }] });
+        const el = await mount();
+
+        // Firefox rejects a request made once the input handler has returned, e.g. after an await.
+        let handlingInput = false;
+        globalThis.browser.permissions.request = ({ origins }) => {
+            if (!handlingInput) return Promise.reject(new Error('permissions.request may only be called from a user input handler'));
+            requests.push(origins);
+            return respond();
+        };
+        const userClick = (button) => {
+            handlingInput = true;
+            try { button.click(); } finally { handlingInput = false; }
+        };
+
+        urlInput(el).value = url;
+        userClick(addBtn(el));
+        await settled();
+        assert.deepEqual(requests, [['https://provider.example/*']]);
+
+        userClick(confirmBtn(el));
+        await settled();
+        assert.deepEqual(requests, [['https://provider.example/*'], ['https://data.example/*']]);
+    });
+
     test('rejects a duplicate URL without requesting a permission', async () => {
         await fake.browser.storage.sync.set({ providers: [{ url, enabled: true }] });
         const el = await mount();

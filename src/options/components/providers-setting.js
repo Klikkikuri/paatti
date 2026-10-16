@@ -79,6 +79,8 @@ class ProvidersSetting extends ComponentBase {
     #confirmButton = null;
     #pendingUrl = null;
     #pendingInspection = null;
+    /** The list as last rendered, so "Add" can check it without an await before its permission request. */
+    #providers = [];
     /** An in-flight render whose result would land after a newer one starts is dropped. */
     #renderGeneration = 0;
 
@@ -127,6 +129,7 @@ class ProvidersSetting extends ComponentBase {
         const providers = await getProviders();
         if (!this.isConnected || generation !== this.#renderGeneration) return;
 
+        this.#providers = providers;
         this.#list.replaceChildren();
         if (providers.length === 0) {
             const empty = document.createElement('p');
@@ -233,12 +236,13 @@ class ProvidersSetting extends ComponentBase {
         return `${rejection.key}: ${rejection.reason}`;
     }
 
-    async #onAddClick() {
+    /** Nothing here may await before `permissions.request`. A stale list is safe: addProvider() decides again. */
+    #onAddClick() {
         this.#addError.hidden = true;
         const raw = this.#urlInput.value.trim();
         if (!raw) return;
 
-        const existing = await getProviders();
+        const existing = this.#providers;
         if (existing.some((provider) => provider.url === raw)) {
             this.#showAddError(browser.i18n.getMessage('providerAlreadyAdded') || 'This provider is already added.');
             return;
@@ -254,7 +258,7 @@ class ProvidersSetting extends ComponentBase {
             return;
         }
 
-        // Gesture one: requested synchronously, before any await below.
+        // Gesture one: requested synchronously, inside the input handler.
         this.#addButton.disabled = true;
         const granted = browser.permissions.request({ origins: [manifestPattern] });
         granted
@@ -314,7 +318,7 @@ class ProvidersSetting extends ComponentBase {
         }
     }
 
-    async #onConfirmClick() {
+    #onConfirmClick() {
         const url = this.#pendingUrl;
         const inspected = this.#pendingInspection;
         if (!url || !inspected) return;
