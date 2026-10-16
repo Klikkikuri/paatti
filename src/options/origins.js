@@ -12,6 +12,16 @@
 export const ARBITRARY_ORIGINS = "*://*/*";
 
 /**
+ * Whether this build can add providers: only one that declares the wildcard can request a provider's origins.
+ *
+ * @param {{optional_host_permissions?: string[]}} manifest - `runtime.getManifest()`.
+ * @returns {boolean}
+ */
+export function canAddProviders(manifest) {
+    return Boolean(manifest.optional_host_permissions?.includes(ARBITRARY_ORIGINS));
+}
+
+/**
  * The match pattern that covers `url`: scheme and host, granted whole. No port either, since a pattern
  * without one matches every port.
  *

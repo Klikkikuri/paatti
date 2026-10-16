@@ -343,6 +343,26 @@ describe('default providers and enabledProviderUrls', () => {
         assert.deepEqual(config.enabledProviderUrls, ['https://on.example/manifest.json']);
     });
 
+    test('a build that cannot add providers lists only its default provider, not one that sync brought in', async () => {
+        const originalGetManifest = fake.browser.runtime.getManifest;
+        fake.browser.runtime.getManifest = () => ({ ...originalGetManifest(), optional_host_permissions: [] });
+        try {
+            await local.set({ userPreferences: { environment: 'free' } });
+            await sync.set({
+                providers: [
+                    { url: DEFAULT_RAHTI_MANIFEST_URL, enabled: true },
+                    { url: 'https://synced.example/manifest.json', enabled: true }
+                ]
+            });
+
+            const config = await getConfig();
+
+            assert.deepEqual(config.enabledProviderUrls, [DEFAULT_RAHTI_MANIFEST_URL]);
+        } finally {
+            fake.browser.runtime.getManifest = originalGetManifest;
+        }
+    });
+
     test('DEFAULT_RAHTI_MANIFEST_URL is exported and is an https URL', () => {
         assert.match(DEFAULT_RAHTI_MANIFEST_URL, /^https:\/\//);
     });

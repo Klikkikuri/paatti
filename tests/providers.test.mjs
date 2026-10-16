@@ -593,3 +593,24 @@ describe('reconcileSuolaRules', () => {
         assert.equal(suola.defineCalls.length, 1, 'the second call joined the first rather than starting its own pass');
     });
 });
+
+describe('a build that cannot add providers', () => {
+    const synced = 'https://provider.example/manifest.json';
+    const originalGetManifest = fake.browser.runtime.getManifest;
+    let defaultUrl;
+    beforeEach(async () => {
+        ({ DEFAULT_RAHTI_MANIFEST_URL: defaultUrl } = await import('../src/config.js'));
+        fake.browser.runtime.getManifest = () => ({ ...originalGetManifest(), optional_host_permissions: [] });
+        await fake.browser.storage.sync.set({ providers: [{ url: defaultUrl, enabled: true }, { url: synced, enabled: true }] });
+    });
+    afterEach(() => { fake.browser.runtime.getManifest = originalGetManifest; });
+
+    test('refreshes its default provider but not one that sync brought in', async () => {
+        installed = mockFetch({ [defaultUrl]: jsonResponse(manifestDoc([])) });
+
+        const results = await refreshProviders();
+
+        assert.deepEqual(results.map((result) => result.url), [defaultUrl]);
+        assert.deepEqual(installed.calls, [defaultUrl]);
+    });
+});

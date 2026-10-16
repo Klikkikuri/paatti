@@ -3,7 +3,7 @@
 import browser from "./browser-api.js";
 import { getLogger } from "./utils.js";
 import { SITE_CONFIGS } from "./generated/sites.js";
-import { canRequestOrigins } from "./options/origins.js";
+import { canRequestOrigins, canAddProviders } from "./options/origins.js";
 
 const log = getLogger("config");
 
@@ -174,6 +174,20 @@ function onConfigValue(select, callback) {
 }
 
 /**
+ * The providers that are on and that this build may use, in the order the user added them. A partially-written sync
+ * record without a URL is skipped. A build that cannot add providers uses only its default ones, also when browser
+ * sync brings in a provider that was added in another browser.
+ *
+ * @param {Array<{url?: string, enabled?: boolean}>} providers - The sync provider list.
+ * @param {Set<string>} defaultProviders - The active environment's default provider URLs.
+ * @returns {Array<{url: string, enabled: boolean}>}
+ */
+function usableProviders(providers, defaultProviders) {
+    const anyProvider = canAddProviders(browser.runtime.getManifest());
+    return providers.filter((provider) => provider?.enabled && provider?.url && (anyProvider || defaultProviders.has(provider.url)));
+}
+
+/**
  * Gets the merged configuration for the current environment.
  */
 async function getConfig() {
@@ -199,9 +213,6 @@ async function getConfig() {
         // in its own storage.local namespace and is read as one batched call below, not one per
         // provider -- src/providers.js is the read/write API for everything about that shape.
         const providers = Array.isArray(syncData.providers) ? syncData.providers : [];
-        const enabledProviders = providers.filter((provider) => provider?.enabled && provider?.url);
-        const providerKeys = enabledProviders.map((provider) => `${PROVIDER_KEY_PREFIX}${provider.url}`);
-        const providerData = providerKeys.length > 0 ? await browser.storage.local.get(providerKeys) : {};
 
         const activeEnv = userPreferences.environment || DEFAULT_CONFIG.environment || "free";
 
@@ -229,6 +240,12 @@ async function getConfig() {
 
         const envData = mergedEnvConfigs[activeEnv];
 
+        const defaultProviders = new Set(envData.defaultProviders || []);
+        const manifest = browser.runtime.getManifest();
+        const enabledProviders = usableProviders(providers, defaultProviders);
+        const providerKeys = enabledProviders.map((provider) => `${PROVIDER_KEY_PREFIX}${provider.url}`);
+        const providerData = providerKeys.length > 0 ? await browser.storage.local.get(providerKeys) : {};
+
         const mergedSiteConfigs = { ...DEFAULT_CONFIG.siteConfigs };
         // Which provider (if any) a domain came from -- absent means the bundled set. Suola naming and
         // the Rahti scoped lookup both key off this, through model.js's getSourceForHost().
@@ -252,8 +269,6 @@ async function getConfig() {
         //
         // A site whose origins this build cannot request is left out: it could never be turned on. In the store
         // build, that is a site its manifest does not declare. refreshOne() logs it once per fetch.
-        const defaultProviders = new Set(envData.defaultProviders || []);
-        const manifest = browser.runtime.getManifest();
         for (const provider of enabledProviders) {
             const data = providerData[`${PROVIDER_KEY_PREFIX}${provider.url}`];
             const isDefault = defaultProviders.has(provider.url);
@@ -317,4 +332,4 @@ async function getConfig() {
     return pendingConfigPromise;
 }
 
-export { getConfig, onConfigValue, PROVIDER_KEY_PREFIX, BUNDLED_SITE_KEYS, DEFAULT_RAHTI_MANIFEST_URL };
+export { getConfig, onConfigValue, usableProviders, PROVIDER_KEY_PREFIX, BUNDLED_SITE_KEYS, DEFAULT_RAHTI_MANIFEST_URL };

@@ -1,6 +1,6 @@
 import browser from '../../browser-api.js';
 import { getConfig, onConfigValue } from '../../config.js';
-import { originPatterns, ARBITRARY_ORIGINS } from '../origins.js';
+import { originPatterns, canAddProviders, ARBITRARY_ORIGINS } from '../origins.js';
 import { localizeDocument } from '../utils.js';
 import {
     MAX_PROVIDERS, getProviders, addProvider, removeProvider, setProviderEnabled, getProviderData,
@@ -92,8 +92,9 @@ class ProvidersSetting extends ComponentBase {
         // strips it), so permissions.request() throws for any origin this flow does not already
         // hold. Providers work on the GitHub build only; hide the way in on a build that cannot
         // grant it, rather than let every add attempt fail with an opaque error. The list of
-        // providers already added (perhaps synced from a GitHub-build device) still shows.
-        const canAddProvider = Boolean(browser.runtime.getManifest().optional_host_permissions?.includes(ARBITRARY_ORIGINS));
+        // providers already added (perhaps synced from a GitHub-build device) still shows, but only the default ones
+        // are used (usableProviders() in config.js).
+        const canAddProvider = canAddProviders(browser.runtime.getManifest());
         this.querySelector('.provider-add').hidden = !canAddProvider;
         if (canAddProvider) {
             this.#addButton.addEventListener('click', () => this.#onAddClick(), { signal: this.signal });

@@ -2,7 +2,7 @@
 
 import browser from "./browser-api.js";
 import { getLogger } from "./utils.js";
-import { getConfig, PROVIDER_KEY_PREFIX, BUNDLED_SITE_KEYS } from "./config.js";
+import { getConfig, usableProviders, PROVIDER_KEY_PREFIX, BUNDLED_SITE_KEYS } from "./config.js";
 import { initStorage } from "./storage.js";
 import { fetchManifest, resolve, resourceOrigins } from "./provider.js";
 import { canRequestOrigins, missingOrigins, originPatterns } from "./options/origins.js";
@@ -277,7 +277,8 @@ let refreshInFlight = null;
 
 async function _refreshProviders(force = false) {
     const config = await getConfig();
-    const providers = await getProviders();
+    // Read fresh rather than from getConfig(), whose cache may not hold a provider that was just added.
+    const providers = usableProviders(await getProviders(), new Set(config.defaultProviders || []));
     // Bundled keys only -- getConfig().siteConfigs already folds every enabled provider's own
     // previously-resolved sites back in, which would make a provider look like it is shadowing its
     // own prior claim on every refresh after the first and never keep it.
@@ -288,10 +289,6 @@ async function _refreshProviders(force = false) {
 
     const results = [];
     for (const provider of providers) {
-        // Same validity check getConfig() applies to enabledProviders: a URL-less entry (a
-        // partially-written sync record) must be skipped by both in the same way, not just one.
-        if (!provider.enabled || !provider.url) continue;
-
         const claimedSiteKeys = defaultProviders.has(provider.url)
             ? new Set(providerClaims)
             : new Set([...BUNDLED_SITE_KEYS, ...providerClaims]);
