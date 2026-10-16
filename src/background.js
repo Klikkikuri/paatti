@@ -3,8 +3,7 @@
 import browser from "./browser-api.js";
 import { getLogger, getActiveTab } from "./utils.js";
 import { getConfig, PROVIDER_KEY_PREFIX } from "./config.js";
-import { fetchRahtiData, fetchRahtiDataWithRetry } from "./rahti.js";
-import { refreshProviders, reconcileSuolaRules } from "./providers.js";
+import { refreshProviders, reconcileSuolaRules, addProvider } from "./providers.js";
 import { model } from "./model.js";
 import { controller } from "./controller.js";
 import { storeFavicon } from "./favicon-fetch.js";
@@ -93,6 +92,71 @@ async function scheduleAlarm(minutes) {
 }
 
 /**
+ * Make sure the active environment's default provider(s) are present in the synced `providers` list.
+ * Additive only -- never removes anything, so it can never touch a provider the user added themselves,
+ * and it never needs to know whether a given URL used to be default in some earlier version. A URL
+ * retired from `config.defaultProviders` simply stops being re-added here and (per providers-setting.js)
+ * regains its own Remove button on the next render -- no marker or reconciliation state needed.
+ *
+ * Called from onInstalled (covers a fresh install and every upgrade, since "update"/"browser_update"
+ * reach onInstalled too), the environment-change branch, and the periodic alarm -- the last one makes
+ * this self-healing against `providers`' own read-modify-write sync races (the same pattern
+ * addProvider/removeProvider/setProviderEnabled already use) rather than a one-shot assertion hoping it
+ * sticks.
+ */
+async function seedDefaultProviders() {
+    const config = await getConfig();
+    for (const url of config.defaultProviders || []) {
+        try {
+            await addProvider(url); // no-op if already present, per providers.js's own check
+        } catch (err) {
+            log(`Failed to seed default provider ${url}:`, err);
+        }
+    }
+}
+
+/**
+ * refreshProviders(), retried with backoff if the active environment's default provider(s) failed to
+ * refresh -- scoped to just them, not every provider, so a slow/misconfigured third-party manifest can
+ * never make the worker hang through repeated backoff windows the way a uniform retry would.
+ *
+ * Short-circuits to a single, non-retried pass when no default provider is currently enabled: that is a
+ * deliberate, stable state (the user disabled it, or the environment's list is empty), not a transient
+ * failure, and retrying it would burn the full backoff on every call for no reason.
+ *
+ * @param {object} [options] - Passed through to refreshProviders(), e.g. {force: true}.
+ * @param {object} [retryConfig]
+ * @returns {Promise<Array<{url: string, scope: Set<string>, error?: string}>>}
+ */
+async function refreshWithDefaultProviderRetry(options = {}, retryConfig = {}) {
+    const maxRetries = retryConfig.maxRetries ?? 3;
+    const initialDelayMs = retryConfig.initialDelayMs ?? 10000;
+    const backoffFactor = retryConfig.backoffFactor ?? 2;
+    let delay = initialDelayMs;
+
+    for (let attempt = 1; ; attempt++) {
+        // Re-read on every attempt, not just once up front: the user could disable the default
+        // provider (or the environment could change) while a retry is waiting out its delay.
+        const config = await getConfig();
+        const enabledDefaultUrls = new Set(
+            (config.defaultProviders || []).filter((u) => config.enabledProviderUrls.includes(u))
+        );
+        if (enabledDefaultUrls.size === 0) {
+            return refreshProviders(options);
+        }
+
+        const results = await refreshProviders(options);
+        const defaultResults = results.filter((r) => enabledDefaultUrls.has(r.url));
+        const ok = defaultResults.length > 0 && defaultResults.every((r) => !r.error);
+        if (ok || attempt > maxRetries) return results;
+
+        log(`Default provider refresh failed (attempt ${attempt}/${maxRetries + 1}); retrying in ${delay / 1000}s`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        delay *= backoffFactor;
+    }
+}
+
+/**
  * Ask the active tab to re-convert. The worker owns this: it is the one context that
  * always sees the write, whichever surface made it.
  */
@@ -136,10 +200,10 @@ browser.storage.onChanged.addListener(async (changes, area) => {
             await scheduleAlarm(intervalMinutes);
         }
         if (newVal.environment !== oldVal.environment) {
-            log("Environment changed, triggering fresh database fetch...");
-            fetchRahtiDataWithRetry({ force: true }).catch((err) => {
-                log("Failed to fetch Rahti data on environment change:", err);
-            });
+            log("Environment changed, refreshing providers...");
+            seedDefaultProviders()
+                .then(() => refreshWithDefaultProviderRetry())
+                .catch((err) => log("Failed to refresh providers on environment change:", err));
         }
         if (newVal.clickbaitLevel !== oldVal.clickbaitLevel
             || newVal.enabled !== oldVal.enabled
@@ -182,18 +246,13 @@ browser.runtime.onInstalled.addListener(async ({ reason }) => {
         }
     }
 
-    // Run an initial Rahti data fetch and provider refresh on install, concurrently: neither depends
-    // on the other, and the Rahti retry backoff alone can take the better part of a minute, which
-    // would otherwise delay providers -- and everything after this block -- for no reason. Each
-    // branch catches its own failure, so neither ever rejects Promise.all.
-    await Promise.all([
-        fetchRahtiDataWithRetry().catch((err) => {
-            log("Failed to perform initial fetch of Rahti data on install:", err);
-        }),
-        refreshProviders().then(() => reconcileSuola()).catch((err) => {
-            log("Failed to refresh providers on install:", err);
-        })
-    ]);
+    // Seed the active environment's default provider(s) -- both the fresh-install case and the
+    // upgrade path for an existing install that would otherwise silently lose its corrections dataset
+    // -- then refresh every provider, with retry scoped to the default one(s).
+    await seedDefaultProviders();
+    await refreshWithDefaultProviderRetry().then(() => reconcileSuola()).catch((err) => {
+        log("Failed to refresh providers on install:", err);
+    });
 
     // Set up periodic fetching of Rahti data
     const config = await getConfig();
@@ -203,17 +262,17 @@ browser.runtime.onInstalled.addListener(async ({ reason }) => {
     await updateDynamicContentScripts();
 });
 
-// Handle periodic alarm to fetch Rahti data
+// Handle periodic alarm to refresh providers (the default dataset included)
 browser.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === PULL_ALARM_NAME) {
-        log("Alarm triggered: fetching Rahti data.");
-        fetchRahtiDataWithRetry().catch((err) => {
-            log("Failed to fetch Rahti data on alarm:", err);
-        });
-
-        refreshProviders().then(() => reconcileSuola()).catch((err) => {
-            log("Failed to refresh providers on alarm:", err);
-        });
+        log("Alarm triggered: refreshing providers.");
+        // Re-seeding here too (not just on install/environment-change) makes the default provider
+        // self-healing against providers' own read-modify-write sync races -- cheap and idempotent,
+        // so there is no cost to reasserting it on every tick.
+        seedDefaultProviders()
+            .then(() => refreshProviders())
+            .then(() => reconcileSuola())
+            .catch((err) => log("Failed to refresh providers on alarm:", err));
     }
 });
 
@@ -289,16 +348,27 @@ async function submitFeedback(payload) {
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "updateDatabase") {
         log("Manual database update requested.");
-        // Manual updates invoke fetchRahtiData directly without retry logic
-        fetchRahtiData({ force: true })
-            .then((success) => {
-                if (success) {
-                    browser.storage.local.get("lastDatabaseUpdate").then((result) => {
-                        sendResponse({ success: true, lastDatabaseUpdate: result.lastDatabaseUpdate });
+        refreshWithDefaultProviderRetry({ force: true })
+            .then(async (results) => {
+                const config = await getConfig();
+                const defaultUrls = new Set(config.defaultProviders || []);
+                const defaultResults = results.filter((r) => defaultUrls.has(r.url));
+                const anySucceeded = defaultResults.some((r) => !r.error);
+
+                if (defaultResults.length === 0) {
+                    sendResponse({
+                        success: false,
+                        error: browser.i18n.getMessage("databaseUpdateNoDefaultProvider")
+                            || "No default provider is active."
                     });
-                } else {
-                    sendResponse({ success: false, error: "Tietokannan haku epäonnistui kaikista osoitteista." });
+                    return;
                 }
+                if (!anySucceeded) {
+                    sendResponse({ success: false, error: defaultResults[0].error });
+                    return;
+                }
+                const status = await model.read.getDatabaseStatus();
+                sendResponse({ success: true, lastDatabaseUpdate: status.lastDatabaseUpdate });
             })
             .catch((error) => {
                 log("Manual database update failed:", error);
@@ -381,11 +451,11 @@ async function isDatabaseStale() {
     try {
         const config = await getConfig();
         const intervalMinutes = config.refreshIntervalMinutes || 30;
-        const result = await browser.storage.local.get("lastDatabaseUpdate");
-        if (!result.lastDatabaseUpdate) {
+        const { lastDatabaseUpdate } = await model.read.getDatabaseStatus();
+        if (!lastDatabaseUpdate) {
             return true;
         }
-        const ageMs = Date.now() - result.lastDatabaseUpdate;
+        const ageMs = Date.now() - lastDatabaseUpdate;
         return ageMs >= intervalMinutes * 60 * 1000;
     } catch (err) {
         log("Failed checking database staleness:", err);
@@ -402,9 +472,9 @@ if (browser.runtime && browser.runtime.onStartup) {
             const intervalMinutes = config.refreshIntervalMinutes || 30;
             await scheduleAlarm(intervalMinutes);
             if (await isDatabaseStale()) {
-                log("Database is stale on browser startup, triggering background fetch with retry...");
-                fetchRahtiDataWithRetry().catch((err) => {
-                    log("Failed to fetch Rahti data on browser startup:", err);
+                log("Database is stale on browser startup, refreshing providers with retry...");
+                refreshWithDefaultProviderRetry().catch((err) => {
+                    log("Failed to refresh providers on browser startup:", err);
                 });
             }
         } catch (err) {
@@ -424,9 +494,9 @@ if (browser.runtime && browser.runtime.onStartup) {
         }
         await updateDynamicContentScripts();
         if (await isDatabaseStale()) {
-            log("Database is stale on script evaluation, triggering background fetch with retry...");
-            fetchRahtiDataWithRetry().catch((err) => {
-                log("Failed to fetch Rahti data on background script evaluation:", err);
+            log("Database is stale on script evaluation, refreshing providers with retry...");
+            refreshWithDefaultProviderRetry().catch((err) => {
+                log("Failed to refresh providers on background script evaluation:", err);
             });
         }
     } catch (err) {

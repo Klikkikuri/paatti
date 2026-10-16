@@ -53,11 +53,11 @@
         "src/model.js",
         "src/controller.js",
         "src/config.js",
+        "src/options/origins.js",
+        "src/generated/sites.js",
         "src/storage.js",
         "src/rahti.js",
         "src/rahti/schema.js",
-        "src/rahti/fetcher.js",
-        "src/rahti/sync.js",
         "src/providers.js",
         "src/provider.js",
         "src/safe-fetch.js",
@@ -82,8 +82,7 @@
         "https://yle.fi/*",
         "https://www.mtvuutiset.fi/*",
         "https://aksa.fi/*",
-        "https://www.ampparit.com/*",
-        "https://old.reddit.com/*"
+        "https://www.ampparit.com/*"
       ]
     },
     {
@@ -93,11 +92,11 @@
         "src/model.js",
         "src/controller.js",
         "src/config.js",
+        "src/options/origins.js",
+        "src/generated/sites.js",
         "src/storage.js",
         "src/rahti.js",
         "src/rahti/schema.js",
-        "src/rahti/fetcher.js",
-        "src/rahti/sync.js",
         "src/providers.js",
         "src/provider.js",
         "src/safe-fetch.js",
@@ -136,8 +135,8 @@
     "https://aksa.fi/*"
   ],
   "optional_host_permissions": [
-    "https://www.ampparit.com/*",
-    "*://*/*"
+    "*://*/*",
+    "https://www.ampparit.com/*"
   ],
   "permissions": [
     "storage",

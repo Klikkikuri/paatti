@@ -144,6 +144,28 @@ describe('getProviderData', () => {
         assert.equal(data.suolaRules, null);
         assert.deepEqual([...data.scope], []);
         assert.equal(data.updated, null);
+        assert.equal(data.entryCount, 0);
+        assert.equal(data.databaseGenerationDate, null);
+        assert.deepEqual(data.resourceHeaders, {});
+    });
+
+    test('reads back entryCount and databaseGenerationDate written by refreshOne', async () => {
+        const url = 'https://provider.example/manifest.json';
+        const dataUrl = 'https://provider.example/data.json';
+        await addProvider(url);
+        installed = mockFetch({
+            [url]: jsonResponse(manifestDoc([{ type: 'rahti-data', href: dataUrl }])),
+            [dataUrl]: jsonResponse({
+                schema_version: '0.1.0', updated: '2026-05-01T00:00:00Z',
+                entries: [{ urls: [{ sign: 's1' }], title: 'x' }, { urls: [{ sign: 's2' }], title: 'y' }]
+            })
+        });
+
+        await refreshProviders();
+
+        const data = await getProviderData(url);
+        assert.equal(data.entryCount, 2, 'matches Object.keys(rahtiData).length');
+        assert.equal(data.databaseGenerationDate, '2026-05-01T00:00:00Z');
     });
 });
 
@@ -228,6 +250,24 @@ describe('refreshProviders', () => {
         assert.ok(data.rejected.some((r) => r.key === 'yle.fi'));
     });
 
+    test('a default provider may replace the bundled set; a provider after it may not take the key back', async () => {
+        const { DEFAULT_RAHTI_MANIFEST_URL: official } = await import('../src/config.js');
+        const other = 'https://provider.example/manifest.json';
+        await addProvider(official);
+        await addProvider(other);
+        installed = mockFetch({
+            [official]: jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'yle.fi': site('yle.fi') } }])),
+            [other]: jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'yle.fi': site('yle.fi') } }]))
+        });
+
+        await refreshProviders();
+
+        const officialData = await getProviderData(official);
+        assert.ok(officialData.siteConfigs['yle.fi'], 'shadowing is off by default, but the default provider publishes the bundled set');
+        assert.deepEqual(officialData.rejected, []);
+        assert.ok((await getProviderData(other)).rejected.some((r) => r.key === 'yle.fi'));
+    });
+
     test('a provider does not shadow its own prior claim on a second refresh', async () => {
         const url = 'https://provider.example/manifest.json';
         await addProvider(url);
@@ -273,6 +313,54 @@ describe('refreshProviders', () => {
 
         assert.equal(installed.calls.length, 1, 'the second call joined the first rather than starting its own pass');
         assert.deepEqual(first, second);
+    });
+
+    describe('refreshProviders({force}) vs. the single-flight guard', () => {
+        test('a forced call issued while a non-forced pass is in-flight does not return its (possibly stale) results', async () => {
+            const url = 'https://provider.example/manifest.json';
+            await addProvider(url);
+            installed = mockFetch({
+                [url]: jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'news.example': site('news.example') } }]))
+            });
+
+            // Both calls fire synchronously, back-to-back, before either has a chance to await anything
+            // internally -- the same ordering the existing "two concurrent calls" test above relies on.
+            const nonForced = refreshProviders();
+            const forced = refreshProviders({ force: true });
+
+            await Promise.all([nonForced, forced]);
+
+            assert.equal(installed.calls.length, 2, 'the forced call started its own pass instead of joining the non-forced one');
+        });
+
+        test('three concurrent calls (one running, two forced) each get a distinct, sequential pass -- never running in parallel', async () => {
+            const url = 'https://provider.example/manifest.json';
+            await addProvider(url);
+            let concurrentFetches = 0;
+            let maxConcurrentFetches = 0;
+            const original = globalThis.fetch;
+            globalThis.fetch = async () => {
+                concurrentFetches++;
+                maxConcurrentFetches = Math.max(maxConcurrentFetches, concurrentFetches);
+                await new Promise((resolve) => setTimeout(resolve, 5));
+                concurrentFetches--;
+                return jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'news.example': site('news.example') } }]));
+            };
+            installed = { restore: () => { globalThis.fetch = original; } };
+
+            try {
+                const [a, b, c] = await Promise.all([
+                    refreshProviders(),
+                    refreshProviders({ force: true }),
+                    refreshProviders({ force: true })
+                ]);
+                assert.equal(maxConcurrentFetches, 1, 'two passes ran _refreshProviders() at once -- the single-flight guard was raced');
+                assert.ok(a && b && c);
+            } finally {
+                installed.restore();
+                installed = null;
+            }
+        });
     });
 });
 

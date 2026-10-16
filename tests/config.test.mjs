@@ -14,7 +14,7 @@ globalThis.browser = fake.browser;
 
 // Imported dynamically: a static import is hoisted above the assignment above, so
 // browser-api.js would resolve the namespace before globalThis.browser exists.
-const { getConfig, onConfigValue } = await import('../src/config.js');
+const { getConfig, onConfigValue, DEFAULT_RAHTI_MANIFEST_URL } = await import('../src/config.js');
 
 const { local, sync } = fake.browser.storage;
 
@@ -199,6 +199,74 @@ describe('providers folded into siteConfigs', () => {
         assert.equal(config.siteConfigs['news.example'], undefined);
     });
 
+    describe('a default provider', () => {
+        const hs = { name: 'HS', enabled: true, origins: ['https://www.hs.fi/*'], rules: [{ container: 'new', link: 'a', title: 'h3' }] };
+        const ampparit = { name: 'Ampparit', enabled: false, origins: ['https://www.ampparit.com/*'], rules: [] };
+        const added = { name: 'New', enabled: true, origins: ['https://new.example.fi/*'], rules: [] };
+
+        async function withDefaultProvider(env, check) {
+            await local.set({
+                userPreferences: { environment: env },
+                [`provider:${DEFAULT_RAHTI_MANIFEST_URL}`]: { siteConfigs: { 'www.hs.fi': hs, 'www.ampparit.com': ampparit, 'new.example.fi': added } }
+            });
+            await sync.set({ providers: [{ url: DEFAULT_RAHTI_MANIFEST_URL, enabled: true }], userSiteOverrides: {} });
+            try {
+                await check(await getConfig());
+            } finally {
+                await local.set({ userPreferences: {} });
+                await sync.set({ providers: [] });
+            }
+        }
+
+        test('replaces a bundled site and keeps it enabled, in development too', async () => {
+            await withDefaultProvider('development', (config) => {
+                assert.equal(config.siteConfigs['www.hs.fi'].enabled, true);
+                assert.deepEqual(config.siteConfigs['www.hs.fi'].rules, hs.rules);
+                assert.equal(config.siteConfigSource['www.hs.fi'], DEFAULT_RAHTI_MANIFEST_URL);
+            });
+        });
+
+        test('keeps a site it marks enabled: false, off, as the bundled set does', async () => {
+            await withDefaultProvider('free', (config) => {
+                assert.equal(config.siteConfigs['www.ampparit.com'].enabled, false);
+                assert.equal(config.siteConfigSource['www.ampparit.com'], DEFAULT_RAHTI_MANIFEST_URL, 'listed, not withdrawn');
+            });
+        });
+
+        test('a new site of its own is hidden when the build cannot request its origin, as in a store build', async () => {
+            const original = fake.browser.runtime.getManifest;
+            fake.browser.runtime.getManifest = () => ({
+                host_permissions: ['https://www.hs.fi/*'], optional_host_permissions: ['https://www.ampparit.com/*']
+            });
+            try {
+                await withDefaultProvider('free', (config) => {
+                    assert.equal(config.siteConfigs['new.example.fi'], undefined);
+                    assert.equal(config.siteConfigs['www.hs.fi'].enabled, true);
+                    assert.ok(config.siteConfigs['www.ampparit.com']);
+                });
+            } finally {
+                fake.browser.runtime.getManifest = original;
+            }
+        });
+
+        test('a new site of its own is enabled only when the browser grants its origin', async () => {
+            const { isSiteEnabled } = await import('../src/options/utils.js');
+            const original = fake.browser.permissions.contains;
+            await withDefaultProvider('free', async (config) => {
+                assert.equal(config.siteConfigs['new.example.fi'].enabled, true);
+                try {
+                    fake.browser.permissions.contains = async ({ origins }) => !origins.includes('https://new.example.fi/*');
+                    assert.equal(await isSiteEnabled('new.example.fi'), false, 'not granted, as in a store build');
+                    assert.equal(await isSiteEnabled('www.hs.fi'), true);
+                    fake.browser.permissions.contains = async () => true;
+                    assert.equal(await isSiteEnabled('new.example.fi'), true);
+                } finally {
+                    fake.browser.permissions.contains = original;
+                }
+            });
+        });
+    });
+
     test('a sync override reaches a provider-only domain, exactly as it does a bundled one', async () => {
         await sync.set({
             providers: [{ url, enabled: true }],
@@ -239,6 +307,49 @@ describe('providers folded into siteConfigs', () => {
         assert.ok(fake.reads.local > before, 'the cache was not invalidated');
         assert.notEqual(first, second);
         assert.ok(second.siteConfigs['news.example']);
+    });
+});
+
+describe('default providers and enabledProviderUrls', () => {
+    test('every environment ships DEFAULT_RAHTI_MANIFEST_URL as its default provider', async () => {
+        for (const env of ['free', 'paid', 'development']) {
+            await local.set({ userPreferences: { environment: env } });
+            const config = await getConfig();
+            assert.deepEqual(config.defaultProviders, [DEFAULT_RAHTI_MANIFEST_URL]);
+        }
+    });
+
+    test('a userPreferences override replaces the active environment\'s defaultProviders list', async () => {
+        await local.set({
+            userPreferences: { environment: 'free', environmentConfigs: { free: { defaultProviders: [] } } }
+        });
+
+        const config = await getConfig();
+
+        assert.deepEqual(config.defaultProviders, []);
+    });
+
+    test('enabledProviderUrls lists only enabled, URL-bearing providers', async () => {
+        await sync.set({
+            providers: [
+                { url: 'https://on.example/manifest.json', enabled: true },
+                { url: 'https://off.example/manifest.json', enabled: false },
+                { enabled: true } // partially-written sync record, no url
+            ]
+        });
+
+        const config = await getConfig();
+
+        assert.deepEqual(config.enabledProviderUrls, ['https://on.example/manifest.json']);
+    });
+
+    test('DEFAULT_RAHTI_MANIFEST_URL is exported and is an https URL', () => {
+        assert.match(DEFAULT_RAHTI_MANIFEST_URL, /^https:\/\//);
+    });
+
+    test('the bundled sites are synced from DEFAULT_RAHTI_MANIFEST_URL, not from a local copy', async () => {
+        const { SITES_SOURCE } = await import('../src/generated/sites.js');
+        assert.equal(SITES_SOURCE, DEFAULT_RAHTI_MANIFEST_URL, 'Run `make sites-sync` against the published manifest.');
     });
 });
 

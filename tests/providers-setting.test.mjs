@@ -268,6 +268,57 @@ describe('an existing provider row', () => {
     });
 });
 
+describe('the default-provider Remove-button guard', () => {
+    const defaultUrl = 'https://default.example/manifest.json';
+    const thirdPartyUrl = 'https://third-party.example/manifest.json';
+
+    /** Sets the active ("free", the default test environment) environment's defaultProviders list. */
+    async function setDefaultProviders(urls) {
+        const data = await fake.browser.storage.local.get('userPreferences');
+        const userPreferences = data.userPreferences || {};
+        userPreferences.environmentConfigs = userPreferences.environmentConfigs || {};
+        userPreferences.environmentConfigs.free = { ...userPreferences.environmentConfigs.free, defaultProviders: urls };
+        await fake.browser.storage.local.set({ userPreferences });
+    }
+
+    test('a row whose URL is a current default provider has no Remove button, but keeps its toggle', async () => {
+        await setDefaultProviders([defaultUrl]);
+        await fake.browser.storage.sync.set({ providers: [{ url: defaultUrl, enabled: true }] });
+        await fake.browser.storage.local.set({ [`provider:${defaultUrl}`]: { siteConfigs: {}, rejected: [], errors: [] } });
+
+        const el = await mount();
+
+        assert.equal(rows(el)[0].querySelector('.provider-remove-btn').hidden, true);
+        assert.equal(rows(el)[0].querySelector('toggle-button').hidden, false);
+    });
+
+    test('a third-party row keeps its Remove button even while a default provider also exists', async () => {
+        await setDefaultProviders([defaultUrl]);
+        await fake.browser.storage.sync.set({
+            providers: [{ url: defaultUrl, enabled: true }, { url: thirdPartyUrl, enabled: true }]
+        });
+        await fake.browser.storage.local.set({
+            [`provider:${defaultUrl}`]: { siteConfigs: {}, rejected: [], errors: [] },
+            [`provider:${thirdPartyUrl}`]: { siteConfigs: {}, rejected: [], errors: [] }
+        });
+
+        const el = await mount();
+
+        const thirdPartyRow = rows(el).find((row) => row.querySelector('.provider-url').textContent === thirdPartyUrl);
+        assert.equal(thirdPartyRow.querySelector('.provider-remove-btn').hidden, false);
+    });
+
+    test('a formerly-default URL no longer in defaultProviders regains its Remove button', async () => {
+        await setDefaultProviders([]); // retired: no longer a default anywhere
+        await fake.browser.storage.sync.set({ providers: [{ url: defaultUrl, enabled: true }] });
+        await fake.browser.storage.local.set({ [`provider:${defaultUrl}`]: { siteConfigs: {}, rejected: [], errors: [] } });
+
+        const el = await mount();
+
+        assert.equal(rows(el)[0].querySelector('.provider-remove-btn').hidden, false);
+    });
+});
+
 describe('a store build (no wildcard optional host permission)', () => {
     test('hides the add form but still lists an existing provider', async () => {
         globalThis.browser.runtime.getManifest = () => ({ optional_host_permissions: ['https://www.ampparit.com/*'] });

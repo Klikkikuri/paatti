@@ -6,119 +6,106 @@ import { createFakeBrowser } from './helpers/fake-browser.mjs';
 const fake = createFakeBrowser();
 globalThis.browser = fake.browser;
 
-const { fetchRahtiData, fetchRahtiDataWithRetry, rahtiStorage, getRahtiEntry } = await import('../src/rahti.js');
-
-let fetchAttempts = 0;
-
-/** A payload the schema check accepts, so only the retry behaviour is under test. */
-const okResponse = (entries = []) => ({
-    ok: true,
-    status: 200,
-    headers: new Map([
-        ['ETag', '"test-etag"'],
-        ['Last-Modified', 'Sun, 26 Jul 2026 12:00:00 GMT']
-    ]),
-    json: async () => ({
-        status: 'ok',
-        schema_version: '0.1.0',
-        updated: '2026-07-26T12:00:00Z',
-        entries
-    })
-});
+const { getRahtiEntry } = await import('../src/rahti.js');
+const { setProviderEnabled, removeProvider } = await import('../src/providers.js');
 
 beforeEach(async () => {
-    fetchAttempts = 0;
-    // The namespace object is resolved once at import, so empty the store rather than replace it.
     await fake.browser.storage.local.clear();
     await fake.browser.storage.sync.clear();
 });
 
-test('fetchRahtiDataWithRetry succeeds on the 2nd attempt after a network reconnect', async () => {
-    globalThis.fetch = async () => {
-        fetchAttempts++;
-        if (fetchAttempts < 2) throw new Error('Simulated network offline during wake-up');
-
-        return okResponse([{ urls: [{ sign: 'testsign123' }], title: 'Test Headline' }]);
-    };
-
-    const result = await fetchRahtiDataWithRetry({}, { maxRetries: 2, initialDelayMs: 10, backoffFactor: 1 });
-
-    assert.equal(result, true);
-    assert.equal(fetchAttempts, 2);
-});
-
-test('a direct fetchRahtiData call fails immediately, without retrying', async () => {
-    globalThis.fetch = async () => {
-        fetchAttempts++;
-        throw new Error('Simulated network error on manual click');
-    };
-
-    assert.equal(await fetchRahtiData({ force: true }), false);
-    assert.equal(fetchAttempts, 1);
-});
-
-test('fetchRahtiDataWithRetry stops after maxRetries while the network stays offline', async () => {
-    globalThis.fetch = async () => {
-        fetchAttempts++;
-        throw new Error('Simulated network still offline');
-    };
-
-    const maxRetries = 2;
-    const result = await fetchRahtiDataWithRetry({}, { maxRetries, initialDelayMs: 10, backoffFactor: 1 });
-
-    assert.equal(result, false);
-    assert.equal(fetchAttempts, maxRetries + 1);
-});
-
-test('the in-flight lock deduplicates concurrent calls into one execution', async () => {
-    globalThis.fetch = async () => {
-        fetchAttempts++;
-        await new Promise((resolve) => setTimeout(resolve, 50));
-
-        return okResponse();
-    };
-
-    const results = await Promise.all([fetchRahtiData(), fetchRahtiData(), fetchRahtiData()]);
-
-    assert.equal(fetchAttempts, 1);
-    assert.deepEqual(results, [true, true, true]);
-});
-
-const providerUrl = 'https://provider.example/manifest.json';
 const site = (key) => ({ name: key, enabled: true, origins: [`https://${key}/*`], rules: [] });
 
-/** Registers a provider whose declared scope covers `key`, with the given resolved rahtiData. */
-async function seedProvider(key, rahtiData) {
-    await fake.browser.storage.sync.set({ providers: [{ url: providerUrl, enabled: true }] });
+/** Registers a provider (default or third-party) with the given resolved rahtiData, optionally
+ *  declaring `key` as a site it covers via site-configs. */
+async function seedProvider(url, key, rahtiData) {
+    const { providers } = await fake.browser.storage.sync.get('providers');
+    await fake.browser.storage.sync.set({ providers: [...(providers || []), { url, enabled: true }] });
     await fake.browser.storage.local.set({
-        [`provider:${providerUrl}`]: { siteConfigs: { [key]: site(key) }, rahtiData }
+        [`provider:${url}`]: { siteConfigs: key ? { [key]: site(key) } : {}, rahtiData }
     });
 }
 
+/** Sets the active ("free", the default test environment) environment's defaultProviders list. */
+async function setDefaultProviders(urls) {
+    const data = await fake.browser.storage.local.get('userPreferences');
+    const userPreferences = data.userPreferences || {};
+    userPreferences.environmentConfigs = userPreferences.environmentConfigs || {};
+    userPreferences.environmentConfigs.free = { ...userPreferences.environmentConfigs.free, defaultProviders: urls };
+    await fake.browser.storage.local.set({ userPreferences });
+}
+
 describe('getRahtiEntry', () => {
-    test('a sign with no provider covering the link host resolves against the bundled set', async () => {
-        (await rahtiStorage).store({ 'getRahtiEntry-bundled-1': { title: 'Bundled entry' } });
+    test('a sign with no provider covering the host resolves against the default provider\'s data', async () => {
+        const defaultUrl = 'https://default.example/manifest.json';
+        await setDefaultProviders([defaultUrl]);
+        await seedProvider(defaultUrl, null, { 'sign-1': { title: 'Default entry' } });
 
-        const entry = await getRahtiEntry('getRahtiEntry-bundled-1', 'no-provider-covers-this.example');
+        const entry = await getRahtiEntry('sign-1', 'no-provider-covers-this.example');
 
-        assert.deepEqual(entry, { title: 'Bundled entry' });
+        assert.deepEqual(entry, { title: 'Default entry' });
     });
 
-    test('a link host a provider declares resolves against that provider\'s own data, not the bundled set', async () => {
-        (await rahtiStorage).store({ 'getRahtiEntry-shared-sign': { title: 'Bundled entry' } });
-        await seedProvider('provider-only.example', { 'getRahtiEntry-shared-sign': { title: 'Provider entry' } });
+    test('a link host a provider declares resolves against that provider\'s own data, not the default provider', async () => {
+        const defaultUrl = 'https://default.example/manifest.json';
+        await setDefaultProviders([defaultUrl]);
+        await seedProvider(defaultUrl, null, { 'shared-sign': { title: 'Default entry' } });
+        await seedProvider('https://provider.example/manifest.json', 'provider-only.example',
+            { 'shared-sign': { title: 'Provider entry' } });
 
-        const entry = await getRahtiEntry('getRahtiEntry-shared-sign', 'provider-only.example');
+        const entry = await getRahtiEntry('shared-sign', 'provider-only.example');
 
         assert.deepEqual(entry, { title: 'Provider entry' });
     });
 
-    test('a provider covering the host but lacking the sign returns null, not the bundled entry', async () => {
-        (await rahtiStorage).store({ 'getRahtiEntry-not-in-provider': { title: 'Bundled entry' } });
-        await seedProvider('provider-only-2.example', {});
+    test('a provider covering the host but lacking the sign returns null, not the default entry', async () => {
+        const defaultUrl = 'https://default.example/manifest.json';
+        await setDefaultProviders([defaultUrl]);
+        await seedProvider(defaultUrl, null, { 'not-in-provider': { title: 'Default entry' } });
+        await seedProvider('https://provider.example/manifest.json', 'provider-only-2.example', {});
 
-        const entry = await getRahtiEntry('getRahtiEntry-not-in-provider', 'provider-only-2.example');
+        const entry = await getRahtiEntry('not-in-provider', 'provider-only-2.example');
 
         assert.equal(entry, null);
+    });
+
+    test('disabling the default provider makes a previously-resolved sign return null', async () => {
+        const defaultUrl = 'https://default.example/manifest.json';
+        await setDefaultProviders([defaultUrl]);
+        await seedProvider(defaultUrl, null, { 'sign-2': { title: 'Default entry' } });
+        assert.deepEqual(await getRahtiEntry('sign-2', 'no-provider.example'), { title: 'Default entry' });
+
+        await setProviderEnabled(defaultUrl, false);
+
+        assert.equal(await getRahtiEntry('sign-2', 'no-provider.example'), null);
+    });
+
+    test('removing the default provider makes a previously-resolved sign return null', async () => {
+        const defaultUrl = 'https://default.example/manifest.json';
+        await setDefaultProviders([defaultUrl]);
+        await seedProvider(defaultUrl, null, { 'sign-3': { title: 'Default entry' } });
+        assert.deepEqual(await getRahtiEntry('sign-3', 'no-provider.example'), { title: 'Default entry' });
+
+        await removeProvider(defaultUrl);
+
+        assert.equal(await getRahtiEntry('sign-3', 'no-provider.example'), null);
+    });
+
+    test('two default providers merge with later-wins precedence on a colliding sign', async () => {
+        const urlA = 'https://default-a.example/manifest.json';
+        const urlB = 'https://default-b.example/manifest.json';
+        await setDefaultProviders([urlA, urlB]);
+        await seedProvider(urlA, null, { 'colliding-sign': { title: 'From A' } });
+        await seedProvider(urlB, null, { 'colliding-sign': { title: 'From B' } });
+
+        const entry = await getRahtiEntry('colliding-sign', 'no-provider.example');
+
+        assert.deepEqual(entry, { title: 'From B' });
+    });
+
+    test('no default provider configured resolves to null, not a throw', async () => {
+        await setDefaultProviders([]);
+
+        assert.equal(await getRahtiEntry('any-sign', 'no-provider.example'), null);
     });
 });

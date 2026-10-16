@@ -1,32 +1,47 @@
 # Adding Support for a New Site
 
-To add support for a new news website in Klikkikuri Paatti, follow these three steps:
+The site configurations are not in Paatti. They are in `sites.json` in the
+[Rahti repository](https://github.com/Klikkikuri/rahti), which the official provider manifest links. Paatti bundles
+a copy in [src/generated/sites.js](../../src/generated/sites.js) and takes the site origins of
+[manifest.json](../../manifest.json) from it. Do not edit either file by hand.
 
 ---
 
-## 1. Configure the Site Rules in `src/config.js`
+## 1. Add the Site to Rahti's `sites.json`
 
-Add a new configuration entry under `DEFAULT_CONFIG.siteConfigs` in [src/config.js](../../src/config.js).
+Add an entry under `sites`, keyed by the host of the site. `docs/provider-manifest.md` in the Meri repository
+describes the format.
 
-```javascript
+```json
 "www.example.com": {
     "name": "Example News",
-    "enabled": true, // Whether the site is enabled by default
-    "origins": ["https://*.example.com/*"], // Optional; defaults to key if omitted
+    "description": "Notes about the site.",
+    "enabled": true,
+    "origins": ["https://www.example.com/*"],
+    "links": [
+        { "rel": "x-publisher-policy", "href": "https://www.example.com/policy" }
+    ],
     "rules": [
         {
-            // CSS selector matching the container element for each news article card/link
-            "container": "article.news-card", 
-            
-            // Relative selector from the container to the <a> tag (use "self" if the container is the link)
-            "link": "a.card-link", 
-            
-            // Relative selector from the container to the text element holding the headline (use "self" if the link is the text element)
-            "title": "h3.card-title" 
+            "description": "Front page news cards",
+            "container": "article.news-card",
+            "link": "a.card-link",
+            "title": "h3.card-title"
         }
     ]
 }
 ```
+
+- `enabled`: whether the site is on by default. A site that is off by default gets an optional host permission.
+  `enabled: false` means "off by default", not "withdrawn": the site stays in the list, and the user can turn it on.
+- `origins`: optional. The default is `https://<key>/*`. Each origin must have the host of the key; `*` is not
+  permitted in the host.
+- `links`: optional. `x-publisher-policy` shows as the publisher's policy link on the options page.
+- `container`: CSS selector for each news card or link.
+- `link`: selector, relative to the container, for the `<a>` element. Use `self` if the container is the link.
+- `title`: selector, relative to the container, for the element that holds the headline. Use `self` if the
+  container holds the text.
+- `description`: optional, on the site and on a rule. It tells why the rule exists. Paatti does not use it.
 
 ### Selector Rules & Syntax Guidelines
 
@@ -42,22 +57,33 @@ Add a new configuration entry under `DEFAULT_CONFIG.siteConfigs` in [src/config.
 
 ---
 
-## 2. Update `manifest.json` Permissions
+## 2. Test the Site from a Local Rahti Checkout
 
-Update [manifest.json](file:///home/teemu/projects/klikkikuri/paatti/manifest.json) to declare the new site origins:
+Serve the Rahti checkout on the loopback address, and sync the bundled sites from it:
 
-1. **Permissions**: 
-   - Add the origin (e.g. `https://*.example.com/*`) to `host_permissions` if the site is enabled by default (`enabled: true` or omitted).
-   - Add it to `optional_host_permissions` if the site is disabled by default / optional (`enabled: false`).
-2. **Web Accessible Resources**:
-   - Add the origin to the `matches` array in the `web_accessible_resources` block. This is **required** to allow dynamic ES module imports (`src/model.js`, etc.) to load inside the site's content script context.
+```bash
+(cd ../rahti && python3 -m http.server 8000 --bind 127.0.0.1)
+make sites-sync SITES_MANIFEST=http://127.0.0.1:8000/manifest.json
+```
+
+The sync resolves the manifest with the same validation that a provider gets at runtime, and stops if it refuses a
+site. It writes `src/generated/sites.js` and the site origins in `manifest.json`: `host_permissions` for an enabled
+site, `optional_host_permissions` for a disabled site, and the `web_accessible_resources` matches for all sites.
+Reload the unpacked extension to test.
+
+`make test` fails while the bundled sites come from a local copy. That is intentional: do not commit them.
 
 ---
 
-## 3. Verify Alignments
+## 3. Publish, Then Sync from the Published Manifest
 
-Run the test suite to ensure that your site configurations in `config.js` and permissions in `manifest.json` are fully aligned:
+Commit and push `sites.json` in Rahti. Then sync Paatti from the published manifest, run the tests, and commit
+`src/generated/sites.js` and `manifest.json`:
 
 ```bash
+make sites-sync
 make test
 ```
+
+`make test` includes `make check-sites`, which fails if `manifest.json` does not agree with the bundled sites. A store
+build runs `make check-sites-published` first, and stops if the bundled sites differ from the published sites.

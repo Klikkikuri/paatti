@@ -10,7 +10,6 @@ import './components/visual-highlight-setting.js';
 import './components/master-switch-setting.js';
 import './components/title-modifier-setting.js';
 import './components/database-status-setting.js';
-import './components/datasource-permission-setting.js';
 import './components/clickbait-level-vertical.js';
 import './components/favicon-img.js';
 import './components/statistics-totals.js';
@@ -65,18 +64,6 @@ async function loadSettings() {
         const emailInput = document.getElementById('invitationEmail');
         if (emailInput && document.activeElement !== emailInput) {
             emailInput.value = savedEmail;
-        }
-
-        // Load saved titleDataUrls for development environment
-        let devUrls = [];
-        try {
-            devUrls = config.environmentConfigs.development.titleDataUrls || [];
-        } catch (e) {
-            devUrls = [];
-        }
-        const devUrlsTextarea = document.getElementById('devTitleDataUrls');
-        if (devUrlsTextarea && document.activeElement !== devUrlsTextarea) {
-            devUrlsTextarea.value = devUrls.join('\n');
         }
 
         // Site configurations are managed by the site-list-setting component
@@ -238,52 +225,8 @@ async function setupEventListeners() {
 
     // Refresh interval is handled by the database-status-setting component
 
-    // Save development URLs button
-    const saveDevUrlsBtn = document.getElementById('saveDevUrlsBtn');
-    if (saveDevUrlsBtn) {
-        saveDevUrlsBtn.addEventListener('click', async () => {
-            const devUrlsTextarea = document.getElementById('devTitleDataUrls');
-            if (devUrlsTextarea) {
-                const urls = devUrlsTextarea.value
-                    .split('\n')
-                    .map(u => u.trim())
-                    .filter(u => u.length > 0);
-                
-                // Only http(s): a fetch needs host permission, and the permission control derives one from these.
-                for (const url of urls) {
-                    let valid = false;
-                    try {
-                        valid = /^https?:$/.test(new URL(url).protocol);
-                    } catch (e) {
-                        valid = false;
-                    }
-                    if (!valid) {
-                        const errMsg = browser.i18n.getMessage('devUrlsInvalid', [url]) || `Invalid development URL: ${url}`;
-                        showStatus(errMsg, true);
-                        return;
-                    }
-                }
-                
-                // Started inside the click, before any await: Firefox honours a permission request only then.
-                // A refusal is not an error here; the component shows what is still missing.
-                document.querySelector('datasource-permission-setting').request(urls)?.catch(() => {});
-
-                try {
-                    await controller.setDevTitleDataUrls(urls);
-                    showStatus(browser.i18n.getMessage('devUrlsSavedSuccess') || 'Development URLs saved!');
-                } catch (error) {
-                    console.error('Error saving dev URLs:', error);
-                    showStatus(browser.i18n.getMessage('devUrlsSavedError') || 'Error saving development URLs', true);
-                }
-            }
-        });
-    }
-
     // Manual database update button is handled by the database-status-setting component
 }
-
-/** The local keys the About panel prints. Neither is part of the merged config. */
-const ABOUT_STATUS_KEYS = ['lastDatabaseUpdate', 'databaseGenerationDate'];
 
 // Keep the page in step with changes made elsewhere (e.g. from the popup). Everything
 // else on the page is owned by a component that subscribes for itself.
@@ -295,9 +238,8 @@ onConfigValue(
     }
 );
 
-browser.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName !== 'local' || !ABOUT_STATUS_KEYS.some((key) => key in changes)) return;
-
+// The About panel's database fields come from the default provider's own storage now, not a flat key.
+model.watch.onDatabaseStatusChanged(() => {
     renderAbout().catch((error) => console.error('Failed to render the about panel:', error));
 });
 

@@ -156,7 +156,13 @@ class ProvidersSetting extends ComponentBase {
             }
         }, { signal: this.signal });
 
-        row.querySelector('.provider-remove-btn').addEventListener('click', async () => {
+        const removeBtn = row.querySelector('.provider-remove-btn');
+        // The active environment's default provider(s) cannot be deleted outright through this button --
+        // only disabled via the toggle above. Read live off config.defaultProviders, not a stored marker,
+        // so a URL that stops being default in a future version regains its Remove button on the very
+        // next render with no migration needed.
+        removeBtn.hidden = (config.defaultProviders || []).includes(provider.url);
+        removeBtn.addEventListener('click', async () => {
             try {
                 await removeProvider(provider.url);
                 await this.#renderList();

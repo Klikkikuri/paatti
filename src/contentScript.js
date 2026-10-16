@@ -22,7 +22,7 @@ let hrefSign;
     const { createHighlightOverlay } = await import(browser.runtime.getURL("src/components/highlight-overlay.js"));
     const { createFeedbackDialog } = await import(browser.runtime.getURL("src/components/feedback-dialog.js"));
 
-    const { rahtiStorage, getRahtiEntry } = await import(browser.runtime.getURL("src/rahti.js"));
+    const { getRahtiEntry } = await import(browser.runtime.getURL("src/rahti.js"));
     const { applyModifiers, LABEL_CONVERTED } = await import(browser.runtime.getURL("src/modifiers.js"));
     const { buildPageSnapshot, createSessionTracker } = await import(browser.runtime.getURL("src/stats.js"));
 
@@ -137,7 +137,6 @@ let hrefSign;
     ////////////////////////////////////////////////////////////////////////////
     // Global state.
 
-    const rahti = await rahtiStorage;
     const newsSite = window.location.hostname;
     const matchingDomain = await model.read.getMatchingSiteDomain(newsSite);
     const sessionTracker = createSessionTracker();
@@ -182,13 +181,6 @@ let hrefSign;
             });
         }
     });
-
-    if (!rahti) {
-        log("No Rahti data found, aborting conversion.", rahti);
-        return;
-    } else {
-        log("Rahti data loaded, starting conversion procedure.", rahti);
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Processing subroutines.
@@ -583,32 +575,30 @@ let hrefSign;
                         }
                     }
 
-                    if (rahti) {
-                        try {
-                            const pageUrl = window.location.href;
-                            const pageSign = await hrefSign(pageUrl);
-                            if (pageSign) {
-                                const pageRahtiEntry = await getRahtiEntry(pageSign, newsSite);
-                                if (pageRahtiEntry) {
-                                    const pageOriginalTitle = document.querySelector("h1")?.textContent?.trim() || document.title;
-                                    const h1 = document.querySelector("h1");
-                                    const highlightId = `kk-hl-main`;
-                                    if (h1) {
-                                        h1.dataset.klikkikuriHighlightId = highlightId;
-                                    }
-                                    results.unshift({
-                                        highlightId,
-                                        urlSign: pageSign,
-                                        originalTitle: pageOriginalTitle,
-                                        convertedTitle: pageRahtiEntry.title,
-                                        clickbaitLevel: pageRahtiEntry.clickbaitiness,
-                                        isMainPage: true
-                                    });
+                    try {
+                        const pageUrl = window.location.href;
+                        const pageSign = await hrefSign(pageUrl);
+                        if (pageSign) {
+                            const pageRahtiEntry = await getRahtiEntry(pageSign, newsSite);
+                            if (pageRahtiEntry) {
+                                const pageOriginalTitle = document.querySelector("h1")?.textContent?.trim() || document.title;
+                                const h1 = document.querySelector("h1");
+                                const highlightId = `kk-hl-main`;
+                                if (h1) {
+                                    h1.dataset.klikkikuriHighlightId = highlightId;
                                 }
+                                results.unshift({
+                                    highlightId,
+                                    urlSign: pageSign,
+                                    originalTitle: pageOriginalTitle,
+                                    convertedTitle: pageRahtiEntry.title,
+                                    clickbaitLevel: pageRahtiEntry.clickbaitiness,
+                                    isMainPage: true
+                                });
                             }
-                        } catch (err) {
-                            log("Error checking current page URL signature:", err);
                         }
+                    } catch (err) {
+                        log("Error checking current page URL signature:", err);
                     }
 
                     return results;

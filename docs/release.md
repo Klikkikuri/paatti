@@ -120,6 +120,11 @@ Check out the release tag first. The packages carry the version of `manifest.jso
 A store build always includes the non-OSS assets and downloads the attested `suola` artifacts of the pinned
 tag; it does not compile `suola`.
 
+A store build first runs `make check-sites-published`. It stops if the bundled sites in `src/generated/sites.js`
+differ from the sites of the published provider manifest, and it names each site that is added, removed or
+changed. A store build cannot request a site origin that its manifest does not declare, so it must carry the
+published sites. To correct it, run `make sites-sync`, commit the result, and tag again.
+
 The two zip files have the same names as the output of `make package` and `make build`, which write the GitHub
 channel builds. The file on disk is the output of the make target that ran last. Run `make store-build`
 directly before an upload, and do not run another make target in between.

@@ -39,16 +39,6 @@
                 <site-list-setting id="siteList"></site-list-setting>
             </fieldset>
 
-            <!-- Providers -->
-            <fieldset>
-                <legend data-i18n="legendProviders">🔌 Providers</legend>
-                <p class="section-description" data-i18n="descProviders">Add a third-party provider manifest for more sites, correction data or URL-normalization rules</p>
-                <providers-setting></providers-setting>
-                <hr>
-                <provider-shadowing-setting></provider-shadowing-setting>
-                <loopback-providers-setting></loopback-providers-setting>
-            </fieldset>
-
             <!-- Title Modifiers -->
             <fieldset>
                 <legend data-i18n="legendTitleModifiers">🏷️ Title Modifiers</legend>
@@ -109,19 +99,18 @@
                     <h3 style="margin-bottom: 15px; color: var(--color-brand);" data-i18n="debugSettingsTitle">🐛 Debug Settings</h3>
                     <visual-highlight-setting></visual-highlight-setting>
                     <easter-egg-setting></easter-egg-setting>
-                    <div class="setting-group" style="margin-top: 15px;">
-                        <div class="number-input-group" style="margin: 0; padding: 15px; background: var(--color-surface-muted); border-radius: 8px; display: flex; flex-direction: column; gap: 10px;">
-                            <div class="label-text">
-                                <strong data-i18n="devTitleDataUrlsTitle">Database URLs (titleDataUrls)</strong>
-                                <span style="display: block; margin-top: 5px; margin-bottom: 8px;" data-i18n="devTitleDataUrlsDesc">Enter JSON database URLs for the development environment, one URL per line.</span>
-                            </div>
-                            <textarea id="devTitleDataUrls" rows="3" placeholder="http://localhost:3000/data.json" style="width: 100%; padding: 10px; border: 2px solid var(--color-border); border-radius: 8px; font-size: 1rem; font-family: monospace; resize: vertical; box-sizing: border-box;"></textarea>
-                            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 5px;">
-                                <datasource-permission-setting></datasource-permission-setting>
-                                <button type="button" class="btn-primary" id="saveDevUrlsBtn" style="flex: 0 0 auto; padding: 8px 16px; width: auto;" data-i18n="saveDevUrlsBtn">💾 Save URLs</button>
-                            </div>
-                        </div>
-                    </div>
+
+                    <!-- Dev-only for now: the optional_host_permissions wildcard a provider's cross-origin
+                         fetch needs draws extra store-review scrutiny (see tools/manifest.mjs's
+                         storeManifest() stripping it from store builds already). Nothing below is
+                         logically coupled to "development" -- moving this block to an always-visible
+                         fieldset is a markup-only change whenever that boundary is revisited. -->
+                    <hr>
+                    <h3 style="margin-bottom: 15px; color: var(--color-brand);" data-i18n="legendProviders">🔌 Providers</h3>
+                    <p class="section-description" data-i18n="descProviders">Add a third-party provider manifest for more sites, correction data or URL-normalization rules</p>
+                    <providers-setting></providers-setting>
+                    <provider-shadowing-setting></provider-shadowing-setting>
+                    <loopback-providers-setting></loopback-providers-setting>
                 </div>
             </fieldset>
 

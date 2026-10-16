@@ -86,21 +86,43 @@ function providerBlockReason(url, loopbackProvidersEnabled) {
  * Never throws: a failed document is data, not an exception, so the resource it belongs to can still
  * merge what did load.
  *
+ * Conditional GET (D2, scoped to `rahti-data` resources -- see `resolve()`'s own doc comment for why
+ * `site-configs`/`suola-rules` never pass a `cacheEntry` here): given a previously-seen `{etag,
+ * lastModified}`, sends `If-None-Match`/`If-Modified-Since` and returns `{notModified: true}` on a 304
+ * instead of parsing a body that was never sent.
+ *
  * @param {string} url
  * @param {boolean} loopbackProvidersEnabled
  * @param {number} [maxBytes]
- * @returns {Promise<{content: object}|{error: string}>}
+ * @param {object} [options]
+ * @param {{etag?: string|null, lastModified?: string|null}} [options.cacheEntry]
+ * @param {boolean} [options.force] - Bypass `cacheEntry` and fetch unconditionally.
+ * @returns {Promise<{content: object, etag: string|null, lastModified: string|null}|{notModified: true}|{error: string}>}
  */
-async function fetchDocument(url, loopbackProvidersEnabled, maxBytes = MAX_RESOURCE_BYTES) {
+async function fetchDocument(url, loopbackProvidersEnabled, maxBytes = MAX_RESOURCE_BYTES, { cacheEntry, force = false } = {}) {
     const reason = providerBlockReason(url, loopbackProvidersEnabled);
     if (reason) return { error: reason };
 
+    const headers = {};
+    if (cacheEntry && !force) {
+        if (cacheEntry.etag) headers["If-None-Match"] = cacheEntry.etag;
+        if (cacheEntry.lastModified) headers["If-Modified-Since"] = cacheEntry.lastModified;
+    }
+
     try {
-        const response = await safeFetch(url, { allowLoopback: loopbackProvidersEnabled });
+        const response = await safeFetch(url, {
+            allowLoopback: loopbackProvidersEnabled,
+            ...(Object.keys(headers).length > 0 ? { init: { headers } } : {})
+        });
+        if (response.status === 304) return { notModified: true };
         if (!response.ok) return { error: `HTTP ${response.status}` };
 
         const bytes = await readCapped(response, maxBytes);
-        return { content: JSON.parse(new TextDecoder().decode(bytes)) };
+        return {
+            content: JSON.parse(new TextDecoder().decode(bytes)),
+            etag: response.headers.get("ETag") || null,
+            lastModified: response.headers.get("Last-Modified") || null
+        };
     } catch (err) {
         log(`Failed to fetch ${url}:`, err.message);
         return { error: err.message };
@@ -477,6 +499,13 @@ async function inspect(manifestUrl, options = {}) {
  * Gesture two: fetch every known resource within the resolver limits, merge each type by its own rule,
  * and apply the safety filters. Only called after the origins `inspect()` reported are granted.
  *
+ * Conditional GET (D2) applies to `rahti-data` resources only, never to `site-configs`/`suola-rules`.
+ * `mergeSiteConfigsDocument()` depends on `claimedSiteKeys`, which the caller rebuilds fresh on every
+ * refresh pass -- reusing a cached `site-configs` merge result on a 304 would skip re-running the
+ * shadowing/coverage check against a `claimedSiteKeys` that may have changed since, silently freezing a
+ * stale accept/reject decision. `rahti-data` merging has no such external dependency (a pure function of
+ * the fetched bytes), so caching it is safe.
+ *
  * @param {object} manifest - As returned by `inspect()`.
  * @param {string} manifestUrl
  * @param {object} [options]
@@ -484,14 +513,26 @@ async function inspect(manifestUrl, options = {}) {
  * @param {boolean} [options.providerShadowingEnabled]
  * @param {Set<string>} [options.claimedSiteKeys] - Site keys the bundled set or an earlier provider
  *   already claims. Shadowing decides whether this manifest may take one over.
+ * @param {Object<string, {etag?: string|null, lastModified?: string|null}>} [options.resourceHeaders] -
+ *   Previously-seen conditional-GET headers, keyed by `rahti-data` href, from the provider's last resolve.
+ * @param {object} [options.previousRahtiData] - The provider's last-resolved `rahtiData`, reused verbatim
+ *   when every `rahti-data` href comes back 304.
+ * @param {string|null} [options.previousDatabaseGenerationDate] - The provider's last-computed
+ *   `databaseGenerationDate`, reused alongside `previousRahtiData` on an all-304 refresh -- otherwise a
+ *   refresh where nothing changed would report no generation date at all instead of the real one.
+ * @param {boolean} [options.force] - Bypass `resourceHeaders` and fetch every `rahti-data` href in full.
  * @returns {Promise<{siteConfigs: object, rahtiData: object, suolaRules: object|null, scope: Set<string>,
- *   rejected: Array, errors: Array}>}
+ *   rejected: Array, errors: Array, resourceHeaders: object, databaseGenerationDate: string|null}>}
  */
 async function resolve(manifest, manifestUrl, options = {}) {
     const {
         loopbackProvidersEnabled = false,
         providerShadowingEnabled = false,
-        claimedSiteKeys = new Set()
+        claimedSiteKeys = new Set(),
+        resourceHeaders = {},
+        previousRahtiData = {},
+        previousDatabaseGenerationDate = null,
+        force = false
     } = options;
 
     const manifestOrigin = new URL(manifestUrl).origin;
@@ -508,6 +549,7 @@ async function resolve(manifest, manifestUrl, options = {}) {
     const toFetch = [];
     const budgeted = new Set();
     const plans = [];
+    const rahtiDataHrefs = new Set();
 
     for (const resource of ordered) {
         const sameOrigin = isSameOrigin(resource, manifestUrl, manifestOrigin);
@@ -532,6 +574,7 @@ async function resolve(manifest, manifestUrl, options = {}) {
                 continue;
             }
             absoluteHrefs.push(absolute);
+            if (resource.type === "rahti-data") rahtiDataHrefs.add(absolute);
 
             if (budgeted.has(absolute)) continue;
             if (toFetch.length >= MAX_FETCHES) continue; // stays unbudgeted; reported once fetches resolve
@@ -542,18 +585,48 @@ async function resolve(manifest, manifestUrl, options = {}) {
         plans.push({ resource, sameOrigin, absoluteHrefs });
     }
 
-    // Phase 2: fetch the plan, concurrently. Promise.all preserves toFetch's order in its result, but
-    // phase 3 reads through the map below by URL, so the actual arrival order never matters.
+    // Phase 2: fetch the plan, concurrently. Only rahti-data hrefs ever receive a cacheEntry -- see the
+    // doc comment above for why site-configs/suola-rules always fetch in full. Promise.all preserves
+    // toFetch's order in its result, but phase 3 reads through the map below by URL, so the actual
+    // arrival order never matters.
     const fetched = new Map(
-        await Promise.all(toFetch.map(async (url) => [url, await fetchDocument(url, loopbackProvidersEnabled)]))
+        await Promise.all(toFetch.map(async (url) => {
+            const cacheEntry = rahtiDataHrefs.has(url) ? resourceHeaders[url] : undefined;
+            return [url, await fetchDocument(url, loopbackProvidersEnabled, undefined, { cacheEntry, force })];
+        }))
     );
+
+    // If every rahti-data href came back 304, nothing changed: reuse the provider's last-resolved
+    // rahtiData wholesale and carry its headers forward, rather than re-fetching content nobody asked to
+    // see again. Otherwise, any rahti-data href that came back 304 is re-fetched in full (unconditionally)
+    // so it still contributes real content to the merge below -- a mixed batch cannot merge "some cached,
+    // some fresh" without the cached ones' bytes.
+    const budgetedRahtiDataHrefs = [...rahtiDataHrefs].filter((href) => budgeted.has(href));
+    const allRahtiDataNotModified = budgetedRahtiDataHrefs.length > 0
+        && budgetedRahtiDataHrefs.every((href) => fetched.get(href)?.notModified);
+
+    if (!allRahtiDataNotModified) {
+        for (const href of budgetedRahtiDataHrefs) {
+            if (fetched.get(href)?.notModified) {
+                fetched.set(href, await fetchDocument(href, loopbackProvidersEnabled, undefined, { force: true }));
+            }
+        }
+    }
 
     // Phase 3: merge, in the same (weight, document order) the plan was built in.
     let siteConfigs = {};
-    let rahtiData = {};
+    let rahtiData = allRahtiDataNotModified ? previousRahtiData : {};
     let suolaSites = [];
+    const newResourceHeaders = {};
+    let databaseGenerationDate = allRahtiDataNotModified ? previousDatabaseGenerationDate : null;
+
+    if (allRahtiDataNotModified) {
+        for (const href of budgetedRahtiDataHrefs) newResourceHeaders[href] = resourceHeaders[href];
+    }
 
     for (const { resource, sameOrigin, absoluteHrefs } of plans) {
+        if (resource.type === "rahti-data" && allRahtiDataNotModified) continue; // already reused above
+
         const documents = [];
         for (const absolute of absoluteHrefs) {
             if (!budgeted.has(absolute)) {
@@ -561,8 +634,14 @@ async function resolve(manifest, manifestUrl, options = {}) {
                 continue;
             }
             const result = fetched.get(absolute);
-            if (result.error) errors.push({ type: resource.type, href: absolute, message: result.error });
-            else documents.push(result.content);
+            if (result.error) {
+                errors.push({ type: resource.type, href: absolute, message: result.error });
+                continue;
+            }
+            documents.push(result.content);
+            if (resource.type === "rahti-data" && (result.etag || result.lastModified)) {
+                newResourceHeaders[absolute] = { etag: result.etag || null, lastModified: result.lastModified || null };
+            }
         }
 
         if (resource.inline !== undefined) {
@@ -577,8 +656,14 @@ async function resolve(manifest, manifestUrl, options = {}) {
                 else errors.push({ type: resource.type, message: "not a rules document (no sites[] array)" });
             } else if (resource.type === "rahti-data") {
                 try {
-                    if (validRahtiData(content)) rahtiData = { ...rahtiData, ...rahtiToKeyed(content) };
-                    else errors.push({ type: resource.type, message: "not a rahti-data document" });
+                    if (validRahtiData(content)) {
+                        rahtiData = { ...rahtiData, ...rahtiToKeyed(content) };
+                        if (content.updated && (!databaseGenerationDate || new Date(content.updated) > new Date(databaseGenerationDate))) {
+                            databaseGenerationDate = content.updated;
+                        }
+                    } else {
+                        errors.push({ type: resource.type, message: "not a rahti-data document" });
+                    }
                 } catch (err) {
                     errors.push({ type: resource.type, message: err.message });
                 }
@@ -600,7 +685,9 @@ async function resolve(manifest, manifestUrl, options = {}) {
         suolaRules: suolaSites.length > 0 ? { sites: suolaSites } : null,
         scope: computeDeclaredScope(siteConfigs),
         rejected,
-        errors
+        errors,
+        resourceHeaders: newResourceHeaders,
+        databaseGenerationDate
     };
 }
 

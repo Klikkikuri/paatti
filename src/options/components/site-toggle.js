@@ -1,6 +1,7 @@
 import browser from '../../browser-api.js';
 import { controller } from '../../controller.js';
 import { isSiteEnabled } from '../utils.js';
+import { siteLinks } from '../site-links.js';
 import { getConfig } from '../../config.js';
 import './toggle-button.js';
 import './favicon-img.js';
@@ -128,21 +129,22 @@ class SiteToggleSetting extends HTMLElement {
             innerCheckbox.dataset.hasPermission = String(hasPermission);
         }
 
-        // Fetch site-specific metadata for policy URL
+        // Fetch site-specific metadata for the site's links
         try {
             const config = await getConfig();
             const siteConfig = config.siteConfigs ? config.siteConfigs[domain] || {} : {};
-            const policyUrl = siteConfig.policyUrl;
+            const links = siteLinks(siteConfig.links, browser.i18n.getUILanguage(), (key) => browser.i18n.getMessage(key));
 
             const detailsContainer = this.querySelector('.site-details-container');
-            if (detailsContainer && layout !== 'compact' && policyUrl) {
-                const linkText = browser.i18n.getMessage('sitePolicyLinkText') || 'Julkaisijan periaatteet';
-                const link = document.createElement('a');
-                link.href = policyUrl;
-                link.target = '_blank';
-                link.className = 'detail-button';
-                link.textContent = `${linkText} ↗`;
-                detailsContainer.replaceChildren(link);
+            if (detailsContainer && layout !== 'compact' && links.length > 0) {
+                detailsContainer.replaceChildren(...links.map(({ href, label }) => {
+                    const link = document.createElement('a');
+                    link.href = href;
+                    link.target = '_blank';
+                    link.className = 'detail-button';
+                    link.textContent = `${label} ↗`;
+                    return link;
+                }));
             }
         } catch (err) {
             console.error('Failed to load site toggle metadata:', err);

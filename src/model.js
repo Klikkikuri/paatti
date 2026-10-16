@@ -2,8 +2,9 @@
 
 import browser from "./browser-api.js";
 import { getLogger } from "./utils.js";
-import { getConfig } from "./config.js";
+import { getConfig, PROVIDER_KEY_PREFIX } from "./config.js";
 import { mergeStats } from "./stats.js";
+import { getProviderData } from "./providers.js";
 
 const log = getLogger("model");
 
@@ -224,20 +225,6 @@ const model = (() => {
                 await browser.storage.local.set({ userPreferences });
             },
 
-            setDevTitleDataUrls: async (urls) => {
-                log(`Setting development title data URLs:`, urls);
-                const data = await browser.storage.local.get("userPreferences");
-                const userPreferences = data.userPreferences || {};
-                if (!userPreferences.environmentConfigs) {
-                    userPreferences.environmentConfigs = {};
-                }
-                if (!userPreferences.environmentConfigs.development) {
-                    userPreferences.environmentConfigs.development = {};
-                }
-                userPreferences.environmentConfigs.development.titleDataUrls = urls;
-                await browser.storage.local.set({ userPreferences });
-            },
-
             /**
              * Whether a provider may claim a site key or origin the bundled set or an earlier
              * provider already claims. Per environment, local, and read only from
@@ -400,19 +387,34 @@ const model = (() => {
                 return !!config.debugVisualsEnabled;
             },
 
+            /**
+             * The active environment's default provider(s) own timestamps now, not a flat storage key:
+             * the official dataset is itself a provider (see config.js's defaultProviders), so its
+             * "last checked"/"generation date" live in its own provider namespace, same as any other.
+             * A disabled default provider is excluded -- it must read as having no data, not stale
+             * leftovers from before it was turned off.
+             */
             getDatabaseStatus: async () => {
-                const data = await browser.storage.local.get(["lastDatabaseUpdate", "databaseGenerationDate"]);
+                const config = await getConfig();
+                const enabledDefaults = (config.defaultProviders || []).filter((u) => config.enabledProviderUrls.includes(u));
+                const results = await Promise.all(enabledDefaults.map(getProviderData));
                 return {
-                    lastDatabaseUpdate: data.lastDatabaseUpdate || null,
-                    databaseGenerationDate: data.databaseGenerationDate || null
+                    lastDatabaseUpdate: results.reduce((max, r) => Math.max(max, r.updated || 0), 0) || null,
+                    databaseGenerationDate: results.reduce((max, r) =>
+                        (r.databaseGenerationDate && (!max || new Date(r.databaseGenerationDate) > new Date(max)))
+                            ? r.databaseGenerationDate : max, null)
                 };
             },
 
             /**
-             * How many titles the local database holds.
-             *
-             * Kept out of getDatabaseStatus, whose callers re-read on every timestamp write: the
-             * index is one string per entry, and none of them want to deserialize it.
+             * How many titles the local database holds, summed across the active environment's enabled
+             * default provider(s). Reads each provider's own `entryCount` field (computed once, at
+             * refresh time, by refreshOne) rather than deserializing `rahtiData` here -- the same "don't
+             * pay to deserialize on every status read" reasoning the old flat-index design had, just
+             * moved to per-provider storage. A summed count, not a true set union: today there is
+             * exactly one default provider per environment, so this is exact; a future second default
+             * provider whose data overlaps the first on some `sign` would be a minor overcount, accepted
+             * as this is a UI "roughly how much data" signal, not used for correctness.
              *
              * This, not lastDatabaseUpdate, is the test for an empty database. That timestamp is
              * evidence of a fetch and never of content -- it is written on an all-304 response,
@@ -421,8 +423,10 @@ const model = (() => {
              * @returns {Promise<number>} Entry count, 0 when nothing has been stored.
              */
             getDatabaseEntryCount: async () => {
-                const data = await browser.storage.local.get("rahtiData_index");
-                return Array.isArray(data.rahtiData_index) ? data.rahtiData_index.length : 0;
+                const config = await getConfig();
+                const enabledDefaults = (config.defaultProviders || []).filter((u) => config.enabledProviderUrls.includes(u));
+                const results = await Promise.all(enabledDefaults.map(getProviderData));
+                return results.reduce((sum, r) => sum + (r.entryCount || 0), 0);
             },
 
             /**
@@ -500,11 +504,6 @@ const model = (() => {
             },
 
 
-            getTitleDataUrls: async () => {
-                const config = await getConfig();
-                return config.titleDataUrls;
-            },
-
             getTestTitleDataUrl: async () => {
                 const config = await getConfig();
                 return config.testTitleDataUrl;
@@ -571,6 +570,33 @@ const model = (() => {
                 return !!config.modifiers?.converted;
             }
         },
+
+        watch: {
+            /**
+             * Calls back whenever any provider's resolved data changes in storage.local -- the signal
+             * that getDatabaseStatus()/getDatabaseEntryCount() may now read something different.
+             *
+             * Matches by the shared `provider:` prefix rather than a fixed key, because which URLs
+             * matter is environment-dependent (config.defaultProviders varies by environment) and can
+             * change at runtime; the caller's own re-read of getDatabaseStatus()/getDatabaseEntryCount()
+             * is what actually decides relevance. This does over-fire on a third-party provider's data
+             * changing too -- accepted, since the re-read those two functions do is cheap (small
+             * per-provider fields, not full blobs) and correctness (never missing a relevant change)
+             * matters more here than trimming an occasional redundant refresh.
+             *
+             * @param {() => void} callback
+             * @returns {() => void} Unsubscribes when called.
+             */
+            onDatabaseStatusChanged: (callback) => {
+                const listener = (changes, areaName) => {
+                    if (areaName !== "local") return;
+                    if (!Object.keys(changes).some((key) => key.startsWith(PROVIDER_KEY_PREFIX))) return;
+                    callback();
+                };
+                browser.storage.onChanged.addListener(listener);
+                return () => browser.storage.onChanged.removeListener(listener);
+            }
+        }
     };
 })();
 

@@ -314,7 +314,9 @@ footer a:hover {
 }
 
 #debug-settings.visible {
-    max-height: 600px;
+    /* Generous, not tight: the Providers list (up to MAX_PROVIDERS rows, each with a status line)
+       lives in here now and is unbounded, unlike the two toggles this cap was originally sized for. */
+    max-height: 2500px;
     opacity: 1;
     margin-top: 25px;
 }

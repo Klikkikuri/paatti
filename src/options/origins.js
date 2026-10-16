@@ -48,6 +48,30 @@ export function originPatterns(urls) {
 }
 
 /**
+ * Whether this build can ask for `origins` at all. `permissions.request()` grants only an origin that the manifest
+ * declares, in `host_permissions` or `optional_host_permissions`, so the answer comes from the build's own manifest
+ * and not from which build it is: the store build drops the wildcard, and a site it does not declare cannot be granted.
+ * The path is not compared, because a host permission does not honour one (see `originPattern`).
+ *
+ * @param {string[]} origins - Match patterns, such as `https://www.hs.fi/*`.
+ * @param {{host_permissions?: string[], optional_host_permissions?: string[]}} manifest - `runtime.getManifest()`.
+ * @returns {boolean} True when every origin is declared.
+ */
+export function canRequestOrigins(origins, manifest) {
+    const declared = [...(manifest.host_permissions || []), ...(manifest.optional_host_permissions || [])]
+        .map((pattern) => (pattern === "<all_urls>" ? "*://*/*" : pattern).match(/^(\*|https?):\/\/([^/]+)\//))
+        .filter(Boolean);
+
+    return origins.every((origin) => {
+        const [, scheme, host] = origin.match(/^(https?):\/\/([^/]+)\//) || [];
+        return Boolean(host) && declared.some(([, declaredScheme, declaredHost]) =>
+            (declaredScheme === "*" || declaredScheme === scheme) &&
+            (declaredHost === "*" || declaredHost === host ||
+                (declaredHost.startsWith("*.") && (host === declaredHost.slice(2) || host.endsWith(declaredHost.slice(1))))));
+    });
+}
+
+/**
  * The patterns among `urls` that the browser has not granted.
  *
  * @param {string[]} urls

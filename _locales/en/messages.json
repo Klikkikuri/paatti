@@ -15,7 +15,6 @@
     "message": "Klikkikuri - Sail the web without clickbait headlines",
     "description": "Subtitle in header of options page."
   },
-
   "clickbaitinessLabel_Not_Clickbait_at_all": {
     "message": "Not Clickbait at all",
     "description": "Label for the not clickbait at all title 'type' or 'severity'"
@@ -36,7 +35,6 @@
     "message": "Extremely Clickbaity",
     "description": "Label for the extremely clickbaity title 'type' or 'severity'"
   },
-
   "clickbaitBadgeLevel0": {
     "message": "Neutral",
     "description": "Short badge label for clickbait level 0 shown on feedback view cards"
@@ -57,7 +55,6 @@
     "message": "Extreme",
     "description": "Short badge label for clickbait level 4 shown on feedback view cards"
   },
-
   "siteTitleProcessingNotSupported": {
     "message": "Site not supported",
     "description": "Message to show in 'main' title element when the visited site is not supported for processing"
@@ -66,7 +63,6 @@
     "message": "Site processing is disabled",
     "description": "Message to show in 'main' title element when the visited site is disabled in settings"
   },
-
   "statsviewConvertedOfFound": {
     "message": "of $FOUND$ ($PERCENT$%)",
     "description": "Follows the converted title count in the stats view, giving it as a share of every title found on the site",
@@ -317,7 +313,6 @@
     "message": "Threshold",
     "description": "Label for the clickbait threshold divider line shown in home view stats list"
   },
-
   "feedbackviewRateTitleOriginalTitleLabel": {
     "message": "Original:",
     "description": "Text marking the original headline on the feedback view aligned headline rating section"
@@ -370,7 +365,6 @@
     "message": "Show headlines below threshold ($1)",
     "description": "Button to expand list showing headlines below clickbait threshold"
   },
-
   "settingsviewSitesEnabledTitle": {
     "message": "News sites to process",
     "description": "Title of the settings view enabled sites section"
@@ -383,7 +377,6 @@
     "message": "Activate Paatti",
     "description": "Label of the settings view master switch toggle"
   },
-
   "navigationMainLabel": {
     "message": "Klikkikuri",
     "description": "Label of the navigation menu main view button"
@@ -400,7 +393,6 @@
     "message": "Preferences",
     "description": "Label of the navigation menu settings view button"
   },
-
   "homeviewStatusDisabled": {
     "message": "Paatti is disabled on this site.",
     "description": "Text saying that Paatti is disabled on the current site"
@@ -413,52 +405,42 @@
     "message": "Checking the headlines…",
     "description": "Text shown on the home view while Paatti waits for the content script's first report"
   },
-
   "homeviewStatusNoPageData": {
     "message": "Paatti did not get data from the page. Load the page again.",
     "description": "Text shown on the home view when the content script sent no page data in time"
   },
-
   "homeviewStatusDatabaseEmpty": {
     "message": "The title database is empty. Update the database.",
     "description": "Text shown on the home view when the local title database has no entries"
   },
-
   "homeviewStatusNoTitlesFound": {
     "message": "Paatti found no headlines on this page.",
     "description": "Text shown on the home view when the site rules matched no headline on the page"
   },
-
   "homeviewStatusNoMatches": {
     "message": "Paatti found headlines, but they are not in the database.",
     "description": "Text shown on the home view when headlines were found but none of them is in the title database"
   },
-
   "homeviewStatusLoadFailed": {
     "message": "Paatti could not read its data. Close and open Paatti again.",
     "description": "Text shown on the home view when the popup failed to load its data"
   },
-
   "homeviewDatabaseUpdatedReload": {
     "message": "The database is updated. Load the page again.",
     "description": "Text shown on the home view after a manual database update, telling the user to load the page again"
   },
-
   "homeviewStatusExtensionOff": {
     "message": "Paatti is off. Turn it on in the settings.",
     "description": "Text shown on the home view when the extension master switch is off"
   },
-
   "homeviewRequestSiteBtn": {
     "message": "Request site support",
     "description": "Label of the button to request site support on GitHub"
   },
-
   "preferencesViewMoreSettingsBtn": {
     "message": "More settings...",
     "description": "Label of the button in preferences view that opens options page"
   },
-
   "devmodeHiddenButtonTitle": {
     "message": "Settings for nerds",
     "description": "Title-attribute of the hidden devmode activation button"
@@ -487,7 +469,6 @@
     "message": "Database Update",
     "description": "Title of the settings view database status section"
   },
-
   "databaseLastUpdated": {
     "message": "Last fetched: $TIME$",
     "description": "Text showing when the database was last updated",
@@ -532,7 +513,6 @@
     "message": "Failed!",
     "description": "Failure message after database update"
   },
-
   "settingsviewClickbaitLevelTitle": {
     "message": "Clickbait Threshold",
     "description": "Title of the settings view clickbait level section"
@@ -589,12 +569,10 @@
     "message": "Got it",
     "description": "Button that dismisses the level 0 warning and stops it from showing again"
   },
-
   "sitePolicyLinkText": {
     "message": "Publisher's policy",
     "description": "Short link text for publisher's policy button"
   },
-
   "modifierAiSlopTitle": {
     "message": "AI Content Marker",
     "description": "Title for AI content marker setting"
@@ -647,7 +625,6 @@
     "message": "Converted headline feedback",
     "description": "Accessible name of the converted headline marker, which opens the feedback card"
   },
-
   "settingSavedSuccess": {
     "message": "Setting saved!",
     "description": "Notification message shown when a setting is saved successfully"
@@ -660,7 +637,6 @@
     "message": "Toggle extension for current site",
     "description": "Aria label for the power button that toggles the extension on/off for the current site"
   },
-
   "logoMadeWith": {
     "message": "Made with",
     "description": "Text in popup footer before logo"
@@ -689,7 +665,6 @@
     "message": "Klikkikuri logo",
     "description": "Alt text for Klikkikuri logo"
   },
-
   "legendExtensionStatus": {
     "message": "🔌 Extension Status",
     "description": "Legend for extension status section"
@@ -714,7 +689,6 @@
     "message": "Error saving extension status",
     "description": "Notification message when master switch state save fails"
   },
-
   "legendClickbaitLevel": {
     "message": "🎯 Clickbait Threshold",
     "description": "Legend for clickbait threshold section"
@@ -723,7 +697,6 @@
     "message": "Configure how aggressively clickbait headlines are filtered",
     "description": "Description for clickbait threshold section"
   },
-
   "legendSiteConfig": {
     "message": "🌐 Site Configuration",
     "description": "Legend for site configuration section"
@@ -732,7 +705,6 @@
     "message": "Select which sites the extension is enabled on",
     "description": "Description for site configuration section"
   },
-
   "legendTitleModifiers": {
     "message": "🏷️ Title Modifiers",
     "description": "Legend for title modifiers section"
@@ -741,7 +713,6 @@
     "message": "Enable automatic indicators and modifications for headlines (applies across all devices)",
     "description": "Description for title modifiers section"
   },
-
   "legendEnvironmentConfig": {
     "message": "⚙️ Environment Configuration",
     "description": "Legend for environment configuration section"
@@ -782,7 +753,6 @@
     "message": "Error saving environment",
     "description": "Notification message when environment save fails"
   },
-
   "invitationTitle": {
     "message": "📧 Invitation to paid version",
     "description": "Title for paid version invitation section"
@@ -819,7 +789,6 @@
     "message": "Error registering email",
     "description": "Notification message on failed email registration"
   },
-
   "debugSettingsTitle": {
     "message": "🐛 Debug Settings",
     "description": "Title for debug settings section"
@@ -840,55 +809,10 @@
     "message": "Chance that the hidden artwork joins the page background on a given day. Each theme has its own; 0 % never, 100 % every day.",
     "description": "Description for the easter egg probability setting"
   },
-  "devTitleDataUrlsTitle": {
-    "message": "Database URLs (titleDataUrls)",
-    "description": "Title for development database URLs textarea"
+  "databaseUpdateNoDefaultProvider": {
+    "message": "No default provider is active.",
+    "description": "Error shown when a manual database update finds no enabled default provider"
   },
-  "devTitleDataUrlsDesc": {
-    "message": "Enter JSON database URLs for the development environment, one URL per line.",
-    "description": "Description for development database URLs textarea"
-  },
-  "saveDevUrlsBtn": {
-    "message": "💾 Save URLs",
-    "description": "Button to save development database URLs"
-  },
-  "requestDatasourcePermissionBtn": {
-    "message": "🔓 Request access permission",
-    "description": "Button that asks the browser for host permission for the development database URLs"
-  },
-  "datasourcePermissionGranted": {
-    "message": "Access granted for the database URLs",
-    "description": "Notification message when the database URL host permission was granted"
-  },
-  "datasourcePermissionMissing": {
-    "message": "⚠️ Paatti has no permission to fetch: $ORIGINS$",
-    "description": "Warning beside the development database URLs, listing the origins the browser has not granted",
-    "placeholders": {
-      "origins": {
-        "content": "$1",
-        "example": "http://localhost/data.json*"
-      }
-    }
-  },
-  "devUrlsInvalid": {
-    "message": "Invalid development URL: $URL$",
-    "description": "Error message when a development URL is invalid",
-    "placeholders": {
-      "url": {
-        "content": "$1",
-        "example": "http://localhost:3000/data.json"
-      }
-    }
-  },
-  "devUrlsSavedSuccess": {
-    "message": "Development URLs saved!",
-    "description": "Notification message when development URLs are saved"
-  },
-  "devUrlsSavedError": {
-    "message": "Error saving development URLs",
-    "description": "Notification message when development URLs save fails"
-  },
-
   "legendDatabaseUpdate": {
     "message": "🗄️ Database Update",
     "description": "Legend for database update section"
@@ -925,7 +849,6 @@
     "message": "Database generation date",
     "description": "Label for database generation timestamp"
   },
-
   "legendAbout": {
     "message": "ℹ️ About",
     "description": "Legend for about section"
@@ -1002,7 +925,6 @@
     "message": "none",
     "description": "Text displayed in about section when list is empty"
   },
-
   "aboutSpecialDayTitle": {
     "message": "Today",
     "description": "Heading of the about section line shown on a special day"
@@ -1051,7 +973,6 @@
     "message": "A day for Teemu.",
     "description": "Special day shown in the about section on 16 December. May contain a link."
   },
-
   "siteSettingSaved": {
     "message": "Setting for $DOMAIN$ saved!",
     "description": "Notification message when site setting is saved",
@@ -1121,12 +1042,22 @@
   "providerSiteCount": {
     "message": "$1 site(s)",
     "description": "How many sites an added provider currently offers",
-    "placeholders": { "count": { "content": "$1", "example": "3" } }
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
   },
   "providerUpdatedAt": {
     "message": "updated $1",
     "description": "When an added provider's data was last resolved",
-    "placeholders": { "when": { "content": "$1", "example": "1/2/2026, 10:00:00 AM" } }
+    "placeholders": {
+      "when": {
+        "content": "$1",
+        "example": "1/2/2026, 10:00:00 AM"
+      }
+    }
   },
   "providerNeverResolved": {
     "message": "never resolved yet",
@@ -1139,12 +1070,26 @@
   "providerClaimedBy": {
     "message": "$1: claimed by $2",
     "description": "Explains why a provider's site was rejected: another source already holds that domain",
-    "placeholders": { "key": { "content": "$1", "example": "yle.fi" }, "winner": { "content": "$2", "example": "the bundled set" } }
+    "placeholders": {
+      "key": {
+        "content": "$1",
+        "example": "yle.fi"
+      },
+      "winner": {
+        "content": "$2",
+        "example": "the bundled set"
+      }
+    }
   },
   "providerIgnoredCount": {
     "message": "$1 resource(s) ignored (unknown type)",
     "description": "How many resources in a provider manifest were of a type this version does not understand",
-    "placeholders": { "count": { "content": "$1", "example": "2" } }
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
   },
   "providerAlreadyAdded": {
     "message": "This provider is already added.",

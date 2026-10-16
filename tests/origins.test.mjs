@@ -1,7 +1,7 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { originPatterns, missingOrigins } from '../src/options/origins.js';
+import { originPatterns, missingOrigins, canRequestOrigins } from '../src/options/origins.js';
 
 /** A `contains` that records what it was asked and answers from `covered`. */
 function fakeContains(covered = []) {
@@ -58,5 +58,40 @@ describe('missingOrigins', () => {
         const { asked, contains } = fakeContains();
         assert.deepEqual(await missingOrigins([], contains), []);
         assert.deepEqual(asked, []);
+    });
+});
+
+describe('canRequestOrigins', () => {
+    const store = {
+        host_permissions: ['https://raw.githubusercontent.com/Klikkikuri/rahti/*', 'https://www.hs.fi/*'],
+        optional_host_permissions: ['https://www.ampparit.com/*'],
+    };
+
+    test('a declared origin can be requested, required or optional', () => {
+        assert.equal(canRequestOrigins(['https://www.hs.fi/*'], store), true);
+        assert.equal(canRequestOrigins(['https://www.ampparit.com/*'], store), true);
+    });
+
+    test('an origin the manifest does not declare cannot, and one undeclared origin is enough', () => {
+        assert.equal(canRequestOrigins(['https://new.example.fi/*'], store), false);
+        assert.equal(canRequestOrigins(['https://www.hs.fi/*', 'https://hs.fi/*'], store), false);
+    });
+
+    test('the wildcard and <all_urls> cover any http(s) origin', () => {
+        for (const pattern of ['*://*/*', '<all_urls>']) {
+            assert.equal(canRequestOrigins(['https://new.example.fi/*', 'http://other.example/*'], { optional_host_permissions: [pattern] }), true);
+        }
+    });
+
+    test('compares the scheme and the host, honours a *. host, and ignores the path', () => {
+        assert.equal(canRequestOrigins(['http://www.hs.fi/*'], store), false);
+        assert.equal(canRequestOrigins(['https://raw.githubusercontent.com/*'], store), true);
+        const sub = { host_permissions: ['https://*.example.fi/*'] };
+        assert.equal(canRequestOrigins(['https://example.fi/*', 'https://www.example.fi/*'], sub), true);
+        assert.equal(canRequestOrigins(['https://badexample.fi/*'], sub), false);
+    });
+
+    test('a manifest without permission lists can request nothing', () => {
+        assert.equal(canRequestOrigins(['https://www.hs.fi/*'], {}), false);
     });
 });

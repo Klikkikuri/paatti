@@ -5,6 +5,7 @@ import { getLogger } from "./utils.js";
 import { getConfig, PROVIDER_KEY_PREFIX, BUNDLED_SITE_KEYS } from "./config.js";
 import { initStorage } from "./storage.js";
 import { fetchManifest, resolve } from "./provider.js";
+import { canRequestOrigins } from "./options/origins.js";
 
 /**
  * The list of third-party providers the user added, and the resolved content each one currently
@@ -19,8 +20,10 @@ import { fetchManifest, resolve } from "./provider.js";
 
 const log = getLogger("providers");
 
-/** "16 is generous" -- keeps the sync list far under its quota and bounds refreshProviders() too. */
-const MAX_PROVIDERS = 16;
+/** "17 is generous" -- keeps the sync list far under its quota and bounds refreshProviders() too. One
+ *  more than before: the default provider now takes a slot in this same list (see config.js's
+ *  defaultProviders / background.js's seedDefaultProviders()). */
+const MAX_PROVIDERS = 17;
 
 /** The local storage namespace one provider's resolved content lives in. Read too by config.js's own merge. */
 function namespaceFor(url) {
@@ -93,7 +96,8 @@ async function setProviderEnabled(url, enabled) {
  *
  * @param {string} url
  * @returns {Promise<{siteConfigs: object, rahtiData: object, suolaRules: object|null, scope: Set<string>,
- *   rejected: Array, errors: Array, updated: number|null}>}
+ *   rejected: Array, errors: Array, updated: number|null, entryCount: number,
+ *   databaseGenerationDate: string|null, resourceHeaders: object}>}
  */
 async function getProviderData(url) {
     const storage = await initStorage(namespaceFor(url));
@@ -104,7 +108,10 @@ async function getProviderData(url) {
         scope: new Set((await storage.get("scope")) || []),
         rejected: (await storage.get("rejected")) || [],
         errors: (await storage.get("errors")) || [],
-        updated: await storage.get("updated")
+        updated: await storage.get("updated"),
+        entryCount: (await storage.get("entryCount")) || 0,
+        databaseGenerationDate: await storage.get("databaseGenerationDate"),
+        resourceHeaders: (await storage.get("resourceHeaders")) || {}
     };
 }
 
@@ -116,9 +123,11 @@ async function getProviderData(url) {
  * @param {string} url
  * @param {object} config - As returned by `getConfig()`.
  * @param {Set<string>} claimedSiteKeys - Keys already claimed by the bundled set or an earlier provider.
+ * @param {object} [options]
+ * @param {boolean} [options.force] - Bypass this provider's cached rahti-data conditional-GET headers.
  * @returns {Promise<{scope: Set<string>, error?: string}>}
  */
-async function refreshOne(url, config, claimedSiteKeys) {
+async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) {
     const storage = await initStorage(namespaceFor(url));
     const { manifest, error } = await fetchManifest(url, config.loopbackProvidersEnabled);
 
@@ -131,8 +140,18 @@ async function refreshOne(url, config, claimedSiteKeys) {
     const result = await resolve(manifest, url, {
         loopbackProvidersEnabled: config.loopbackProvidersEnabled,
         providerShadowingEnabled: config.providerShadowingEnabled,
-        claimedSiteKeys
+        claimedSiteKeys,
+        resourceHeaders: (await storage.get("resourceHeaders")) || {},
+        previousRahtiData: (await storage.get("rahtiData")) || {},
+        previousDatabaseGenerationDate: await storage.get("databaseGenerationDate"),
+        force
     });
+
+    // getConfig() hides these sites; this says why, once per fetch.
+    const unrequestable = Object.entries(result.siteConfigs)
+        .filter(([, site]) => !canRequestOrigins(site.origins, browser.runtime.getManifest()))
+        .map(([key]) => key);
+    if (unrequestable.length > 0) log(`${url}: this build cannot request the origins of these sites, so they are hidden:`, unrequestable);
 
     await storage.store({
         siteConfigs: result.siteConfigs,
@@ -141,7 +160,10 @@ async function refreshOne(url, config, claimedSiteKeys) {
         scope: [...result.scope],
         rejected: result.rejected,
         errors: result.errors,
-        updated: Date.now()
+        updated: Date.now(),
+        entryCount: Object.keys(result.rahtiData).length,
+        databaseGenerationDate: result.databaseGenerationDate,
+        resourceHeaders: result.resourceHeaders
     });
 
     return { scope: result.scope };
@@ -153,31 +175,51 @@ async function refreshOne(url, config, claimedSiteKeys) {
  * Sequential, not parallel: each provider's declared scope becomes part of `claimedSiteKeys` for the
  * ones after it, which is what gives ties between two providers the "order the user added them in"
  * precedence the design calls for. The bundled set's own keys seed the claim before any provider runs,
- * so weight `0` still claims no precedence over it.
+ * so weight `0` still claims no precedence over it -- except for a default provider, which publishes the
+ * bundled set and so may replace it.
  *
- * Single-flight within this execution context: an overlapping call joins the one already running
- * rather than starting a second pass that would race it over the same providers' storage writes.
+ * Single-flight within this execution context, but a `force: true` call always gets its own pass rather
+ * than joining an in-flight non-forced one (which would silently return non-bypassed, possibly-cached
+ * results -- defeating the point of a forced refresh). It still never runs concurrently with another
+ * pass: it waits for whatever is currently in flight to settle first, then starts fresh. The identity
+ * check in the `.finally()` below matters here -- with `force` calls able to chain onto each other,
+ * more than one promise can occupy `refreshInFlight` in sequence, and an *earlier* one's cleanup firing
+ * after a *later* one has already taken over must not null out the later one's reference.
+ *
  * This does not reach across contexts -- the background service worker and an open options page
  * each hold their own promise -- so a refresh started in one can still race one started in the
  * other; that is accepted as a rare, self-healing staleness rather than solved with a storage lock.
  *
+ * @param {object} [options]
+ * @param {boolean} [options.force] - Bypass every provider's cached rahti-data conditional-GET headers.
  * @returns {Promise<Array<{url: string, scope: Set<string>, error?: string}>>}
  */
-async function refreshProviders() {
-    if (refreshInFlight) return refreshInFlight;
-    refreshInFlight = _refreshProviders().finally(() => { refreshInFlight = null; });
-    return refreshInFlight;
+async function refreshProviders({ force = false } = {}) {
+    if (refreshInFlight && !force) return refreshInFlight;
+
+    // No `await` before this line: reading `refreshInFlight` and reassigning it is one synchronous
+    // step, so however many calls (forced or not) arrive back-to-back, each sees the previous one's
+    // own reassignment rather than racing it -- this is what makes concurrent force calls chain
+    // instead of running _refreshProviders() in parallel over the same storage writes.
+    const previous = refreshInFlight;
+    const run = previous ? previous.catch(() => {}).then(() => _refreshProviders(force)) : _refreshProviders(force);
+    refreshInFlight = run;
+    run.finally(() => { if (refreshInFlight === run) refreshInFlight = null; });
+    return run;
 }
 
 let refreshInFlight = null;
 
-async function _refreshProviders() {
+async function _refreshProviders(force = false) {
     const config = await getConfig();
     const providers = await getProviders();
     // Bundled keys only -- getConfig().siteConfigs already folds every enabled provider's own
     // previously-resolved sites back in, which would make a provider look like it is shadowing its
     // own prior claim on every refresh after the first and never keep it.
-    const claimedSiteKeys = new Set(BUNDLED_SITE_KEYS);
+    // A default provider publishes the bundled set, so the bundled keys are not a claim against it; the
+    // keys of the providers before it still are.
+    const defaultProviders = new Set(config.defaultProviders || []);
+    const providerClaims = new Set();
 
     const results = [];
     for (const provider of providers) {
@@ -185,9 +227,12 @@ async function _refreshProviders() {
         // partially-written sync record) must be skipped by both in the same way, not just one.
         if (!provider.enabled || !provider.url) continue;
 
-        const outcome = await refreshOne(provider.url, config, claimedSiteKeys);
+        const claimedSiteKeys = defaultProviders.has(provider.url)
+            ? new Set(providerClaims)
+            : new Set([...BUNDLED_SITE_KEYS, ...providerClaims]);
+        const outcome = await refreshOne(provider.url, config, claimedSiteKeys, { force });
         results.push({ url: provider.url, ...outcome });
-        for (const key of outcome.scope) claimedSiteKeys.add(key);
+        for (const key of outcome.scope) providerClaims.add(key);
     }
 
     return results;

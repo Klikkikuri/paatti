@@ -70,11 +70,6 @@ const controller = {
         await model.write.setRefreshIntervalMinutes(value);
     },
 
-    setDevTitleDataUrls: async (urls) => {
-        log(`Setting development title data URLs:`, urls);
-        await model.write.setDevTitleDataUrls(urls);
-    },
-
     /**
      * Set a title modifier enabled or disabled.
      * @param {string} name - The modifier name (e.g. 'aiSlop').

@@ -7,6 +7,8 @@ BUILD_TEST_DATA := $(TEST_DATA_BUILD_DIR)/data.json
 BUILD_SOURCE_DIST := $(BUILD_DIR)/source-code.zip
 STORE_REVISION ?= 1
 CHROME_EXTENSION_ID := jalegaigmgljhnaakmbbaajooffgcbgc
+# The provider manifest the bundled sites come from. Same URL as DEFAULT_RAHTI_MANIFEST_URL in src/config.js.
+SITES_MANIFEST ?= https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/manifest.json
 AMO_METADATA := $(BUILD_DIR)/amo-metadata.json
 DIST_DIR := $(BUILD_DIR)/dist
 EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md docs/PRIVACY_POLICY.md
@@ -124,7 +126,7 @@ dist-chrome dist-firefox: dist-%: manifest.%.json dist
 # the non-OSS assets and the attested suola artifacts of the pinned tag; the recursive make is how
 # both flags reach the parse-time conditionals in dist and the Wasm rule. One shared staging step,
 # so that `make -j store-build` does not run two of them into the same $(DIST_DIR).
-store-dist:
+store-dist: check-sites-published
 	$(MAKE) dist NON_OSS=1 USE_RELEASE_ARTIFACTS=1
 
 store-chrome store-firefox: store-%: manifest.%.json store-dist
@@ -169,6 +171,18 @@ icons:
 
 check-icons:
 	@node tools/inline-icons.mjs --check
+
+# The bundled sites come from the provider manifest, and manifest.json takes its site origins from them. Both are
+# committed, for the same reason as the icons. A store build cannot request an origin at runtime, so it must ship
+# exactly the published sites: check-sites-published fails on any difference.
+sites-sync:
+	node tools/sites.mjs $(SITES_MANIFEST)
+
+check-sites:
+	@node tools/sites.mjs --check
+
+check-sites-published:
+	@node tools/sites.mjs --check-published $(SITES_MANIFEST)
 
 clean:
 	rm -f "$(BUILD_TEST_DATA)" "$(TEST_DATA_SIGNATURES)"
@@ -219,7 +233,7 @@ lint-webext: dist-firefox
 # jsdom is a global install (see .devcontainer/Dockerfile), and ESM resolution ignores
 # NODE_PATH -- tests/helpers/dom.mjs reaches it through the CJS resolver, which does not.
 test: export NODE_PATH = $(shell npm root -g)
-test: test-wasm
+test: test-wasm check-sites
 	node --test 'tests/**/*.test.mjs'
 
 # suola's own smoke test for the browser module, run against the artifacts
@@ -237,4 +251,4 @@ test-wasm:
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
 	fi
 
-.PHONY: build init ensure-suola check-tinygo package source-dist test-data icons check-icons clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
+.PHONY: build init ensure-suola check-tinygo package source-dist test-data icons check-icons sites-sync check-sites check-sites-published clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
