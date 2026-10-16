@@ -123,6 +123,20 @@ describe('the empty and populated list', () => {
 
         assert.deepEqual(rows(el).map((row) => row.querySelector('toggle-button input').checked), [true, false]);
     });
+
+    test('shows fetch errors apart from the status line', async () => {
+        await fake.browser.storage.sync.set({ providers: [{ url: 'https://p.example/m.json', enabled: true }] });
+        await fake.browser.storage.local.set({
+            'provider:https://p.example/m.json': { siteConfigs: {}, rejected: [], errors: [{ message: 'HTTP 404' }] }
+        });
+
+        const el = await mount();
+
+        const problems = rows(el)[0].querySelector('.provider-problems');
+        assert.equal(problems.hidden, false);
+        assert.equal(problems.textContent, 'HTTP 404');
+        assert.doesNotMatch(rows(el)[0].querySelector('.provider-status').textContent, /404/);
+    });
 });
 
 describe('the add flow', () => {

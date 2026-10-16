@@ -1,18 +1,22 @@
 /**
  * <providers-setting> -- the list of added providers, plus the two-gesture add flow.
+ *
+ * The list and the add flow share one .raised panel: rows on top, the add form (or its disclosure) as the footer.
+ * Buttons are .push-button and the add form is an .input-group, both from components.css.
  */
 
 providers-setting {
     display: block;
+    margin-bottom: 20px;
 }
 
-providers-setting .providers-list {
-    display: grid;
-    gap: 10px;
-    margin-bottom: 15px;
+providers-setting .providers-panel {
+    overflow: hidden;
 }
 
 providers-setting .providers-empty {
+    margin: 0;
+    padding: 15px;
     color: var(--color-text-secondary);
     font-size: 0.95rem;
 }
@@ -21,9 +25,11 @@ providers-setting .provider-item {
     display: flex;
     align-items: center;
     gap: 15px;
-    padding: 15px;
-    background: var(--color-surface-muted);
-    border-radius: 8px;
+    padding: 12px 15px;
+}
+
+providers-setting .provider-item + .provider-item {
+    border-top: 1px dashed var(--color-border-strong);
 }
 
 providers-setting .provider-info {
@@ -31,58 +37,83 @@ providers-setting .provider-info {
     min-width: 0;
 }
 
+providers-setting .provider-title {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+}
+
 providers-setting .provider-url {
+    font-family: var(--font-display);
+    font-size: 0.9rem;
     font-weight: bold;
     color: var(--color-text-heading);
     overflow-wrap: anywhere;
 }
 
-providers-setting .provider-status {
+providers-setting .provider-default-tag {
+    padding: 0 5px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 2px;
+    font-family: var(--font-display);
+    font-size: 0.7rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-secondary);
+}
+
+providers-setting .provider-status,
+providers-setting .provider-problems {
     font-size: 0.9rem;
     color: var(--color-text-secondary);
     margin-top: 4px;
 }
 
-providers-setting .provider-remove-btn {
+providers-setting .provider-problems {
+    color: var(--color-warning);
+}
+
+providers-setting toggle-button {
+    flex-shrink: 0;
+}
+
+/* Smaller than a regular push button, so it casts and travels less. */
+providers-setting .push-button {
+    --push-offset: 2px;
     flex: 0 0 auto;
-    padding: 8px 16px;
+    min-width: 0;
+    padding: 5px 12px;
+    font-size: 0.85rem;
 }
 
-providers-setting .provider-add-form {
-    display: flex;
-    gap: 10px;
+providers-setting .provider-remove-btn:hover {
+    color: var(--color-danger);
+    outline-color: var(--color-danger);
 }
 
-providers-setting .provider-url-input {
-    flex: 1;
-    padding: 10px;
-    border: 2px solid var(--color-border);
-    border-radius: 8px;
-    font-size: 1rem;
-    box-sizing: border-box;
-}
-
-providers-setting .provider-add-btn {
-    flex: 0 0 auto;
-    padding: 10px 20px;
+providers-setting .provider-add {
+    padding: 15px;
+    background: var(--color-surface-muted);
+    border-top: 1px solid var(--color-border-strong);
 }
 
 providers-setting .provider-add-error {
     color: var(--color-warning);
     font-size: 0.9em;
-    margin-top: 8px;
+    margin: 8px 0 0;
 }
 
-providers-setting .provider-disclosure {
-    margin-top: 15px;
-    padding: 15px;
-    background: var(--color-surface-muted);
-    border-radius: 8px;
+providers-setting .provider-disclosure p {
+    margin: 0;
 }
 
 providers-setting .provider-disclosure ul {
-    margin: 8px 0;
+    margin: 6px 0 12px;
     padding-left: 20px;
+    font-family: var(--font-display);
+    font-size: 0.9rem;
 }
 
 providers-setting .provider-disclosure-ignored {
@@ -92,12 +123,12 @@ providers-setting .provider-disclosure-ignored {
 
 providers-setting .provider-disclosure-actions {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     justify-content: flex-end;
     margin-top: 15px;
 }
 
-providers-setting .provider-disclosure-actions button {
-    flex: 0 0 auto;
-    padding: 8px 16px;
+/* An author display rule outranks the UA's [hidden]; the add form and disclosure swap by the attribute. */
+providers-setting [hidden] {
+    display: none !important;
 }

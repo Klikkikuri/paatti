@@ -1027,6 +1027,10 @@
     "message": "Remove",
     "description": "Button that removes an added provider"
   },
+  "providerDefaultTag": {
+    "message": "Default",
+    "description": "Tag on a provider that the active environment includes; it can be turned off but not removed"
+  },
   "providerDisclosureOriginsIntro": {
     "message": "This provider will be fetched from:",
     "description": "Introduces the list of origins a provider manifest names, shown before it is added"

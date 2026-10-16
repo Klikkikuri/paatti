@@ -32,22 +32,24 @@ adoptComponentStyleSheet(new URL('./providers-setting.css', import.meta.url));
 
 const template = document.createElement('template');
 template.innerHTML = `
-    <div class="providers-list"></div>
-    <div class="provider-add">
-        <div class="provider-add-form">
-            <input type="url" id="providerUrlInput" name="providerUrl" class="provider-url-input" data-i18n-placeholder="providerUrlPlaceholder" placeholder="https://example.com/manifest.json">
-            <button type="button" class="btn-secondary provider-add-btn" data-i18n="providerAddBtn">Add</button>
-        </div>
-        <p class="provider-add-error" hidden></p>
-        <div class="provider-disclosure" hidden>
-            <p class="provider-disclosure-origins-intro" data-i18n="providerDisclosureOriginsIntro">This provider will be fetched from:</p>
-            <ul class="provider-disclosure-origins"></ul>
-            <p class="provider-disclosure-sites-intro" hidden data-i18n="providerDisclosureSitesIntro">It already offers these sites:</p>
-            <ul class="provider-disclosure-sites"></ul>
-            <p class="provider-disclosure-ignored" hidden></p>
-            <div class="provider-disclosure-actions">
-                <button type="button" class="btn-secondary provider-cancel-btn" data-i18n="providerCancelBtn">Cancel</button>
-                <button type="button" class="btn-primary provider-confirm-btn" data-i18n="providerConfirmBtn">Add provider</button>
+    <div class="providers-panel raised">
+        <div class="providers-list"></div>
+        <div class="provider-add">
+            <form class="provider-add-form input-group" novalidate>
+                <input type="url" id="providerUrlInput" name="providerUrl" class="provider-url-input" data-i18n-placeholder="providerUrlPlaceholder" placeholder="https://example.com/manifest.json">
+                <button type="submit" class="provider-add-btn" data-i18n="providerAddBtn">Add</button>
+            </form>
+            <p class="provider-add-error" hidden></p>
+            <div class="provider-disclosure" hidden>
+                <p class="provider-disclosure-origins-intro" data-i18n="providerDisclosureOriginsIntro">This provider will be fetched from:</p>
+                <ul class="provider-disclosure-origins"></ul>
+                <p class="provider-disclosure-sites-intro" hidden data-i18n="providerDisclosureSitesIntro">It already offers these sites:</p>
+                <ul class="provider-disclosure-sites"></ul>
+                <p class="provider-disclosure-ignored" hidden></p>
+                <div class="provider-disclosure-actions">
+                    <button type="button" class="push-button provider-cancel-btn" data-i18n="providerCancelBtn">Cancel</button>
+                    <button type="button" class="push-button provider-confirm-btn" data-i18n="providerConfirmBtn">Add provider</button>
+                </div>
             </div>
         </div>
     </div>
@@ -56,11 +58,15 @@ template.innerHTML = `
 const rowTemplate = document.createElement('template');
 rowTemplate.innerHTML = `
     <div class="provider-info">
-        <div class="provider-url"></div>
+        <div class="provider-title">
+            <span class="provider-url"></span>
+            <span class="provider-default-tag" hidden data-i18n="providerDefaultTag">Default</span>
+        </div>
         <div class="provider-status"></div>
+        <div class="provider-problems" hidden></div>
     </div>
-    <toggle-button type="toggle"></toggle-button>
-    <button type="button" class="btn-secondary provider-remove-btn" data-i18n="providerRemoveBtn">Remove</button>
+    <toggle-button></toggle-button>
+    <button type="button" class="push-button provider-remove-btn" data-i18n="providerRemoveBtn">Remove</button>
 `;
 
 class ProvidersSetting extends ComponentBase {
@@ -97,7 +103,10 @@ class ProvidersSetting extends ComponentBase {
         const canAddProvider = canAddProviders(browser.runtime.getManifest());
         this.querySelector('.provider-add').hidden = !canAddProvider;
         if (canAddProvider) {
-            this.#addButton.addEventListener('click', () => this.#onAddClick(), { signal: this.signal });
+            this.querySelector('.provider-add-form').addEventListener('submit', (event) => {
+                event.preventDefault();
+                this.#onAddClick();
+            }, { signal: this.signal });
             this.#cancelButton.addEventListener('click', () => this.#resetAddFlow(), { signal: this.signal });
             this.#confirmButton.addEventListener('click', () => this.#onConfirmClick(), { signal: this.signal });
         }
@@ -144,7 +153,13 @@ class ProvidersSetting extends ComponentBase {
         localizeDocument(row);
 
         row.querySelector('.provider-url').textContent = provider.url;
-        row.querySelector('.provider-status').textContent = this.#describeStatus(data, config);
+        row.querySelector('.provider-status').textContent = this.#describeStatus(data);
+        const problems = this.#describeProblems(data, config);
+        const problemsLine = row.querySelector('.provider-problems');
+        problemsLine.textContent = problems.join(' — ');
+        problemsLine.hidden = problems.length === 0;
+        const isDefault = (config.defaultProviders || []).includes(provider.url);
+        row.querySelector('.provider-default-tag').hidden = !isDefault;
 
         const toggleBtn = row.querySelector('toggle-button');
         toggleBtn.checked = provider.enabled;
@@ -164,7 +179,7 @@ class ProvidersSetting extends ComponentBase {
         // only disabled via the toggle above. Read live off config.defaultProviders, not a stored marker,
         // so a URL that stops being default in a future version regains its Remove button on the very
         // next render with no migration needed.
-        removeBtn.hidden = (config.defaultProviders || []).includes(provider.url);
+        removeBtn.hidden = isDefault;
         removeBtn.addEventListener('click', async () => {
             try {
                 await removeProvider(provider.url);
@@ -181,8 +196,8 @@ class ProvidersSetting extends ComponentBase {
         return row;
     }
 
-    /** A one-line summary: how many sites it offers, when it last resolved, and what went wrong if so. */
-    #describeStatus(data, config) {
+    /** A one-line summary: how many sites it offers and when it last resolved. */
+    #describeStatus(data) {
         const parts = [];
         const siteCount = Object.keys(data.siteConfigs || {}).length;
         parts.push(browser.i18n.getMessage('providerSiteCount', [String(siteCount)]) || `${siteCount} site(s)`);
@@ -193,15 +208,19 @@ class ProvidersSetting extends ComponentBase {
         } else {
             parts.push(browser.i18n.getMessage('providerNeverResolved') || 'never resolved yet');
         }
+        return parts.join(' — ');
+    }
 
+    /** What went wrong on the last resolve: rejected sites and fetch errors. */
+    #describeProblems(data, config) {
+        const parts = [];
         for (const rejection of data.rejected || []) {
             parts.push(this.#describeRejection(rejection, config.siteConfigSource || {}));
         }
         for (const error of data.errors || []) {
             parts.push(error.message || String(error));
         }
-
-        return parts.join(' — ');
+        return parts;
     }
 
     /** Names which source actually holds a rejected key, so an "already claimed" reason is not a dead end. */
