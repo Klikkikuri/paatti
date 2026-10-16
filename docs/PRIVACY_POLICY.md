@@ -12,7 +12,8 @@ Klikkikuri Paatti is designed with privacy-first principles:
 * When you visit websites, **no external server or API is queried** to analyze or check page headlines. All headline processing, link identification, and text replacements take place 100% offline on your machine against a cached local database.
 * The extension **never transmits your browsing history**, visited URLs, or browsing activity to any external server **without explicit user taken action** (see Section 2.B below).
 * User feedback and invitation requests are sent to Google Forms **only when you explicitly fill out and submit a form**.
-* The extension periodically downloads **static, public headline correction database files** from GitHub (`raw.githubusercontent.com`). These downloads are generic and contain no user query parameters or browsing data.
+* The extension periodically downloads **static, public files** from GitHub (`raw.githubusercontent.com`): the headline correction database, the rules that normalize article addresses, and the site configurations. These downloads are generic and contain no user query parameters or browsing data.
+* This policy is for the versions in the Chrome Web Store and Firefox Add-ons. The version distributed on GitHub, and a version that you build yourself, have more development functions. The [Privacy Notice for the Development Versions](PRIVACY_POLICY_DEVELOPMENT.md) tells about them (see Section 2.E).
 * The extension contains **no third-party analytics trackers, crash reporters, or telemetry tools** (such as Google Analytics or Sentry). We have no way of tracking how often you use the extension or which features you click.
 
 ## 2. Information We Collect, Process, and Retrieve
@@ -44,9 +45,17 @@ When you request an invitation or register interest for the paid version:
 
 ### C. Data Retrieved from External Services (GitHub Database Updates)
 
-To keep clickbait detection up to date, the extension periodically fetches public database updates (`data.json`) via HTTP GET requests from GitHub ([`https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json`](https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json)).
+To keep clickbait detection up to date, the extension periodically downloads public files via HTTP GET requests from GitHub (`raw.githubusercontent.com/Klikkikuri/rahti`):
 
-* These requests are read-only downloads of public database files, and **no personal information, browsing history, queried URLs, or user identifiers are included**.
+* the list of the files ([`manifest.json`](https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/manifest.json)),
+* the headline correction database (`data.json`),
+* the rules that normalize article addresses (`rules.json`), and
+* the site configurations (`sites.json`): which news sites the extension supports, and where their headlines are on the page.
+
+About these requests:
+
+* They are read-only downloads of public files, and **no personal information, browsing history, queried URLs, or user identifiers are included**. They are sent **without cookies or credentials** and **without a referrer**.
+* A request for the correction database can include the **version tag of the copy that the extension already has** (an HTTP cache validator), so that GitHub sends the file only when it has changed. The tag identifies the file version.
 * As with any web request, GitHub's servers receive **standard HTTP request metadata** (such as your IP address and browser User-Agent).
 
 ### D. Site Icons Retrieved from Supported News Sites
@@ -59,12 +68,16 @@ To show each site's own icon in the settings and popup site lists, the extension
 * The request goes to the news site or to whichever host that site declares for its icon. As with any web request, that host receives **standard HTTP request metadata** (such as your IP address and browser User-Agent).
 * No headline, URL, signature, or browsing history is included, and this retrieval happens only for sites you have enabled.
 
+### E. Development Versions
+
+The version distributed on GitHub, and a version that you build yourself, can download files from **providers**: sets of files that other persons or organizations publish. The [Privacy Notice for the Development Versions](PRIVACY_POLICY_DEVELOPMENT.md) tells about this function.
+
 ## 3. How We Use Your Information
 
 * Submitted feedback is used solely to **review clickbait detection accuracy**, improve headline replacement algorithms, and update our database of headline corrections.
 * Additionally, **we may compile and publish these feedback submissions as an open-source, anonymized dataset**. Prior to any public release, all data is strictly sanitized to strip any inadvertent personal information, to a point it would fall outside the scope of GDPR Article 4(1) definition of personal data.
 * Your email address is used solely to **notify you about updates regarding invitations, early access, or subscriptions** for the paid version of Klikkikuri Paatti, and is never sold, rented, or used for unrelated marketing purposes.
-* Retrieved database files are **used locally to perform headline replacements** on supported sites.
+* Retrieved files are **used locally** to perform headline replacements on supported sites.
 * Retrieved site icons are **used locally to label the site lists** in the extension's own settings and popup, and are never transmitted anywhere.
 
 ### A. Proactive Notice of Changes
@@ -73,9 +86,9 @@ If we make material changes to our data handling practices — including changin
 
 ### B. Lawful Basis for Processing (GDPR Article 6)
 
-#### 1. Periodic database downloads from GitHub (Section 2.C)
+#### 1. Periodic file downloads from GitHub (Section 2.C)
 
-**Legitimate Interest — Art. 6(1)(f)**: Necessary for the extension's core functionality (fetching updated headline databases). This interest is not overridden by your data protection rights because the processing is strictly limited to the transient network metadata (IP address, User-Agent) required to establish the HTTP connection. The request is entirely decoupled from your browsing history, involves no user authentication, and is not used for tracking or profiling.
+**Legitimate Interest — Art. 6(1)(f)**: Necessary for the extension's core functionality (fetching updated headline databases, address rules and site configurations). This interest is not overridden by your data protection rights because the processing is strictly limited to the transient network metadata (IP address, User-Agent) required to establish the HTTP connection. The request is entirely decoupled from your browsing history, involves no user authentication, and is not used for tracking or profiling.
 
 #### 2. Feedback & headline correction submissions (Section 2.B.1):
 

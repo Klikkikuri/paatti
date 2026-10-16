@@ -11,7 +11,7 @@ CHROME_EXTENSION_ID := jalegaigmgljhnaakmbbaajooffgcbgc
 SITES_MANIFEST ?= https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/manifest.json
 AMO_METADATA := $(BUILD_DIR)/amo-metadata.json
 DIST_DIR := $(BUILD_DIR)/dist
-EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md docs/PRIVACY_POLICY.md
+EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md docs/PRIVACY_POLICY.md docs/PRIVACY_POLICY_DEVELOPMENT.md
 WASM_ASSETS := js.wasm wasm_exec.js
 WASM_OUTPUTS := $(addprefix $(BUILD_DIR)/, $(WASM_ASSETS))
 # The module's inputs, taken from the submodule so the list cannot drift.
