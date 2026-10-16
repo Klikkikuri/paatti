@@ -54,3 +54,127 @@
     white-space: nowrap;
     border: 0;
 }
+
+/* Push button */
+
+.push-button {
+    display: inline-block;
+    cursor: pointer;
+    background: var(--push-bg);
+    outline: 1px outset var(--color-border-strong);
+    border-radius: 0.375rem;
+    /* --push-offset sets the drop shadow's distance, and a pressed button sinks
+     * half of it into the space the shadow occupied. Override --push-offset on
+     * smaller buttons to scale the shadow and the travel together. */
+    box-shadow:
+        var(--push-shadow) var(--push-offset) var(--push-offset),
+        var(--push-shadow) 0px 0px inset;
+    transition:
+        transform 0.2s ease-in-out,
+        box-shadow 0.2s ease-in-out,
+        background 0.2s ease-in-out;
+
+    font-family: var(--font-display);
+    text-align: center;
+    min-width: 6.25rem;
+
+    color: var(--push-text);
+    margin: 0;
+    padding: 2%;
+    padding-bottom: 0.3125rem;
+    font-weight: bold;
+}
+
+.push-button:hover {
+    color: var(--push-accent);
+    outline: 2px solid var(--color-info);
+}
+
+/* When checked - looks like pressed in */
+.push-button:active,
+input:checked+.push-button {
+    box-shadow:
+        var(--push-shadow) 0px 0px,
+        var(--push-shadow) 1px 1px inset;
+
+    /* Sink halfway into the vacated shadow: enough to read as pressed without
+     * the button jumping a full shadow's width out of line with its siblings. */
+    transform: translate(calc(var(--push-offset) / 2), calc(var(--push-offset) / 2));
+
+    background: var(--push-bg-active);
+    outline: 1px solid var(--color-info);
+
+    animation-name: pulsate-glow;
+    animation-delay: 0s;
+    animation-duration: 2.0s;
+    animation-iteration-count: infinite;
+    animation-timing-function: ease-in;
+}
+
+/* Show that push buttons can be untoggled */
+input:checked+.push-button:hover {
+    color: var(--push-text);
+    outline: 2px solid var(--color-border-strong);
+}
+
+@keyframes pulsate-glow {
+    0% {
+        color: var(--push-accent);
+    }
+    80% {
+        color: var(--push-accent-bright);
+    }
+    100% {
+        color: var(--push-accent);
+    }
+}
+
+/* A text field with its action button joined to it on the right, as in the feedback card's input. */
+.input-group {
+    display: flex;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--color-surface);
+    box-shadow: inset 0 1px 3px var(--shadow-ambient);
+}
+
+.input-group:focus-within {
+    outline: 2px solid var(--color-info);
+}
+
+.input-group input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--color-text-primary);
+    font-size: 0.95rem;
+}
+
+.input-group button {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 8px 16px;
+    border: none;
+    border-left: 1px solid var(--color-border-strong);
+    border-radius: 0;
+    background: var(--push-bg);
+    color: var(--push-text);
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.input-group button:hover {
+    background: var(--color-info);
+    color: var(--color-on-accent);
+}
+
+.input-group button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
