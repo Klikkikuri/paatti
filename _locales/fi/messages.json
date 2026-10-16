@@ -569,6 +569,22 @@
     "message": "Selvä",
     "description": "Painike joka sulkee tason 0 varoituksen niin ettei sitä näytetä uudelleen"
   },
+  "linkAboutText": {
+    "message": "Tietoja",
+    "description": "Short link text for a link with rel \"about\""
+  },
+  "linkPrivacyPolicyText": {
+    "message": "Tietosuojaseloste",
+    "description": "Short link text for a link with rel \"privacy-policy\""
+  },
+  "linkTermsOfServiceText": {
+    "message": "Käyttöehdot",
+    "description": "Short link text for a link with rel \"terms-of-service\""
+  },
+  "linkLicenseText": {
+    "message": "Lisenssi",
+    "description": "Short link text for a link with rel \"license\""
+  },
   "sitePolicyLinkText": {
     "message": "Julkaisijan periaatteet",
     "description": "Short link text for publisher's policy button"

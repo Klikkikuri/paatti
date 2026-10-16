@@ -93,6 +93,23 @@ describe('parseManifest', () => {
         assert.equal(error, undefined);
         assert.equal(manifest.resources[0].known, false);
     });
+
+    test('keeps a name only when it is non-empty text', () => {
+        assert.equal(parseManifest(manifestDoc([], { name: '  Klikkikuri  ' })).manifest.name, 'Klikkikuri');
+        for (const name of [{ x: 1 }, 123, '   ', undefined]) {
+            assert.equal(parseManifest(manifestDoc([], { name })).manifest.name, null);
+        }
+    });
+
+    test('keeps only absolute http(s) links, the same as for a site', () => {
+        const links = [
+            { rel: 'about', href: 'https://provider.example/about' },
+            { rel: 'license', href: './LICENSE' },
+            { rel: 'privacy-policy', href: 'javascript:alert(1)' },
+            { href: 'https://provider.example/no-rel' },
+        ];
+        assert.deepEqual(parseManifest(manifestDoc([], { links })).manifest.links, [links[0]]);
+    });
 });
 
 describe('inspect', () => {

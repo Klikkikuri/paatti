@@ -107,7 +107,8 @@ async function releaseUnused(url, removed, remainingUrls) {
     ]));
 
     const required = { host_permissions: browser.runtime.getManifest().host_permissions };
-    const revoke = originPatterns([url, ...removed.origins, ...siteOrigins(removed.siteConfigs)])
+    const grantedForAccess = removed.errors.flatMap((error) => error.origins || []);
+    const revoke = originPatterns([url, ...removed.origins, ...grantedForAccess, ...siteOrigins(removed.siteConfigs)])
         .filter((pattern) => !keptOrigins.has(pattern) && !canRequestOrigins([pattern], required));
     if (revoke.length > 0) await browser.permissions.remove({ origins: revoke });
 
@@ -139,7 +140,7 @@ async function setProviderEnabled(url, enabled) {
  * @param {string} url
  * @returns {Promise<{siteConfigs: object, rahtiData: object, suolaRules: object|null, scope: Set<string>,
  *   rejected: Array, errors: Array, updated: number|null, entryCount: number,
- *   databaseGenerationDate: string|null, resourceHeaders: object, origins: string[]}>}
+ *   databaseGenerationDate: string|null, resourceHeaders: object, origins: string[], name: string|null, links: Array}>}
  */
 async function getProviderData(url) {
     const storage = await initStorage(namespaceFor(url));
@@ -154,21 +155,31 @@ async function getProviderData(url) {
         entryCount: (await storage.get("entryCount")) || 0,
         databaseGenerationDate: await storage.get("databaseGenerationDate"),
         resourceHeaders: (await storage.get("resourceHeaders")) || {},
-        origins: (await storage.get("origins")) || []
+        origins: (await storage.get("origins")) || [],
+        name: (await storage.get("name")) ?? null,
+        links: (await storage.get("links")) || []
     };
 }
 
-/** Record why a refresh stopped, and keep the provider's last resolved content. */
-async function keepLastResolved(storage, url, error) {
+/**
+ * Record why a refresh stopped, and keep the provider's last resolved content. `kind` is `build`, `access` or
+ * `fetch`; an `access` stop also records the `origins` to grant.
+ */
+async function keepLastResolved(storage, url, error, { kind, origins } = {}) {
     log(`Refresh of ${url} stopped, keeping the last resolved content:`, error);
-    await storage.set("errors", [{ message: error }]);
+    await storage.set("errors", [{ message: error, kind, origins }]);
     return { scope: new Set((await storage.get("scope")) || []), error };
 }
 
-/** The error for origins this browser has not granted, or null when every one is granted. */
+/** The origins this browser has not granted, and a message naming them; null when every one is granted. */
 async function accessError(urls) {
     const missing = await missingOrigins(urls, (pattern) => browser.permissions.contains({ origins: [pattern] }));
-    return missing.length > 0 ? `no access to ${missing.join(", ")}` : null;
+    return missing.length > 0 ? { message: `no access to ${missing.join(", ")}`, origins: missing } : null;
+}
+
+/** Stop a refresh on missing origins. */
+function keepForAccess(storage, url, { message, origins }) {
+    return keepLastResolved(storage, url, message, { kind: "access", origins });
 }
 
 /**
@@ -192,18 +203,21 @@ async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) 
 
     if (!isUsableProvider(url, new Set(config.defaultProviders || []))) {
         return keepLastResolved(storage, url, browser.i18n.getMessage("providerNotUsableInBuild")
-            || "This version of the extension has no permission to use this provider.");
+            || "This version of the extension has no permission to use this provider.", { kind: "build" });
     }
 
     const manifestAccessError = await accessError([url]);
-    if (manifestAccessError) return keepLastResolved(storage, url, manifestAccessError);
+    if (manifestAccessError) return keepForAccess(storage, url, manifestAccessError);
 
     const { manifest, error } = await fetchManifest(url, config.loopbackProvidersEnabled);
-    if (error) return keepLastResolved(storage, url, error);
+    if (error) return keepLastResolved(storage, url, error, { kind: "fetch" });
+
+    // Before the resource check, so a provider still waiting for its resource grant already shows its name.
+    await storage.store({ name: manifest.name ?? null, links: manifest.links });
 
     const origins = [...resourceOrigins(manifest, url)];
     const resourceAccessError = await accessError(origins);
-    if (resourceAccessError) return keepLastResolved(storage, url, resourceAccessError);
+    if (resourceAccessError) return keepForAccess(storage, url, resourceAccessError);
 
     const result = await resolve(manifest, url, {
         loopbackProvidersEnabled: config.loopbackProvidersEnabled,

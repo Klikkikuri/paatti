@@ -385,3 +385,90 @@ describe('a store build (no wildcard optional host permission)', () => {
         assert.equal(rows(el).length, 1);
     });
 });
+
+describe('a row\'s state, name and links', () => {
+    const url = 'https://provider.example/manifest.json';
+    const accessStop = { message: 'no access to https://cdn.example/*', kind: 'access', origins: ['https://cdn.example/*'] };
+    const grantBtn = (row) => row.querySelector('.provider-grant-btn');
+    const stateTag = (row) => row.querySelector('.provider-state-tag');
+
+    /** A few turns: the grant resolves, the refresh runs, and the row renders again. */
+    const settledLong = async () => { for (let i = 0; i < 10; i++) await settled(); };
+
+    test('"Grant access" requests the missing origins inside the click, then the row resolves', async () => {
+        await fake.browser.storage.sync.set({ providers: [{ url, enabled: true }] });
+        await fake.browser.storage.local.set({ [`provider:${url}`]: { siteConfigs: {}, rejected: [], errors: [accessStop] } });
+        fetchMap[url] = jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'news.example': site('news.example') } }]));
+        const el = await mount();
+
+        assert.equal(stateTag(rows(el)[0]).textContent, 'Needs access');
+        assert.equal(grantBtn(rows(el)[0]).hidden, false);
+
+        let handlingInput = false;
+        globalThis.browser.permissions.request = ({ origins }) => {
+            if (!handlingInput) return Promise.reject(new Error('permissions.request may only be called from a user input handler'));
+            requests.push(origins);
+            return respond();
+        };
+        handlingInput = true;
+        try { grantBtn(rows(el)[0]).click(); } finally { handlingInput = false; }
+        await settledLong();
+
+        assert.deepEqual(requests, [['https://cdn.example/*']]);
+        assert.equal(grantBtn(rows(el)[0]).hidden, true);
+        assert.equal(stateTag(rows(el)[0]).hidden, true);
+        assert.match(rows(el)[0].querySelector('.provider-status').textContent, /1 site/);
+    });
+
+    test('a disabled provider shows why, but offers no grant', async () => {
+        await fake.browser.storage.sync.set({ providers: [{ url, enabled: false }] });
+        await fake.browser.storage.local.set({ [`provider:${url}`]: { siteConfigs: {}, rejected: [], errors: [accessStop] } });
+
+        const el = await mount();
+
+        assert.equal(stateTag(rows(el)[0]).hidden, false);
+        assert.equal(grantBtn(rows(el)[0]).hidden, true);
+    });
+
+    test('shows the manifest name, the URL under it, and its links', async () => {
+        await fake.browser.storage.sync.set({ providers: [{ url, enabled: true }] });
+        await fake.browser.storage.local.set({ [`provider:${url}`]: {
+            siteConfigs: {}, rejected: [], errors: [], name: 'Example news',
+            links: [{ rel: 'x-site', href: 'https://provider.example/', title: 'Home' }]
+        } });
+
+        const el = await mount();
+
+        const row = rows(el)[0];
+        assert.equal(row.querySelector('.provider-name').textContent, 'Example news');
+        assert.equal(row.querySelector('.provider-url').hidden, false);
+        assert.equal(row.querySelector('.provider-url').textContent, url);
+        const [link] = row.querySelectorAll('.provider-links a');
+        assert.equal(link.href, 'https://provider.example/');
+        assert.equal(link.rel, 'noopener noreferrer');
+    });
+
+    test('without a name, the URL is the title and is not repeated', async () => {
+        await fake.browser.storage.sync.set({ providers: [{ url, enabled: true }] });
+
+        const el = await mount();
+
+        assert.equal(rows(el)[0].querySelector('.provider-name').textContent, url);
+        assert.equal(rows(el)[0].querySelector('.provider-url').hidden, true);
+        assert.equal(rows(el)[0].querySelector('.provider-links').hidden, true);
+    });
+
+    test('renders again when a refresh writes only an error, or sync adds a provider without sites', async () => {
+        await fake.browser.storage.sync.set({ providers: [{ url, enabled: true }] });
+        const el = await mount();
+        assert.equal(stateTag(rows(el)[0]).hidden, true);
+
+        await fake.browser.storage.local.set({ [`provider:${url}`]: { siteConfigs: {}, rejected: [], errors: [{ message: 'HTTP 500', kind: 'fetch' }] } });
+        await settledLong();
+        assert.equal(stateTag(rows(el)[0]).textContent, 'Fetch failed');
+
+        await fake.browser.storage.sync.set({ providers: [{ url, enabled: true }, { url: 'https://other.example/m.json', enabled: true }] });
+        await settledLong();
+        assert.equal(rows(el).length, 2);
+    });
+});

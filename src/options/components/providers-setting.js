@@ -1,13 +1,15 @@
 import browser from '../../browser-api.js';
-import { getConfig, onConfigValue } from '../../config.js';
+import { getConfig, onConfigValue, PROVIDER_KEY_PREFIX } from '../../config.js';
 import { originPatterns, canAddProviders, ARBITRARY_ORIGINS } from '../origins.js';
+import { providerStateTag, originsToGrant } from '../provider-state.js';
+import { siteLinks } from '../site-links.js';
 import { localizeDocument } from '../utils.js';
 import {
     MAX_PROVIDERS, getProviders, addProvider, removeProvider, setProviderEnabled, getProviderData,
     refreshProviders
 } from '../../providers.js';
 import { inspect } from '../../provider.js';
-import { adoptComponentStyleSheet, ComponentBase, defineComponent, emitSettingSaved } from './component-utils.js';
+import { adoptComponentStyleSheet, ComponentBase, defineComponent, emitSettingSaved, detailLinks } from './component-utils.js';
 import './toggle-button.js';
 
 /**
@@ -26,6 +28,9 @@ import './toggle-button.js';
  *
  * A provider's own sites are not granted here: they arrive offered but off in the ordinary site list,
  * and turning one on requests its origin the same way any other site does.
+ *
+ * A row whose last refresh stopped on origins this browser has not granted -- a provider synced from another
+ * device, or a manifest that names a new host -- offers "Grant access", a one-click request under the same rule.
  */
 
 adoptComponentStyleSheet(new URL('./providers-setting.css', import.meta.url));
@@ -41,6 +46,8 @@ template.innerHTML = `
             </form>
             <p class="provider-add-error" hidden></p>
             <div class="provider-disclosure" hidden>
+                <p class="provider-disclosure-name" hidden></p>
+                <div class="provider-links provider-disclosure-links" hidden></div>
                 <p class="provider-disclosure-origins-intro" data-i18n="providerDisclosureOriginsIntro">This provider will be fetched from:</p>
                 <ul class="provider-disclosure-origins"></ul>
                 <p class="provider-disclosure-sites-intro" hidden data-i18n="providerDisclosureSitesIntro">It already offers these sites:</p>
@@ -59,12 +66,16 @@ const rowTemplate = document.createElement('template');
 rowTemplate.innerHTML = `
     <div class="provider-info">
         <div class="provider-title">
-            <span class="provider-url"></span>
-            <span class="provider-default-tag" hidden data-i18n="providerDefaultTag">Default</span>
+            <span class="provider-name"></span>
+            <span class="provider-tag provider-default-tag" hidden data-i18n="providerDefaultTag">Default</span>
+            <span class="provider-tag provider-state-tag" data-tone="warning" hidden></span>
         </div>
+        <div class="provider-url"></div>
         <div class="provider-status"></div>
         <div class="provider-problems" hidden></div>
+        <div class="provider-links" hidden></div>
     </div>
+    <button type="button" class="push-button provider-grant-btn" hidden data-i18n="providerGrantBtn">Grant access</button>
     <toggle-button></toggle-button>
     <button type="button" class="push-button provider-remove-btn" data-i18n="providerRemoveBtn">Remove</button>
 `;
@@ -113,15 +124,28 @@ class ProvidersSetting extends ComponentBase {
             this.#confirmButton.addEventListener('click', () => this.#onConfirmClick(), { signal: this.signal });
         }
 
-        // Re-renders on a provider's own list changing (added, removed, enabled/disabled) and on its
-        // resolved content changing (a refresh finding new sites, a fetch starting to fail). Both
-        // land in storage.local under a provider: key, which config.js's siteConfigSource already
-        // watches -- selecting it here keeps this in step with that, narrowly. This already fires
-        // once with the current value, so nothing here calls #renderList() a second time for it.
+        // Fires once with the current value, which is the first render, and again when the sites the providers
+        // claim move -- an environment switch included, which changes the default providers.
         this.addTeardown(onConfigValue(
             (config) => [Object.keys(config.siteConfigSource || {}).sort(), Object.values(config.siteConfigSource || {})],
-            () => this.#renderList(),
+            () => this.#scheduleRender(),
         ));
+
+        // The list itself (sync) and each provider's resolved content (local, one write per refresh). Neither is
+        // part of the merged config: an error or a provider with no sites would otherwise never reach the screen.
+        const onStorageChanged = (changes, areaName) => {
+            const keys = Object.keys(changes);
+            if ((areaName === 'sync' && keys.includes('providers'))
+                || (areaName === 'local' && keys.some((key) => key.startsWith(PROVIDER_KEY_PREFIX)))) {
+                this.#scheduleRender();
+            }
+        };
+        browser.storage.onChanged.addListener(onStorageChanged);
+        this.addTeardown(() => browser.storage.onChanged.removeListener(onStorageChanged));
+    }
+
+    #scheduleRender() {
+        this.#renderList().catch((err) => console.error('Failed to render the providers:', err));
     }
 
     async #renderList() {
@@ -130,21 +154,23 @@ class ProvidersSetting extends ComponentBase {
         if (!this.isConnected || generation !== this.#renderGeneration) return;
 
         this.#providers = providers;
-        this.#list.replaceChildren();
         if (providers.length === 0) {
             const empty = document.createElement('p');
             empty.className = 'providers-empty';
             empty.textContent = browser.i18n.getMessage('providersEmpty') || 'No providers added yet.';
-            this.#list.append(empty);
+            this.#list.replaceChildren(empty);
             return;
         }
 
+        // Swapped in at once after every read, so a refresh writing provider after provider never blanks the list.
         const config = await getConfig();
+        const rows = [];
         for (const provider of providers) {
             const data = await getProviderData(provider.url);
             if (!this.isConnected || generation !== this.#renderGeneration) return;
-            this.#list.append(this.#buildRow(provider, data, config));
+            rows.push(this.#buildRow(provider, data, config));
         }
+        this.#list.replaceChildren(...rows);
     }
 
     #buildRow(provider, data, config) {
@@ -155,7 +181,11 @@ class ProvidersSetting extends ComponentBase {
         customElements.upgrade(row);
         localizeDocument(row);
 
-        row.querySelector('.provider-url').textContent = provider.url;
+        // The name is the provider's own claim, so the URL it was added by stays in view beside it.
+        row.querySelector('.provider-name').textContent = data.name || provider.url;
+        const urlLine = row.querySelector('.provider-url');
+        urlLine.textContent = provider.url;
+        urlLine.hidden = !data.name;
         row.querySelector('.provider-status').textContent = this.#describeStatus(data);
         const problems = this.#describeProblems(data, config);
         const problemsLine = row.querySelector('.provider-problems');
@@ -163,6 +193,29 @@ class ProvidersSetting extends ComponentBase {
         problemsLine.hidden = problems.length === 0;
         const isDefault = (config.defaultProviders || []).includes(provider.url);
         row.querySelector('.provider-default-tag').hidden = !isDefault;
+
+        const tag = providerStateTag(data);
+        const stateTag = row.querySelector('.provider-state-tag');
+        stateTag.hidden = !tag;
+        if (tag) stateTag.textContent = browser.i18n.getMessage(tag.key) || tag.fallback;
+
+        this.#fillLinks(row.querySelector('.provider-links'), data.links);
+
+        const grantOrigins = originsToGrant(provider, data, browser.runtime.getManifest());
+        const grantBtn = row.querySelector('.provider-grant-btn');
+        grantBtn.hidden = !grantOrigins;
+        grantBtn.addEventListener('click', () => {
+            // Requested synchronously, inside the input handler. A refusal changes nothing: the row still says why.
+            grantBtn.disabled = true;
+            browser.permissions.request({ origins: grantOrigins })
+                .then(async (granted) => {
+                    if (!granted) return;
+                    await refreshProviders();
+                    await this.#renderList();
+                })
+                .catch((err) => console.error(`Failed to grant access for provider ${provider.url}:`, err))
+                .finally(() => { grantBtn.disabled = false; });
+        }, { signal: this.signal });
 
         const toggleBtn = row.querySelector('toggle-button');
         toggleBtn.checked = provider.enabled;
@@ -197,6 +250,12 @@ class ProvidersSetting extends ComponentBase {
         }, { signal: this.signal });
 
         return row;
+    }
+
+    #fillLinks(container, links) {
+        const entries = siteLinks(links, browser.i18n.getUILanguage(), (key) => browser.i18n.getMessage(key));
+        container.replaceChildren(...detailLinks(entries));
+        container.hidden = entries.length === 0;
     }
 
     /** A one-line summary: how many sites it offers and when it last resolved. */
@@ -292,6 +351,11 @@ class ProvidersSetting extends ComponentBase {
     #showDisclosure(inspected) {
         this.querySelector('.provider-add-form').hidden = true;
         this.#disclosure.hidden = false;
+
+        const name = this.#disclosure.querySelector('.provider-disclosure-name');
+        name.textContent = inspected.manifest.name || '';
+        name.hidden = !inspected.manifest.name;
+        this.#fillLinks(this.#disclosure.querySelector('.provider-disclosure-links'), inspected.manifest.links);
 
         const origins = this.#disclosure.querySelector('.provider-disclosure-origins');
         origins.replaceChildren(...[...inspected.origins].map((origin) => {

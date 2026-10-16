@@ -8,7 +8,16 @@
  */
 
 /** The i18n message that labels a known `rel`. A link with another `rel` uses its own `title`, or is not shown. */
-const REL_MESSAGES = { "x-publisher-policy": "sitePolicyLinkText" };
+const REL_MESSAGES = {
+    "about": "linkAboutText",
+    "privacy-policy": "linkPrivacyPolicyText",
+    "terms-of-service": "linkTermsOfServiceText",
+    "license": "linkLicenseText",
+    "x-publisher-policy": "sitePolicyLinkText"
+};
+
+/** Not a document to read: never shown, even with a `title`. */
+const HIDDEN_RELS = new Set(["icon"]);
 
 const isHttpUrl = (href) => /^https?:\/\//i.test(href ?? "");
 
@@ -24,7 +33,7 @@ const isHttpUrl = (href) => /^https?:\/\//i.test(href ?? "");
 export function siteLinks(links, uiLanguage, getMessage) {
     const language = uiLanguage.toLowerCase().split("-")[0];
     const byRel = new Map();
-    for (const link of (links || []).filter((link) => isHttpUrl(link?.href))) {
+    for (const link of (links || []).filter((link) => isHttpUrl(link?.href) && !HIDDEN_RELS.has(link.rel))) {
         const chosen = byRel.get(link.rel);
         const matches = (link.hreflang || "").toLowerCase().split("-")[0] === language;
         if (!chosen || (matches && !chosen.matches)) byRel.set(link.rel, { link, matches });

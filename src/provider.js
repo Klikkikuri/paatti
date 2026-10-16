@@ -187,11 +187,10 @@ function parseManifest(raw) {
         resources.push(resource);
     }
 
-    const links = Array.isArray(raw.links)
-        ? raw.links.filter((link) => link && typeof link.rel === "string" && typeof link.href === "string")
-        : [];
-
-    return { manifest: { schemaVersion: raw.schema_version, name: raw.name, updated: raw.updated, links, resources } };
+    const name = typeof raw.name === "string" && raw.name.trim() ? raw.name.trim() : null;
+    return {
+        manifest: { schemaVersion: raw.schema_version, name, updated: raw.updated, links: parseLinks(raw.links), resources }
+    };
 }
 
 /** The known, non-ignored resources of a parsed manifest -- an unknown type is never fetched. */
@@ -258,6 +257,11 @@ function resourceOrigins(manifest, manifestUrl) {
         }
     }
     return origins;
+}
+
+/** The `links` of a manifest or a site entry. A relative `href` is dropped, as is anything but http(s). */
+function parseLinks(raw) {
+    return Array.isArray(raw) ? raw.filter((link) => link && typeof link.rel === "string" && isHttpUrl(link.href)) : [];
 }
 
 /** A URL's scheme is `http:` or `https:`. Used to keep `javascript:`/`data:`/`mailto:` out of `links[]`. */
@@ -342,11 +346,7 @@ function validateSiteEntry(key, entry) {
     if (!originsMatchKey(key, origins)) return { reason: `origins do not match key ${key}` };
 
     const rules = Array.isArray(entry.rules) ? entry.rules : [];
-    const links = Array.isArray(entry.links)
-        ? entry.links.filter((link) => link && typeof link.rel === "string" && isHttpUrl(link.href))
-        : [];
-
-    return { site: { name: entry.name, enabled: entry.enabled !== false, origins, rules, links } };
+    return { site: { name: entry.name, enabled: entry.enabled !== false, origins, rules, links: parseLinks(entry.links) } };
 }
 
 /** Concatenate and dedupe two arrays of plain-object rules/origins/links, comparing by JSON shape. */

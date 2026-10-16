@@ -148,4 +148,23 @@ function emitSettingSaved(element, detail) {
     }));
 }
 
-export { adoptComponentStyleSheet, defineComponent, ComponentBase, emitSettingSaved };
+/**
+ * External link buttons for the `{ href, label }` entries `siteLinks()` returns. They open in a new tab and send
+ * no referrer: the extension page URL is per install in Firefox.
+ *
+ * @param {Array<{href: string, label: string}>} entries
+ * @returns {HTMLAnchorElement[]}
+ */
+function detailLinks(entries) {
+    return entries.map(({ href, label }) => {
+        const link = document.createElement("a");
+        link.href = href;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.className = "detail-button";
+        link.textContent = `${label} ↗`;
+        return link;
+    });
+}
+
+export { adoptComponentStyleSheet, defineComponent, ComponentBase, emitSettingSaved, detailLinks };

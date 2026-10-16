@@ -185,6 +185,18 @@ describe('removeProvider gives back what only that provider used', () => {
         assert.ok(!revoked.includes('https://a.example/*'));
     });
 
+    test('revokes an origin its last refresh stopped on, which a grant may have given since', async () => {
+        const originalContains = fake.browser.permissions.contains;
+        fake.browser.permissions.contains = async ({ origins }) => !origins.includes('https://new-cdn.example/*');
+        installed = mockFetch({ [a]: manifestA([{ type: 'rahti-data', href: 'https://new-cdn.example/data.json' }]) });
+        await refreshProviders();
+        fake.browser.permissions.contains = originalContains;
+
+        await removeProvider(a);
+
+        assert.ok(revoked.includes('https://new-cdn.example/*'));
+    });
+
     test('revokes a resource origin that its manifest stopped naming', async () => {
         installed = mockFetch({
             [a]: manifestA([{ type: 'site-configs', sites: { 'news.example': site('news.example') } }])
@@ -292,6 +304,7 @@ describe('refreshProviders', () => {
         assert.ok(data.siteConfigs['news.example'], 'stale content was discarded on a transient failure');
         assert.equal(data.errors.length, 1);
         assert.match(data.errors[0].message, /HTTP 500/);
+        assert.equal(data.errors[0].kind, 'fetch');
     });
 
     describe('origins this browser has not granted', () => {
@@ -311,6 +324,27 @@ describe('refreshProviders', () => {
 
             assert.deepEqual(installed.calls, []);
             assert.match(results[0].error, /no access to https:\/\/provider\.example\/\*/);
+            const [error] = (await getProviderData(url)).errors;
+            assert.equal(error.kind, 'access');
+            assert.deepEqual(error.origins, ['https://provider.example/*']);
+        });
+
+        test('stores the manifest name and links before it stops on a resource origin', async () => {
+            await addProvider(url);
+            denyHost('tracker.example');
+            installed = mockFetch({
+                [url]: jsonResponse({
+                    ...manifestDoc([{ type: 'rahti-data', href: 'https://tracker.example/data.json' }]),
+                    links: [{ rel: 'privacy-policy', href: 'https://provider.example/privacy' }, { rel: 'about', href: 'javascript:alert(1)' }]
+                })
+            });
+
+            await refreshProviders();
+
+            const data = await getProviderData(url);
+            assert.equal(data.name, 'Test provider');
+            assert.deepEqual(data.links, [{ rel: 'privacy-policy', href: 'https://provider.example/privacy' }]);
+            assert.deepEqual(data.errors[0].origins, ['https://tracker.example/*']);
         });
 
         test('a manifest that names a host not granted fetches no resource and keeps the last resolved content', async () => {

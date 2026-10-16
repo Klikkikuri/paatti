@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 const { siteLinks } = await import('../src/options/site-links.js');
 
-const messages = { sitePolicyLinkText: "Publisher's policy" };
+const messages = { sitePolicyLinkText: "Publisher's policy", linkPrivacyPolicyText: 'Privacy policy', linkLicenseText: 'License' };
 const getMessage = (key) => messages[key] || '';
 
 describe('siteLinks', () => {
@@ -28,6 +28,19 @@ describe('siteLinks', () => {
         assert.equal(siteLinks(links, 'fi-FI', getMessage)[0].href, 'https://example.fi/fi');
         assert.equal(siteLinks(links, 'sv', getMessage)[0].href, 'https://example.fi/en');
         assert.equal(siteLinks(links, 'fi', getMessage).length, 1);
+    });
+
+    test('labels the registered rels from the translations, over their own title', () => {
+        const links = [
+            { rel: 'privacy-policy', href: 'https://example.fi/privacy', title: 'Our privacy' },
+            { rel: 'license', href: 'https://example.fi/license' },
+        ];
+        assert.deepEqual(siteLinks(links, 'en', getMessage).map((link) => link.label), ['Privacy policy', 'License']);
+    });
+
+    test('never shows an icon, even with a title', () => {
+        const links = [{ rel: 'icon', href: 'https://example.fi/icon.png', title: 'Logo' }];
+        assert.deepEqual(siteLinks(links, 'en', getMessage), []);
     });
 
     test('drops a link that is not http(s)', () => {

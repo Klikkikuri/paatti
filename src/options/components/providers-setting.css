@@ -44,7 +44,7 @@ providers-setting .provider-title {
     gap: 4px 8px;
 }
 
-providers-setting .provider-url {
+providers-setting .provider-name {
     font-family: var(--font-display);
     font-size: 0.9rem;
     font-weight: bold;
@@ -52,7 +52,16 @@ providers-setting .provider-url {
     overflow-wrap: anywhere;
 }
 
-providers-setting .provider-default-tag {
+/* Shown under a manifest's own name: the URL the provider was added by. */
+providers-setting .provider-url {
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    overflow-wrap: anywhere;
+    margin-top: 2px;
+}
+
+providers-setting .provider-tag {
     padding: 0 5px;
     border: 1px solid var(--color-border-strong);
     border-radius: 2px;
@@ -62,6 +71,18 @@ providers-setting .provider-default-tag {
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--color-text-secondary);
+}
+
+providers-setting .provider-tag[data-tone="warning"] {
+    border-color: var(--color-warning);
+    color: var(--color-warning);
+}
+
+providers-setting .provider-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
 }
 
 providers-setting .provider-status,
@@ -107,6 +128,17 @@ providers-setting .provider-add-error {
 
 providers-setting .provider-disclosure p {
     margin: 0;
+}
+
+providers-setting .provider-disclosure-name {
+    font-family: var(--font-display);
+    font-weight: bold;
+    color: var(--color-text-heading);
+    overflow-wrap: anywhere;
+}
+
+providers-setting .provider-disclosure-links {
+    margin: 0 0 12px;
 }
 
 providers-setting .provider-disclosure ul {

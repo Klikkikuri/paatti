@@ -5,7 +5,7 @@ import { siteLinks } from '../site-links.js';
 import { getConfig } from '../../config.js';
 import './toggle-button.js';
 import './favicon-img.js';
-import { adoptComponentStyleSheet, defineComponent } from './component-utils.js';
+import { adoptComponentStyleSheet, defineComponent, detailLinks } from './component-utils.js';
 
 // This element's CSS travels with it: a page gets the styling by importing the module.
 adoptComponentStyleSheet(new URL('./site-toggle.css', import.meta.url));
@@ -137,14 +137,7 @@ class SiteToggleSetting extends HTMLElement {
 
             const detailsContainer = this.querySelector('.site-details-container');
             if (detailsContainer && layout !== 'compact' && links.length > 0) {
-                detailsContainer.replaceChildren(...links.map(({ href, label }) => {
-                    const link = document.createElement('a');
-                    link.href = href;
-                    link.target = '_blank';
-                    link.className = 'detail-button';
-                    link.textContent = `${label} ↗`;
-                    return link;
-                }));
+                detailsContainer.replaceChildren(...detailLinks(links));
             }
         } catch (err) {
             console.error('Failed to load site toggle metadata:', err);

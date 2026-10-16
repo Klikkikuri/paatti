@@ -156,6 +156,7 @@ function createFakeBrowser({ local = {}, sync = {}, messages = {} } = {}) {
                     return text.replaceAll(`$${index + 1}`, value);
                 }, message);
             },
+            getUILanguage: () => "en",
         },
         permissions: {
             contains: async () => true,

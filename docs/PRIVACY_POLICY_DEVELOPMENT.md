@@ -35,7 +35,7 @@ If you click "Cancel" at step 4, the extension downloads nothing more. The acces
 ### B. Updates
 
 * The extension downloads the provider's files again at each periodic update, until you turn off or remove the provider.
-* The extension downloads files only from servers that it has access to in your browser. If the provider changes its file list to name a new server, the extension stops the updates of that provider and keeps the files that it already has. To give access to the new server, remove the provider and add it again.
+* The extension downloads files only from servers that it has access to in your browser. If the provider changes its file list to name a new server, the extension stops the updates of that provider and keeps the files that it already has. To give access to the new server, click "Grant access" on the provider in the extension settings.
 
 ### C. What the Provider's Servers Receive
 
@@ -52,11 +52,12 @@ If you click "Cancel" at step 4, the extension downloads nothing more. The acces
 * The extension uses the files **only on your device**.
 * A site from a provider starts turned off. The extension operates on that site only after you turn it on and the browser gives access to it. Section 3 tells about one exception.
 * The extension shows the icons of a provider's sites as the Privacy Policy, Section 2.D, tells.
+* The extension settings show the links that the provider's file list gives, for example to its privacy policy. The extension opens a link only when you click it, and sends no referrer.
 * Feedback that you send about a site or a headline from a provider goes to Klikkikuri, as the Privacy Policy, Section 2.B, tells. It does not go to the provider.
 
 ### E. Storage, Turning Off and Removing
 
-* The extension saves the addresses of your providers in the **sync storage** of your browser. If you use browser sync, the addresses go to your other devices too. On another device, the extension downloads a provider's files only from servers that it has access to on that device. A store version on another device does not use the provider. Do not use a provider address that contains a password or an access token.
+* The extension saves the addresses of your providers in the **sync storage** of your browser. If you use browser sync, the addresses go to your other devices too. On another device, the extension downloads a provider's files only from servers that it has access to on that device. To give access on that device, click "Grant access" on the provider. A store version on another device does not use the provider. Do not use a provider address that contains a password or an access token.
 * The extension saves the files that it downloads from a provider in the local storage of your browser.
 * When you **turn off** a provider, the extension stops the downloads and does not use the files. The files and the access stay.
 * When you **remove** a provider, the extension deletes the files that it downloaded from the provider and the icons of the provider's sites. It also removes the access to servers and sites that only that provider used.

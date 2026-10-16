@@ -569,6 +569,22 @@
     "message": "Got it",
     "description": "Button that dismisses the level 0 warning and stops it from showing again"
   },
+  "linkAboutText": {
+    "message": "About",
+    "description": "Short link text for a link with rel \"about\""
+  },
+  "linkPrivacyPolicyText": {
+    "message": "Privacy policy",
+    "description": "Short link text for a link with rel \"privacy-policy\""
+  },
+  "linkTermsOfServiceText": {
+    "message": "Terms of service",
+    "description": "Short link text for a link with rel \"terms-of-service\""
+  },
+  "linkLicenseText": {
+    "message": "License",
+    "description": "Short link text for a link with rel \"license\""
+  },
   "sitePolicyLinkText": {
     "message": "Publisher's policy",
     "description": "Short link text for publisher's policy button"
@@ -1030,6 +1046,30 @@
   "providerDefaultTag": {
     "message": "Default",
     "description": "Tag on a provider that the active environment includes; it can be turned off but not removed"
+  },
+  "providerGrantBtn": {
+    "message": "Grant access",
+    "description": "Button on a provider row that requests the origins its last refresh could not reach"
+  },
+  "providerTagNeedsAccess": {
+    "message": "Needs access",
+    "description": "Tag on a provider whose last refresh stopped on origins this browser has not granted"
+  },
+  "providerTagNotInBuild": {
+    "message": "Not in this build",
+    "description": "Tag on a provider that this version of the extension cannot use"
+  },
+  "providerTagFetchFailed": {
+    "message": "Fetch failed",
+    "description": "Tag on a provider whose manifest could not be downloaded; its earlier data stays in use"
+  },
+  "providerTagErrors": {
+    "message": "Errors",
+    "description": "Tag on a provider with resources that could not be loaded"
+  },
+  "providerTagRejected": {
+    "message": "Rejected sites",
+    "description": "Tag on a provider with sites that were not accepted"
   },
   "providerDisclosureOriginsIntro": {
     "message": "This provider will be fetched from:",
