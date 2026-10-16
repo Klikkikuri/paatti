@@ -225,6 +225,21 @@ function isSameOrigin(resource, manifestUrl, manifestOrigin) {
 }
 
 /**
+ * Why a `site-configs` resource's `origins` are wrong for where it lives, or null. A cross-origin document must
+ * declare the origins it may contribute; a same-origin one is read before the grant, so it must not.
+ *
+ * @param {object} resource
+ * @param {boolean} sameOrigin - From isSameOrigin().
+ * @returns {string|null}
+ */
+function originsDeclarationError(resource, sameOrigin) {
+    const declared = Array.isArray(resource.origins) && resource.origins.length > 0;
+    if (!sameOrigin && !declared) return "cross-origin resource declares no origins";
+    if (sameOrigin && resource.origins !== undefined) return "same-origin resource must not declare origins";
+    return null;
+}
+
+/**
  * Every origin a manifest's known resources name, whether or not fetching it needs a grant. A
  * confirmation UI discloses this whole set, per the plan: a CORS-open or already-granted host would
  * otherwise vanish from what the user is shown.
@@ -469,10 +484,11 @@ async function inspect(manifestUrl, options = {}) {
     for (const resource of knownResources(manifest)) {
         if (resource.type !== "site-configs" || !isSameOrigin(resource, manifestUrl, manifestOrigin)) continue;
 
-        // Mirrors the same check in resolve(), so a resource this preview shows is never one resolve()
-        // would go on to reject outright -- the disclosure and the outcome must agree.
-        if (resource.origins !== undefined) {
-            rejected.push({ key: null, reason: "same-origin resource must not declare origins" });
+        // The same rule as in resolve(), so a resource this preview shows is never one resolve() would go on
+        // to reject outright -- the disclosure and the outcome must agree.
+        const originsError = originsDeclarationError(resource, true);
+        if (originsError) {
+            rejected.push({ key: null, reason: originsError });
             continue;
         }
 
@@ -554,16 +570,10 @@ async function resolve(manifest, manifestUrl, options = {}) {
     for (const resource of ordered) {
         const sameOrigin = isSameOrigin(resource, manifestUrl, manifestOrigin);
 
-        if (resource.type === "site-configs") {
-            const declared = Array.isArray(resource.origins) && resource.origins.length > 0;
-            if (!sameOrigin && !declared) {
-                rejected.push({ key: null, reason: "cross-origin resource declares no origins" });
-                continue;
-            }
-            if (sameOrigin && resource.origins !== undefined) {
-                rejected.push({ key: null, reason: "same-origin resource must not declare origins" });
-                continue;
-            }
+        const originsError = resource.type === "site-configs" ? originsDeclarationError(resource, sameOrigin) : null;
+        if (originsError) {
+            rejected.push({ key: null, reason: originsError });
+            continue;
         }
 
         const absoluteHrefs = [];

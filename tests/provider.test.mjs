@@ -155,6 +155,7 @@ describe('inspect', () => {
         }]));
         const resolved = await resolve(manifest, manifestUrl);
         assert.deepEqual(resolved.siteConfigs, {});
+        assert.deepEqual(inspected.rejected, resolved.rejected, 'the preview and the outcome give the same reason');
     });
 
     test('reflects a shadowing rejection too, when the caller passes the same claimed keys resolve() would', async () => {
@@ -621,6 +622,7 @@ describe('resolve: site-configs safety', () => {
 
         assert.deepEqual(installed.calls, [], 'refused before it could be fetched');
         assert.deepEqual(result.siteConfigs, {});
+        assert.ok(result.rejected.some((r) => /declares no origins/.test(r.reason)));
     });
 
     test('a cross-origin document adding a site beyond its declared origins is rejected', async () => {
