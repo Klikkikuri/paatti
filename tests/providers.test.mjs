@@ -605,12 +605,15 @@ describe('a build that cannot add providers', () => {
     });
     afterEach(() => { fake.browser.runtime.getManifest = originalGetManifest; });
 
-    test('refreshes its default provider but not one that sync brought in', async () => {
+    test('refreshes its default provider, and records why it does not use one that sync brought in', async () => {
         installed = mockFetch({ [defaultUrl]: jsonResponse(manifestDoc([])) });
 
         const results = await refreshProviders();
 
-        assert.deepEqual(results.map((result) => result.url), [defaultUrl]);
         assert.deepEqual(installed.calls, [defaultUrl]);
+        assert.equal(results[0].error, undefined);
+        assert.match(results[1].error, /no permission to use this provider/);
+        const data = await getProviderData(synced);
+        assert.match(data.errors[0].message, /no permission to use this provider/);
     });
 });

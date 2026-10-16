@@ -1063,6 +1063,10 @@
     "message": "never resolved yet",
     "description": "Shown for an added provider that has not completed its first refresh"
   },
+  "providerNotUsableInBuild": {
+    "message": "This version of the extension has no permission to use this provider.",
+    "description": "Shown for a provider that browser sync copied into a store version, which cannot request the provider's origins"
+  },
   "providerBundledSet": {
     "message": "the bundled set",
     "description": "Names the built-in site list as the current holder of a domain a provider tried to claim"

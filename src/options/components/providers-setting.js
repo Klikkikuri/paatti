@@ -92,8 +92,8 @@ class ProvidersSetting extends ComponentBase {
         // strips it), so permissions.request() throws for any origin this flow does not already
         // hold. Providers work on the GitHub build only; hide the way in on a build that cannot
         // grant it, rather than let every add attempt fail with an opaque error. The list of
-        // providers already added (perhaps synced from a GitHub-build device) still shows, but only the default ones
-        // are used (usableProviders() in config.js).
+        // providers already added (perhaps synced from a GitHub-build device) still shows; refreshOne() records why this
+        // build does not use one that is not a default provider, and its status line shows that.
         const canAddProvider = canAddProviders(browser.runtime.getManifest());
         this.querySelector('.provider-add').hidden = !canAddProvider;
         if (canAddProvider) {

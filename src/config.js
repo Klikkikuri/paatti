@@ -174,17 +174,15 @@ function onConfigValue(select, callback) {
 }
 
 /**
- * The providers that are on and that this build may use, in the order the user added them. A partially-written sync
- * record without a URL is skipped. A build that cannot add providers uses only its default ones, also when browser
- * sync brings in a provider that was added in another browser.
+ * Whether this build may use the provider at `url`. A build that cannot add providers uses only its default ones,
+ * also when browser sync brings in a provider that was added in another browser.
  *
- * @param {Array<{url?: string, enabled?: boolean}>} providers - The sync provider list.
+ * @param {string} url
  * @param {Set<string>} defaultProviders - The active environment's default provider URLs.
- * @returns {Array<{url: string, enabled: boolean}>}
+ * @returns {boolean}
  */
-function usableProviders(providers, defaultProviders) {
-    const anyProvider = canAddProviders(browser.runtime.getManifest());
-    return providers.filter((provider) => provider?.enabled && provider?.url && (anyProvider || defaultProviders.has(provider.url)));
+function isUsableProvider(url, defaultProviders) {
+    return canAddProviders(browser.runtime.getManifest()) || defaultProviders.has(url);
 }
 
 /**
@@ -242,7 +240,8 @@ async function getConfig() {
 
         const defaultProviders = new Set(envData.defaultProviders || []);
         const manifest = browser.runtime.getManifest();
-        const enabledProviders = usableProviders(providers, defaultProviders);
+        const enabledProviders = providers.filter((provider) =>
+            provider?.enabled && provider?.url && isUsableProvider(provider.url, defaultProviders));
         const providerKeys = enabledProviders.map((provider) => `${PROVIDER_KEY_PREFIX}${provider.url}`);
         const providerData = providerKeys.length > 0 ? await browser.storage.local.get(providerKeys) : {};
 
@@ -332,4 +331,4 @@ async function getConfig() {
     return pendingConfigPromise;
 }
 
-export { getConfig, onConfigValue, usableProviders, PROVIDER_KEY_PREFIX, BUNDLED_SITE_KEYS, DEFAULT_RAHTI_MANIFEST_URL };
+export { getConfig, onConfigValue, isUsableProvider, PROVIDER_KEY_PREFIX, BUNDLED_SITE_KEYS, DEFAULT_RAHTI_MANIFEST_URL };
