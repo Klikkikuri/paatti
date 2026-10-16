@@ -139,6 +139,8 @@ class ProvidersSetting extends ComponentBase {
         const row = document.createElement('div');
         row.className = 'provider-item';
         row.replaceChildren(rowTemplate.content.cloneNode(true));
+        // The row is still detached: without this, `toggleBtn.checked` below lands on an un-upgraded element and shadows the setter.
+        customElements.upgrade(row);
         localizeDocument(row);
 
         row.querySelector('.provider-url').textContent = provider.url;

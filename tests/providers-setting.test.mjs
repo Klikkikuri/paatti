@@ -112,6 +112,17 @@ describe('the empty and populated list', () => {
         assert.equal(rows(el)[0].querySelector('.provider-url').textContent, 'https://p.example/m.json');
         assert.match(rows(el)[0].querySelector('.provider-status').textContent, /1 site/);
     });
+
+    test('draws each switch in its stored state', async () => {
+        await fake.browser.storage.sync.set({ providers: [
+            { url: 'https://on.example/m.json', enabled: true },
+            { url: 'https://off.example/m.json', enabled: false },
+        ] });
+
+        const el = await mount();
+
+        assert.deepEqual(rows(el).map((row) => row.querySelector('toggle-button input').checked), [true, false]);
+    });
 });
 
 describe('the add flow', () => {
