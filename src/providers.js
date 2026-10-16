@@ -5,7 +5,9 @@ import { getLogger } from "./utils.js";
 import { getConfig, PROVIDER_KEY_PREFIX, BUNDLED_SITE_KEYS } from "./config.js";
 import { initStorage } from "./storage.js";
 import { fetchManifest, resolve, resourceOrigins } from "./provider.js";
-import { canRequestOrigins, missingOrigins } from "./options/origins.js";
+import { canRequestOrigins, missingOrigins, originPatterns } from "./options/origins.js";
+import { SITE_CONFIGS } from "./generated/sites.js";
+import { getFaviconKey } from "./faviconCache.js";
 
 /**
  * The list of third-party providers the user added, and the resolved content each one currently
@@ -56,7 +58,8 @@ async function addProvider(url) {
 }
 
 /**
- * Remove a provider and drop everything it resolved to.
+ * Remove a provider, drop everything it resolved to, and give back what only it used: the host permissions
+ * for its servers and sites, and the favicons of its sites.
  *
  * Removes the namespace's two keys by their exact name rather than through `Storage.prune()`, which
  * matches by prefix: two provider URLs where one is a literal prefix of the other (a differing query
@@ -66,6 +69,7 @@ async function addProvider(url) {
  * @returns {Promise<Array>} The updated list.
  */
 async function removeProvider(url) {
+    const removed = await getProviderData(url);
     const providers = await getProviders();
     const updated = providers.filter((provider) => provider.url !== url);
     await browser.storage.sync.set({ providers: updated });
@@ -73,7 +77,45 @@ async function removeProvider(url) {
     const ns = namespaceFor(url);
     await browser.storage.local.remove([ns, `${ns}_index`]);
 
+    await releaseUnused(url, removed, updated.map((provider) => provider.url).filter(Boolean));
+
     return updated;
+}
+
+/** The `www.` and bare spellings of a host. favicon-fetch.js writes a favicon under both. */
+function hostSpellings(domain) {
+    return [domain, domain.startsWith("www.") ? domain.slice(4) : `www.${domain}`];
+}
+
+/** Every site's origins, with the default getConfig() gives a site that declares none. */
+function siteOrigins(siteConfigs) {
+    return Object.entries(siteConfigs).flatMap(([domain, site]) => site.origins || [`https://${domain}/*`]);
+}
+
+/**
+ * Revoke the host permissions and drop the favicons of a removed provider that nothing else uses. The bundled sites
+ * and every provider still in the list keep theirs, a disabled one included, and an origin the manifest requires
+ * cannot be revoked at all.
+ */
+async function releaseUnused(url, removed, remainingUrls) {
+    const remaining = await Promise.all(remainingUrls.map(getProviderData));
+    const keptSites = [SITE_CONFIGS, ...remaining.map((data) => data.siteConfigs)];
+    const keptOrigins = new Set(originPatterns([
+        ...remainingUrls,
+        ...remaining.flatMap((data) => data.origins),
+        ...keptSites.flatMap(siteOrigins)
+    ]));
+
+    const required = { host_permissions: browser.runtime.getManifest().host_permissions };
+    const revoke = originPatterns([url, ...removed.origins, ...siteOrigins(removed.siteConfigs)])
+        .filter((pattern) => !keptOrigins.has(pattern) && !canRequestOrigins([pattern], required));
+    if (revoke.length > 0) await browser.permissions.remove({ origins: revoke });
+
+    const keptHosts = new Set(keptSites.flatMap(Object.keys).flatMap(hostSpellings));
+    const faviconKeys = Object.keys(removed.siteConfigs).flatMap(hostSpellings)
+        .filter((host) => !keptHosts.has(host))
+        .map(getFaviconKey);
+    if (faviconKeys.length > 0) await browser.storage.local.remove(faviconKeys);
 }
 
 /**
@@ -97,7 +139,7 @@ async function setProviderEnabled(url, enabled) {
  * @param {string} url
  * @returns {Promise<{siteConfigs: object, rahtiData: object, suolaRules: object|null, scope: Set<string>,
  *   rejected: Array, errors: Array, updated: number|null, entryCount: number,
- *   databaseGenerationDate: string|null, resourceHeaders: object}>}
+ *   databaseGenerationDate: string|null, resourceHeaders: object, origins: string[]}>}
  */
 async function getProviderData(url) {
     const storage = await initStorage(namespaceFor(url));
@@ -111,7 +153,8 @@ async function getProviderData(url) {
         updated: await storage.get("updated"),
         entryCount: (await storage.get("entryCount")) || 0,
         databaseGenerationDate: await storage.get("databaseGenerationDate"),
-        resourceHeaders: (await storage.get("resourceHeaders")) || {}
+        resourceHeaders: (await storage.get("resourceHeaders")) || {},
+        origins: (await storage.get("origins")) || []
     };
 }
 
@@ -153,7 +196,8 @@ async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) 
     const { manifest, error } = await fetchManifest(url, config.loopbackProvidersEnabled);
     if (error) return keepLastResolved(storage, url, error);
 
-    const resourceAccessError = await accessError([...resourceOrigins(manifest, url)]);
+    const origins = [...resourceOrigins(manifest, url)];
+    const resourceAccessError = await accessError(origins);
     if (resourceAccessError) return keepLastResolved(storage, url, resourceAccessError);
 
     const result = await resolve(manifest, url, {
@@ -182,7 +226,9 @@ async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) 
         updated: Date.now(),
         entryCount: Object.keys(result.rahtiData).length,
         databaseGenerationDate: result.databaseGenerationDate,
-        resourceHeaders: result.resourceHeaders
+        resourceHeaders: result.resourceHeaders,
+        // Every resource origin the provider has used, so removeProvider() can revoke one that it no longer names.
+        origins: originPatterns([...((await storage.get("origins")) || []), ...origins])
     });
 
     return { scope: result.scope };

@@ -136,6 +136,82 @@ describe('the provider list', () => {
     });
 });
 
+describe('removeProvider gives back what only that provider used', () => {
+    const a = 'https://a.example/manifest.json';
+    const b = 'https://b.example/manifest.json';
+    const notFound = () => new Response('', { status: 404 });
+    const manifestA = (resources = [
+        { type: 'site-configs', sites: { 'news.example': site('news.example') } },
+        { type: 'rahti-data', href: 'https://shared-cdn.example/a.json' },
+        { type: 'rahti-data', href: 'https://a-cdn.example/data.json' }
+    ]) => jsonResponse(manifestDoc(resources));
+
+    const originalRemove = fake.browser.permissions.remove;
+    const originalGetManifest = fake.browser.runtime.getManifest;
+    let revoked;
+    beforeEach(async () => {
+        revoked = [];
+        fake.browser.permissions.remove = async ({ origins }) => { revoked.push(...origins); return true; };
+
+        await addProvider(a);
+        await addProvider(b);
+        installed = mockFetch({
+            [a]: manifestA(),
+            'https://shared-cdn.example/a.json': notFound(),
+            'https://a-cdn.example/data.json': notFound(),
+            [b]: jsonResponse(manifestDoc([{ type: 'rahti-data', href: 'https://shared-cdn.example/b.json' }])),
+            'https://shared-cdn.example/b.json': notFound()
+        });
+        await refreshProviders();
+        installed.restore();
+        installed = null;
+    });
+    afterEach(() => {
+        fake.browser.permissions.remove = originalRemove;
+        fake.browser.runtime.getManifest = originalGetManifest;
+    });
+
+    test('revokes its manifest, resource and site origins, but not one another provider uses', async () => {
+        await removeProvider(a);
+
+        assert.deepEqual(revoked.sort(), ['https://a-cdn.example/*', 'https://a.example/*', 'https://news.example/*']);
+    });
+
+    test('does not try to revoke an origin the manifest requires', async () => {
+        fake.browser.runtime.getManifest = () => ({ ...originalGetManifest(), host_permissions: ['https://a.example/some/path/*'] });
+
+        await removeProvider(a);
+
+        assert.ok(!revoked.includes('https://a.example/*'));
+    });
+
+    test('revokes a resource origin that its manifest stopped naming', async () => {
+        installed = mockFetch({
+            [a]: manifestA([{ type: 'site-configs', sites: { 'news.example': site('news.example') } }])
+        });
+        await refreshProviders();
+
+        await removeProvider(a);
+
+        assert.ok(revoked.includes('https://a-cdn.example/*'));
+    });
+
+    test('drops the favicons of its sites under both spellings, and no others', async () => {
+        await fake.browser.storage.local.set({
+            'favicon_news.example': { data: 'x' },
+            'favicon_www.news.example': { data: 'x' },
+            'favicon_www.hs.fi': { data: 'x' }
+        });
+
+        await removeProvider(a);
+
+        const left = await fake.browser.storage.local.get(null);
+        assert.ok(!('favicon_news.example' in left));
+        assert.ok(!('favicon_www.news.example' in left));
+        assert.ok('favicon_www.hs.fi' in left);
+    });
+});
+
 describe('getProviderData', () => {
     test('returns the empty shape for a provider that has never resolved', async () => {
         const data = await getProviderData('https://provider.example/manifest.json');
