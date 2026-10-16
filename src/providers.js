@@ -4,8 +4,8 @@ import browser from "./browser-api.js";
 import { getLogger } from "./utils.js";
 import { getConfig, PROVIDER_KEY_PREFIX, BUNDLED_SITE_KEYS } from "./config.js";
 import { initStorage } from "./storage.js";
-import { fetchManifest, resolve } from "./provider.js";
-import { canRequestOrigins } from "./options/origins.js";
+import { fetchManifest, resolve, resourceOrigins } from "./provider.js";
+import { canRequestOrigins, missingOrigins } from "./options/origins.js";
 
 /**
  * The list of third-party providers the user added, and the resolved content each one currently
@@ -115,10 +115,27 @@ async function getProviderData(url) {
     };
 }
 
+/** Record why a refresh stopped, and keep the provider's last resolved content. */
+async function keepLastResolved(storage, url, error) {
+    log(`Refresh of ${url} stopped, keeping the last resolved content:`, error);
+    await storage.set("errors", [{ message: error }]);
+    return { scope: new Set((await storage.get("scope")) || []), error };
+}
+
+/** The error for origins this browser has not granted, or null when every one is granted. */
+async function accessError(urls) {
+    const missing = await missingOrigins(urls, (pattern) => browser.permissions.contains({ origins: [pattern] }));
+    return missing.length > 0 ? `no access to ${missing.join(", ")}` : null;
+}
+
 /**
  * Refresh one provider: fetch its manifest, resolve every resource, and persist the result. A manifest
  * that cannot be fetched at all leaves the previous resolved content in place -- a stale result, kept
  * and flagged, rather than a working provider going dark on one network blip.
+ *
+ * Nothing is requested from an origin this browser has not granted. Without a grant the browser still sends the
+ * request and only hides the response, so a synced provider, or a manifest that names a new host after the user
+ * confirmed it, would otherwise reach servers the user never agreed to on this device.
  *
  * @param {string} url
  * @param {object} config - As returned by `getConfig()`.
@@ -129,13 +146,15 @@ async function getProviderData(url) {
  */
 async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) {
     const storage = await initStorage(namespaceFor(url));
-    const { manifest, error } = await fetchManifest(url, config.loopbackProvidersEnabled);
 
-    if (error) {
-        log(`Manifest fetch failed for ${url}, keeping the last resolved content:`, error);
-        await storage.set("errors", [{ message: error }]);
-        return { scope: new Set((await storage.get("scope")) || []), error };
-    }
+    const manifestAccessError = await accessError([url]);
+    if (manifestAccessError) return keepLastResolved(storage, url, manifestAccessError);
+
+    const { manifest, error } = await fetchManifest(url, config.loopbackProvidersEnabled);
+    if (error) return keepLastResolved(storage, url, error);
+
+    const resourceAccessError = await accessError([...resourceOrigins(manifest, url)]);
+    if (resourceAccessError) return keepLastResolved(storage, url, resourceAccessError);
 
     const result = await resolve(manifest, url, {
         loopbackProvidersEnabled: config.loopbackProvidersEnabled,

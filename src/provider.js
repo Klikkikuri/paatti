@@ -711,6 +711,7 @@ export {
     fetchManifest,
     originsMatchKey,
     computeDeclaredScope,
+    resourceOrigins,
     inspect,
     resolve
 };

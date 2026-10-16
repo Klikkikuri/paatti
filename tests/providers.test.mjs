@@ -218,6 +218,46 @@ describe('refreshProviders', () => {
         assert.match(data.errors[0].message, /HTTP 500/);
     });
 
+    describe('origins this browser has not granted', () => {
+        const url = 'https://provider.example/manifest.json';
+        const originalContains = fake.browser.permissions.contains;
+        const denyHost = (host) => {
+            fake.browser.permissions.contains = async ({ origins }) => !origins.includes(`https://${host}/*`);
+        };
+        afterEach(() => { fake.browser.permissions.contains = originalContains; });
+
+        test('a provider whose manifest origin is not granted is not fetched at all', async () => {
+            await addProvider(url);
+            denyHost('provider.example');
+            installed = mockFetch({});
+
+            const results = await refreshProviders();
+
+            assert.deepEqual(installed.calls, []);
+            assert.match(results[0].error, /no access to https:\/\/provider\.example\/\*/);
+        });
+
+        test('a manifest that names a host not granted fetches no resource and keeps the last resolved content', async () => {
+            await addProvider(url);
+            installed = mockFetch({
+                [url]: jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'news.example': site('news.example') } }]))
+            });
+            await refreshProviders();
+            installed.restore();
+
+            denyHost('tracker.example');
+            installed = mockFetch({
+                [url]: jsonResponse(manifestDoc([{ type: 'rahti-data', href: 'https://tracker.example/data.json' }]))
+            });
+            const results = await refreshProviders();
+
+            assert.deepEqual(installed.calls, [url]);
+            assert.match(results[0].error, /no access to https:\/\/tracker\.example\/\*/);
+            const data = await getProviderData(url);
+            assert.ok(data.siteConfigs['news.example'], 'the last resolved content was discarded');
+        });
+    });
+
     test('a failure in one provider does not touch another provider\'s data', async () => {
         const good = 'https://good.example/manifest.json';
         const bad = 'https://bad.example/manifest.json';
