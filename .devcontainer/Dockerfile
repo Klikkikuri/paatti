@@ -61,9 +61,23 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         ripgrep bat \
         fd-find \
         jq yq \
+        shellcheck \
     # Link fd-find to fd, so that coding agents can find it in the PATH
     && ln -sf "$(command -v fdfind)" /usr/local/bin/fd \
     && ln -sf "$(command -v batcat)" /usr/local/bin/bat
+
+# GitHub CLI, per the official Debian install instructions:
+# https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian
+# ADD (rather than a wget/curl RUN step) fetches the keyring as its own
+# cacheable layer, keyed off the URL.
+ADD --chmod=644 https://cli.github.com/packages/githubcli-archive-keyring.gpg /etc/apt/keyrings/githubcli-archive-keyring.gpg
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    mkdir -p -m 755 /etc/apt/sources.list.d \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+        > /etc/apt/sources.list.d/github-cli.list \
+    && apt-get update && export DEBIAN_FRONTEND=noninteractive \
+    && apt-get -y install --no-install-recommends gh
 
 # Linters behind `make lint`: eslint enforces the browser-namespace import rule,
 # web-ext the AMO checks. run.sh uses web-ext too. jsdom is imported rather than run --
