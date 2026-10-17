@@ -32,7 +32,7 @@ let hrefSign;
     // Firefox generates that UUID per install -- so every supported page could read a stable identifier
     // for this user with one querySelector, in an extension whose point is not tracking people. Nothing
     // of the extension's own URL enters the page now; these imports stay in the isolated world.
-    const { buildBadge } = await import(browser.runtime.getURL("src/components/badge-base.js"));
+    const { buildBadge, isUserActivation } = await import(browser.runtime.getURL("src/components/badge-base.js"));
     const badgeIcons = new Map(await Promise.all([
         "klikkikuri-ai-badge",
         "klikkikuri-video-badge",
@@ -66,11 +66,12 @@ let hrefSign;
     // The converted badge is a button that opens the same card as a status pill; its own keyboard handling
     // arrives here as a click too. Delegated rather than bound per badge: processSite rebuilds the badges on
     // every pass, and a page that recycles its DOM would otherwise leave listeners on detached nodes.
-    // Capture, so the page cannot swallow the click first.
+    // Capture, so the page cannot swallow the click first. Only a user's click or key opens the card; a
+    // click the page dispatches goes on to the page as if the extension were not there.
     document.addEventListener("click", (event) => {
         const badge = event.target.closest?.("klikkikuri-converted-badge[action]");
         const container = badge?.closest("[data-klikkikuri-status]");
-        if (!container) return;
+        if (!container || !isUserActivation(event)) return;
 
         // The badge sits inside the headline's link, as the pill sits over it: without both of these the
         // click would navigate, and the page's own listeners would see a click they cannot explain.

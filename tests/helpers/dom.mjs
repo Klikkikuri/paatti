@@ -23,7 +23,8 @@
 
 import { createRequire } from "node:module";
 
-const { JSDOM } = createRequire(import.meta.url)("jsdom");
+const require = createRequire(import.meta.url);
+const { JSDOM } = require("jsdom");
 
 /** What a component module touches at evaluation time or during its lifecycle. */
 const EXPOSED = [
@@ -84,4 +85,21 @@ function installDom({ html = "<!doctype html><html><body></body></html>", url = 
     };
 }
 
-export { installDom };
+/**
+ * Dispatch an event with `isTrusted` set, as the browser does for a real user's input. A script can only
+ * dispatch untrusted events, so this goes through jsdom internals; a jsdom upgrade can move them.
+ *
+ * @param {EventTarget} target
+ * @param {string} type
+ * @param {Object} [init] - Event init dictionary, for example `{ key: "Enter", bubbles: true }`.
+ * @param {string} [kind] - jsdom interface name, for example "MouseEvent" or "KeyboardEvent".
+ * @returns {boolean} False when a listener cancelled the event.
+ */
+function dispatchTrusted(target, type, init = {}, kind = "Event") {
+    const { tryImplForWrapper } = require("jsdom/lib/jsdom/living/generated/utils");
+    const { createAnEvent } = require("jsdom/lib/jsdom/living/helpers/events");
+    const impl = tryImplForWrapper(target);
+    return impl._dispatch(createAnEvent(type, impl._globalObject, require(`jsdom/lib/jsdom/living/generated/${kind}`), init));
+}
+
+export { installDom, dispatchTrusted };

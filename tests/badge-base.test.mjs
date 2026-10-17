@@ -1,13 +1,13 @@
 import test, { describe, after } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { installDom } from './helpers/dom.mjs';
+import { installDom, dispatchTrusted } from './helpers/dom.mjs';
 
 const dom = installDom();
 
 // Imported dynamically: badge-base.js parses its icons against `document`, so a static import would
 // be hoisted above installDom() and run with none. Same rule as the component suites.
-const { buildBadge, createBadgeClass } = await import('../src/components/badge-base.js');
+const { buildBadge, createBadgeClass, isUserActivation } = await import('../src/components/badge-base.js');
 const aiBadge = await import('../src/components/klikkikuri-ai-badge.js');
 
 after(() => dom.teardown());
@@ -17,6 +17,10 @@ const ICON = `
     <circle cx="12" cy="12" r="11" fill="currentColor" />
 </svg>
 `;
+
+/** A key the user pressed: a trusted event, as only the browser can dispatch. */
+const pressKey = (target, type, key) =>
+    dispatchTrusted(target, type, { key, bubbles: true, cancelable: true }, 'KeyboardEvent');
 
 /** A badge as the content script builds one, with only what the caller passed. */
 const build = (attrs = {}) => buildBadge({
@@ -89,7 +93,7 @@ describe('buildBadge', () => {
             let clicks = 0;
             badge.addEventListener('click', () => { clicks++; });
 
-            badge.dispatchEvent(new dom.window.KeyboardEvent(type, { key, bubbles: true, cancelable: true }));
+            pressKey(badge, type, key);
             assert.equal(clicks, 1, `${key} on ${type} did not activate the badge`);
         }
     });
@@ -99,9 +103,7 @@ describe('buildBadge', () => {
         let clicks = 0;
         badge.addEventListener('click', () => { clicks++; });
 
-        for (let i = 0; i < 5; i++) {
-            badge.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
-        }
+        for (let i = 0; i < 5; i++) pressKey(badge, 'keydown', ' ');
 
         assert.equal(clicks, 0, 'a held Space activated the badge before release');
     });
@@ -111,15 +113,71 @@ describe('buildBadge', () => {
         let clicks = 0;
         badge.addEventListener('click', () => { clicks++; });
 
+        pressKey(badge, 'keydown', 'Enter');
+        pressKey(badge, 'keyup', ' ');
+
+        assert.equal(clicks, 0);
+    });
+
+    test('ignores keys the page dispatches', () => {
+        const badge = build({ action: 'Feedback' });
+        let clicks = 0;
+        badge.addEventListener('click', () => { clicks++; });
+
         badge.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
         badge.dispatchEvent(new dom.window.KeyboardEvent('keyup', { key: ' ', bubbles: true, cancelable: true }));
 
-        assert.equal(clicks, 0);
+        assert.equal(clicks, 0, 'a synthetic key activated the badge');
     });
 
     test('refuses markup whose root is not in the SVG namespace', () => {
         // Without xmlns the markup still parses, into elements merely named "svg" that draw nothing.
         assert.throws(() => build({ svgMarkup: '<svg viewBox="0 0 24 24"><circle r="11" /></svg>' }), /xmlns/);
+    });
+});
+
+describe('isUserActivation', () => {
+    /** The verdict for each click the badge receives. */
+    const verdicts = (badge) => {
+        const seen = [];
+        badge.addEventListener('click', (event) => seen.push(isUserActivation(event)));
+        return seen;
+    };
+
+    test('accepts a trusted click', () => {
+        const badge = build({ action: 'Feedback' });
+        const seen = verdicts(badge);
+
+        dispatchTrusted(badge, 'click', { bubbles: true }, 'MouseEvent');
+        assert.deepEqual(seen, [true]);
+    });
+
+    test('accepts the click that a trusted Enter or Space dispatches', () => {
+        for (const [type, key] of [['keydown', 'Enter'], ['keyup', ' ']]) {
+            const badge = build({ action: 'Feedback' });
+            const seen = verdicts(badge);
+
+            pressKey(badge, type, key);
+            assert.deepEqual(seen, [true], `${key} on ${type}`);
+        }
+    });
+
+    test('refuses a click the page dispatches', () => {
+        const badge = build({ action: 'Feedback' });
+        const seen = verdicts(badge);
+
+        badge.click();
+        assert.deepEqual(seen, [false]);
+    });
+
+    test('refuses a page click on another badge during a keyboard activation', () => {
+        const pressed = build({ action: 'Feedback' });
+        const other = build({ action: 'Feedback' });
+        const seen = verdicts(other);
+        pressed.addEventListener('click', () => other.click());
+
+        pressKey(pressed, 'keydown', 'Enter');
+        assert.deepEqual(seen, [false]);
     });
 });
 

@@ -1,7 +1,7 @@
 import test, { describe, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { installDom } from './helpers/dom.mjs';
+import { installDom, dispatchTrusted } from './helpers/dom.mjs';
 
 const dom = installDom();
 after(() => dom.teardown());
@@ -83,7 +83,7 @@ for (const status of ['converted', 'original']) {
             assert.equal(boxes().length, 1);
 
             window.dispatchEvent(new Event('pointerup'));
-            label.click();
+            dispatchTrusted(label, 'click', { bubbles: true, composed: true }, 'MouseEvent');
             await frame();
 
             assert.equal(boxes().length, 1);
@@ -100,3 +100,29 @@ for (const status of ['converted', 'original']) {
         });
     });
 }
+
+describe('a pill click', () => {
+    async function pill(onLabelActivate) {
+        const overlay = createHighlightOverlay({ canActivate: () => true, onLabelActivate });
+        headline('converted');
+        overlay.setStatusVisible(true);
+        await frame();
+        return boxes()[0].querySelector('.label');
+    }
+
+    test('from the user opens the card', async () => {
+        let opened = 0;
+        const label = await pill(() => { opened++; });
+
+        dispatchTrusted(label, 'click', { bubbles: true, composed: true }, 'MouseEvent');
+        assert.equal(opened, 1);
+    });
+
+    test('from the page does nothing', async () => {
+        let opened = 0;
+        const label = await pill(() => { opened++; });
+
+        label.click();
+        assert.equal(opened, 0, 'a synthetic click opened the card');
+    });
+});
