@@ -9,16 +9,18 @@ import {
 /** Replaces global fetch with a strict router: any URL not listed throws, so a stray fetch fails loudly. */
 function mockFetch(map) {
     const calls = [];
+    const requests = [];
     const original = globalThis.fetch;
-    globalThis.fetch = async (url) => {
+    globalThis.fetch = async (url, init) => {
         const key = String(url);
         calls.push(key);
+        requests.push({ key, headers: init?.headers });
         const entry = map[key];
         if (entry === undefined) throw new Error(`unexpected fetch: ${key}`);
         if (entry instanceof Error) throw entry;
         return entry;
     };
-    return { calls, restore: () => { globalThis.fetch = original; } };
+    return { calls, requests, restore: () => { globalThis.fetch = original; } };
 }
 
 const jsonResponse = (body, headers = {}) => new Response(JSON.stringify(body), { status: 200, headers });
@@ -409,144 +411,219 @@ describe('resolve: rahti-data', () => {
     });
 });
 
-describe('resolve: conditional GET / 304 handling (rahti-data only)', () => {
+describe('resolve: conditional GET (rahti-data only) and the document cache', () => {
+    const manifestUrl = 'https://provider.example/manifest.json';
+    const dataUrl = 'https://provider.example/data.json';
+    const sitesUrl = 'https://provider.example/sites.json';
+    const CACHED_RAHTI = rahtiDoc([{ urls: [{ sign: 's1' }], title: 'cached' }]);
+    const FRESH_RAHTI = rahtiDoc([{ urls: [{ sign: 's1' }], title: 'fresh' }]);
+    const CACHED_SITES = siteDoc({ 'news.example': site('news.example') });
+    const notModified = () => new Response(null, { status: 304 });
+    const cached = (content) => ({ content, etag: '"v1"', lastModified: null });
+
     async function parsedManifest(resources) {
         const { manifest } = parseManifest(manifestDoc(resources));
         return manifest;
     }
 
-    test('a fresh 200 response reports its etag/lastModified in resourceHeaders', async () => {
-        const url = 'https://provider.example/data.json';
+    test('a fresh 200 response is returned in documents with its etag and lastModified', async () => {
         installed = mockFetch({
-            [url]: jsonResponse(rahtiDoc([{ urls: [{ sign: 's1' }], title: 'first' }]),
-                { ETag: '"v1"', 'Last-Modified': 'Mon, 01 Jan 2024 00:00:00 GMT' })
+            [dataUrl]: jsonResponse(FRESH_RAHTI, { ETag: '"v2"', 'Last-Modified': 'Mon, 01 Jan 2024 00:00:00 GMT' })
         });
-        const manifest = await parsedManifest([{ type: 'rahti-data', href: url }]);
+        const manifest = await parsedManifest([{ type: 'rahti-data', href: dataUrl }]);
 
-        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+        const result = await resolve(manifest, manifestUrl);
 
-        assert.equal(result.rahtiData.s1.title, 'first');
-        assert.deepEqual(result.resourceHeaders[url], { etag: '"v1"', lastModified: 'Mon, 01 Jan 2024 00:00:00 GMT' });
+        assert.equal(result.rahtiData.s1.title, 'fresh');
+        assert.deepEqual(result.documents[dataUrl],
+            { content: FRESH_RAHTI, etag: '"v2"', lastModified: 'Mon, 01 Jan 2024 00:00:00 GMT' });
     });
 
-    test('an all-304 refresh reuses previousRahtiData verbatim, without merging any content', async () => {
-        const url = 'https://provider.example/data.json';
-        installed = mockFetch({ [url]: new Response(null, { status: 304 }) });
-        const manifest = await parsedManifest([{ type: 'rahti-data', href: url }]);
-        const previousRahtiData = { s1: { title: 'cached' } };
+    const CONDITIONAL_CASES = [
+        { name: 'a cached rahti-data document', type: 'rahti-data', documents: { [dataUrl]: cached(CACHED_RAHTI) }, sent: '"v1"' },
+        { name: 'no cached document', type: 'rahti-data', documents: {}, sent: undefined },
+        { name: 'a cached document and force', type: 'rahti-data', documents: { [dataUrl]: cached(CACHED_RAHTI) }, force: true, sent: undefined },
+        { name: 'a cached site-configs document', type: 'site-configs', documents: { [dataUrl]: cached(CACHED_SITES) }, sent: undefined }
+    ];
+    for (const { name, type, documents, force, sent } of CONDITIONAL_CASES) {
+        test(`If-None-Match with ${name}: ${sent ?? 'not sent'}`, async () => {
+            installed = mockFetch({ [dataUrl]: jsonResponse(type === 'rahti-data' ? FRESH_RAHTI : CACHED_SITES) });
+            const manifest = await parsedManifest([{ type, href: dataUrl }]);
 
-        const result = await resolve(manifest, 'https://provider.example/manifest.json', {
-            resourceHeaders: { [url]: { etag: '"v1"' } },
-            previousRahtiData,
-            previousDatabaseGenerationDate: '2024-01-01T00:00:00Z'
+            await resolve(manifest, manifestUrl, { documents, force });
+
+            assert.equal(installed.requests[0].headers?.['If-None-Match'], sent);
         });
+    }
 
-        assert.deepEqual(result.rahtiData, previousRahtiData);
-        assert.equal(result.databaseGenerationDate, '2024-01-01T00:00:00Z');
-        assert.deepEqual(result.resourceHeaders[url], { etag: '"v1"' });
+    const RAHTI_OUTCOMES = [
+        { name: '200', response: () => jsonResponse(FRESH_RAHTI), title: 'fresh' },
+        { name: '304', response: notModified, title: 'cached' },
+        { name: '429', response: () => new Response('', { status: 429 }), title: 'cached', transient: true },
+        { name: 'a network failure', response: () => new TypeError('fetch failed'), title: 'cached', transient: true },
+        { name: '404', response: notFound, title: undefined, transient: false },
+        { name: 'invalid JSON', response: () => new Response('{', { status: 200 }), title: undefined, transient: false },
+        { name: 'an invalid document', response: () => jsonResponse({ schema_version: '0.1.0' }), title: undefined }
+    ];
+    for (const { name, response, title, transient } of RAHTI_OUTCOMES) {
+        test(`rahti-data with a cached copy, answered with ${name}: ${title ?? 'no entries'}`, async () => {
+            installed = mockFetch({ [dataUrl]: response() });
+            const manifest = await parsedManifest([{ type: 'rahti-data', href: dataUrl }]);
+
+            const result = await resolve(manifest, manifestUrl, { documents: { [dataUrl]: cached(CACHED_RAHTI) } });
+
+            assert.equal(result.rahtiData.s1?.title, title);
+            const fetchError = result.errors.find((error) => error.kind === 'fetch');
+            assert.equal(fetchError?.transient, transient);
+            if (transient !== undefined) assert.equal(fetchError.href, dataUrl);
+        });
+    }
+
+    test('a temporary failure without a cached copy gives no entries and no document', async () => {
+        installed = mockFetch({ [dataUrl]: new Response('', { status: 503 }) });
+        const manifest = await parsedManifest([{ type: 'rahti-data', href: dataUrl }]);
+
+        const result = await resolve(manifest, manifestUrl);
+
+        assert.deepEqual(result.rahtiData, {});
+        assert.deepEqual(result.documents, {});
+        assert.equal(result.errors[0].transient, true);
     });
 
-    test('{force: true} bypasses cached headers and sends no conditional request headers', async () => {
-        const url = 'https://provider.example/data.json';
-        const requestInits = [];
-        const original = globalThis.fetch;
-        globalThis.fetch = async (u, init) => {
-            requestInits.push(init);
-            return jsonResponse(rahtiDoc([{ urls: [{ sign: 's1' }], title: 'forced' }]));
-        };
-        try {
-            const manifest = await parsedManifest([{ type: 'rahti-data', href: url }]);
-            const result = await resolve(manifest, 'https://provider.example/manifest.json', {
-                resourceHeaders: { [url]: { etag: '"v1"' } },
-                force: true
-            });
-            assert.equal(result.rahtiData.s1.title, 'forced');
-            assert.equal(requestInits[0]?.headers, undefined, 'no conditional headers were sent when forced');
-        } finally {
-            globalThis.fetch = original;
-        }
+    const SITE_OUTCOMES = [
+        { name: 'a temporary failure', response: () => new Response('', { status: 503 }), kept: true },
+        { name: 'a permanent failure', response: notFound, kept: false }
+    ];
+    for (const { name, response, kept } of SITE_OUTCOMES) {
+        test(`site-configs with a cached copy and ${name}: sites ${kept ? 'kept' : 'dropped'}`, async () => {
+            installed = mockFetch({ [sitesUrl]: response() });
+            const manifest = await parsedManifest([{ type: 'site-configs', href: sitesUrl }]);
+
+            const result = await resolve(manifest, manifestUrl, { documents: { [sitesUrl]: cached(CACHED_SITES) } });
+
+            assert.equal(Boolean(result.siteConfigs['news.example']), kept);
+            assert.equal(sitesUrl in result.documents, kept);
+        });
+    }
+
+    test('a blocked URL never uses its cached copy', async () => {
+        const blocked = 'http://provider.example/data.json';
+        installed = mockFetch({});
+        const manifest = await parsedManifest([{ type: 'rahti-data', href: blocked }]);
+
+        const result = await resolve(manifest, manifestUrl, { documents: { [blocked]: cached(CACHED_RAHTI) } });
+
+        assert.deepEqual(installed.calls, []);
+        assert.deepEqual(result.rahtiData, {});
+        assert.deepEqual(result.documents, {});
+        assert.equal(result.errors[0].transient, false);
     });
 
-    test('a mixed batch (one 304, one 200) re-fetches the 304\'d href fully rather than dropping it', async () => {
+    test('one href in rahti-data and site-configs gives the cached copy to both on a 304', async () => {
+        const both = { ...CACHED_RAHTI, ...CACHED_SITES };
+        installed = mockFetch({ [dataUrl]: notModified() });
+        const manifest = await parsedManifest([
+            { type: 'rahti-data', href: dataUrl },
+            { type: 'site-configs', href: dataUrl }
+        ]);
+
+        const result = await resolve(manifest, manifestUrl, { documents: { [dataUrl]: cached(both) } });
+
+        assert.equal(result.rahtiData.s1.title, 'cached');
+        assert.ok(result.siteConfigs['news.example']);
+        assert.equal(installed.calls.length, 1);
+    });
+
+    test('a mixed batch (one 304, one 200) fetches each href one time', async () => {
         const a = 'https://provider.example/data-a.json';
         const b = 'https://provider.example/data-b.json';
-        let aCallCount = 0;
-        const original = globalThis.fetch;
-        globalThis.fetch = async (u) => {
-            const key = String(u);
-            if (key === a) {
-                aCallCount++;
-                // First (conditional) call: 304. Second (forced re-fetch) call: real content.
-                return aCallCount === 1
-                    ? new Response(null, { status: 304 })
-                    : jsonResponse(rahtiDoc([{ urls: [{ sign: 'sa' }], title: 'from-a' }]));
-            }
-            if (key === b) return jsonResponse(rahtiDoc([{ urls: [{ sign: 'sb' }], title: 'from-b' }]));
-            throw new Error(`unexpected fetch: ${key}`);
-        };
-        try {
-            const manifest = await parsedManifest([
-                { type: 'rahti-data', href: a },
-                { type: 'rahti-data', href: b }
-            ]);
-            const result = await resolve(manifest, 'https://provider.example/manifest.json', {
-                resourceHeaders: { [a]: { etag: '"v1"' } },
-                previousRahtiData: { sa: { title: 'stale' } }
-            });
+        installed = mockFetch({
+            [a]: notModified(),
+            [b]: jsonResponse(rahtiDoc([{ urls: [{ sign: 'sb' }], title: 'from-b' }]))
+        });
+        const manifest = await parsedManifest([
+            { type: 'rahti-data', href: a },
+            { type: 'rahti-data', href: b }
+        ]);
 
-            assert.equal(aCallCount, 2, 'the 304\'d href was re-fetched in full since the batch was mixed');
-            assert.equal(result.rahtiData.sa.title, 'from-a', 'the re-fetched content replaced the stale cached value');
-            assert.equal(result.rahtiData.sb.title, 'from-b');
-        } finally {
-            globalThis.fetch = original;
-        }
+        const result = await resolve(manifest, manifestUrl, {
+            documents: { [a]: cached(rahtiDoc([{ urls: [{ sign: 'sa' }], title: 'from-a' }])) }
+        });
+
+        assert.deepEqual(installed.calls, [a, b]);
+        assert.equal(result.rahtiData.sa.title, 'from-a');
+        assert.equal(result.rahtiData.sb.title, 'from-b');
     });
 
-    test('a site-configs resource is always fetched in full, never receives a cacheEntry', async () => {
-        const rahtiUrl = 'https://provider.example/data.json';
-        const siteUrl = 'https://provider.example/sites.json';
-        const requestInits = [];
-        const original = globalThis.fetch;
-        globalThis.fetch = async (u, init) => {
-            const key = String(u);
-            requestInits.push({ key, headers: init?.headers });
-            if (key === rahtiUrl) return new Response(null, { status: 304 });
-            if (key === siteUrl) return jsonResponse(siteDoc({ 'news.example': site('news.example') }));
-            throw new Error(`unexpected fetch: ${key}`);
-        };
-        try {
-            const manifest = await parsedManifest([
-                { type: 'rahti-data', href: rahtiUrl },
-                { type: 'site-configs', href: siteUrl }
-            ]);
-            const result = await resolve(manifest, 'https://provider.example/manifest.json', {
-                resourceHeaders: { [rahtiUrl]: { etag: '"v1"' } },
-                previousRahtiData: {}
-            });
+    test('documents keeps no href that the manifest no longer names or that is over the fetch budget', async () => {
+        const urls = Array.from({ length: 33 }, (_, i) => `https://provider.example/r${i}.json`);
+        installed = mockFetch(Object.fromEntries(urls.map((url) => [url, notModified()])));
+        const documents = Object.fromEntries([...urls, dataUrl].map((url) => [url, cached(CACHED_RAHTI)]));
+        const manifest = await parsedManifest([{ type: 'rahti-data', href: urls }]);
 
-            const siteRequest = requestInits.find((r) => r.key === siteUrl);
-            assert.ok(siteRequest, 'the site-configs href was actually fetched');
-            assert.equal(siteRequest.headers, undefined, 'no conditional headers were ever sent for site-configs');
-            assert.ok(result.siteConfigs['news.example']);
-        } finally {
-            globalThis.fetch = original;
-        }
+        const result = await resolve(manifest, manifestUrl, { documents });
+
+        assert.deepEqual(Object.keys(result.documents), urls.slice(0, 32));
     });
 
     test('the payload\'s own updated field becomes databaseGenerationDate', async () => {
-        const url = 'https://provider.example/data.json';
         installed = mockFetch({
-            [url]: jsonResponse({
+            [dataUrl]: jsonResponse({
                 schema_version: '0.1.0', updated: '2026-05-01T00:00:00Z',
                 entries: [{ urls: [{ sign: 's1' }], title: 'x' }]
             })
         });
-        const manifest = await parsedManifest([{ type: 'rahti-data', href: url }]);
+        const manifest = await parsedManifest([{ type: 'rahti-data', href: dataUrl }]);
 
-        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+        const result = await resolve(manifest, manifestUrl);
 
         assert.equal(result.databaseGenerationDate, '2026-05-01T00:00:00Z');
     });
+});
+
+describe('resolve: fetch error classification', () => {
+    const manifestUrl = 'https://provider.example/manifest.json';
+    const dataUrl = 'https://provider.example/data.json';
+    const timeout = () => new DOMException('The operation timed out.', 'TimeoutError');
+    const status = (code, headers = {}) => () => new Response('', { status: code, headers });
+
+    const CASES = [
+        { name: 'a timeout before the headers', response: timeout, transient: true },
+        {
+            name: 'a timeout during the body',
+            response: () => new Response(new ReadableStream({ pull(controller) { controller.error(timeout()); } })),
+            transient: true
+        },
+        { name: 'a network failure', response: () => new TypeError('fetch failed'), transient: true },
+        { name: 'HTTP 408', response: status(408), transient: true },
+        { name: 'HTTP 429 with Retry-After seconds', response: status(429, { 'Retry-After': '40' }), transient: true, retryAfterMs: [40000, 40000] },
+        {
+            name: 'HTTP 503 with a Retry-After date',
+            response: () => status(503, { 'Retry-After': new Date(Date.now() + 60000).toUTCString() })(),
+            transient: true,
+            retryAfterMs: [58000, 60000]
+        },
+        { name: 'HTTP 500', response: status(500), transient: true },
+        { name: 'HTTP 404', response: status(404), transient: false },
+        { name: 'a body over the size limit', response: status(200, { 'content-length': String(9 * 1024 * 1024) }), transient: false },
+        { name: 'invalid JSON', response: () => new Response('{', { status: 200 }), transient: false }
+    ];
+    for (const { name, response, transient, retryAfterMs } of CASES) {
+        test(`${name} is ${transient ? 'temporary' : 'permanent'}`, async () => {
+            installed = mockFetch({ [dataUrl]: response() });
+            const { manifest } = parseManifest(manifestDoc([{ type: 'rahti-data', href: dataUrl }]));
+
+            const [error] = (await resolve(manifest, manifestUrl)).errors;
+
+            assert.equal(error.kind, 'fetch');
+            assert.equal(error.transient, transient);
+            if (retryAfterMs) {
+                assert.ok(error.retryAfterMs >= retryAfterMs[0] && error.retryAfterMs <= retryAfterMs[1], String(error.retryAfterMs));
+            } else {
+                assert.equal(error.retryAfterMs, undefined);
+            }
+        });
+    }
 });
 
 describe('resolve: site-configs safety', () => {

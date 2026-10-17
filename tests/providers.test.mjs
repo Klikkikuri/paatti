@@ -8,7 +8,7 @@ globalThis.browser = fake.browser;
 
 const {
     MAX_PROVIDERS, getProviders, addProvider, removeProvider, setProviderEnabled,
-    getProviderData, refreshProviders, reconcileSuolaRules
+    getProviderData, refreshProviders, reconcileSuolaRules, retryDelayMs
 } = await import('../src/providers.js');
 
 /** Stubs the three Suola WASM globals reconcileSuolaRules() assumes are already installed. */
@@ -139,7 +139,7 @@ describe('the provider list', () => {
 describe('removeProvider gives back what only that provider used', () => {
     const a = 'https://a.example/manifest.json';
     const b = 'https://b.example/manifest.json';
-    const notFound = () => new Response('', { status: 404 });
+    const emptyRahti = () => jsonResponse({ schema_version: '0.1.0', entries: [] });
     const manifestA = (resources = [
         { type: 'site-configs', sites: { 'news.example': site('news.example') } },
         { type: 'rahti-data', href: 'https://shared-cdn.example/a.json' },
@@ -157,10 +157,10 @@ describe('removeProvider gives back what only that provider used', () => {
         await addProvider(b);
         installed = mockFetch({
             [a]: manifestA(),
-            'https://shared-cdn.example/a.json': notFound(),
-            'https://a-cdn.example/data.json': notFound(),
+            'https://shared-cdn.example/a.json': emptyRahti(),
+            'https://a-cdn.example/data.json': emptyRahti(),
             [b]: jsonResponse(manifestDoc([{ type: 'rahti-data', href: 'https://shared-cdn.example/b.json' }])),
-            'https://shared-cdn.example/b.json': notFound()
+            'https://shared-cdn.example/b.json': emptyRahti()
         });
         await refreshProviders();
         installed.restore();
@@ -208,6 +208,13 @@ describe('removeProvider gives back what only that provider used', () => {
         assert.ok(revoked.includes('https://a-cdn.example/*'));
     });
 
+    test('removes its document cache', async () => {
+        await removeProvider(a);
+
+        const key = `provider:${a}_documents`;
+        assert.ok(!(key in await fake.browser.storage.local.get(key)));
+    });
+
     test('drops the favicons of its sites under both spellings, and no others', async () => {
         await fake.browser.storage.local.set({
             'favicon_news.example': { data: 'x' },
@@ -234,7 +241,7 @@ describe('getProviderData', () => {
         assert.equal(data.updated, null);
         assert.equal(data.entryCount, 0);
         assert.equal(data.databaseGenerationDate, null);
-        assert.deepEqual(data.resourceHeaders, {});
+        assert.equal(data.checked, null);
     });
 
     test('reads back entryCount and databaseGenerationDate written by refreshOne', async () => {
@@ -305,6 +312,138 @@ describe('refreshProviders', () => {
         assert.equal(data.errors.length, 1);
         assert.match(data.errors[0].message, /HTTP 500/);
         assert.equal(data.errors[0].kind, 'fetch');
+    });
+
+    describe('a failed resource fetch', () => {
+        const url = 'https://provider.example/manifest.json';
+        const a = 'https://provider.example/a.json';
+        const b = 'https://provider.example/b.json';
+        const sitesUrl = 'https://provider.example/sites.json';
+        const documentsKey = `provider:${url}_documents`;
+        const rahti = (sign, title) => jsonResponse({ schema_version: '0.1.0', entries: [{ urls: [{ sign }], title }] });
+        const manifest = (resources) => jsonResponse(manifestDoc(resources));
+        const RAHTI_AB = [{ type: 'rahti-data', href: a }, { type: 'rahti-data', href: b }];
+        const tick = () => new Promise((resolve) => setTimeout(resolve, 2));
+
+        /** Refresh with `first`, then with `second`; each maps URL to a response factory. */
+        async function refreshTwice(first, second) {
+            await addProvider(url);
+            installed = mockFetch(Object.fromEntries(Object.entries(first).map(([key, make]) => [key, make()])));
+            await refreshProviders();
+            installed.restore();
+            const before = await getProviderData(url);
+            await tick();
+            installed = mockFetch(Object.fromEntries(Object.entries(second).map(([key, make]) => [key, make()])));
+            const results = await refreshProviders();
+            return { before, results, data: await getProviderData(url) };
+        }
+
+        test('a temporary failure keeps that file\'s entries, stores the fresh ones and does not move updated', async () => {
+            const { before, results, data } = await refreshTwice(
+                { [url]: () => manifest(RAHTI_AB), [a]: () => rahti('sa', 'old-a'), [b]: () => rahti('sb', 'old-b') },
+                { [url]: () => manifest(RAHTI_AB), [a]: () => rahti('sa', 'new-a'), [b]: () => new Response('', { status: 429 }) }
+            );
+
+            assert.equal(results[0].error, `${b}: HTTP 429`);
+            assert.equal(results[0].transient, true);
+            assert.equal(data.rahtiData.sa.title, 'new-a');
+            assert.equal(data.rahtiData.sb.title, 'old-b');
+            assert.equal(data.updated, before.updated);
+            assert.ok(data.checked > before.checked);
+        });
+
+        test('fetch errors come before the other errors', async () => {
+            const invalid = 'https://provider.example/invalid.json';
+            const resources = [...RAHTI_AB, { type: 'rahti-data', href: invalid }];
+            const { data } = await refreshTwice(
+                { [url]: () => manifest(resources), [a]: () => rahti('sa', 'x'), [b]: () => rahti('sb', 'y'), [invalid]: () => jsonResponse({}) },
+                { [url]: () => manifest(resources), [a]: () => rahti('sa', 'x'), [b]: () => new Response('', { status: 503 }), [invalid]: () => jsonResponse({}) }
+            );
+
+            assert.equal(data.errors[0].kind, 'fetch');
+            assert.match(data.errors[1].message, /not a rahti-data document/);
+        });
+
+        test('a permanent failure drops that file\'s entries', async () => {
+            const { results, data } = await refreshTwice(
+                { [url]: () => manifest(RAHTI_AB), [a]: () => rahti('sa', 'old-a'), [b]: () => rahti('sb', 'old-b') },
+                { [url]: () => manifest(RAHTI_AB), [a]: () => rahti('sa', 'new-a'), [b]: () => new Response('', { status: 404 }) }
+            );
+
+            assert.equal(results[0].transient, false);
+            assert.equal(data.rahtiData.sa.title, 'new-a');
+            assert.equal(data.rahtiData.sb, undefined);
+        });
+
+        test('a temporary site-configs failure keeps the provider\'s sites', async () => {
+            const resources = [{ type: 'site-configs', href: sitesUrl }];
+            const { data } = await refreshTwice(
+                { [url]: () => manifest(resources), [sitesUrl]: () => jsonResponse({ schema_version: '0.1.0', sites: { 'news.example': site('news.example') } }) },
+                { [url]: () => manifest(resources), [sitesUrl]: () => new TypeError('fetch failed') }
+            );
+
+            assert.ok(data.siteConfigs['news.example']);
+            assert.equal(data.errors[0].kind, 'fetch');
+        });
+
+        test('a first refresh with one of two files failing stores the other file\'s entries', async () => {
+            await addProvider(url);
+            installed = mockFetch({ [url]: manifest(RAHTI_AB), [a]: rahti('sa', 'x'), [b]: new Response('', { status: 503 }) });
+
+            await refreshProviders();
+
+            const data = await getProviderData(url);
+            assert.equal(data.rahtiData.sa.title, 'x');
+            assert.equal(data.updated, null);
+            assert.ok(data.checked);
+        });
+
+        test('the documents key is not written when every file answers 304', async () => {
+            const writes = [];
+            const originalSet = fake.browser.storage.local.set;
+            fake.browser.storage.local.set = async (items) => { writes.push(...Object.keys(items)); return originalSet(items); };
+            try {
+                await refreshTwice(
+                    { [url]: () => manifest(RAHTI_AB), [a]: () => rahti('sa', 'x'), [b]: () => rahti('sb', 'y') },
+                    { [url]: () => manifest(RAHTI_AB), [a]: () => new Response(null, { status: 304 }), [b]: () => new Response(null, { status: 304 }) }
+                );
+            } finally {
+                fake.browser.storage.local.set = originalSet;
+            }
+
+            assert.equal(writes.filter((key) => key === documentsKey).length, 1);
+        });
+
+        describe('data stored before the document cache', () => {
+            const ns = `provider:${url}`;
+            beforeEach(async () => {
+                await addProvider(url);
+                const data = { rahtiData: { sa: { title: 'stored' } }, resourceHeaders: { [a]: { etag: '"v1"' } }, updated: 1 };
+                await fake.browser.storage.local.set({ [ns]: data, [`${ns}_index`]: Object.keys(data) });
+            });
+
+            test('a temporary failure keeps the stored entries', async () => {
+                installed = mockFetch({ [url]: manifest(RAHTI_AB), [a]: new Response('', { status: 503 }), [b]: rahti('sb', 'y') });
+
+                const results = await refreshProviders();
+
+                assert.equal(results[0].transient, true);
+                const data = await getProviderData(url);
+                assert.equal(data.rahtiData.sa.title, 'stored');
+                assert.equal(data.updated, 1);
+            });
+
+            test('a successful refresh fetches in full and drops resourceHeaders', async () => {
+                installed = mockFetch({ [url]: manifest(RAHTI_AB), [a]: rahti('sa', 'fresh'), [b]: rahti('sb', 'y') });
+
+                await refreshProviders();
+
+                const stored = (await fake.browser.storage.local.get(ns))[ns];
+                assert.equal(stored.rahtiData.sa.title, 'fresh');
+                assert.ok(!('resourceHeaders' in stored));
+                assert.ok((await fake.browser.storage.local.get(documentsKey))[documentsKey][a]);
+            });
+        });
     });
 
     describe('origins this browser has not granted', () => {
@@ -512,6 +651,33 @@ describe('refreshProviders', () => {
             }
         });
     });
+});
+
+describe('retryDelayMs', () => {
+    const DEFAULT = 'https://default.example/manifest.json';
+    const OTHER = 'https://other.example/manifest.json';
+    const DEFAULT_URLS = new Set([DEFAULT]);
+    const HOUR = 60 * 60 * 1000;
+    const temporary = (url, extra = {}) => ({ url, scope: new Set(), error: 'HTTP 503', transient: true, ...extra });
+
+    const CASES = [
+        { name: 'no default provider result', results: [], attempt: 1, expected: null },
+        { name: 'a success', results: [{ url: DEFAULT, scope: new Set() }], attempt: 1, expected: null },
+        { name: 'a permanent error', results: [temporary(DEFAULT, { transient: false })], attempt: 1, expected: null },
+        { name: 'a temporary error of another provider', results: [temporary(OTHER)], attempt: 1, expected: null },
+        { name: 'attempt 1', results: [temporary(DEFAULT)], attempt: 1, expected: 30000 },
+        { name: 'attempt 2', results: [temporary(DEFAULT)], attempt: 2, expected: 60000 },
+        { name: 'attempt 3', results: [temporary(DEFAULT)], attempt: 3, expected: null },
+        { name: 'a Retry-After longer than the backoff', results: [temporary(DEFAULT, { retryAfterMs: 40000 })], attempt: 1, expected: 40000 },
+        { name: 'a Retry-After shorter than the backoff', results: [temporary(DEFAULT, { retryAfterMs: 1000 })], attempt: 2, expected: 60000 },
+        { name: 'a Retry-After longer than the interval', results: [temporary(DEFAULT, { retryAfterMs: 2 * HOUR })], attempt: 1, expected: null },
+        { name: 'a backoff longer than the interval', results: [temporary(DEFAULT)], attempt: 2, intervalMs: 45000, expected: 45000 }
+    ];
+    for (const { name, results, attempt, intervalMs = HOUR, expected } of CASES) {
+        test(`${name}: ${expected ?? 'no retry'}`, () => {
+            assert.equal(retryDelayMs(results, DEFAULT_URLS, attempt, intervalMs), expected);
+        });
+    }
 });
 
 describe('reconcileSuolaRules', () => {

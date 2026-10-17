@@ -280,7 +280,8 @@ class ProvidersSetting extends ComponentBase {
             parts.push(this.#describeRejection(rejection, config.siteConfigSource || {}));
         }
         for (const error of data.errors || []) {
-            parts.push(error.message || String(error));
+            const message = error.message || String(error);
+            parts.push(error.href ? `${error.href}: ${message}` : message);
         }
         return parts;
     }

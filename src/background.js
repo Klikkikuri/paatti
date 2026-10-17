@@ -3,7 +3,7 @@
 import browser from "./browser-api.js";
 import { getLogger, getActiveTab } from "./utils.js";
 import { getConfig, PROVIDER_KEY_PREFIX } from "./config.js";
-import { refreshProviders, reconcileSuolaRules, addProvider } from "./providers.js";
+import { refreshProviders, retryDelayMs, reconcileSuolaRules, addProvider } from "./providers.js";
 import { model } from "./model.js";
 import { controller } from "./controller.js";
 import { storeFavicon } from "./favicon-fetch.js";
@@ -14,6 +14,8 @@ const log = getLogger("background");
 
 const DEFAULT_ENVIRONMENT = "free";
 const PULL_ALARM_NAME = "periodic-data-pull";
+/** A retry alarm is named with this prefix and the number of the attempt that it starts. */
+const RETRY_ALARM_PREFIX = "default-provider-retry:";
 
 
 /**
@@ -115,45 +117,48 @@ async function seedDefaultProviders() {
     }
 }
 
+/** The periodic refresh interval in minutes. */
+function refreshIntervalMinutes(config) {
+    return config.refreshIntervalMinutes || 30;
+}
+
 /**
- * refreshProviders(), retried with backoff if the active environment's default provider(s) failed to
- * refresh -- scoped to just them, not every provider, so a slow/misconfigured third-party manifest can
- * never make the worker hang through repeated backoff windows the way a uniform retry would.
- *
- * Short-circuits to a single, non-retried pass when no default provider is currently enabled: that is a
- * deliberate, stable state (the user disabled it, or the environment's list is empty), not a transient
- * failure, and retrying it would burn the full backoff on every call for no reason.
+ * One refreshProviders() pass, and a retry alarm when a default provider failed temporarily (see
+ * `retryDelayMs()`). An alarm and not a timer, because an idle worker stops after 30 s and a timer does
+ * not keep it alive.
  *
  * @param {object} [options] - Passed through to refreshProviders(), e.g. {force: true}.
- * @param {object} [retryConfig]
- * @returns {Promise<Array<{url: string, scope: Set<string>, error?: string}>>}
+ * @param {number} [attempt] - The number of this pass, from 1.
+ * @returns {Promise<Array<{url: string, scope: Set<string>, error?: string, transient?: boolean,
+ *   retryAfterMs?: number}>>}
  */
-async function refreshWithDefaultProviderRetry(options = {}, retryConfig = {}) {
-    const maxRetries = retryConfig.maxRetries ?? 3;
-    const initialDelayMs = retryConfig.initialDelayMs ?? 10000;
-    const backoffFactor = retryConfig.backoffFactor ?? 2;
-    let delay = initialDelayMs;
+async function refreshAndScheduleRetry(options = {}, attempt = 1) {
+    const results = await refreshProviders(options);
 
-    for (let attempt = 1; ; attempt++) {
-        // Re-read on every attempt, not just once up front: the user could disable the default
-        // provider (or the environment could change) while a retry is waiting out its delay.
-        const config = await getConfig();
-        const enabledDefaultUrls = new Set(
-            (config.defaultProviders || []).filter((u) => config.enabledProviderUrls.includes(u))
-        );
-        if (enabledDefaultUrls.size === 0) {
-            return refreshProviders(options);
-        }
+    const config = await getConfig();
+    const defaultUrls = new Set((config.defaultProviders || []).filter((u) => config.enabledProviderUrls.includes(u)));
+    const delayMs = retryDelayMs(results, defaultUrls, attempt, refreshIntervalMinutes(config) * 60 * 1000);
+    if (delayMs !== null) log(`Default provider refresh failed (attempt ${attempt}); retrying in ${delayMs / 1000}s`);
+    await replaceRetryAlarm(attempt + 1, delayMs);
 
-        const results = await refreshProviders(options);
-        const defaultResults = results.filter((r) => enabledDefaultUrls.has(r.url));
-        const ok = defaultResults.length > 0 && defaultResults.every((r) => !r.error);
-        if (ok || attempt > maxRetries) return results;
+    return results;
+}
 
-        log(`Default provider refresh failed (attempt ${attempt}/${maxRetries + 1}); retrying in ${delay / 1000}s`);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        delay *= backoffFactor;
-    }
+let retryAlarmUpdate = Promise.resolve();
+
+/**
+ * Clear every pending retry alarm, then create one for `attempt` after `delayMs` unless it is null.
+ *
+ * The calls run one after another, so two passes that end together cannot each leave an alarm. A pass
+ * with no retry to make cancels the pending one.
+ */
+function replaceRetryAlarm(attempt, delayMs) {
+    retryAlarmUpdate = retryAlarmUpdate.catch(() => {}).then(async () => {
+        const pending = (await browser.alarms.getAll()).filter((alarm) => alarm.name.startsWith(RETRY_ALARM_PREFIX));
+        await Promise.all(pending.map((alarm) => browser.alarms.clear(alarm.name)));
+        if (delayMs !== null) await browser.alarms.create(`${RETRY_ALARM_PREFIX}${attempt}`, { when: Date.now() + delayMs });
+    });
+    return retryAlarmUpdate;
 }
 
 /**
@@ -195,14 +200,14 @@ browser.storage.onChanged.addListener(async (changes, area) => {
         const newVal = changes.userPreferences.newValue || {};
         if (newVal.refreshIntervalMinutes !== oldVal.refreshIntervalMinutes || newVal.environment !== oldVal.environment) {
             const config = await getConfig();
-            const intervalMinutes = config.refreshIntervalMinutes || 20;
+            const intervalMinutes = refreshIntervalMinutes(config);
             log(`Effective refresh interval is now ${intervalMinutes} minutes.`);
             await scheduleAlarm(intervalMinutes);
         }
         if (newVal.environment !== oldVal.environment) {
             log("Environment changed, refreshing providers...");
             seedDefaultProviders()
-                .then(() => refreshWithDefaultProviderRetry())
+                .then(() => refreshAndScheduleRetry())
                 .catch((err) => log("Failed to refresh providers on environment change:", err));
         }
         if (newVal.clickbaitLevel !== oldVal.clickbaitLevel
@@ -250,13 +255,13 @@ browser.runtime.onInstalled.addListener(async ({ reason }) => {
     // upgrade path for an existing install that would otherwise silently lose its corrections dataset
     // -- then refresh every provider, with retry scoped to the default one(s).
     await seedDefaultProviders();
-    await refreshWithDefaultProviderRetry().then(() => reconcileSuola()).catch((err) => {
+    await refreshAndScheduleRetry().then(() => reconcileSuola()).catch((err) => {
         log("Failed to refresh providers on install:", err);
     });
 
     // Set up periodic fetching of Rahti data
     const config = await getConfig();
-    const intervalMinutes = config.refreshIntervalMinutes || 30;
+    const intervalMinutes = refreshIntervalMinutes(config);
 
     await scheduleAlarm(intervalMinutes);
     await updateDynamicContentScripts();
@@ -270,9 +275,15 @@ browser.alarms.onAlarm.addListener((alarm) => {
         // self-healing against providers' own read-modify-write sync races -- cheap and idempotent,
         // so there is no cost to reasserting it on every tick.
         seedDefaultProviders()
-            .then(() => refreshProviders())
+            .then(() => refreshAndScheduleRetry())
             .then(() => reconcileSuola())
             .catch((err) => log("Failed to refresh providers on alarm:", err));
+    } else if (alarm.name.startsWith(RETRY_ALARM_PREFIX)) {
+        const attempt = Number(alarm.name.slice(RETRY_ALARM_PREFIX.length));
+        log(`Retry alarm triggered: refresh attempt ${attempt}.`);
+        refreshAndScheduleRetry({}, attempt)
+            .then(() => reconcileSuola())
+            .catch((err) => log("Failed to retry the provider refresh:", err));
     }
 });
 
@@ -348,7 +359,7 @@ async function submitFeedback(payload) {
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "updateDatabase") {
         log("Manual database update requested.");
-        refreshWithDefaultProviderRetry({ force: true })
+        refreshAndScheduleRetry({ force: true })
             .then(async (results) => {
                 const config = await getConfig();
                 const defaultUrls = new Set(config.defaultProviders || []);
@@ -443,19 +454,20 @@ updateDynamicContentScripts().catch((err) => {
 });
 
 /**
- * Checks whether the stored database timestamp is missing or older than the refresh interval.
+ * Checks whether the last refresh attempt is missing or older than the refresh interval. The attempt and
+ * not the last success, so that a failing provider is not fetched again on each worker start.
  *
  * @returns {Promise<boolean>} True if database is missing or stale.
  */
 async function isDatabaseStale() {
     try {
         const config = await getConfig();
-        const intervalMinutes = config.refreshIntervalMinutes || 30;
-        const { lastDatabaseUpdate } = await model.read.getDatabaseStatus();
-        if (!lastDatabaseUpdate) {
+        const intervalMinutes = refreshIntervalMinutes(config);
+        const { lastDatabaseCheck } = await model.read.getDatabaseStatus();
+        if (!lastDatabaseCheck) {
             return true;
         }
-        const ageMs = Date.now() - lastDatabaseUpdate;
+        const ageMs = Date.now() - lastDatabaseCheck;
         return ageMs >= intervalMinutes * 60 * 1000;
     } catch (err) {
         log("Failed checking database staleness:", err);
@@ -469,11 +481,11 @@ if (browser.runtime && browser.runtime.onStartup) {
         log("Browser startup detected.");
         try {
             const config = await getConfig();
-            const intervalMinutes = config.refreshIntervalMinutes || 30;
+            const intervalMinutes = refreshIntervalMinutes(config);
             await scheduleAlarm(intervalMinutes);
             if (await isDatabaseStale()) {
                 log("Database is stale on browser startup, refreshing providers with retry...");
-                refreshWithDefaultProviderRetry().catch((err) => {
+                refreshAndScheduleRetry().catch((err) => {
                     log("Failed to refresh providers on browser startup:", err);
                 });
             }
@@ -488,14 +500,14 @@ if (browser.runtime && browser.runtime.onStartup) {
     try {
         const alarm = await browser.alarms.get(PULL_ALARM_NAME);
         const config = await getConfig();
-        const intervalMinutes = config.refreshIntervalMinutes || 30;
+        const intervalMinutes = refreshIntervalMinutes(config);
         if (!alarm) {
             await scheduleAlarm(intervalMinutes);
         }
         await updateDynamicContentScripts();
         if (await isDatabaseStale()) {
             log("Database is stale on script evaluation, refreshing providers with retry...");
-            refreshWithDefaultProviderRetry().catch((err) => {
+            refreshAndScheduleRetry().catch((err) => {
                 log("Failed to refresh providers on background script evaluation:", err);
             });
         }

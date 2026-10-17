@@ -57,17 +57,15 @@ classDiagram
         +updateStatistics()
         +resetStatistics()
     }
-    class RahtiModule {
-        +fetchRahtiData(options)
-        +fetchRahtiDataWithRetry(options, retryConfig)
-        +fetcher (HTTP & 304 resolution)
+    class ProvidersModule {
+        +refreshProviders(options)
+        +retryDelayMs(results, defaultUrls, attempt, intervalMs)
+        +resolve (fetch, document cache & merge)
         +schema (SemVer & keying)
-        +sync (Storage & metadata)
     }
     class BackgroundScript {
         +updateDynamicContentScripts()
-        +fetchRahtiData()
-        +fetchRahtiDataWithRetry()
+        +refreshAndScheduleRetry(options, attempt)
         +isDatabaseStale()
         +alarms
         +initSuola()
@@ -126,8 +124,8 @@ classDiagram
 
     BackgroundScript --> Config : Reads enabled origins
     BackgroundScript --> Storage : Stores fetched data
-    BackgroundScript --> RahtiModule : Requests database fetches
-    RahtiModule ..> TitleDataServer : Fetch updates
+    BackgroundScript --> ProvidersModule : Requests provider refreshes
+    ProvidersModule ..> TitleDataServer : Fetch updates
 
     ContentScript --> Storage : Reads cached conversions
     ContentScript --> Modifiers : Applies active transformations

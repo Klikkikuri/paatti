@@ -32,6 +32,15 @@ function namespaceFor(url) {
     return `${PROVIDER_KEY_PREFIX}${url}`;
 }
 
+/**
+ * The local storage key of one provider's document cache: the last good copy of each fetched file.
+ *
+ * A key of its own, not part of the namespace, so that the frequent readers of the namespace do not load it.
+ */
+function documentsKeyFor(url) {
+    return `${namespaceFor(url)}_documents`;
+}
+
 /** The sync provider list: `{ url, enabled }` in the order the user added them. */
 async function getProviders() {
     const { providers } = await browser.storage.sync.get("providers");
@@ -61,7 +70,7 @@ async function addProvider(url) {
  * Remove a provider, drop everything it resolved to, and give back what only it used: the host permissions
  * for its servers and sites, and the favicons of its sites.
  *
- * Removes the namespace's two keys by their exact name rather than through `Storage.prune()`, which
+ * Removes the provider's three keys by their exact name rather than through `Storage.prune()`, which
  * matches by prefix: two provider URLs where one is a literal prefix of the other (a differing query
  * string, a `.json` vs `.json.bak` path) would otherwise make removing one also wipe the other's data.
  *
@@ -75,7 +84,7 @@ async function removeProvider(url) {
     await browser.storage.sync.set({ providers: updated });
 
     const ns = namespaceFor(url);
-    await browser.storage.local.remove([ns, `${ns}_index`]);
+    await browser.storage.local.remove([ns, `${ns}_index`, documentsKeyFor(url)]);
 
     await releaseUnused(url, removed, updated.map((provider) => provider.url).filter(Boolean));
 
@@ -139,8 +148,9 @@ async function setProviderEnabled(url, enabled) {
  *
  * @param {string} url
  * @returns {Promise<{siteConfigs: object, rahtiData: object, suolaRules: object|null, scope: Set<string>,
- *   rejected: Array, errors: Array, updated: number|null, entryCount: number,
- *   databaseGenerationDate: string|null, resourceHeaders: object, origins: string[], name: string|null, links: Array}>}
+ *   rejected: Array, errors: Array, updated: number|null, checked: number|null, entryCount: number,
+ *   databaseGenerationDate: string|null, origins: string[], name: string|null, links: Array}>} `updated` is the
+ *   time of the last refresh with no fetch error, `checked` the time of the last attempt.
  */
 async function getProviderData(url) {
     const storage = await initStorage(namespaceFor(url));
@@ -152,9 +162,9 @@ async function getProviderData(url) {
         rejected: (await storage.get("rejected")) || [],
         errors: (await storage.get("errors")) || [],
         updated: await storage.get("updated"),
+        checked: await storage.get("checked"),
         entryCount: (await storage.get("entryCount")) || 0,
         databaseGenerationDate: await storage.get("databaseGenerationDate"),
-        resourceHeaders: (await storage.get("resourceHeaders")) || {},
         origins: (await storage.get("origins")) || [],
         name: (await storage.get("name")) ?? null,
         links: (await storage.get("links")) || []
@@ -163,12 +173,36 @@ async function getProviderData(url) {
 
 /**
  * Record why a refresh stopped, and keep the provider's last resolved content. `kind` is `build`, `access` or
- * `fetch`; an `access` stop also records the `origins` to grant.
+ * `fetch`; an `access` stop also records the `origins` to grant. A `fetch` stop passes on whether a retry can help.
  */
-async function keepLastResolved(storage, url, error, { kind, origins } = {}) {
+async function keepLastResolved(storage, url, error, { kind, origins, transient, retryAfterMs } = {}) {
     log(`Refresh of ${url} stopped, keeping the last resolved content:`, error);
-    await storage.set("errors", [{ message: error, kind, origins }]);
-    return { scope: new Set((await storage.get("scope")) || []), error };
+    await storage.store({ errors: [{ message: error, kind, origins }], checked: Date.now() });
+    return {
+        scope: new Set((await storage.get("scope")) || []),
+        error,
+        ...(transient !== undefined && { transient }),
+        ...(retryAfterMs !== undefined && { retryAfterMs })
+    };
+}
+
+/** The fetch errors of a resolve as a refresh result: the first one's message, and whether a retry can help. */
+function fetchFailure(errors) {
+    const fetchErrors = errors.filter((error) => error.kind === "fetch");
+    if (fetchErrors.length === 0) return {};
+    const retryAfters = fetchErrors.map((error) => error.retryAfterMs).filter((ms) => ms !== undefined);
+    return {
+        error: `${fetchErrors[0].href}: ${fetchErrors[0].message}`,
+        transient: fetchErrors.some((error) => error.transient),
+        ...(retryAfters.length > 0 && { retryAfterMs: Math.max(...retryAfters) })
+    };
+}
+
+/** Whether `next` holds an entry that `cached` does not hold as the same object. */
+function documentsChanged(cached, next) {
+    if (!cached) return true;
+    const hrefs = Object.keys(next);
+    return hrefs.length !== Object.keys(cached).length || hrefs.some((href) => next[href] !== cached[href]);
 }
 
 /** The origins this browser has not granted, and a message naming them; null when every one is granted. */
@@ -184,8 +218,12 @@ function keepForAccess(storage, url, { message, origins }) {
 
 /**
  * Refresh one provider: fetch its manifest, resolve every resource, and persist the result. A manifest
- * that cannot be fetched at all leaves the previous resolved content in place -- a stale result, kept
- * and flagged, rather than a working provider going dark on one network blip.
+ * that cannot be fetched leaves the previous resolved content in place -- a stale result, kept and
+ * flagged, rather than a working provider going dark on one network blip. A resource file that fails
+ * temporarily is merged from its cached copy (see `resolve()`).
+ *
+ * `updated` changes only on a refresh with no fetch error, so the status never shows a failed refresh
+ * as a fresh one. `checked` changes on every attempt.
  *
  * Nothing is requested from an origin this browser has not granted. Without a grant the browser still sends the
  * request and only hides the response, so a synced provider, or a manifest that names a new host after the user
@@ -195,8 +233,8 @@ function keepForAccess(storage, url, { message, origins }) {
  * @param {object} config - As returned by `getConfig()`.
  * @param {Set<string>} claimedSiteKeys - Keys already claimed by the bundled set or an earlier provider.
  * @param {object} [options]
- * @param {boolean} [options.force] - Bypass this provider's cached rahti-data conditional-GET headers.
- * @returns {Promise<{scope: Set<string>, error?: string}>}
+ * @param {boolean} [options.force] - Send no conditional request headers.
+ * @returns {Promise<{scope: Set<string>, error?: string, transient?: boolean, retryAfterMs?: number}>}
  */
 async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) {
     const storage = await initStorage(namespaceFor(url));
@@ -209,8 +247,8 @@ async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) 
     const manifestAccessError = await accessError([url]);
     if (manifestAccessError) return keepForAccess(storage, url, manifestAccessError);
 
-    const { manifest, error } = await fetchManifest(url, config.loopbackProvidersEnabled);
-    if (error) return keepLastResolved(storage, url, error, { kind: "fetch" });
+    const { manifest, error, transient, retryAfterMs } = await fetchManifest(url, config.loopbackProvidersEnabled);
+    if (error) return keepLastResolved(storage, url, error, { kind: "fetch", transient, retryAfterMs });
 
     // Before the resource check, so a provider still waiting for its resource grant already shows its name.
     await storage.store({ name: manifest.name ?? null, links: manifest.links });
@@ -219,15 +257,22 @@ async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) 
     const resourceAccessError = await accessError(origins);
     if (resourceAccessError) return keepForAccess(storage, url, resourceAccessError);
 
+    const documentsKey = documentsKeyFor(url);
+    const { [documentsKey]: cachedDocuments } = await browser.storage.local.get(documentsKey);
     const result = await resolve(manifest, url, {
         loopbackProvidersEnabled: config.loopbackProvidersEnabled,
         providerShadowingEnabled: config.providerShadowingEnabled,
         claimedSiteKeys,
-        resourceHeaders: (await storage.get("resourceHeaders")) || {},
-        previousRahtiData: (await storage.get("rahtiData")) || {},
-        previousDatabaseGenerationDate: await storage.get("databaseGenerationDate"),
+        documents: cachedDocuments || {},
         force
     });
+    const failure = fetchFailure(result.errors);
+
+    // Content resolved before the document cache existed has no copy of each file to fall back on.
+    if (!cachedDocuments && failure.transient && await storage.get("updated")) {
+        return keepLastResolved(storage, url, failure.error,
+            { kind: "fetch", transient: failure.transient, retryAfterMs: failure.retryAfterMs });
+    }
 
     // getConfig() hides these sites; this says why, once per fetch.
     const unrequestable = Object.entries(result.siteConfigs)
@@ -235,6 +280,11 @@ async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) 
         .map(([key]) => key);
     if (unrequestable.length > 0) log(`${url}: this build cannot request the origins of these sites, so they are hidden:`, unrequestable);
 
+    if (documentsChanged(cachedDocuments, result.documents)) {
+        await browser.storage.local.set({ [documentsKey]: result.documents });
+    }
+
+    const checked = Date.now();
     await storage.store({
         siteConfigs: result.siteConfigs,
         rahtiData: result.rahtiData,
@@ -242,15 +292,17 @@ async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) 
         scope: [...result.scope],
         rejected: result.rejected,
         errors: result.errors,
-        updated: Date.now(),
+        ...(failure.error ? {} : { updated: checked }),
+        checked,
         entryCount: Object.keys(result.rahtiData).length,
         databaseGenerationDate: result.databaseGenerationDate,
-        resourceHeaders: result.resourceHeaders,
         // Every resource origin the provider has used, so removeProvider() can revoke one that it no longer names.
         origins: originPatterns([...((await storage.get("origins")) || []), ...origins])
     });
+    // Conditional-GET headers from before the document cache, which now holds them.
+    if (storage.getKeys().includes("resourceHeaders")) await storage.remove(["resourceHeaders"]);
 
-    return { scope: result.scope };
+    return { scope: result.scope, ...failure };
 }
 
 /**
@@ -275,8 +327,9 @@ async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) 
  * other; that is accepted as a rare, self-healing staleness rather than solved with a storage lock.
  *
  * @param {object} [options]
- * @param {boolean} [options.force] - Bypass every provider's cached rahti-data conditional-GET headers.
- * @returns {Promise<Array<{url: string, scope: Set<string>, error?: string}>>}
+ * @param {boolean} [options.force] - Send no conditional request headers.
+ * @returns {Promise<Array<{url: string, scope: Set<string>, error?: string, transient?: boolean,
+ *   retryAfterMs?: number}>>}
  */
 async function refreshProviders({ force = false } = {}) {
     if (refreshInFlight && !force) return refreshInFlight;
@@ -320,6 +373,32 @@ async function _refreshProviders(force = false) {
     }
 
     return results;
+}
+
+/** A failed default provider gets this many refresh passes in total, the first one included. */
+const MAX_REFRESH_ATTEMPTS = 3;
+const RETRY_BACKOFF_MS = 30 * 1000;
+
+/**
+ * How long to wait before the next refresh pass, or null for no retry.
+ *
+ * Only a temporary failure of a default provider gets a retry, so a third-party manifest cannot make every
+ * provider refresh again. The wait starts at 30 s and doubles; a server's `Retry-After` can make it longer. The
+ * periodic refresh handles a wait longer than its interval.
+ *
+ * @param {Array<{url: string, transient?: boolean, retryAfterMs?: number}>} results - From `refreshProviders()`.
+ * @param {Set<string>} defaultUrls - The active environment's default provider URLs.
+ * @param {number} attempt - The pass that gave `results`, from 1.
+ * @param {number} intervalMs - The periodic refresh interval.
+ * @returns {number|null}
+ */
+function retryDelayMs(results, defaultUrls, attempt, intervalMs) {
+    const failed = results.filter((result) => defaultUrls.has(result.url) && result.transient);
+    if (failed.length === 0 || attempt >= MAX_REFRESH_ATTEMPTS) return null;
+
+    const retryAfterMs = Math.max(0, ...failed.map((result) => result.retryAfterMs ?? 0));
+    if (retryAfterMs > intervalMs) return null;
+    return Math.min(Math.max(RETRY_BACKOFF_MS * 2 ** (attempt - 1), retryAfterMs), intervalMs);
 }
 
 /**
@@ -404,5 +483,5 @@ async function _reconcileSuolaRules() {
 
 export {
     MAX_PROVIDERS, namespaceFor, getProviders, addProvider, removeProvider, setProviderEnabled,
-    getProviderData, refreshProviders, reconcileSuolaRules
+    getProviderData, refreshProviders, retryDelayMs, reconcileSuolaRules
 };

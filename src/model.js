@@ -393,6 +393,9 @@ const model = (() => {
              * "last checked"/"generation date" live in its own provider namespace, same as any other.
              * A disabled default provider is excluded -- it must read as having no data, not stale
              * leftovers from before it was turned off.
+             *
+             * `lastDatabaseUpdate` is the last refresh with no fetch error; `lastDatabaseCheck` is the last
+             * attempt, failed or not. Content stored before `checked` existed falls back to `updated`.
              */
             getDatabaseStatus: async () => {
                 const config = await getConfig();
@@ -400,6 +403,7 @@ const model = (() => {
                 const results = await Promise.all(enabledDefaults.map(getProviderData));
                 return {
                     lastDatabaseUpdate: results.reduce((max, r) => Math.max(max, r.updated || 0), 0) || null,
+                    lastDatabaseCheck: results.reduce((max, r) => Math.max(max, r.checked || r.updated || 0), 0) || null,
                     databaseGenerationDate: results.reduce((max, r) =>
                         (r.databaseGenerationDate && (!max || new Date(r.databaseGenerationDate) > new Date(max)))
                             ? r.databaseGenerationDate : max, null)

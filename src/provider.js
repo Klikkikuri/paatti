@@ -42,6 +42,9 @@ const MAX_RESOURCE_BYTES = 8 * 1024 * 1024;
 const MAX_RESOURCES = 32;
 const MAX_FETCHES = 32;
 
+/** HTTP statuses below 500 that a later attempt can get past. */
+const TRANSIENT_STATUSES = new Set([408, 425, 429]);
+
 /**
  * Whether `version` is compatible with `SUPPORTED_SCHEMA_VERSION` under the npm/Cargo caret rule: the
  * same major, and the same minor while the major is 0.
@@ -85,10 +88,11 @@ function providerBlockReason(url, loopbackProvidersEnabled) {
  * Fetch and JSON-parse one document, refusing it the same way `safeFetch` refuses any provider URL.
  *
  * Never throws: a failed document is data, not an exception, so the resource it belongs to can still
- * merge what did load.
+ * merge what did load. A failure is `transient` when a later attempt can succeed: a timeout, a network
+ * failure, or HTTP 408, 425, 429 or 5xx. A redirect also fails as a network failure, because `safeFetch`
+ * refuses it with the same `TypeError`.
  *
- * Conditional GET (D2, scoped to `rahti-data` resources -- see `resolve()`'s own doc comment for why
- * `site-configs`/`suola-rules` never pass a `cacheEntry` here): given a previously-seen `{etag,
+ * Conditional GET (scoped to `rahti-data` resources, see `resolve()`): given a previously-seen `{etag,
  * lastModified}`, sends `If-None-Match`/`If-Modified-Since` and returns `{notModified: true}` on a 304
  * instead of parsing a body that was never sent.
  *
@@ -98,11 +102,12 @@ function providerBlockReason(url, loopbackProvidersEnabled) {
  * @param {object} [options]
  * @param {{etag?: string|null, lastModified?: string|null}} [options.cacheEntry]
  * @param {boolean} [options.force] - Bypass `cacheEntry` and fetch unconditionally.
- * @returns {Promise<{content: object, etag: string|null, lastModified: string|null}|{notModified: true}|{error: string}>}
+ * @returns {Promise<{content: object, etag: string|null, lastModified: string|null}|{notModified: true}|
+ *   {error: string, transient: boolean, retryAfterMs?: number}>}
  */
 async function fetchDocument(url, loopbackProvidersEnabled, maxBytes = MAX_RESOURCE_BYTES, { cacheEntry, force = false } = {}) {
     const reason = providerBlockReason(url, loopbackProvidersEnabled);
-    if (reason) return { error: reason };
+    if (reason) return { error: reason, transient: false };
 
     const headers = {};
     if (cacheEntry && !force) {
@@ -116,7 +121,7 @@ async function fetchDocument(url, loopbackProvidersEnabled, maxBytes = MAX_RESOU
             ...(Object.keys(headers).length > 0 ? { init: { headers } } : {})
         });
         if (response.status === 304) return { notModified: true };
-        if (!response.ok) return { error: `HTTP ${response.status}` };
+        if (!response.ok) return httpError(response);
 
         const bytes = await readCapped(response, maxBytes);
         return {
@@ -126,8 +131,22 @@ async function fetchDocument(url, loopbackProvidersEnabled, maxBytes = MAX_RESOU
         };
     } catch (err) {
         log(`Failed to fetch ${url}:`, err.message);
-        return { error: err.message };
+        return { error: err.message, transient: err.name === "TimeoutError" || err.name === "TypeError" };
     }
+}
+
+/** A failed HTTP response as a `fetchDocument()` error, with the server's `Retry-After` when it is temporary. */
+function httpError(response) {
+    const transient = TRANSIENT_STATUSES.has(response.status) || response.status >= 500;
+    const retryAfterMs = transient ? parseRetryAfter(response.headers.get("Retry-After")) : undefined;
+    return { error: `HTTP ${response.status}`, transient, ...(retryAfterMs !== undefined && { retryAfterMs }) };
+}
+
+/** Milliseconds until the time a `Retry-After` value gives (delay-seconds or an HTTP date), or undefined. */
+function parseRetryAfter(value) {
+    if (!value) return undefined;
+    const ms = /^\d+$/.test(value.trim()) ? Number(value) * 1000 : Date.parse(value) - Date.now();
+    return Number.isFinite(ms) ? Math.max(ms, 0) : undefined;
 }
 
 /** `entry.href` as a list, whatever shape it arrived in. */
@@ -436,14 +455,14 @@ function computeDeclaredScope(siteConfigs) {
  *
  * @param {string} manifestUrl
  * @param {boolean} loopbackProvidersEnabled
- * @returns {Promise<{manifest: object}|{error: string}>}
+ * @returns {Promise<{manifest: object}|{error: string, transient?: boolean, retryAfterMs?: number}>}
  */
 async function fetchManifest(manifestUrl, loopbackProvidersEnabled) {
     const reason = providerBlockReason(manifestUrl, loopbackProvidersEnabled);
     if (reason) return { error: `manifest URL refused: ${reason}` };
 
     const fetched = await fetchDocument(manifestUrl, loopbackProvidersEnabled, MAX_MANIFEST_BYTES);
-    if (fetched.error) return { error: `manifest fetch failed: ${fetched.error}` };
+    if (fetched.error) return { ...fetched, error: `manifest fetch failed: ${fetched.error}` };
 
     return parseManifest(fetched.content);
 }
@@ -515,12 +534,13 @@ async function inspect(manifestUrl, options = {}) {
  * Gesture two: fetch every known resource within the resolver limits, merge each type by its own rule,
  * and apply the safety filters. Only called after the origins `inspect()` reported are granted.
  *
- * Conditional GET (D2) applies to `rahti-data` resources only, never to `site-configs`/`suola-rules`.
- * `mergeSiteConfigsDocument()` depends on `claimedSiteKeys`, which the caller rebuilds fresh on every
- * refresh pass -- reusing a cached `site-configs` merge result on a 304 would skip re-running the
- * shadowing/coverage check against a `claimedSiteKeys` that may have changed since, silently freezing a
- * stale accept/reject decision. `rahti-data` merging has no such external dependency (a pure function of
- * the fetched bytes), so caching it is safe.
+ * Each fetched href has a cached document: the last good copy, as raw JSON. A 304 and a temporary
+ * failure merge the cached copy. A permanent failure and a blocked URL merge nothing, so the provider
+ * gets what it serves now. The merge runs again on every refresh, because `site-configs` merging
+ * depends on `claimedSiteKeys`, which the caller builds fresh each pass.
+ *
+ * Conditional GET applies to `rahti-data` only. A server chooses the `ETag`, so it can identify one
+ * installation; `docs/fingerprinting.md` limits these headers to the correction database.
  *
  * @param {object} manifest - As returned by `inspect()`.
  * @param {string} manifestUrl
@@ -529,25 +549,20 @@ async function inspect(manifestUrl, options = {}) {
  * @param {boolean} [options.providerShadowingEnabled]
  * @param {Set<string>} [options.claimedSiteKeys] - Site keys the bundled set or an earlier provider
  *   already claims. Shadowing decides whether this manifest may take one over.
- * @param {Object<string, {etag?: string|null, lastModified?: string|null}>} [options.resourceHeaders] -
- *   Previously-seen conditional-GET headers, keyed by `rahti-data` href, from the provider's last resolve.
- * @param {object} [options.previousRahtiData] - The provider's last-resolved `rahtiData`, reused verbatim
- *   when every `rahti-data` href comes back 304.
- * @param {string|null} [options.previousDatabaseGenerationDate] - The provider's last-computed
- *   `databaseGenerationDate`, reused alongside `previousRahtiData` on an all-304 refresh -- otherwise a
- *   refresh where nothing changed would report no generation date at all instead of the real one.
- * @param {boolean} [options.force] - Bypass `resourceHeaders` and fetch every `rahti-data` href in full.
+ * @param {Object<string, {content: object, etag: string|null, lastModified: string|null}>} [options.documents] -
+ *   The cached documents from the provider's last resolve, keyed by absolute href.
+ * @param {boolean} [options.force] - Send no conditional request headers.
  * @returns {Promise<{siteConfigs: object, rahtiData: object, suolaRules: object|null, scope: Set<string>,
- *   rejected: Array, errors: Array, resourceHeaders: object, databaseGenerationDate: string|null}>}
+ *   rejected: Array, errors: Array, documents: object, databaseGenerationDate: string|null}>} `errors` starts
+ *   with the fetch errors, `{kind: "fetch", type, href, message, transient, retryAfterMs?}`. `documents` holds
+ *   the cached documents for the hrefs fetched in this pass only.
  */
 async function resolve(manifest, manifestUrl, options = {}) {
     const {
         loopbackProvidersEnabled = false,
         providerShadowingEnabled = false,
         claimedSiteKeys = new Set(),
-        resourceHeaders = {},
-        previousRahtiData = {},
-        previousDatabaseGenerationDate = null,
+        documents = {},
         force = false
     } = options;
 
@@ -556,6 +571,7 @@ async function resolve(manifest, manifestUrl, options = {}) {
     // weights -- knownResources() filters out of manifest.resources without reordering.
     const ordered = knownResources(manifest).slice().sort((a, b) => a.weight - b.weight);
 
+    const fetchErrors = [];
     const errors = [];
     const rejected = [];
 
@@ -595,72 +611,53 @@ async function resolve(manifest, manifestUrl, options = {}) {
         plans.push({ resource, sameOrigin, absoluteHrefs });
     }
 
-    // Phase 2: fetch the plan, concurrently. Only rahti-data hrefs ever receive a cacheEntry -- see the
-    // doc comment above for why site-configs/suola-rules always fetch in full. Promise.all preserves
-    // toFetch's order in its result, but phase 3 reads through the map below by URL, so the actual
-    // arrival order never matters.
+    // Phase 2: fetch the plan, concurrently, and pick each href's document for this pass.
     const fetched = new Map(
         await Promise.all(toFetch.map(async (url) => {
-            const cacheEntry = rahtiDataHrefs.has(url) ? resourceHeaders[url] : undefined;
+            const cacheEntry = rahtiDataHrefs.has(url) ? documents[url] : undefined;
             return [url, await fetchDocument(url, loopbackProvidersEnabled, undefined, { cacheEntry, force })];
         }))
     );
 
-    // If every rahti-data href came back 304, nothing changed: reuse the provider's last-resolved
-    // rahtiData wholesale and carry its headers forward, rather than re-fetching content nobody asked to
-    // see again. Otherwise, any rahti-data href that came back 304 is re-fetched in full (unconditionally)
-    // so it still contributes real content to the merge below -- a mixed batch cannot merge "some cached,
-    // some fresh" without the cached ones' bytes.
-    const budgetedRahtiDataHrefs = [...rahtiDataHrefs].filter((href) => budgeted.has(href));
-    const allRahtiDataNotModified = budgetedRahtiDataHrefs.length > 0
-        && budgetedRahtiDataHrefs.every((href) => fetched.get(href)?.notModified);
-
-    if (!allRahtiDataNotModified) {
-        for (const href of budgetedRahtiDataHrefs) {
-            if (fetched.get(href)?.notModified) {
-                fetched.set(href, await fetchDocument(href, loopbackProvidersEnabled, undefined, { force: true }));
-            }
+    const newDocuments = {};
+    for (const [url, result] of fetched) {
+        if (!result.error && !result.notModified) {
+            newDocuments[url] = { content: result.content, etag: result.etag, lastModified: result.lastModified };
+        } else if ((result.notModified || result.transient) && documents[url]) {
+            newDocuments[url] = documents[url];
         }
     }
 
     // Phase 3: merge, in the same (weight, document order) the plan was built in.
     let siteConfigs = {};
-    let rahtiData = allRahtiDataNotModified ? previousRahtiData : {};
+    let rahtiData = {};
     let suolaSites = [];
-    const newResourceHeaders = {};
-    let databaseGenerationDate = allRahtiDataNotModified ? previousDatabaseGenerationDate : null;
-
-    if (allRahtiDataNotModified) {
-        for (const href of budgetedRahtiDataHrefs) newResourceHeaders[href] = resourceHeaders[href];
-    }
+    let databaseGenerationDate = null;
 
     for (const { resource, sameOrigin, absoluteHrefs } of plans) {
-        if (resource.type === "rahti-data" && allRahtiDataNotModified) continue; // already reused above
-
-        const documents = [];
+        const contents = [];
         for (const absolute of absoluteHrefs) {
             if (!budgeted.has(absolute)) {
                 errors.push({ type: resource.type, href: absolute, message: "fetch budget exhausted" });
                 continue;
             }
-            const result = fetched.get(absolute);
-            if (result.error) {
-                errors.push({ type: resource.type, href: absolute, message: result.error });
-                continue;
+            const { error, transient, retryAfterMs } = fetched.get(absolute);
+            if (error) {
+                fetchErrors.push({
+                    kind: "fetch", type: resource.type, href: absolute, message: error, transient,
+                    ...(retryAfterMs !== undefined && { retryAfterMs })
+                });
             }
-            documents.push(result.content);
-            if (resource.type === "rahti-data" && (result.etag || result.lastModified)) {
-                newResourceHeaders[absolute] = { etag: result.etag || null, lastModified: result.lastModified || null };
-            }
+            if (newDocuments[absolute]) contents.push(newDocuments[absolute].content);
         }
 
         if (resource.inline !== undefined) {
-            documents.push(resource.type === "site-configs"
+            contents.push(resource.type === "site-configs"
                 ? { schema_version: SUPPORTED_SCHEMA_VERSION, sites: resource.inline }
                 : resource.inline);
         }
 
-        for (const content of documents) {
+        for (const content of contents) {
             if (resource.type === "suola-rules") {
                 if (content && Array.isArray(content.sites)) suolaSites = suolaSites.concat(content.sites);
                 else errors.push({ type: resource.type, message: "not a rules document (no sites[] array)" });
@@ -695,8 +692,8 @@ async function resolve(manifest, manifestUrl, options = {}) {
         suolaRules: suolaSites.length > 0 ? { sites: suolaSites } : null,
         scope: computeDeclaredScope(siteConfigs),
         rejected,
-        errors,
-        resourceHeaders: newResourceHeaders,
+        errors: [...fetchErrors, ...errors],
+        documents: newDocuments,
         databaseGenerationDate
     };
 }

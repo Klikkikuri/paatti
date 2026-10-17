@@ -9,7 +9,7 @@ import { canRequestOrigins } from "./origins.js";
  * DOM-free, so `make test` covers it without a browser.
  */
 
-/** A refresh that stopped early stores one error with a `kind`; resolve() errors carry none. */
+/** A refresh that stopped early stores one error with a `kind`. Of the resolve() errors, only a failed fetch has one. */
 const KIND_TAGS = {
     build: { key: "providerTagNotInBuild", fallback: "Not in this build" },
     access: { key: "providerTagNeedsAccess", fallback: "Needs access" },
