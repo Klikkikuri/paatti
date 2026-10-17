@@ -443,3 +443,16 @@ footer a:hover {
         }
     }
 }
+
+/* The link to a document after a section heading: an .info-dot (components.css) with a ring, so that it
+ * reads as a control and not as part of the heading. The outline keeps the gap transparent on any surface. */
+.help-dot,
+.help-dot:hover,
+.help-dot:focus-visible {
+    outline: 1.5px solid var(--color-neutral);
+    outline-offset: 2px;
+}
+
+.help-dot {
+    margin-left: 4px;
+}

@@ -1023,6 +1023,10 @@
     "message": "Add a third-party provider manifest for more sites, correction data or URL-normalization rules",
     "description": "Description of the options page Providers section"
   },
+  "providersHelpLink": {
+    "message": "How providers work",
+    "description": "Title and accessible name of the (?) link after the Providers heading. It opens docs/providers.md."
+  },
   "providerUrlPlaceholder": {
     "message": "https://example.com/manifest.json",
     "description": "Placeholder text for the provider manifest URL input"

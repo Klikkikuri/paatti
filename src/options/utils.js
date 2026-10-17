@@ -20,10 +20,19 @@ const isSiteEnabled = async (domain) => {
     return enabled && hasPermission;
 };
 
-// Display product name and version in the options page header and footer
+/**
+ * Display the product name and version in the options page header and footer, and point each `a[data-doc]` at
+ * that document in the release tag of this version.
+ *
+ * The tag is `vX.Y.Z`: the version without the store revision (see docs/release.md).
+ */
 const displayProductInfo = () => {
     try {
         const manifest = browser.runtime.getManifest();
+        const tag = `v${manifest.version.split(".").slice(0, 3).join(".")}`;
+        for (const link of document.querySelectorAll("a[data-doc]")) {
+            link.href = `https://github.com/Klikkikuri/paatti/blob/${tag}/${link.dataset.doc}`;
+        }
 
         const productNameEl = document.getElementById("product-name");
         const productVersionEl = document.getElementById("product-version");
