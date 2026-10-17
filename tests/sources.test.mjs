@@ -289,3 +289,34 @@ describe('the site of a host', () => {
         assert.equal(await model.read.getMatchingSiteDomain('a.news.hs.fi'), 'news.hs.fi');
     });
 });
+
+describe('the database status', () => {
+    /** Drain every pending microtask, so a publish that is going to happen has happened. */
+    const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+    test('counts the entries of a third-party provider when the default is off', async () => {
+        await setEnvironment();
+        await seedProvider(DEFAULT);
+        await seedProvider(PROVIDER);
+        await fake.browser.storage.local.set({ [`provider:${PROVIDER}`]: { siteConfigs: {}, entryCount: 5 } });
+        await setProviderEnabled(DEFAULT, false);
+
+        assert.equal(await model.read.getDatabaseEntryCount(), 5);
+    });
+
+    test('calls back when the default is disabled', async () => {
+        await setEnvironment();
+        await seedProvider(DEFAULT);
+        await fake.browser.storage.local.set({ [`provider:${DEFAULT}`]: { siteConfigs: {}, updated: 1000 } });
+        let calls = 0;
+        const unsubscribe = model.watch.onDatabaseStatusChanged(() => calls++);
+        await flush();
+
+        await setProviderEnabled(DEFAULT, false);
+        await flush();
+        unsubscribe();
+
+        assert.equal(calls, 2);
+        assert.equal((await model.read.getDatabaseStatus()).lastDatabaseUpdate, null);
+    });
+});

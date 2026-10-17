@@ -2,7 +2,7 @@
 
 import browser from "./browser-api.js";
 import { getLogger } from "./utils.js";
-import { getConfig, PROVIDER_KEY_PREFIX } from "./config.js";
+import { getConfig, onConfigValue } from "./config.js";
 import { mergeStats } from "./stats.js";
 
 const log = getLogger("model");
@@ -202,9 +202,46 @@ function sourcesForHost(config, hostname) {
     return config.providerShadowingEnabled ? [...claimants, ...otherDefaults] : [...otherDefaults, ...claimants];
 }
 
-/** The stored data of each enabled default provider, in `defaultProviders` order. */
-function defaultProviderData(config) {
-    return config.enabledDefaultProviderUrls.map((url) => config.providerData[url]);
+/**
+ * The timestamps of the official dataset, from the stored data of the enabled default provider(s).
+ *
+ * The official dataset is itself a provider (see config.js's defaultProviders), so its "last checked" and
+ * "generation date" live in its own provider namespace, same as any other. A disabled default provider is
+ * excluded -- it must read as having no data, not stale leftovers from before it was turned off.
+ *
+ * `lastDatabaseUpdate` is the last refresh with no fetch error; `lastDatabaseCheck` is the last attempt, failed or
+ * not. Content stored before `checked` existed falls back to `updated`.
+ *
+ * @param {object} config - From `getConfig()`.
+ */
+function databaseStatus(config) {
+    const results = config.enabledDefaultProviderUrls.map((url) => config.providerData[url]);
+    return {
+        lastDatabaseUpdate: results.reduce((max, r) => Math.max(max, r.updated || 0), 0) || null,
+        lastDatabaseCheck: results.reduce((max, r) => Math.max(max, r.checked || r.updated || 0), 0) || null,
+        databaseGenerationDate: results.reduce((max, r) =>
+            (r.databaseGenerationDate && (!max || new Date(r.databaseGenerationDate) > new Date(max)))
+                ? r.databaseGenerationDate : max, null)
+    };
+}
+
+/**
+ * How many titles the local database holds, summed across all enabled providers, so that a setup with only
+ * third-party providers is not empty.
+ *
+ * Reads each provider's own `entryCount` field, computed once at refresh time by refreshOne, so that a status read
+ * does not count `rahtiData`. A summed count, not a true set union: providers whose data overlaps on some `sign`
+ * give an overcount. This is accepted, because it is a UI "roughly how much data" signal, not used for correctness.
+ *
+ * This, not lastDatabaseUpdate, is the test for an empty database. That timestamp is evidence of a fetch and never
+ * of content -- it is written on an all-304 response, which touches no data, and a successful fetch can fail to
+ * write it at all.
+ *
+ * @param {object} config - From `getConfig()`.
+ * @returns {number} 0 when nothing has been stored.
+ */
+function databaseEntryCount(config) {
+    return Object.values(config.providerData).reduce((sum, r) => sum + (r.entryCount || 0), 0);
 }
 
 /**
@@ -487,48 +524,11 @@ const model = (() => {
                 return !!config.debugVisualsEnabled;
             },
 
-            /**
-             * The active environment's default provider(s) own timestamps now, not a flat storage key:
-             * the official dataset is itself a provider (see config.js's defaultProviders), so its
-             * "last checked"/"generation date" live in its own provider namespace, same as any other.
-             * A disabled default provider is excluded -- it must read as having no data, not stale
-             * leftovers from before it was turned off.
-             *
-             * `lastDatabaseUpdate` is the last refresh with no fetch error; `lastDatabaseCheck` is the last
-             * attempt, failed or not. Content stored before `checked` existed falls back to `updated`.
-             */
-            getDatabaseStatus: async () => {
-                const config = await getConfig();
-                const results = defaultProviderData(config);
-                return {
-                    lastDatabaseUpdate: results.reduce((max, r) => Math.max(max, r.updated || 0), 0) || null,
-                    lastDatabaseCheck: results.reduce((max, r) => Math.max(max, r.checked || r.updated || 0), 0) || null,
-                    databaseGenerationDate: results.reduce((max, r) =>
-                        (r.databaseGenerationDate && (!max || new Date(r.databaseGenerationDate) > new Date(max)))
-                            ? r.databaseGenerationDate : max, null)
-                };
-            },
+            /** See databaseStatus(). */
+            getDatabaseStatus: async () => databaseStatus(await getConfig()),
 
-            /**
-             * How many titles the local database holds, summed across the active environment's enabled
-             * default provider(s). Reads each provider's own `entryCount` field, computed once at refresh
-             * time by refreshOne, so that a status read does not count `rahtiData`. A summed count, not a
-             * true set union: today there is exactly one default provider per environment, so this is
-             * exact; a future second default provider whose data overlaps the first on some `sign` would
-             * be a minor overcount, accepted
-             * as this is a UI "roughly how much data" signal, not used for correctness.
-             *
-             * This, not lastDatabaseUpdate, is the test for an empty database. That timestamp is
-             * evidence of a fetch and never of content -- it is written on an all-304 response,
-             * which touches no data, and a successful fetch can fail to write it at all.
-             *
-             * @returns {Promise<number>} Entry count, 0 when nothing has been stored.
-             */
-            getDatabaseEntryCount: async () => {
-                const config = await getConfig();
-                const results = defaultProviderData(config);
-                return results.reduce((sum, r) => sum + (r.entryCount || 0), 0);
-            },
+            /** See databaseEntryCount(). */
+            getDatabaseEntryCount: async () => databaseEntryCount(await getConfig()),
 
             /**
              * The salt that gives this install its own easter egg calendar.
@@ -681,29 +681,17 @@ const model = (() => {
 
         watch: {
             /**
-             * Calls back whenever any provider's resolved data changes in storage.local -- the signal
-             * that getDatabaseStatus()/getDatabaseEntryCount() may now read something different.
+             * Calls back once now, and then whenever getDatabaseStatus() or getDatabaseEntryCount() reads
+             * something different.
              *
-             * Matches by the shared `provider:` prefix rather than a fixed key, because which URLs
-             * matter is environment-dependent (config.defaultProviders varies by environment) and can
-             * change at runtime; the caller's own re-read of getDatabaseStatus()/getDatabaseEntryCount()
-             * is what actually decides relevance. This does over-fire on a third-party provider's data
-             * changing too -- accepted, since those two functions read the cached config, which loads
-             * again once per change, and correctness (never missing a relevant change)
-             * matters more here than trimming an occasional redundant refresh.
+             * Watches the values themselves, not storage keys, because a change to the provider list or to the
+             * environment changes them as much as a provider refresh does.
              *
              * @param {() => void} callback
              * @returns {() => void} Unsubscribes when called.
              */
-            onDatabaseStatusChanged: (callback) => {
-                const listener = (changes, areaName) => {
-                    if (areaName !== "local") return;
-                    if (!Object.keys(changes).some((key) => key.startsWith(PROVIDER_KEY_PREFIX))) return;
-                    callback();
-                };
-                browser.storage.onChanged.addListener(listener);
-                return () => browser.storage.onChanged.removeListener(listener);
-            }
+            onDatabaseStatusChanged: (callback) =>
+                onConfigValue((config) => [databaseStatus(config), databaseEntryCount(config)], () => callback())
         }
     };
 })();
