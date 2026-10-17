@@ -50,7 +50,7 @@ template.innerHTML = `
 
         <details class="totals-about">
             <summary>
-                <span class="totals-about-icon" aria-hidden="true">i</span>
+                <span class="info-dot" aria-hidden="true">i</span>
                 <span data-i18n="statsTotalsAboutSummary"></span>
             </summary>
             <dl class="totals-about-list">

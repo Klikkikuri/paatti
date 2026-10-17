@@ -280,34 +280,10 @@ body {
     white-space: nowrap;
 }
 
-.stats-dot-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 15px;
-    height: 15px;
-    border-radius: 50%;
-    border: none;
-    color: var(--color-on-accent);
-    font-size: 10px;
-    font-weight: bold;
-    font-family: inherit;
-    cursor: pointer;
-    padding: 0;
-    margin: 0;
-    line-height: 1;
-    flex-shrink: 0;
-    user-select: none;
-    background-color: var(--color-neutral);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.stats-dot-btn:hover,
-.stats-dot-btn:focus-visible,
+/* An .info-dot (components.css), which rises while its row is open, and wears its level's colour. */
 .stats-row.is-open .stats-dot-btn {
     transform: scale(1.15);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-info) 40%, transparent);
-    outline: none;
 }
 
 /* Sky Blue & Sunset Orange (Above Threshold: Sky/Surface zone, Light -> Dark) */

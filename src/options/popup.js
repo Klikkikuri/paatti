@@ -122,7 +122,7 @@ const _createStatRow = (level, count, { clickbaitLevelThreshold, maxCount, rewri
 
     const dotBtn = document.createElement("button");
     dotBtn.type = "button";
-    dotBtn.className = "stats-dot-btn";
+    dotBtn.className = "info-dot stats-dot-btn";
     dotBtn.dataset.level = rowDiv.dataset.level;
 
     if (typeof clickbaitLevelThreshold === "number") {

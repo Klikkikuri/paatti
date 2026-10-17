@@ -112,7 +112,7 @@ describe('statistics-totals', () => {
 
         const about = element.querySelector('.totals-about');
         assert.equal(about.open, false);
-        assert.equal(about.querySelector('.totals-about-icon').textContent, 'i');
+        assert.equal(about.querySelector('.info-dot').textContent, 'i');
         assert.equal(about.querySelector('summary [data-i18n]').textContent, 'How to read this table');
         // Each column of the table, answered under the heading it carries.
         assert.deepEqual([...about.querySelectorAll('.totals-about-list > *')].map((el) => el.textContent), [

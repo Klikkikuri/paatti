@@ -14,6 +14,38 @@
     box-shadow: var(--push-shadow) var(--raised-offset) var(--raised-offset);
 }
 
+/* A small round badge that opens an explanation: the statistics table's "How to read", the popup's level
+ * dots, the Providers help link. Neutral by default; the popup recolours a dot by its level (styles.css). */
+.info-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 15px;
+    height: 15px;
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-radius: 50%;
+    background-color: var(--color-neutral);
+    color: var(--color-on-accent);
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1;
+    text-decoration: none;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.info-dot:hover,
+.info-dot:focus-visible {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-info) 40%, transparent);
+    outline: none;
+}
+
 .compact-setting-row {
     display: flex;
     align-items: center;
