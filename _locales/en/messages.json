@@ -1115,24 +1115,6 @@
     "message": "This version of the extension has no permission to use this provider.",
     "description": "Shown for a provider that browser sync copied into a store version, which cannot request the provider's origins"
   },
-  "providerBundledSet": {
-    "message": "the bundled set",
-    "description": "Names the built-in site list as the current holder of a domain a provider tried to claim"
-  },
-  "providerClaimedBy": {
-    "message": "$1: claimed by $2",
-    "description": "Explains why a provider's site was rejected: another source already holds that domain",
-    "placeholders": {
-      "key": {
-        "content": "$1",
-        "example": "yle.fi"
-      },
-      "winner": {
-        "content": "$2",
-        "example": "the bundled set"
-      }
-    }
-  },
   "providerIgnoredCount": {
     "message": "$1 resource(s) ignored (unknown type)",
     "description": "How many resources in a provider manifest were of a type this version does not understand",
@@ -1172,7 +1154,7 @@
     "description": "Title of the provider shadowing toggle"
   },
   "providerShadowingDesc": {
-    "message": "Lets an added provider take over a site the bundled set or an earlier provider already claims",
+    "message": "Lets an added provider take over a site that an earlier provider already supplies",
     "description": "Description of the provider shadowing toggle"
   },
   "providerShadowingSaved": {

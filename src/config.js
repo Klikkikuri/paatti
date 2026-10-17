@@ -2,7 +2,6 @@
 
 import browser from "./browser-api.js";
 import { getLogger } from "./utils.js";
-import { SITE_CONFIGS } from "./generated/sites.js";
 import { canRequestOrigins, canAddProviders } from "./options/origins.js";
 
 const log = getLogger("config");
@@ -21,9 +20,9 @@ const DEFAULT_ENV = {
     "easterEggProbability": 0.05,
     "email": "",
     "feedbackServerUrl": "https://docs.google.com/forms/d/e/1FAIpQLSf_vo9tpXAjbP1JyhNlgRdPnpPD1K3w6aPfern_jZfJVcHtCw/formResponse",
-    // Whether a provider may take over a site key or origin the bundled set or another provider
-    // already claims, and whether one may be reached at a loopback address. Two independent powers,
-    // neither implied by the environment -- see getConfig() for why they must stay local, not synced.
+    // Whether a provider may take over a site that an earlier provider already supplies, and whether one may be
+    // reached at a loopback address. Two independent powers, neither implied by the environment -- see
+    // getConfig() for why they must stay local, not synced.
     "providerShadowingEnabled": false,
     "loopbackProvidersEnabled": false,
 }
@@ -37,9 +36,6 @@ const DEFAULT_CONFIG = {
         "video": false,
         "converted": false
     },
-
-    // The sites come from Rahti's sites.json; see tools/sites.mjs.
-    "siteConfigs": SITE_CONFIGS,
 
     "environmentConfigs": {
         "free": {
@@ -70,14 +66,6 @@ const DEFAULT_CONFIG = {
     },
     "statistics": {},
 };
-
-/**
- * The domain keys the bundled set alone claims -- refreshProviders() seeds its precedence check from
- * this, not from getConfig().siteConfigs. That merged view already folds every enabled provider's own
- * previously-resolved sites back in, so seeding from it would make a provider look like it is
- * shadowing its own prior claim on every refresh after the first.
- */
-const BUNDLED_SITE_KEYS = new Set(Object.keys(DEFAULT_CONFIG.siteConfigs));
 
 // The keys getConfig() reads below -- used both for the storage.sync.get() call itself and for cache
 // invalidation, so the two can never drift out of step the way they once did. Everything else --
@@ -186,6 +174,23 @@ function isUsableProvider(url, defaultProviders) {
 }
 
 /**
+ * The providers that supply one site, highest precedence first; the first one is the winner.
+ *
+ * A higher weight wins, and of equal weights the provider later in the list. With shadowing off, weight does not
+ * count: only the earliest provider is kept, and a later one fills no gap that an earlier one has filled.
+ *
+ * @param {Array<{weight: number}>} suppliers - In provider list order.
+ * @param {boolean} shadowing
+ */
+function rankSuppliers(suppliers, shadowing) {
+    if (!shadowing) return suppliers.slice(0, 1);
+    return suppliers
+        .map((supplier, position) => ({ supplier, position }))
+        .sort((a, b) => b.supplier.weight - a.supplier.weight || b.position - a.position)
+        .map(({ supplier }) => supplier);
+}
+
+/**
  * Gets the merged configuration for the current environment.
  */
 async function getConfig() {
@@ -249,38 +254,45 @@ async function getConfig() {
         const providerData = Object.fromEntries(enabledProviderUrls.map((url) =>
             [url, storedProviderData[`${PROVIDER_KEY_PREFIX}${url}`] || {}]));
 
-        const mergedSiteConfigs = { ...DEFAULT_CONFIG.siteConfigs };
-        // The providers that a domain's site came from, in the order they were applied; the last one is the
-        // winner. Absent means the bundled set. model.js's sourcesForHost() builds the lookup chain from this.
+        const mergedSiteConfigs = {};
+        // The providers that supply a domain's site, winner first: see rankSuppliers(). model.js's sourcesForHost()
+        // builds the lookup chain from this.
         const siteConfigSources = {};
 
         // Folded in before the override loop below, not after: that loop is what applies
-        // userSiteOverrides and fills in a default origin, and a provider-only site needs both. A
-        // domain here was already resolved against the declared-scope and shadowing rules in
-        // providers.js's own refresh cycle, so it is simply layered on top -- a shadowing claim
-        // replaces the bundled entry outright, exactly as a provider replacing its own is expected to.
+        // userSiteOverrides and fills in a default origin, and a provider-only site needs both.
         //
-        // enabled: true means something different here than it does for the bundled set below: not
+        // enabled: true means something different here than it does for a default provider: not
         // "on", but "offered". A provider site always starts off regardless of what the provider
         // declared, and only userSiteOverrides -- the user's own choice, made through the ordinary
         // site toggle -- can turn it on; enabled: false in the provider's own data instead withdraws
         // the offer entirely, so the site never appears at all.
         //
-        // A default provider publishes the bundled set itself, so its sites keep their own `enabled`,
-        // as bundled sites do. A new site still needs its origin granted: isSiteEnabled() and the content
-        // script registration both check the permission.
+        // A default provider's sites keep their own `enabled`. A new site still needs its origin granted:
+        // isSiteEnabled() and the content script registration both check the permission.
         //
         // A site whose origins this build cannot request is left out: it could never be turned on. In the store
         // build, that is a site its manifest does not declare. refreshOne() logs it once per fetch.
+        const suppliers = {};
         for (const provider of enabledProviders) {
             const isDefault = defaultProviders.has(provider.url);
-            for (const [domain, siteConfig] of Object.entries(providerData[provider.url].siteConfigs || {})) {
+            const { siteConfigs = {}, siteWeights = {} } = providerData[provider.url];
+            for (const [domain, siteConfig] of Object.entries(siteConfigs)) {
                 if (!isDefault && !siteConfig.enabled) continue;
                 const origins = siteConfig.origins || [`https://${domain}/*`];
                 if (!canRequestOrigins(origins, manifest)) continue;
-                mergedSiteConfigs[domain] = isDefault ? siteConfig : { ...siteConfig, enabled: false };
-                (siteConfigSources[domain] ||= []).push({ url: provider.url, origins });
+                (suppliers[domain] ||= []).push({
+                    url: provider.url,
+                    origins,
+                    weight: siteWeights[domain] ?? 0,
+                    site: isDefault ? siteConfig : { ...siteConfig, enabled: false }
+                });
             }
+        }
+        for (const [domain, candidates] of Object.entries(suppliers)) {
+            const ranked = rankSuppliers(candidates, envData.providerShadowingEnabled);
+            mergedSiteConfigs[domain] = ranked[0].site;
+            siteConfigSources[domain] = ranked.map(({ url, origins }) => ({ url, origins }));
         }
 
         for (const [domain, siteConfig] of Object.entries(mergedSiteConfigs)) {
@@ -336,4 +348,4 @@ async function getConfig() {
     return pendingConfigPromise;
 }
 
-export { getConfig, onConfigValue, isUsableProvider, PROVIDER_KEY_PREFIX, BUNDLED_SITE_KEYS, DEFAULT_RAHTI_MANIFEST_URL };
+export { getConfig, onConfigValue, isUsableProvider, PROVIDER_KEY_PREFIX, DEFAULT_RAHTI_MANIFEST_URL };

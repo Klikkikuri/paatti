@@ -244,3 +244,34 @@ test('getRahtiEntries reads no storage after the config is loaded', async () => 
     assert.equal(fake.reads.local, reads);
     assert.deepEqual(entries, { [LINK]: { title: 'Default' }, [UNCLAIMED_LINK]: null });
 });
+
+describe('the site of a host', () => {
+    const entry = (name, origins) => ({ name, enabled: true, origins, rules: [{ container: name }] });
+
+    async function seedSites(siteConfigs) {
+        await setEnvironment();
+        await fake.browser.storage.sync.set({ providers: [{ url: DEFAULT, enabled: true }] });
+        await fake.browser.storage.local.set({ [`provider:${DEFAULT}`]: { siteConfigs } });
+    }
+
+    test('is the one that names the host, not the one that names its subdomains, in either order', async () => {
+        for (const order of [['hs.fi', 'www.hs.fi'], ['www.hs.fi', 'hs.fi']]) {
+            await seedSites(Object.fromEntries(order.map((key) =>
+                [key, entry(key, key === 'hs.fi' ? ['https://*.hs.fi/*'] : ['https://www.hs.fi/*'])])));
+
+            assert.equal(await model.read.getMatchingSiteDomain('www.hs.fi'), 'www.hs.fi', order.join(' '));
+            assert.equal(await model.read.getMatchingSiteDomain('m.hs.fi'), 'hs.fi', order.join(' '));
+            assert.equal(await model.read.getMatchingSiteDomain('hs.fi'), 'hs.fi', order.join(' '));
+            await fake.browser.storage.local.clear();
+        }
+    });
+
+    test('is the one that names the longer suffix, among sites that name subdomains', async () => {
+        await seedSites({
+            'hs.fi': entry('hs.fi', ['https://*.hs.fi/*']),
+            'news.hs.fi': entry('news.hs.fi', ['https://*.news.hs.fi/*'])
+        });
+
+        assert.equal(await model.read.getMatchingSiteDomain('a.news.hs.fi'), 'news.hs.fi');
+    });
+});

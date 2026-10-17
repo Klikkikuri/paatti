@@ -33,7 +33,7 @@ const REPO = resolvePath(dirname(fileURLToPath(import.meta.url)), "..");
 const MODULE = join("src", "generated", "sites.js");
 const MANIFEST = "manifest.json";
 
-const SITE_ORIGIN = /^https?:\/\/[^/*]+\/\*$/;
+const SITE_ORIGIN = /^https?:\/\/(\*\.)?[^/*]+\/\*$/;
 
 /**
  * Fetch and resolve the site configurations of a provider manifest. Loopback is allowed: this runs on a

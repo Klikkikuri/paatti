@@ -18,8 +18,8 @@ const { getConfig, onConfigValue, DEFAULT_RAHTI_MANIFEST_URL } = await import('.
 
 const { local, sync } = fake.browser.storage;
 
-describe('manifest agrees with the site configs', async () => {
-    const { siteConfigs } = await getConfig();
+describe('manifest agrees with the generated site configs', async () => {
+    const { SITE_CONFIGS: siteConfigs } = await import('../src/generated/sites.js');
 
     const hostPermissions = new Set(manifest.host_permissions || []);
     const optionalHostPermissions = new Set(manifest.optional_host_permissions || []);
@@ -111,7 +111,11 @@ describe('the config cache', () => {
 
 describe('merging stored values over the defaults', () => {
     test('a sync override is applied to a site, and origins are filled in', async () => {
-        await sync.set({ userSiteOverrides: { 'yle.fi': { enabled: false } } });
+        await sync.set({
+            providers: [{ url: DEFAULT_RAHTI_MANIFEST_URL, enabled: true }],
+            userSiteOverrides: { 'yle.fi': { enabled: false } }
+        });
+        await local.set({ [`provider:${DEFAULT_RAHTI_MANIFEST_URL}`]: { siteConfigs: { 'yle.fi': { name: 'Yle', enabled: true, rules: [] } } } });
         const config = await getConfig();
 
         assert.equal(config.siteConfigs['yle.fi'].enabled, false);
@@ -222,14 +226,14 @@ describe('providers folded into siteConfigs', () => {
             await withDefaultProvider('development', (config) => {
                 assert.equal(config.siteConfigs['www.hs.fi'].enabled, true);
                 assert.deepEqual(config.siteConfigs['www.hs.fi'].rules, hs.rules);
-                assert.equal(config.siteConfigSources['www.hs.fi'].at(-1).url, DEFAULT_RAHTI_MANIFEST_URL);
+                assert.equal(config.siteConfigSources['www.hs.fi'][0].url, DEFAULT_RAHTI_MANIFEST_URL);
             });
         });
 
         test('keeps a site it marks enabled: false, off, as the bundled set does', async () => {
             await withDefaultProvider('free', (config) => {
                 assert.equal(config.siteConfigs['www.ampparit.com'].enabled, false);
-                assert.equal(config.siteConfigSources['www.ampparit.com'].at(-1).url, DEFAULT_RAHTI_MANIFEST_URL, 'listed, not withdrawn');
+                assert.equal(config.siteConfigSources['www.ampparit.com'][0].url, DEFAULT_RAHTI_MANIFEST_URL, 'listed, not withdrawn');
             });
         });
 
@@ -283,17 +287,55 @@ describe('providers folded into siteConfigs', () => {
         assert.equal(config.siteConfigs['news.example'].enabled, true, 'the user\'s own choice must be able to turn it on');
     });
 
-    test('a provider claiming an existing bundled key replaces it outright', async () => {
-        await sync.set({ providers: [{ url, enabled: true }] });
-        await local.set({
-            [`provider:${url}`]: {
-                siteConfigs: { 'yle.fi': { name: 'Provider Yle', enabled: true, origins: ['https://yle.fi/*'], rules: [] } }
+    describe('two providers that supply one site', () => {
+        const first = 'https://first.example/manifest.json';
+        const second = 'https://second.example/manifest.json';
+        const supplied = (name) => ({ name, enabled: true, origins: ['https://news.example/*'], rules: [] });
+
+        async function withProviders({ shadowing, weights = {} }, check) {
+            await local.set({
+                userPreferences: { environmentConfigs: { free: { providerShadowingEnabled: shadowing } } },
+                [`provider:${first}`]: { siteConfigs: { 'news.example': supplied('First') }, siteWeights: { 'news.example': weights.first ?? 0 } },
+                [`provider:${second}`]: { siteConfigs: { 'news.example': supplied('Second') }, siteWeights: { 'news.example': weights.second ?? 0 } }
+            });
+            await sync.set({ providers: [{ url: first, enabled: true }, { url: second, enabled: true }], userSiteOverrides: {} });
+            try {
+                await check(await getConfig());
+            } finally {
+                await local.set({ userPreferences: {} });
+                await sync.set({ providers: [] });
             }
+        }
+
+        const winners = (config) => config.siteConfigSources['news.example'].map(({ url }) => url);
+
+        test('the later one wins when the weights are equal and shadowing is on', async () => {
+            await withProviders({ shadowing: true }, (config) => {
+                assert.deepEqual(winners(config), [second, first]);
+                assert.equal(config.siteConfigs['news.example'].name, 'Second');
+            });
         });
 
-        const config = await getConfig();
+        test('the heavier one wins, whichever comes first', async () => {
+            await withProviders({ shadowing: true, weights: { first: 1 } }, (config) => {
+                assert.deepEqual(winners(config), [first, second]);
+                assert.equal(config.siteConfigs['news.example'].name, 'First');
+            });
+        });
 
-        assert.equal(config.siteConfigs['yle.fi'].name, 'Provider Yle');
+        test('only the first one counts when shadowing is off, whatever the weights', async () => {
+            await withProviders({ shadowing: false, weights: { second: 9 } }, (config) => {
+                assert.deepEqual(winners(config), [first]);
+                assert.equal(config.siteConfigs['news.example'].name, 'First');
+            });
+        });
+
+        test('data stored without weights counts as weight 0', async () => {
+            await local.set({ [`provider:${first}`]: { siteConfigs: { 'news.example': supplied('First') } } });
+            await withProviders({ shadowing: true }, (config) => {
+                assert.deepEqual(winners(config), [second, first]);
+            });
+        });
     });
 
     test('writing a provider\'s resolved data invalidates the cache', async () => {

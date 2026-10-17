@@ -8,8 +8,9 @@ globalThis.browser = fake.browser;
 
 const {
     MAX_PROVIDERS, getProviders, addProvider, seedDefaultProviders, removeProvider, setProviderEnabled,
-    getProviderData, refreshProviders, reconcileSuolaRules, retryDelayMs
+    getProviderData, dropStaleProviderData, namespaceFor, refreshProviders, reconcileSuolaRules, retryDelayMs
 } = await import('../src/providers.js');
+const { initStorage } = await import('../src/storage.js');
 
 /** Stubs the three Suola WASM globals reconcileSuolaRules() assumes are already installed. */
 function mockSuola({ refuse = new Set() } = {}) {
@@ -269,13 +270,32 @@ describe('removeProvider gives back what only that provider used', () => {
     });
 });
 
+describe('dropStaleProviderData', () => {
+    test('removes the scope and the rejected list that an older version stored, and nothing else', async () => {
+        const url = 'https://provider.example/manifest.json';
+        await addProvider(url);
+        const storage = await initStorage(namespaceFor(url));
+        await storage.store({
+            scope: ['news.example'], rejected: [{ key: 'yle.fi', reason: 'already claimed; shadowing is disabled' }],
+            siteConfigs: { 'news.example': site('news.example') }
+        });
+
+        await dropStaleProviderData();
+
+        const data = await getProviderData(url);
+        assert.deepEqual(data.rejected, []);
+        assert.ok(data.siteConfigs['news.example']);
+        assert.ok(!(await initStorage(namespaceFor(url))).getKeys().includes('scope'));
+    });
+});
+
 describe('getProviderData', () => {
     test('returns the empty shape for a provider that has never resolved', async () => {
         const data = await getProviderData('https://provider.example/manifest.json');
         assert.deepEqual(data.siteConfigs, {});
         assert.deepEqual(data.rahtiData, {});
         assert.equal(data.suolaRules, null);
-        assert.deepEqual([...data.scope], []);
+        assert.deepEqual(data.siteWeights, {});
         assert.equal(data.updated, null);
         assert.equal(data.entryCount, 0);
         assert.equal(data.databaseGenerationDate, null);
@@ -588,70 +608,23 @@ describe('refreshProviders', () => {
         assert.deepEqual(badData.siteConfigs, {});
     });
 
-    test('the bundled set is claimed before the first provider runs', async () => {
-        const url = 'https://provider.example/manifest.json';
-        await addProvider(url);
-        installed = mockFetch({
-            [url]: jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'yle.fi': site('yle.fi') } }]))
-        });
-
-        await refreshProviders();
-
-        const data = await getProviderData(url);
-        assert.deepEqual(data.siteConfigs, {}, 'yle.fi is a bundled site and shadowing is off by default');
-        assert.ok(data.rejected.some((r) => r.key === 'yle.fi'));
-    });
-
-    test('a default provider may replace the bundled set; a provider after it may not take the key back', async () => {
-        const { DEFAULT_RAHTI_MANIFEST_URL: official } = await import('../src/config.js');
-        const other = 'https://provider.example/manifest.json';
-        await addProvider(official);
-        await addProvider(other);
-        installed = mockFetch({
-            [official]: jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'yle.fi': site('yle.fi') } }])),
-            [other]: jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'yle.fi': site('yle.fi') } }]))
-        });
-
-        await refreshProviders();
-
-        const officialData = await getProviderData(official);
-        assert.ok(officialData.siteConfigs['yle.fi'], 'shadowing is off by default, but the default provider publishes the bundled set');
-        assert.deepEqual(officialData.rejected, []);
-        assert.ok((await getProviderData(other)).rejected.some((r) => r.key === 'yle.fi'));
-    });
-
-    test('a provider does not shadow its own prior claim on a second refresh', async () => {
-        const url = 'https://provider.example/manifest.json';
-        await addProvider(url);
-        installed = mockFetch({
-            [url]: jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'extra.example': site('extra.example') } }]))
-        });
-
-        for (let round = 1; round <= 3; round++) {
-            await refreshProviders();
-            const data = await getProviderData(url);
-            assert.ok(data.siteConfigs['extra.example'], `lost after refresh round ${round}`);
-            assert.deepEqual(data.rejected, [], `round ${round} rejected its own prior claim`);
-        }
-    });
-
-    test('claims accumulate across providers in the order they were added', async () => {
+    test('every provider keeps the sites it supplies; which one wins is decided by the configuration', async () => {
         const first = 'https://first.example/manifest.json';
         const second = 'https://second.example/manifest.json';
         await addProvider(first);
         await addProvider(second);
         installed = mockFetch({
             [first]: jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'news.example': site('news.example') } }])),
-            [second]: jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'news.example': site('news.example') } }]))
+            [second]: jsonResponse(manifestDoc([{ type: 'site-configs', weight: 3, sites: { 'news.example': site('news.example') } }]))
         });
 
         await refreshProviders();
 
-        const firstData = await getProviderData(first);
+        assert.deepEqual(Object.keys((await getProviderData(first)).siteConfigs), ['news.example']);
         const secondData = await getProviderData(second);
-        assert.ok(firstData.siteConfigs['news.example'], 'the first provider to add a new key wins it');
-        assert.equal(secondData.siteConfigs['news.example'], undefined);
-        assert.ok(secondData.rejected.some((r) => r.key === 'news.example'));
+        assert.deepEqual(Object.keys(secondData.siteConfigs), ['news.example']);
+        assert.deepEqual(secondData.siteWeights, { 'news.example': 3 });
+        assert.deepEqual(secondData.rejected, []);
     });
 
     test('two concurrent calls join into one pass instead of racing each other', async () => {
@@ -721,11 +694,11 @@ describe('retryDelayMs', () => {
     const OTHER = 'https://other.example/manifest.json';
     const DEFAULT_URLS = new Set([DEFAULT]);
     const HOUR = 60 * 60 * 1000;
-    const temporary = (url, extra = {}) => ({ url, scope: new Set(), error: 'HTTP 503', transient: true, ...extra });
+    const temporary = (url, extra = {}) => ({ url, error: 'HTTP 503', transient: true, ...extra });
 
     const CASES = [
         { name: 'no default provider result', results: [], attempt: 1, expected: null },
-        { name: 'a success', results: [{ url: DEFAULT, scope: new Set() }], attempt: 1, expected: null },
+        { name: 'a success', results: [{ url: DEFAULT }], attempt: 1, expected: null },
         { name: 'a permanent error', results: [temporary(DEFAULT, { transient: false })], attempt: 1, expected: null },
         { name: 'a temporary error of another provider', results: [temporary(OTHER)], attempt: 1, expected: null },
         { name: 'attempt 1', results: [temporary(DEFAULT)], attempt: 1, expected: 30000 },

@@ -297,9 +297,10 @@ function isHttpUrl(value) {
 /**
  * True if `key` is only a hostname: no scheme, path, port, credentials or `*`.
  *
- * The shadowing gate compares `key` as a literal string. But `matchesOrigin` reads only the host of an origin, up to
- * the first `/`. Thus, a provider could use the key `www.hs.fi/x`, which is not in `claimedSiteKeys`. Its default
- * origin `https://www.hs.fi/x/*` would then match the real `www.hs.fi`, and the provider would get a claimed host.
+ * The ranking of the providers compares `key` as a literal string. But `matchesOrigin` reads only the host of an
+ * origin, up to the first `/`. Thus, a provider could use the key `www.hs.fi/x`, which competes with no other site.
+ * Its default origin `https://www.hs.fi/x/*` would then match the real `www.hs.fi`, and the provider would get a host
+ * that it does not rank for.
  *
  * The URL parser accepts `*` in a host. Thus, this function refuses a `*` before it parses `key`. After that, `key`
  * must not change when the parser reads it: `new URL("https://KEY/").hostname === KEY` is false for a key that is
@@ -318,10 +319,12 @@ function isBareHostname(key) {
 }
 
 /**
- * True if each entry of `origins` is exactly `http(s)://<key>/*`.
+ * True if each entry of `origins` is exactly `http(s)://<key>/*`, or `http(s)://*.<key>/*` for the subdomains of a key
+ * that has a dot.
  *
  * This rule stops a key that claims an origin that it does not name: `www.hs.fi` cannot list
- * `https://www.lapinkansa.fi/*`. The rule alone accepts the key `*`. `isBareHostname` refuses that key.
+ * `https://www.lapinkansa.fi/*`. A site that names its subdomains is less specific than a site that names one of them:
+ * see `findSiteConfig()`. The rule alone accepts the key `*`. `isBareHostname` refuses that key.
  *
  * @param {string} key
  * @param {string[]} origins
@@ -329,7 +332,8 @@ function isBareHostname(key) {
  */
 function originsMatchKey(key, origins) {
     if (!Array.isArray(origins) || origins.length === 0) return false;
-    return origins.every((origin) => origin === `https://${key}/*` || origin === `http://${key}/*`);
+    const hosts = key.includes(".") ? [key, `*.${key}`] : [key];
+    return origins.every((origin) => hosts.some((host) => origin === `https://${host}/*` || origin === `http://${host}/*`));
 }
 
 /** The host an `https://host/*`-shaped origin pattern names, or null when it does not parse. */
@@ -382,7 +386,7 @@ function concatDedupe(a, b) {
     return merged;
 }
 
-/** Merge one incoming site into an accumulator entry: concatenate+dedupe the arrays, last-wins the rest. */
+/** Merge one incoming site into an accumulator entry: concatenate+dedupe the arrays, take the highest weight, last-wins the rest. */
 function mergeSite(existing, incoming) {
     if (!existing) return incoming;
     return {
@@ -390,26 +394,36 @@ function mergeSite(existing, incoming) {
         enabled: incoming.enabled,
         origins: concatDedupe(existing.origins, incoming.origins),
         rules: concatDedupe(existing.rules, incoming.rules),
-        links: concatDedupe(existing.links, incoming.links)
+        links: concatDedupe(existing.links, incoming.links),
+        weight: Math.max(existing.weight, incoming.weight)
     };
+}
+
+/** Split the weight off each merged site. The weights are kept beside the sites, so the site objects stay as the document gave them. */
+function splitWeights(merged) {
+    const siteConfigs = {};
+    const siteWeights = {};
+    for (const [key, { weight, ...site }] of Object.entries(merged)) {
+        siteConfigs[key] = site;
+        siteWeights[key] = weight;
+    }
+    return { siteConfigs, siteWeights };
 }
 
 /**
  * Merge one fetched or inline `sites.json` document into `accumulator`. Returns a new accumulator;
  * never mutates its input.
  *
- * @param {object} accumulator - `{ [domain]: site }` merged so far.
+ * @param {object} accumulator - `{ [domain]: site }` merged so far; each site carries its `weight`.
  * @param {object} document - The `{ schema_version, sites }` document.
  * @param {object} options
  * @param {Set<string>|null} options.coverageHosts - The hosts a cross-origin resource declared; every
  *   site's own `origins` must resolve inside this set. Null for a same-origin or inline document, which
  *   needs no declaration and so has nothing to check coverage against.
- * @param {Set<string>} options.claimedSiteKeys - Keys already claimed by the bundled set or an earlier
- *   provider.
- * @param {boolean} options.providerShadowingEnabled
+ * @param {number} options.weight - The `weight` of the resource the document belongs to.
  * @returns {{siteConfigs: object, rejected: Array<{key: string|null, reason: string}>}}
  */
-function mergeSiteConfigsDocument(accumulator, document, { coverageHosts, claimedSiteKeys, providerShadowingEnabled }) {
+function mergeSiteConfigsDocument(accumulator, document, { coverageHosts, weight }) {
     if (!document || typeof document !== "object" || !caretCompatible(document.schema_version)) {
         return { siteConfigs: accumulator, rejected: [{ key: null, reason: "malformed or incompatible sites.json" }] };
     }
@@ -426,27 +440,10 @@ function mergeSiteConfigsDocument(accumulator, document, { coverageHosts, claime
             continue;
         }
 
-        if (claimedSiteKeys.has(key) && !merged[key] && !providerShadowingEnabled) {
-            rejected.push({ key, reason: "already claimed; shadowing is disabled" });
-            continue;
-        }
-
-        merged[key] = mergeSite(merged[key], site);
+        merged[key] = mergeSite(merged[key], { ...site, weight });
     }
 
     return { siteConfigs: merged, rejected };
-}
-
-/**
- * The set of domain keys a provider's `site-configs` resources may speak for at query time -- the
- * scope the Suola and Rahti link-scoping rules consult. Bootstrapped from the merged sites themselves,
- * so it cannot be inflated by anything that is not already a real, well-formed key.
- *
- * @param {object} siteConfigs
- * @returns {Set<string>}
- */
-function computeDeclaredScope(siteConfigs) {
-    return new Set(Object.keys(siteConfigs));
 }
 
 /**
@@ -474,22 +471,16 @@ async function fetchManifest(manifestUrl, loopbackProvidersEnabled) {
  *
  * The shape-level checks resolve() also applies to a same-origin resource (origins declared where it
  * must not be, a malformed site, a host mismatch) are applied here too, so what this discloses can
- * never be less strict than the resolution that follows it. The declared-scope/shadowing check is the
- * one exception: it depends on state resolve() reads fresh at its own call time (the bundled set plus
- * every other currently-resolved provider), so it only matches resolve()'s outcome when the caller
- * passes the same `claimedSiteKeys`/`providerShadowingEnabled` resolve() will be called with -- with
- * the defaults below, a site already claimed elsewhere is disclosed here but may still be rejected then.
+ * never be less strict than the resolution that follows it.
  *
  * @param {string} manifestUrl
  * @param {object} [options]
  * @param {boolean} [options.loopbackProvidersEnabled]
- * @param {boolean} [options.providerShadowingEnabled]
- * @param {Set<string>} [options.claimedSiteKeys] - See `resolve()`.
  * @returns {Promise<{manifest: object, origins: Set<string>, sites: object, rejected: Array,
  *   ignoredCount: number}|{error: string}>}
  */
 async function inspect(manifestUrl, options = {}) {
-    const { loopbackProvidersEnabled = false, providerShadowingEnabled = false, claimedSiteKeys = new Set() } = options;
+    const { loopbackProvidersEnabled = false } = options;
     const { manifest, error } = await fetchManifest(manifestUrl, loopbackProvidersEnabled);
     if (error) return { error };
 
@@ -499,7 +490,6 @@ async function inspect(manifestUrl, options = {}) {
 
     let sites = {};
     const rejected = [];
-    const mergeOptions = { coverageHosts: null, claimedSiteKeys, providerShadowingEnabled };
 
     for (const resource of knownResources(manifest)) {
         if (resource.type !== "site-configs" || !isSameOrigin(resource, manifestUrl, manifestOrigin)) continue;
@@ -515,19 +505,19 @@ async function inspect(manifestUrl, options = {}) {
         for (const href of resource.href) {
             const doc = await fetchDocument(resolveHref(manifestUrl, href), loopbackProvidersEnabled);
             if (doc.error) { rejected.push({ key: null, reason: doc.error }); continue; }
-            const result = mergeSiteConfigsDocument(sites, doc.content, mergeOptions);
+            const result = mergeSiteConfigsDocument(sites, doc.content, { coverageHosts: null, weight: resource.weight });
             sites = result.siteConfigs;
             rejected.push(...result.rejected);
         }
 
         if (resource.inline !== undefined) {
-            const result = mergeSiteConfigsDocument(sites, inlineDocument(resource), mergeOptions);
+            const result = mergeSiteConfigsDocument(sites, inlineDocument(resource), { coverageHosts: null, weight: resource.weight });
             sites = result.siteConfigs;
             rejected.push(...result.rejected);
         }
     }
 
-    return { manifest, origins, sites, rejected, ignoredCount };
+    return { manifest, origins, sites: splitWeights(sites).siteConfigs, rejected, ignoredCount };
 }
 
 /**
@@ -594,8 +584,7 @@ function inlineDocument(resource) {
  *
  * Each fetched href has a cached document: the last good copy, as raw JSON. A 304 and a temporary
  * failure merge the cached copy. A permanent failure and a blocked URL merge nothing, so the provider
- * gets what it serves now. The merge runs again on every refresh, because `site-configs` merging
- * depends on `claimedSiteKeys`, which the caller builds fresh each pass.
+ * gets what it serves now.
  *
  * Conditional GET applies to `rahti-data` only. A server chooses the `ETag`, so it can identify one
  * installation; `docs/fingerprinting.md` limits these headers to the correction database.
@@ -604,13 +593,10 @@ function inlineDocument(resource) {
  * @param {string} manifestUrl
  * @param {object} [options]
  * @param {boolean} [options.loopbackProvidersEnabled]
- * @param {boolean} [options.providerShadowingEnabled]
- * @param {Set<string>} [options.claimedSiteKeys] - Site keys the bundled set or an earlier provider
- *   already claims. Shadowing decides whether this manifest may take one over.
  * @param {Object<string, {content: object, etag: string|null, lastModified: string|null}>} [options.documents] -
  *   The cached documents from the provider's last resolve, keyed by absolute href.
  * @param {boolean} [options.force] - Send no conditional request headers.
- * @returns {Promise<{siteConfigs: object, rahtiData: object, suolaRules: object|null, scope: Set<string>,
+ * @returns {Promise<{siteConfigs: object, siteWeights: Object<string, number>, rahtiData: object, suolaRules: object|null,
  *   rejected: Array, errors: Array, documents: object, databaseGenerationDate: string|null}>} `errors` starts
  *   with the fetch errors, `{kind: "fetch", type, href, message, transient, retryAfterMs?}`. `documents` holds
  *   the cached documents for the hrefs fetched in this pass only.
@@ -618,8 +604,6 @@ function inlineDocument(resource) {
 async function resolve(manifest, manifestUrl, options = {}) {
     const {
         loopbackProvidersEnabled = false,
-        providerShadowingEnabled = false,
-        claimedSiteKeys = new Set(),
         documents = {},
         force = false
     } = options;
@@ -685,8 +669,7 @@ async function resolve(manifest, manifestUrl, options = {}) {
             } else if (resource.type === "site-configs") {
                 const result = mergeSiteConfigsDocument(siteConfigs, content, {
                     coverageHosts: sameOrigin ? null : coverageHostsOf(resource),
-                    claimedSiteKeys,
-                    providerShadowingEnabled
+                    weight: resource.weight
                 });
                 siteConfigs = result.siteConfigs;
                 rejected.push(...result.rejected);
@@ -700,10 +683,9 @@ async function resolve(manifest, manifestUrl, options = {}) {
     }
 
     return {
-        siteConfigs,
+        ...splitWeights(siteConfigs),
         rahtiData,
         suolaRules: suolaSites.length > 0 ? { sites: suolaSites } : null,
-        scope: computeDeclaredScope(siteConfigs),
         rejected,
         errors: [...fetchErrors, ...errors],
         documents: newDocuments,
@@ -720,7 +702,6 @@ export {
     parseManifest,
     fetchManifest,
     originsMatchKey,
-    computeDeclaredScope,
     resourceOrigins,
     inspect,
     resolve

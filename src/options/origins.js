@@ -14,14 +14,25 @@ export const ARBITRARY_ORIGINS = "*://*/*";
 /**
  * True if `hostname` is one host. A `*` in a host can match many hosts, thus a `*` is not permitted.
  *
- * Paatti does not use the browser's Public Suffix List (`publicSuffix`) to permit a safe wildcard (`*.hs.fi`):
- * - The list cannot make the key `*` safe. Paatti must refuse that key in all cases.
- * - The shadowing gate compares site keys as literal strings. A key `*.hs.fi` would get the claimed `www.hs.fi`.
- * - The API starts in Chrome 153 and Firefox 153, and Safari does not have it. The provider list is in sync storage,
- *   thus one provider could be correct on one device and refused on a different device.
+ * This is the rule for a site key and for the URL of a file. A site can also name its subdomains (see `isSiteHost`).
  */
 export function isConcreteHost(hostname) {
     return hostname !== "" && !hostname.includes("*");
+}
+
+/**
+ * True if `host` is one host, or the subdomains of one host (`*.hs.fi`) as a site origin may name them.
+ *
+ * The host after `*.` must have a dot, thus `*.fi` and `*` are refused. Paatti does not use the browser's Public
+ * Suffix List (`publicSuffix`) to refuse `*.co.uk` as well:
+ * - The API starts in Chrome 153 and Firefox 153, and Safari does not have it. The provider list is in sync storage,
+ *   thus one provider could be correct on one device and refused on a different device.
+ * - The browser asks the user before it grants the origin, and shows the origin in the question.
+ */
+export function isSiteHost(host) {
+    if (!host.startsWith("*.")) return isConcreteHost(host);
+    const base = host.slice(2);
+    return base.includes(".") && isConcreteHost(base);
 }
 
 /**
@@ -72,6 +83,21 @@ export function originPatterns(urls) {
 }
 
 /**
+ * The match patterns of the origins of a site, deduplicated, in first-seen order: the scheme and the host, with all
+ * paths. Unlike `originPatterns`, it keeps `*.` before a host. An entry that is not an http(s) origin is skipped.
+ *
+ * @param {string[]} origins
+ * @returns {string[]}
+ */
+export function sitePatterns(origins) {
+    const patterns = origins.map((origin) => {
+        const [, scheme, host] = origin.match(/^(https?):\/\/([^/]+)\//) || [];
+        return host && isSiteHost(host) ? `${scheme}://${host}/*` : null;
+    });
+    return [...new Set(patterns.filter(Boolean))];
+}
+
+/**
  * True if this build can ask for all of `origins`. `permissions.request()` grants only an origin that the manifest
  * declares in `host_permissions` or `optional_host_permissions`. Thus, the answer comes from the manifest of the
  * build, not from the build type. The store build does not have the wildcard, thus it cannot grant a site that it does
@@ -79,7 +105,7 @@ export function originPatterns(urls) {
  *
  * @param {string[]} origins - Match patterns, such as `https://www.hs.fi/*`.
  * @param {{host_permissions?: string[], optional_host_permissions?: string[]}} manifest - `runtime.getManifest()`.
- * @returns {boolean} True if each origin has one host and the manifest declares it.
+ * @returns {boolean} True if each origin has one host, or the subdomains of one host, and the manifest declares it.
  */
 export function canRequestOrigins(origins, manifest) {
     const declared = [...(manifest.host_permissions || []), ...(manifest.optional_host_permissions || [])]
@@ -88,7 +114,7 @@ export function canRequestOrigins(origins, manifest) {
 
     return origins.every((origin) => {
         const [, scheme, host] = origin.match(/^(https?):\/\/([^/]+)\//) || [];
-        return Boolean(host) && isConcreteHost(host) && declared.some(([, declaredScheme, declaredHost]) =>
+        return Boolean(host) && isSiteHost(host) && declared.some(([, declaredScheme, declaredHost]) =>
             (declaredScheme === "*" || declaredScheme === scheme) &&
             (declaredHost === "*" || declaredHost === host ||
                 (declaredHost.startsWith("*.") && (host === declaredHost.slice(2) || host.endsWith(declaredHost.slice(1))))));

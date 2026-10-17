@@ -28,15 +28,15 @@ A headline can have a correction from Klikkikuri and a correction from a provide
 | Setting | A site of a provider that you turned on |
 | --- | --- |
 | Off | You see Klikkikuri's correction. If Klikkikuri has no correction, you see the provider's correction. |
-| On | You see the provider's correction. If the provider has no correction, you see Klikkikuri's correction. |
+| On | You see the correction of the provider that has priority (see below). If that provider has no correction, you see the next one. |
 
 If a site of a provider is off, you see only Klikkikuri's corrections for links to that site.
 
 ## "Allow providers to override sites"
 
-When this setting is off, a provider cannot supply a site that Klikkikuri or an earlier provider already supplies. The provider shows "Rejected sites", and each rejected site tells which source supplies it.
+When this setting is off, only the first provider in the list that supplies a site is used for that site. The default provider is first in the list. A later provider supplies no site that an earlier provider already supplies.
 
-When this setting is on, a provider can replace the settings of such a site. If you turned on that site before, the provider's settings and corrections apply immediately. If two providers supply the same site, the provider that you added last has priority.
+When this setting is on, a provider can replace the settings of such a site. If you turned on that site before, the provider's settings and corrections apply immediately. If two providers supply the same site, the provider with the higher `weight` has priority. If the weights are equal, the provider that you added last has priority. A change of this setting or of a weight applies without a new update.
 
 ## "Allow providers on this machine"
 
@@ -72,7 +72,7 @@ The manifest is a JSON object:
 | `links` | Links that the provider list shows, for example to a privacy policy. Each link has `rel` and an absolute `http(s)` `href`. Other links are ignored. |
 | `resources` | The list of resources. 32 resources at most. |
 
-Each resource has a `type`. It has an `href` (one URL or a list), an inline payload, or both. A relative `href` is relative to the manifest URL. A resource can also have `weight` (an integer, 0 or more, default 0), `description` and, for `site-configs`, `origins`.
+Each resource has a `type`. It has an `href` (one URL or a list), an inline payload, or both. A relative `href` is relative to the manifest URL. A resource can also have `weight` (an integer, 0 or more, default 0; see ["Allow providers to override sites"](#allow-providers-to-override-sites)), `description` and, for `site-configs`, `origins`.
 
 | `type` | Inline key | Merge rule |
 | --- | --- | --- |
@@ -80,7 +80,7 @@ Each resource has a `type`. It has an `href` (one URL or a list), an inline payl
 | `rahti-data` | `data` | The entries are keyed by `urls[].sign`. A later entry replaces an earlier entry with the same sign. |
 | `site-configs` | `sites` | For each site key, `rules`, `origins` and `links` are joined without duplicates. A later value replaces the other fields. |
 
-The extension ignores a resource of an unknown type (for example an `x-` type) and does not download it. Resources are merged in `weight` order, from low to high, and in document order when the weights are equal.
+The extension ignores a resource of an unknown type (for example an `x-` type) and does not download it. Resources are merged in `weight` order, from low to high, and in document order when the weights are equal. The `weight` of a site is the highest `weight` of the `site-configs` resources that supply it. It decides which provider has priority when more than one provider supplies the site.
 
 ### Downloads
 
@@ -108,11 +108,10 @@ The extension refreshes the providers at each periodic update, one after the oth
 The extension refuses a site from a provider when:
 
 - the site key is not a bare hostname (no scheme, path, port or `*`);
-- the site's `origins` are not exactly `https://<key>/*` or `http://<key>/*` (the default is `https://<key>/*`);
-- the `site-configs` resource is on a different origin than the manifest, and the resource's `origins` do not include the site's hosts. Such a resource must declare `origins`. A resource on the same origin must not declare them;
-- Klikkikuri or an earlier provider already supplies the site, and "Allow providers to override sites" is off. For a default provider, the bundled sites do not count, because the default provider publishes them.
+- the site's `origins` are not `https://<key>/*` or `http://<key>/*` (the default is `https://<key>/*`), or the same with `*.` before the key for the subdomains of the key. The key must have a dot for this. Thus the key `hs.fi` can have `https://*.hs.fi/*`, and the key `www.hs.fi` can have `https://www.hs.fi/*`;
+- the `site-configs` resource is on a different origin than the manifest, and the resource's `origins` do not include the site's hosts. Such a resource must declare `origins`. A resource on the same origin must not declare them.
 
-A site with `enabled: false` in a provider's files is not offered. A site with `enabled: true` is offered, but it is off until you turn it on. This is not true for a default provider: its sites keep their own `enabled` value, as the bundled sites do.
+A site with `enabled: false` in a provider's files is not offered. A site with `enabled: true` is offered, but it is off until you turn it on. This is not true for a default provider: its sites keep their own `enabled` value.
 
 The extension hides a site whose origins this version cannot request. A store version, for example, can request only the origins that its manifest declares.
 
@@ -120,8 +119,8 @@ The extension hides a site whose origins this version cannot request. A store ve
 
 A Rahti entry is keyed by a sign: a hash of the link address, made with Suola rules. The extension finds the entry for a link in these steps:
 
-1. It finds the site of the link's host. It does not use the page's host. Thus a provider cannot answer for links to sites that it does not supply.
-2. It makes a list of the sources for that host, in the order of the table in [Which correction you see](#which-correction-you-see). A provider is in the list only when you turned its site on and the provider's own origins cover the host. Each enabled default provider is in the list. A later default provider comes before an earlier one.
+1. It finds the site of the link's host. It does not use the page's host. Thus a provider cannot answer for links to sites that it does not supply. If more than one site covers the host, the site that names the host (`www.hs.fi`) comes before a site that names its subdomains (`*.hs.fi`), and a longer `*.` host comes before a shorter one. `weight` does not change this. It decides only between providers that supply the same site key.
+2. It makes a list of the sources for that host, in the order of the table in [Which correction you see](#which-correction-you-see). A provider is in the list only when you turned its site on and the provider's own origins cover the host. The sources that supply the site come first, in the order of priority (see ["Allow providers to override sites"](#allow-providers-to-override-sites)). Each other enabled default provider follows, a later one before an earlier one. With the setting off, these default providers come before the sources that supply the site.
 3. It makes a sign for each source:
    - A source that supplies the host and has Suola rules uses its own named rule set. The name is the manifest URL. A named rule set cannot change the signs of the built-in rules.
    - If Suola refused the rules of that source, the source gets no sign and the extension skips it. A sign made with the wrong rules would look correct and find wrong entries.

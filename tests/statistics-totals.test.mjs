@@ -49,6 +49,7 @@ await import('../src/options/components/statistics-totals.js');
 after(() => dom.teardown());
 
 const DAY = 24 * 60 * 60 * 1000;
+const PROVIDER = 'https://provider.example/manifest.json';
 
 /**
  * Two sites and a running tally, the shape the options page draws from.
@@ -85,7 +86,11 @@ async function mount() {
 
 beforeEach(async () => {
     await browser.storage.local.clear();
-    await browser.storage.local.set({ statistics: structuredClone(POPULATED) });
+    await browser.storage.local.set({
+        statistics: structuredClone(POPULATED),
+        [`provider:${PROVIDER}`]: { siteConfigs: { 'yle.fi': { name: 'Yle', enabled: true, rules: [] } } }
+    });
+    await browser.storage.sync.set({ providers: [{ url: PROVIDER, enabled: true }] });
     fake.reset();
 });
 
@@ -258,7 +263,7 @@ describe('statistics-totals', () => {
         });
         await mount();
 
-        // yle.fi carries a name in the shipped siteConfigs; is.fi does not and keeps its domain.
+        // yle.fi carries a name in a provider's siteConfigs; is.fi does not and keeps its domain.
         assert.equal(element.querySelector('.totals-site-domain').textContent, 'Yle');
     });
 

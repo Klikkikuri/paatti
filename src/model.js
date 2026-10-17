@@ -120,6 +120,19 @@ function matchesOrigin(hostname, originPattern) {
 }
 
 /**
+ * How narrowly an origin pattern names a host: an exact host beats `*.hs.fi`, a longer `*.` host beats a shorter one,
+ * and `*` is the least specific.
+ *
+ * @param {string} originPattern
+ * @returns {number}
+ */
+function originSpecificity(originPattern) {
+    const patternHost = originPattern.split("://")[1]?.split("/")[0] ?? "";
+    if (patternHost === "*") return 0;
+    return patternHost.startsWith("*.") ? patternHost.length : Number.MAX_SAFE_INTEGER;
+}
+
+/**
  * Checks if a hostname matches any of the given origin patterns.
  * 
  * @param {string} hostname - The hostname to test
@@ -131,7 +144,9 @@ function matchesAnyOrigin(hostname, origins) {
 }
 
 /**
- * The `[domain, siteConfig]` entry of `siteConfigs` whose origins cover `hostname`, or `[null, null]`.
+ * The `[domain, siteConfig]` entry of `siteConfigs` whose origins cover `hostname` most narrowly, or `[null, null]`.
+ * A site that names the host (`www.hs.fi`) comes before one that names its subdomains (`*.hs.fi`); of equal
+ * entries, the first one.
  * The one host-matching lookup `isEnabled`, `getMatchingSiteDomain`, `getSiteRules` and
  * `sourcesForHost` all need, each just reading a different field off the result.
  *
@@ -140,20 +155,29 @@ function matchesAnyOrigin(hostname, origins) {
  * @returns {[string, object]|[null, null]}
  */
 function findSiteConfig(siteConfigs, hostname) {
+    let best = [null, null];
+    let bestSpecificity = -1;
     for (const entry of Object.entries(siteConfigs)) {
         const [, siteConfig] = entry;
-        if (siteConfig.origins && matchesAnyOrigin(hostname, siteConfig.origins)) return entry;
+        const specificity = Math.max(-1, ...(siteConfig.origins || [])
+            .filter((origin) => matchesOrigin(hostname, origin))
+            .map(originSpecificity));
+        if (specificity > bestSpecificity) {
+            best = entry;
+            bestSpecificity = specificity;
+        }
     }
-    return [null, null];
+    return best;
 }
 
 /**
  * The sources a link to `hostname` is looked up in, highest precedence first.
  *
- * Each enabled default provider is a layer, a later one first. A provider site that the user turned on adds a
- * layer for each provider that offers the site and whose own origins cover the host, the last one applied first.
- * With shadowing on, the providers come before the defaults. With shadowing off, they come after the defaults,
- * so that a provider only fills the gaps in the official data.
+ * The claimants come first among themselves in the order of `config.siteConfigSources`: the providers that supply the
+ * site of the host and whose own origins cover it. A default provider is always a claimant when it supplies the
+ * site; any other provider only when the user turned the site on. Every enabled default provider that is not a
+ * claimant still answers, a later one first. With shadowing on, the claimants come before these; with shadowing
+ * off, after them, so that a provider only fills the gaps in the official data.
  *
  * @param {object} config - From `getConfig()`.
  * @param {string} hostname
@@ -161,17 +185,16 @@ function findSiteConfig(siteConfigs, hostname) {
  */
 function sourcesForHost(config, hostname) {
     const [domain, siteConfig] = findSiteConfig(config.siteConfigs, hostname);
-    const claimingUrls = new Set((config.siteConfigSources[domain] || [])
-        .filter(({ origins }) => matchesAnyOrigin(hostname, origins))
-        .map(({ url }) => url));
     const defaultUrls = config.enabledDefaultProviderUrls;
 
-    const defaults = [...defaultUrls].reverse().map((url) => ({ url, claims: claimingUrls.has(url) }));
-    const providers = !siteConfig?.enabled ? [] : [...claimingUrls]
-        .filter((url) => !defaultUrls.includes(url))
-        .reverse()
-        .map((url) => ({ url, claims: true }));
-    return config.providerShadowingEnabled ? [...providers, ...defaults] : [...defaults, ...providers];
+    const claimants = (config.siteConfigSources[domain] || [])
+        .filter(({ url, origins }) => matchesAnyOrigin(hostname, origins) && (siteConfig?.enabled || defaultUrls.includes(url)))
+        .map(({ url }) => ({ url, claims: true }));
+    const claimantUrls = new Set(claimants.map(({ url }) => url));
+    const otherDefaults = [...defaultUrls].reverse()
+        .filter((url) => !claimantUrls.has(url))
+        .map((url) => ({ url, claims: false }));
+    return config.providerShadowingEnabled ? [...claimants, ...otherDefaults] : [...otherDefaults, ...claimants];
 }
 
 /** The stored data of each enabled default provider, in `defaultProviders` order. */
@@ -298,8 +321,8 @@ const model = (() => {
             },
 
             /**
-             * Whether a provider may claim a site key or origin the bundled set or an earlier
-             * provider already claims. Per environment, local, and read only from
+             * Whether a provider may take over a site that an earlier provider already
+             * supplies. Per environment, local, and read only from
              * `userPreferences.environmentConfigs[env]` -- see `getConfig()`, which strips this key
              * out of anything arriving through sync so the device it protects is always the one that
              * decides it.
@@ -605,14 +628,16 @@ const model = (() => {
 
             getLinkTitleQuerySelectors: async (hostname) => {
                 const config = await getConfig();
-                const selectors = config.siteConfigs[hostname]?.linkTitleQuerySelectors;
+                const [, siteConfig] = findSiteConfig(config.siteConfigs, hostname);
+                const selectors = siteConfig?.linkTitleQuerySelectors;
                 log(`The title selectors for ${hostname}:`, selectors);
                 return selectors;
             },
 
             getMutationProneQuerySelectors: async (hostname) => {
                 const config = await getConfig();
-                const selectors = config.siteConfigs[hostname]?.mutationProneQuerySelectors;
+                const [, siteConfig] = findSiteConfig(config.siteConfigs, hostname);
+                const selectors = siteConfig?.mutationProneQuerySelectors;
                 log(`The mutation prone selectors for ${hostname}:`, selectors);
                 return selectors;
             },

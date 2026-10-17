@@ -3,7 +3,7 @@
 import browser from "./browser-api.js";
 import { getLogger, getActiveTab } from "./utils.js";
 import { getConfig, PROVIDER_KEY_PREFIX } from "./config.js";
-import { refreshProviders, retryDelayMs, reconcileSuolaRules, seedDefaultProviders } from "./providers.js";
+import { refreshProviders, retryDelayMs, reconcileSuolaRules, seedDefaultProviders, dropStaleProviderData } from "./providers.js";
 import { model, signUrls } from "./model.js";
 import { controller } from "./controller.js";
 import { storeFavicon } from "./favicon-fetch.js";
@@ -105,7 +105,7 @@ function refreshIntervalMinutes(config) {
  *
  * @param {object} [options] - Passed through to refreshProviders(), e.g. {force: true}.
  * @param {number} [attempt] - The number of this pass, from 1.
- * @returns {Promise<Array<{url: string, scope: Set<string>, error?: string, transient?: boolean,
+ * @returns {Promise<Array<{url: string, error?: string, transient?: boolean,
  *   retryAfterMs?: number}>>}
  */
 async function refreshAndScheduleRetry(options = {}, attempt = 1) {
@@ -242,6 +242,14 @@ browser.runtime.onInstalled.addListener(async ({ reason }) => {
             log(`Set default environment to '${environment}' on install.`);
         } catch (error) {
             log("Error setting default environment on install:", error);
+        }
+    }
+
+    if (reason === "update") {
+        try {
+            await dropStaleProviderData();
+        } catch (error) {
+            log("Error dropping stale provider data on update:", error);
         }
     }
 

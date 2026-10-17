@@ -4,7 +4,7 @@ import { onConfigValue } from '../../config.js';
 import { defineComponent } from './component-utils.js';
 import { createToggleSetting } from './toggle-setting.js';
 
-/** Whether a provider may claim a site key the bundled set or an earlier provider already claims. */
+/** Whether a provider may take over a site that an earlier provider already supplies. */
 const ProviderShadowingSetting = createToggleSetting({
     settingKey: () => 'providerShadowingEnabled',
 
@@ -14,7 +14,7 @@ const ProviderShadowingSetting = createToggleSetting({
         compact: browser.i18n.getMessage('providerShadowingLabel') || 'Allow providers to override sites',
         title: browser.i18n.getMessage('providerShadowingTitle') || 'Allow providers to override sites',
         description: browser.i18n.getMessage('providerShadowingDesc')
-            || 'Lets an added provider take over a site the bundled set or an earlier provider already claims',
+            || 'Lets an added provider take over a site that an earlier provider already supplies',
     }),
 
     read: (el, apply) => onConfigValue((config) => config.providerShadowingEnabled, apply),

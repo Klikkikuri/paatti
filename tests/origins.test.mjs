@@ -1,7 +1,7 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { originPatterns, missingOrigins, canRequestOrigins, isConcreteHost } from '../src/options/origins.js';
+import { originPatterns, sitePatterns, missingOrigins, canRequestOrigins, isConcreteHost, isSiteHost } from '../src/options/origins.js';
 
 /** A `contains` that records what it was asked and answers from `covered`. */
 function fakeContains(covered = []) {
@@ -96,14 +96,34 @@ describe('canRequestOrigins', () => {
         assert.equal(canRequestOrigins(['https://badexample.fi/*'], sub), false);
     });
 
-    test('the wildcard does not cover an origin whose host is a wildcard', () => {
+    test('an origin for the subdomains of a host needs a declared wildcard for that host', () => {
+        assert.equal(canRequestOrigins(['https://*.hs.fi/*'], { optional_host_permissions: ['*://*/*'] }), true);
+        assert.equal(canRequestOrigins(['https://*.hs.fi/*'], { host_permissions: ['https://*.hs.fi/*'] }), true);
+        assert.equal(canRequestOrigins(['https://*.hs.fi/*'], { host_permissions: ['https://www.hs.fi/*'] }), false);
+    });
+
+    test('no manifest covers an origin whose host is any host, or all hosts of a suffix', () => {
         const wildcard = { optional_host_permissions: ['*://*/*'] };
         assert.equal(canRequestOrigins(['https://*/*'], wildcard), false);
-        assert.equal(canRequestOrigins(['https://www.hs.fi/*', 'https://*.hs.fi/*'], wildcard), false);
+        assert.equal(canRequestOrigins(['https://*.fi/*'], wildcard), false);
     });
 
     test('a manifest without permission lists can request nothing', () => {
         assert.equal(canRequestOrigins(['https://www.hs.fi/*'], {}), false);
+    });
+});
+
+describe('sitePatterns', () => {
+    test('keeps the subdomain wildcard, drops the path, and skips what is not a site origin', () => {
+        assert.deepEqual(sitePatterns(['https://www.hs.fi/a', 'https://*.hs.fi/*', 'https://*.hs.fi/b', 'https://*.fi/*', 'https://*/*', 'x']),
+            ['https://www.hs.fi/*', 'https://*.hs.fi/*']);
+    });
+});
+
+describe('isSiteHost', () => {
+    test('is one host, or the subdomains of a host that has a dot', () => {
+        for (const host of ['www.hs.fi', 'localhost', '*.hs.fi']) assert.equal(isSiteHost(host), true);
+        for (const host of ['', '*', '*.fi', '*.*.hs.fi', 'a*b.fi']) assert.equal(isSiteHost(host), false);
     });
 });
 

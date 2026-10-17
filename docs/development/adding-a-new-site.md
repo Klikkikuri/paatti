@@ -1,9 +1,10 @@
 # Adding Support for a New Site
 
 The site configurations are not in Paatti. They are in `sites.json` in the
-[Rahti repository](https://github.com/Klikkikuri/rahti), which the official provider manifest links. Paatti bundles
-a copy in [src/generated/sites.js](../../src/generated/sites.js) and takes the site origins of
-[manifest.json](../../manifest.json) from it. Do not edit either file by hand.
+[Rahti repository](https://github.com/Klikkikuri/rahti), which the official provider manifest links. At build time,
+Paatti keeps a copy in [src/generated/sites.js](../../src/generated/sites.js) and takes the site origins of
+[manifest.json](../../manifest.json) from it. The extension does not read this copy when it runs: it reads the sites
+from its providers. Do not edit either file by hand.
 
 ---
 

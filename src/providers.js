@@ -2,11 +2,10 @@
 
 import browser from "./browser-api.js";
 import { getLogger } from "./utils.js";
-import { getConfig, isUsableProvider, PROVIDER_KEY_PREFIX, BUNDLED_SITE_KEYS } from "./config.js";
+import { getConfig, isUsableProvider, PROVIDER_KEY_PREFIX } from "./config.js";
 import { initStorage } from "./storage.js";
 import { fetchManifest, resolve, resourceOrigins } from "./provider.js";
-import { canRequestOrigins, missingOrigins, originPatterns } from "./options/origins.js";
-import { SITE_CONFIGS } from "./generated/sites.js";
+import { canRequestOrigins, missingOrigins, originPatterns, sitePatterns } from "./options/origins.js";
 import { getFaviconKey } from "./faviconCache.js";
 
 /**
@@ -68,10 +67,10 @@ async function addProvider(url) {
 /**
  * Put the active environment's default providers at the front of the sync list, in `defaultUrls` order.
  *
- * The list order is the precedence order, lowest first: the bundled set is always applied first (see the design),
- * and the default providers publish it. The other entries keep the order the user added them in. A default that
- * is not in the list is added, enabled, while there is space. Nothing is removed: a URL that is no longer a
- * default stays where it is, as an ordinary provider.
+ * The list order is the precedence order between providers of equal weight, lowest first: the default providers
+ * come first. The other entries keep the order the user added them in. A default that is not in the list is added,
+ * enabled, while there is space. Nothing is removed: a URL that is no longer a default stays where it is, as an
+ * ordinary provider.
  *
  * @param {string[]} defaultUrls
  * @returns {Promise<Array>} The updated list.
@@ -129,23 +128,24 @@ function siteOrigins(siteConfigs) {
 }
 
 /**
- * Revoke the host permissions and drop the favicons of a removed provider that nothing else uses. The bundled sites
- * and every provider still in the list keep theirs, a disabled one included, and an origin the manifest requires
- * cannot be revoked at all.
+ * Revoke the host permissions and drop the favicons of a removed provider that nothing else uses. Every provider
+ * still in the list keeps its own, a disabled one included, and an origin the manifest requires cannot be revoked
+ * at all.
  */
 async function releaseUnused(url, removed, remainingUrls) {
     const remaining = await Promise.all(remainingUrls.map(getProviderData));
-    const keptSites = [SITE_CONFIGS, ...remaining.map((data) => data.siteConfigs)];
-    const keptOrigins = new Set(originPatterns([
-        ...remainingUrls,
-        ...remaining.flatMap((data) => data.origins),
-        ...keptSites.flatMap(siteOrigins)
-    ]));
+    const keptSites = remaining.map((data) => data.siteConfigs);
+    const keptOrigins = new Set([
+        ...originPatterns([...remainingUrls, ...remaining.flatMap((data) => data.origins)]),
+        ...sitePatterns(keptSites.flatMap(siteOrigins))
+    ]);
 
     const required = { host_permissions: browser.runtime.getManifest().host_permissions };
     const grantedForAccess = removed.errors.flatMap((error) => error.origins || []);
-    const revoke = originPatterns([url, ...removed.origins, ...grantedForAccess, ...siteOrigins(removed.siteConfigs)])
-        .filter((pattern) => !keptOrigins.has(pattern) && !canRequestOrigins([pattern], required));
+    const revoke = [
+        ...originPatterns([url, ...removed.origins, ...grantedForAccess]),
+        ...sitePatterns(siteOrigins(removed.siteConfigs))
+    ].filter((pattern) => !keptOrigins.has(pattern) && !canRequestOrigins([pattern], required));
     if (revoke.length > 0) await browser.permissions.remove({ origins: revoke });
 
     const keptHosts = new Set(keptSites.flatMap(Object.keys).flatMap(hostSpellings));
@@ -173,7 +173,7 @@ async function setProviderEnabled(url, enabled) {
 /** The content of a provider that has never resolved. A function, so that no caller shares its objects. */
 function emptyProviderData() {
     return {
-        siteConfigs: {}, rahtiData: {}, suolaRules: null, scope: [], rejected: [], errors: [], updated: null,
+        siteConfigs: {}, siteWeights: {}, rahtiData: {}, suolaRules: null, rejected: [], errors: [], updated: null,
         checked: null, entryCount: 0, databaseGenerationDate: null, origins: [], name: null, links: []
     };
 }
@@ -182,8 +182,8 @@ function emptyProviderData() {
  * One provider's last resolved content, or the empty shape for one that has never resolved.
  *
  * @param {string} url
- * @returns {Promise<{siteConfigs: object, rahtiData: object, suolaRules: object|null, scope: Set<string>,
- *   rejected: Array, errors: Array, updated: number|null, checked: number|null, entryCount: number,
+ * @returns {Promise<{siteConfigs: object, siteWeights: Object<string, number>, rahtiData: object,
+ *   suolaRules: object|null, rejected: Array, errors: Array, updated: number|null, checked: number|null, entryCount: number,
  *   databaseGenerationDate: string|null, origins: string[], name: string|null, links: Array}>} `updated` is the
  *   time of the last refresh with no fetch error, `checked` the time of the last attempt.
  */
@@ -191,7 +191,22 @@ async function getProviderData(url) {
     const storage = await initStorage(namespaceFor(url));
     const data = emptyProviderData();
     for (const key of Object.keys(data)) data[key] = (await storage.get(key)) ?? data[key];
-    return { ...data, scope: new Set(data.scope) };
+    return data;
+}
+
+/**
+ * Drop the stored data that an older version wrote and this one does not read: the declared `scope`, and the
+ * `rejected` list, which can name a refusal that this version no longer makes. The next refresh writes the list again.
+ *
+ * TODO: this is the first migration. Move it into the migration system (see TODO.md).
+ */
+async function dropStaleProviderData() {
+    for (const { url } of await getProviders()) {
+        if (!url) continue;
+        const storage = await initStorage(namespaceFor(url));
+        const stale = ["scope", "rejected"].filter((key) => storage.getKeys().includes(key));
+        if (stale.length > 0) await storage.remove(stale);
+    }
 }
 
 /**
@@ -202,13 +217,13 @@ async function getProviderData(url) {
  * @param {Array<{kind: string, message: string, href?: string, origins?: string[], transient?: boolean,
  *   retryAfterMs?: number}>} errors - `kind` is `build`, `access` or `fetch`. An `access` error also gives the
  *   `origins` to grant.
- * @returns {Promise<{scope: Set<string>, error: string, transient: boolean, retryAfterMs?: number}>}
+ * @returns {Promise<{error: string, transient: boolean, retryAfterMs?: number}>}
  */
 async function keepLastResolved(storage, url, errors) {
     const failure = failureOf(errors);
     log(`Refresh of ${url} stopped, keeping the last resolved content:`, failure.error);
     await storage.store({ errors, checked: Date.now() });
-    return { scope: new Set((await storage.get("scope")) || []), ...failure };
+    return failure;
 }
 
 /**
@@ -264,12 +279,11 @@ async function accessError(urls) {
  *
  * @param {string} url
  * @param {object} config - As returned by `getConfig()`.
- * @param {Set<string>} claimedSiteKeys - Keys already claimed by the bundled set or an earlier provider.
  * @param {object} [options]
  * @param {boolean} [options.force] - Send no conditional request headers.
- * @returns {Promise<{scope: Set<string>, error?: string, transient?: boolean, retryAfterMs?: number}>}
+ * @returns {Promise<{error?: string, transient?: boolean, retryAfterMs?: number}>}
  */
-async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) {
+async function refreshOne(url, config, { force = false } = {}) {
     const storage = await initStorage(namespaceFor(url));
 
     if (!isUsableProvider(url, new Set(config.defaultProviders || []))) {
@@ -297,8 +311,6 @@ async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) 
     const { [documentsKey]: cachedDocuments } = await browser.storage.local.get(documentsKey);
     const result = await resolve(manifest, url, {
         loopbackProvidersEnabled: config.loopbackProvidersEnabled,
-        providerShadowingEnabled: config.providerShadowingEnabled,
-        claimedSiteKeys,
         documents: cachedDocuments || {},
         force
     });
@@ -322,9 +334,9 @@ async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) 
     const checked = Date.now();
     await storage.store({
         siteConfigs: result.siteConfigs,
+        siteWeights: result.siteWeights,
         rahtiData: result.rahtiData,
         suolaRules: result.suolaRules,
-        scope: [...result.scope],
         rejected: result.rejected,
         errors: result.errors,
         ...(failure.error ? {} : { updated: checked }),
@@ -337,17 +349,13 @@ async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) 
     // Conditional-GET headers from before the document cache, which now holds them.
     if (storage.getKeys().includes("resourceHeaders")) await storage.remove(["resourceHeaders"]);
 
-    return { scope: result.scope, ...failure };
+    return failure;
 }
 
 /**
  * Refresh every enabled provider, in list order (see `getProviders()`).
  *
- * Sequential, not parallel: each provider's declared scope becomes part of `claimedSiteKeys` for the
- * ones after it, which is what gives ties between two providers the list-order precedence the design
- * calls for. The bundled set's own keys seed the claim before any provider runs,
- * so weight `0` still claims no precedence over it -- except for a default provider, which publishes the
- * bundled set and so may replace it.
+ * One provider after the other. Which provider wins a site is decided when the configuration is built, not here.
  *
  * Single-flight within this execution context, but a `force: true` call always gets its own pass rather
  * than joining an in-flight non-forced one (which would silently return non-bypassed, possibly-cached
@@ -363,7 +371,7 @@ async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) 
  *
  * @param {object} [options]
  * @param {boolean} [options.force] - Send no conditional request headers.
- * @returns {Promise<Array<{url: string, scope: Set<string>, error?: string, transient?: boolean,
+ * @returns {Promise<Array<{url: string, error?: string, transient?: boolean,
  *   retryAfterMs?: number}>>}
  */
 async function refreshProviders({ force = false } = {}) {
@@ -385,33 +393,21 @@ let refreshInFlight = null;
 async function _refreshProviders(force = false) {
     const config = await getConfig();
     const providers = await getProviders();
-    // Bundled keys only -- getConfig().siteConfigs already folds every enabled provider's own
-    // previously-resolved sites back in, which would make a provider look like it is shadowing its
-    // own prior claim on every refresh after the first and never keep it.
-    // A default provider publishes the bundled set, so the bundled keys are not a claim against it; the
-    // keys of the providers before it still are.
-    const defaultProviders = new Set(config.defaultProviders || []);
-    const providerClaims = new Set();
-
     const results = [];
     for (const provider of providers) {
         // Same validity check getConfig() applies to enabledProviders: a URL-less entry (a
         // partially-written sync record) must be skipped by both in the same way, not just one.
         if (!provider.enabled || !provider.url) continue;
 
-        const claimedSiteKeys = defaultProviders.has(provider.url)
-            ? new Set(providerClaims)
-            : new Set([...BUNDLED_SITE_KEYS, ...providerClaims]);
         let outcome;
         try {
-            outcome = await refreshOne(provider.url, config, claimedSiteKeys, { force });
+            outcome = await refreshOne(provider.url, config, { force });
         } catch (err) {
             // One provider must not stop the refresh of those after it, the default one included.
             log(`Refresh of ${provider.url} failed:`, err.message);
-            outcome = { scope: new Set(), error: err.message, transient: false };
+            outcome = { error: err.message, transient: false };
         }
         results.push({ url: provider.url, ...outcome });
-        for (const key of outcome.scope) providerClaims.add(key);
     }
 
     return results;
@@ -525,5 +521,5 @@ async function _reconcileSuolaRules() {
 
 export {
     MAX_PROVIDERS, namespaceFor, getProviders, addProvider, seedDefaultProviders, removeProvider, setProviderEnabled,
-    getProviderData, errorText, refreshProviders, retryDelayMs, reconcileSuolaRules
+    getProviderData, dropStaleProviderData, errorText, refreshProviders, retryDelayMs, reconcileSuolaRules
 };

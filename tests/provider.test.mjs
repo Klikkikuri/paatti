@@ -2,7 +2,7 @@ import test, { describe, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-    caretCompatible, providerBlockReason, parseManifest, originsMatchKey, computeDeclaredScope,
+    caretCompatible, providerBlockReason, parseManifest, originsMatchKey,
     inspect, resolve, MAX_RESOURCES
 } from '../src/provider.js';
 
@@ -175,18 +175,6 @@ describe('inspect', () => {
         const resolved = await resolve(manifest, manifestUrl);
         assert.deepEqual(resolved.siteConfigs, {});
         assert.deepEqual(inspected.rejected, resolved.rejected, 'the preview and the outcome give the same reason');
-    });
-
-    test('reflects a shadowing rejection too, when the caller passes the same claimed keys resolve() would', async () => {
-        const manifestUrl = 'https://provider.example/manifest.json';
-        installed = mockFetch({
-            [manifestUrl]: jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'yle.fi': site('yle.fi') } }]))
-        });
-
-        const result = await inspect(manifestUrl, { claimedSiteKeys: new Set(['yle.fi']), providerShadowingEnabled: false });
-
-        assert.deepEqual(result.sites, {});
-        assert.ok(result.rejected.some((r) => r.key === 'yle.fi'));
     });
 
     test('an all-relative manifest declares no cross-origin resource and resolves inline site-configs', async () => {
@@ -644,20 +632,17 @@ describe('resolve: site-configs safety', () => {
         assert.ok(result.rejected.some((r) => r.key === 'lapinkansa.fi'));
     });
 
-    test('a site key that is not a bare hostname cannot bypass the shadowing gate via matchesOrigin\'s path-stripping', async () => {
+    test('a site key that is not a bare hostname cannot escape the ranking via matchesOrigin\'s path-stripping', async () => {
         // matchesOrigin (model.js) reads only the authority up to the first "/" of an origin pattern,
         // so a key like "www.hs.fi/x" would (if accepted) still resolve for lookups against the real
-        // "www.hs.fi" -- while claimedSiteKeys, which compares the key string literally, would never
-        // have recognised it as already claimed. The key itself must be rejected before that gap opens.
+        // "www.hs.fi" -- while the ranking, which compares the key string literally, would never
+        // have set it against the site of that host. The key itself must be rejected before that gap opens.
         const manifest = await parsedManifest([{
             type: 'site-configs',
             sites: { 'www.hs.fi/x': { name: 'evil', enabled: true, rules: [] } }
         }]);
 
-        const result = await resolve(manifest, 'https://attacker.example/manifest.json', {
-            claimedSiteKeys: new Set(['www.hs.fi']),
-            providerShadowingEnabled: false
-        });
+        const result = await resolve(manifest, 'https://attacker.example/manifest.json');
 
         assert.deepEqual(result.siteConfigs, {});
         assert.ok(result.rejected.some((r) => r.key === 'www.hs.fi/x' && /bare hostname/.test(r.reason)));
@@ -703,15 +688,20 @@ describe('resolve: site-configs safety', () => {
         assert.equal(result.rejected.length, 2);
     });
 
-    test('a host wildcard in origins is rejected', async () => {
+    test('a wildcard for the subdomains of the key is accepted; any other host wildcard is rejected', async () => {
         const manifest = await parsedManifest([{
             type: 'site-configs',
-            sites: { 'example.com': site('example.com', { origins: ['https://*.example.com/*'] }) }
+            sites: {
+                'example.com': site('example.com', { origins: ['https://*.example.com/*'] }),
+                'example.fi': site('example.fi', { origins: ['https://*.fi/*'] }),
+                'other.example': site('other.example', { origins: ['https://*.example/*'] }),
+                'fi': site('fi', { origins: ['https://*.fi/*'] })
+            }
         }]);
 
         const result = await resolve(manifest, 'https://provider.example/manifest.json');
 
-        assert.deepEqual(result.siteConfigs, {});
+        assert.deepEqual(Object.keys(result.siteConfigs), ['example.com']);
     });
 
     test('a javascript: link is dropped, the site is kept', async () => {
@@ -786,31 +776,6 @@ describe('resolve: site-configs safety', () => {
         assert.ok(result.rejected.some((r) => r.key === 'unexpected.example'));
     });
 
-    test('a shadowing entry replaces the claimed key; without the setting it is rejected', async () => {
-        const manifest = await parsedManifest([{
-            type: 'site-configs',
-            sites: { 'yle.fi': site('yle.fi', { rules: [{ container: 'a' }] }) }
-        }]);
-        const claimedSiteKeys = new Set(['yle.fi']);
-
-        const off = await resolve(manifest, 'https://provider.example/manifest.json', { claimedSiteKeys, providerShadowingEnabled: false });
-        assert.equal(off.siteConfigs['yle.fi'], undefined);
-        assert.ok(off.rejected.some((r) => r.key === 'yle.fi' && /shadowing is disabled/.test(r.reason)));
-
-        const on = await resolve(manifest, 'https://provider.example/manifest.json', { claimedSiteKeys, providerShadowingEnabled: true });
-        assert.deepEqual(on.siteConfigs['yle.fi'].rules, [{ container: 'a' }]);
-    });
-
-    test('an unclaimed key is never gated by shadowing', async () => {
-        const manifest = await parsedManifest([{ type: 'site-configs', sites: { 'new.example': site('new.example') } }]);
-
-        const result = await resolve(manifest, 'https://provider.example/manifest.json', {
-            claimedSiteKeys: new Set(['someone-else.example']), providerShadowingEnabled: false
-        });
-
-        assert.ok(result.siteConfigs['new.example']);
-    });
-
     test('array fields concatenate and dedupe across two resources of one manifest', async () => {
         const manifest = await parsedManifest([
             { type: 'site-configs', sites: { 'news.example': site('news.example', { rules: [{ container: 'a' }] }) } },
@@ -822,18 +787,17 @@ describe('resolve: site-configs safety', () => {
         assert.deepEqual(result.siteConfigs['news.example'].rules, [{ container: 'a' }, { container: 'b' }]);
     });
 
-    test('the declared scope is exactly the merged, valid domain keys', async () => {
-        const manifest = await parsedManifest([{
-            type: 'site-configs',
-            sites: {
-                'news.example': site('news.example'),
-                'bad.example': site('bad.example', { origins: ['https://other.example/*'] })
-            }
-        }]);
+    test('the weight of a site is the highest weight of the resources that supply it', async () => {
+        const manifest = await parsedManifest([
+            { type: 'site-configs', weight: 2, sites: { 'news.example': site('news.example'), 'other.example': site('other.example') } },
+            { type: 'site-configs', weight: 5, sites: { 'news.example': site('news.example') } },
+            { type: 'site-configs', weight: 9, sites: { 'bad.example': site('bad.example', { origins: ['https://other.example/*'] }) } }
+        ]);
 
         const result = await resolve(manifest, 'https://provider.example/manifest.json');
 
-        assert.deepEqual(computeDeclaredScope(result.siteConfigs), new Set(['news.example']));
+        assert.deepEqual(result.siteWeights, { 'news.example': 5, 'other.example': 2 });
+        assert.equal(result.siteConfigs['news.example'].weight, undefined, 'the weight stays out of the site');
     });
 });
 
@@ -876,8 +840,14 @@ describe('originsMatchKey', () => {
     test('rejects a different host', () => {
         assert.equal(originsMatchKey('news.example', ['https://other.example/*']), false);
     });
-    test('rejects a host wildcard', () => {
-        assert.equal(originsMatchKey('example.com', ['https://*.example.com/*']), false);
+    test('accepts the subdomains of a key that has a dot', () => {
+        assert.equal(originsMatchKey('example.com', ['https://*.example.com/*', 'http://example.com/*']), true);
+        assert.equal(originsMatchKey('localhost', ['https://*.localhost/*']), false);
+    });
+    test('rejects the subdomains of another host, and any other wildcard', () => {
+        assert.equal(originsMatchKey('example.com', ['https://*.com/*']), false);
+        assert.equal(originsMatchKey('news.example.com', ['https://*.example.com/*']), false);
+        assert.equal(originsMatchKey('example.com', ['https://*/*']), false);
     });
     test('rejects an empty list', () => {
         assert.equal(originsMatchKey('news.example', []), false);
