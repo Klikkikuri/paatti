@@ -24,7 +24,8 @@ const isSiteEnabled = async (domain) => {
  * Display the product name and version in the options page header and footer, and point each `a[data-doc]` at
  * that document in the release tag of this version.
  *
- * The tag is `vX.Y.Z`: the version without the store revision (see docs/release.md).
+ * The tag is `vX.Y.Z`, also for a version with a fourth part: a store version does not always have a tag on GitHub
+ * (see docs/release.md).
  */
 const displayProductInfo = () => {
     try {
