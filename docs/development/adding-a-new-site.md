@@ -17,7 +17,7 @@ describes the format.
 "www.example.com": {
     "name": "Example News",
     "description": "Notes about the site.",
-    "enabled": true,
+    "enabled": false,
     "origins": ["https://www.example.com/*"],
     "links": [
         { "rel": "x-publisher-policy", "href": "https://www.example.com/policy" }
@@ -35,6 +35,10 @@ describes the format.
 
 - `enabled`: whether the site is on by default. A site that is off by default gets an optional host permission.
   `enabled: false` means "off by default", not "withdrawn": the site stays in the list, and the user can turn it on.
+  A new site that is on by default gets a required host permission. When an installed extension updates to a release
+  with a new required host permission, Chrome disables the extension until the user accepts the permission. Thus add a
+  new site with `enabled: false`. An origin that was optional in the previous release stays optional, also after you
+  set `enabled: true`: the site shows as off until the user grants access.
 - `origins`: optional. The default is `https://<key>/*`. Each origin must have the host of the key; `*` is not
   permitted in the host.
 - `links`: optional. `x-publisher-policy` shows as the publisher's policy link on the options page.
@@ -69,7 +73,9 @@ make sites-sync SITES_MANIFEST=http://127.0.0.1:8000/manifest.json
 
 The sync resolves the manifest with the same validation that a provider gets at runtime, and stops if it refuses a
 site. It writes `src/generated/sites.js` and the site origins in `manifest.json`: `host_permissions` for an enabled
-site, `optional_host_permissions` for a disabled site, and the `web_accessible_resources` matches for all sites.
+site, `optional_host_permissions` for a disabled site or an origin that was optional in the previous release, and the
+`web_accessible_resources` matches for all sites. The previous release is the last `v*` tag before `HEAD`. Without
+git history or tags, as in a source archive, the committed `manifest.json` takes its place.
 Reload the unpacked extension to test.
 
 `make test` fails while the bundled sites come from a local copy. That is intentional: do not commit them.

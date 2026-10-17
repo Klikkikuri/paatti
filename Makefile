@@ -126,7 +126,7 @@ dist-chrome dist-firefox: dist-%: manifest.%.json dist
 # the non-OSS assets and the attested suola artifacts of the pinned tag; the recursive make is how
 # both flags reach the parse-time conditionals in dist and the Wasm rule. One shared staging step,
 # so that `make -j store-build` does not run two of them into the same $(DIST_DIR).
-store-dist: check-sites-published
+store-dist: check-sites check-sites-published
 	$(MAKE) dist NON_OSS=1 USE_RELEASE_ARTIFACTS=1
 
 store-chrome store-firefox: store-%: manifest.%.json store-dist
@@ -174,7 +174,7 @@ check-icons:
 
 # The bundled sites come from the provider manifest, and manifest.json takes its site origins from them. Both are
 # committed, for the same reason as the icons. A store build cannot request an origin at runtime, so it must ship
-# exactly the published sites: check-sites-published fails on any difference.
+# exactly the published sites: check-sites-published fails on any difference. check-sites reads the previous v* tag.
 sites-sync:
 	node tools/sites.mjs $(SITES_MANIFEST)
 

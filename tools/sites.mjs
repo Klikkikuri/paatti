@@ -15,6 +15,11 @@
  * group. A store build cannot request any other origin, so these lists are never edited by hand. An entry of the
  * form `https://<host>/*` belongs to this script; every other entry is kept.
  *
+ * An origin that is optional in the previous release stays optional, also when its site becomes enabled. A new
+ * required host permission makes Chrome disable the extension at update until the user accepts it. The previous
+ * release is the last `v*` tag before HEAD, so that `--check` gives the same result on the tagged commit. A source
+ * archive has no git history: then the committed `manifest.json` takes the place of the previous release.
+ *
  * Usage:
  *   node tools/sites.mjs <manifest-url>                   write the module and the manifest origins
  *   node tools/sites.mjs --check                          fail if manifest.json does not agree with the module
@@ -25,6 +30,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
+import { execFileSync } from "node:child_process";
 
 import { fetchManifest, resolve } from "../src/provider.js";
 import { ARBITRARY_ORIGINS } from "../src/options/origins.js";
@@ -61,17 +67,21 @@ export async function fetchSites(url) {
 /**
  * @param {object} manifest - `manifest.json`.
  * @param {object} siteConfigs
+ * @param {object} released - `manifest.json` of the previous release.
  * @returns {object} A copy whose site origins are the origins of `siteConfigs`.
  */
-export function patchManifest(manifest, siteConfigs) {
+export function patchManifest(manifest, siteConfigs, released) {
+    const shippedOptional = new Set(released.optional_host_permissions);
     const sites = Object.values(siteConfigs);
     const enabled = sites.filter((site) => site.enabled).flatMap((site) => site.origins);
     const disabled = sites.filter((site) => !site.enabled).flatMap((site) => site.origins);
+    const required = enabled.filter((origin) => !shippedOptional.has(origin));
+    const optional = [...enabled.filter((origin) => shippedOptional.has(origin)), ...disabled];
     const keep = (list = []) => list.filter((origin) => !SITE_ORIGIN.test(origin));
 
     const copy = structuredClone(manifest);
-    copy.host_permissions = [...keep(manifest.host_permissions), ...enabled];
-    copy.optional_host_permissions = [...keep(manifest.optional_host_permissions), ...disabled];
+    copy.host_permissions = [...keep(manifest.host_permissions), ...required];
+    copy.optional_host_permissions = [...keep(manifest.optional_host_permissions), ...optional];
     const named = copy.web_accessible_resources.find((group) => !group.matches.includes(ARBITRARY_ORIGINS));
     named.matches = [...enabled, ...disabled];
 
@@ -104,10 +114,29 @@ export function renderModule(source, siteConfigs) {
 const readManifest = () => JSON.parse(readFileSync(join(REPO, MANIFEST), "utf8"));
 const writeJson = (file, value) => writeFileSync(join(REPO, file), JSON.stringify(value, null, 2) + "\n");
 
+/** @returns {object|null} `manifest.json` of the last `v*` tag before HEAD, or null without git history or tags. */
+export function readReleasedManifest() {
+    const git = (...args) => execFileSync("git", args, { cwd: REPO, encoding: "utf8", stdio: "pipe" }).trim();
+    try {
+        const tag = git("describe", "--tags", "--abbrev=0", "--match", "v*", "HEAD^");
+        return JSON.parse(git("show", `${tag}:${MANIFEST}`));
+    } catch {
+        return null;
+    }
+}
+
+function releasedOrCommittedManifest() {
+    const released = readReleasedManifest();
+    if (released) return released;
+    console.warn(`No v* tag before HEAD: the committed ${MANIFEST} takes the place of the previous release.`);
+    return readManifest();
+}
+
 async function main([flag, url]) {
     if (flag === "--check") {
         const { SITE_CONFIGS } = await import(join(REPO, MODULE));
-        if (!isDeepStrictEqual(patchManifest(readManifest(), SITE_CONFIGS), readManifest())) {
+        const patched = patchManifest(readManifest(), SITE_CONFIGS, releasedOrCommittedManifest());
+        if (!isDeepStrictEqual(patched, readManifest())) {
             throw new Error(`${MANIFEST}: the site origins do not agree with ${MODULE}. Run \`make sites-sync\`.`);
         }
     } else if (flag === "--check-published" && url) {
@@ -120,7 +149,7 @@ async function main([flag, url]) {
         const siteConfigs = await fetchSites(flag);
         mkdirSync(join(REPO, dirname(MODULE)), { recursive: true });
         writeFileSync(join(REPO, MODULE), renderModule(flag, siteConfigs));
-        writeJson(MANIFEST, patchManifest(readManifest(), siteConfigs));
+        writeJson(MANIFEST, patchManifest(readManifest(), siteConfigs, releasedOrCommittedManifest()));
         console.log(`${MODULE}: ${Object.keys(siteConfigs).length} sites from ${flag}`);
     } else {
         console.error("Usage: node tools/sites.mjs <manifest-url> | --check | --check-published <manifest-url>");

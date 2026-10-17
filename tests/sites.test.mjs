@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { readFileSync } from 'node:fs';
 
-const { patchManifest, diffSites, renderModule, fetchSites } = await import('../tools/sites.mjs');
+const { patchManifest, diffSites, renderModule, fetchSites, readReleasedManifest } = await import('../tools/sites.mjs');
 const { SITE_CONFIGS } = await import('../src/generated/sites.js');
 const { ARBITRARY_ORIGINS } = await import('../src/options/origins.js');
 
@@ -20,11 +20,18 @@ describe('patchManifest', () => {
             { resources: ['a.js'], matches: [ARBITRARY_ORIGINS] },
         ],
     };
-    const patched = patchManifest(manifest, { 'on.example': site('on.example', true), 'off.example': site('off.example', false) });
+    const released = { optional_host_permissions: [ARBITRARY_ORIGINS, 'https://was-off.example/*'] };
+    const patched = patchManifest(manifest, { 'on.example': site('on.example', true), 'off.example': site('off.example', false) }, released);
 
     test('puts enabled sites in host_permissions and disabled sites in optional_host_permissions', () => {
         assert.deepEqual(patched.host_permissions, ['https://raw.githubusercontent.com/Klikkikuri/rahti/*', 'https://on.example/*']);
         assert.deepEqual(patched.optional_host_permissions, [ARBITRARY_ORIGINS, 'https://off.example/*']);
+    });
+
+    test('keeps an enabled site optional when the previous release had it optional', () => {
+        const turnedOn = patchManifest(manifest, { 'was-off.example': site('was-off.example', true) }, released);
+        assert.deepEqual(turnedOn.host_permissions, ['https://raw.githubusercontent.com/Klikkikuri/rahti/*']);
+        assert.deepEqual(turnedOn.optional_host_permissions, [ARBITRARY_ORIGINS, 'https://was-off.example/*']);
     });
 
     test('puts every site in the named web_accessible_resources group and leaves the wildcard group alone', () => {
@@ -39,7 +46,13 @@ describe('patchManifest', () => {
 
 describe('the committed sites', () => {
     test('manifest.json agrees with src/generated/sites.js (make check-sites)', () => {
-        assert.deepEqual(patchManifest(base, SITE_CONFIGS), base);
+        assert.deepEqual(patchManifest(base, SITE_CONFIGS, base), base);
+    });
+
+    const released = readReleasedManifest();
+    const noRelease = !released && 'no git history or v* tag';
+    test('manifest.json keeps optional the origins that the previous release has optional', { skip: noRelease }, () => {
+        assert.deepEqual(patchManifest(base, SITE_CONFIGS, released), base);
     });
 
     test('the module renders back to itself', async () => {

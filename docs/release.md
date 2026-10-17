@@ -125,6 +125,10 @@ differ from the sites of the published provider manifest, and it names each site
 changed. A store build cannot request a site origin that its manifest does not declare, so it must carry the
 published sites. To correct it, run `make sites-sync`, commit the result, and tag again.
 
+A store build also runs `make check-sites`. It stops if a site origin that was optional in the previous release is now
+in `host_permissions`. A new required host permission makes Chrome disable the extension at update.
+[Adding a new site](development/adding-a-new-site.md) tells which origins are required.
+
 The two zip files have the same names as the output of `make package` and `make build`, which write the GitHub
 channel builds. The file on disk is the output of the make target that ran last. Run `make store-build`
 directly before an upload, and do not run another make target in between.
