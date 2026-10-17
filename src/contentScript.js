@@ -49,10 +49,7 @@ let hrefSign;
     const feedbackDialog = createFeedbackDialog({
         browser,
         log,
-        getDatabaseUpdated: async () => {
-            const status = await model.read.getDatabaseStatus();
-            return status.lastDatabaseUpdate ? new Date(status.lastDatabaseUpdate).toISOString() : "Unknown";
-        },
+        getDatabaseStatus: model.read.getDatabaseStatus,
         // Reached through the overlay declared below, which exists by the time anything can open the card.
         setHighlighted: (element, on) => highlightOverlay.setFeedback([element], on)
     });

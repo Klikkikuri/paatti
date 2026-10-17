@@ -24,7 +24,7 @@ const COMPLETE = {
     clickbaitLevel: 3,
     feedbackType: 'bad_conversion',
     comment: 'Otsikko ei vastaa juttua',
-    databaseUpdated: '2026-09-01T00:00:00.000Z'
+    databaseStatus: { lastDatabaseUpdate: 1788000000123, databaseGenerationDate: '2026-09-01T00:00:00Z' }
 };
 
 describe('buildFeedbackPayload', () => {
@@ -35,7 +35,7 @@ describe('buildFeedbackPayload', () => {
         assert.equal(payload.originalTitle, 'Tämä yksi temppu');
         assert.equal(payload.convertedTitle, 'Kunta korotti veroja');
         assert.equal(payload.feedbackType, 'bad_conversion');
-        assert.equal(payload.databaseUpdated, '2026-09-01T00:00:00.000Z');
+        assert.equal(payload.databaseUpdated, '2026-09-01T00:00:00Z');
         assert.match(payload.timestamp, /^\d{4}-\d{2}-\d{2}T/);
     });
 
@@ -44,13 +44,32 @@ describe('buildFeedbackPayload', () => {
         assert.equal(buildFeedbackPayload({ ...COMPLETE, clickbaitLevel: 0 }).clickbaitLevel, '0');
     });
 
-    test('strips tracking parameters from the page URL', () => {
-        const payload = buildFeedbackPayload({
-            ...COMPLETE,
-            pageUrl: 'https://www.iltalehti.fi/a/1?utm_source=x&fbclid=y&id=7'
+    describe('page URL', () => {
+        const cases = [
+            ['removes the query', 'https://www.iltalehti.fi/a/1?utm_source=x&q=haku&id=7', 'https://www.iltalehti.fi/a/1'],
+            ['removes the fragment', 'https://www.iltalehti.fi/a/1#comments', 'https://www.iltalehti.fi/a/1'],
+            ['removes the query and the fragment', 'https://www.iltalehti.fi/a/1?token=s3cret#x', 'https://www.iltalehti.fi/a/1'],
+            ['keeps the path', 'https://www.iltalehti.fi/kotimaa/a/123', 'https://www.iltalehti.fi/kotimaa/a/123'],
+            ['returns a URL that does not parse unchanged', 'not-a-valid-url', 'not-a-valid-url']
+        ];
+
+        for (const [name, pageUrl, expected] of cases) {
+            test(name, () => assert.equal(buildFeedbackPayload({ ...COMPLETE, pageUrl }).pageUrl, expected));
+        }
+    });
+
+    describe('database stamp', () => {
+        test('is the dataset generation date, never the install download time', () => {
+            const { databaseUpdated } = buildFeedbackPayload(COMPLETE);
+
+            assert.equal(databaseUpdated, '2026-09-01T00:00:00Z');
         });
 
-        assert.equal(payload.pageUrl, 'https://www.iltalehti.fi/a/1?id=7');
+        test('is "Unknown" when there is no generation date or no status', () => {
+            const noDate = { ...COMPLETE, databaseStatus: { lastDatabaseUpdate: 1788000000123, databaseGenerationDate: null } };
+            assert.equal(buildFeedbackPayload(noDate).databaseUpdated, 'Unknown');
+            assert.equal(buildFeedbackPayload({ ...COMPLETE, databaseStatus: undefined }).databaseUpdated, 'Unknown');
+        });
     });
 
     test('trims the comment, and a whitespace-only comment becomes the placeholder', () => {
@@ -60,7 +79,7 @@ describe('buildFeedbackPayload', () => {
         assert.equal(buildFeedbackPayload({ ...COMPLETE, comment: undefined }).comment, '-');
     });
 
-    for (const field of ['pageUrl', 'urlSign', 'originalTitle', 'convertedTitle', 'feedbackType', 'databaseUpdated']) {
+    for (const field of ['pageUrl', 'urlSign', 'originalTitle', 'convertedTitle', 'feedbackType']) {
         test(`returns null when '${field}' is missing`, () => {
             assert.equal(buildFeedbackPayload({ ...COMPLETE, [field]: '' }), null);
             assert.equal(buildFeedbackPayload({ ...COMPLETE, [field]: undefined }), null);
@@ -93,7 +112,7 @@ describe('buildFeedbackRequest', () => {
         assert.equal(body.get('entry.1807257025'), '3');
         assert.equal(body.get('entry.167673994'), 'bad_conversion');
         assert.equal(body.get('entry.78795748'), 'Otsikko ei vastaa juttua');
-        assert.equal(body.get('entry.364993842'), '2026-09-01T00:00:00.000Z');
+        assert.equal(body.get('entry.364993842'), '2026-09-01T00:00:00Z');
     });
 
     const formEndpoints = [

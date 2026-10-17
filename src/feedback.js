@@ -12,7 +12,6 @@
  * but that exemption has differed between browsers, and the worker needs none of it.
  */
 
-import { sanitizeUrlForFeedback } from "./utils.js";
 import { Clickbaitiness } from "./model.js";
 
 /** Badge labels, mirroring _locales/en so a missing translation degrades to English. */
@@ -29,6 +28,25 @@ const FORM_ENTRIES = {
     comment: "entry.78795748",
     databaseUpdated: "entry.364993842"
 };
+
+/**
+ * The page URL as feedback sends it: origin and path, without the query or the fragment. Those can carry
+ * search terms, tokens or IDs that tell more about the user than about the headline.
+ *
+ * @param {string} url
+ * @returns {string} The trimmed URL, or the input unchanged when it does not parse.
+ */
+function feedbackPageUrl(url) {
+    try {
+        const { origin, pathname } = new URL(url);
+        // Known limits: a page that identifies its content only in the query loses that identification, and data
+        // in the path (for example ";jsessionid=") is still sent. Accepted for now: urlSign identifies the headline,
+        // and supported news sites do not put user data in their paths.
+        return origin + pathname;
+    } catch {
+        return url;
+    }
+}
 
 /**
  * Resolve a clickbait level -- numeric, or a Clickbaitiness level string -- to the index used as the badge's
@@ -54,11 +72,16 @@ export function clickbaitBadgeIndex(level) {
 /**
  * Validate and normalise one feedback submission.
  *
- * Every field is required. The comment is trimmed once, here, and the trimmed value is what both the form and
+ * The page, the headline, its clickbait level and the feedback type are required. The comment is trimmed once, here, and the trimmed value is what both the form and
  * the JSON body carry -- the JSON branch used to send the raw string, so a whitespace-only comment passed
  * validation on its "-" placeholder and then posted as blank.
  *
+ * Nothing in the payload may link two submissions from one install. The page URL keeps only its origin and
+ * path (see `feedbackPageUrl`), and `databaseUpdated` is the generation date of the dataset in use, which is
+ * the same for every install on that dataset. The install's own download time would be unique to it.
+ *
  * @param {object} fields
+ * @param {object} fields.databaseStatus - From `model.read.getDatabaseStatus()`.
  * @returns {object|null} The payload, or null when a required field is missing.
  */
 export function buildFeedbackPayload({
@@ -69,21 +92,21 @@ export function buildFeedbackPayload({
     clickbaitLevel,
     feedbackType,
     comment = "",
-    databaseUpdated
+    databaseStatus
 }) {
     const payload = {
         timestamp: new Date().toISOString(),
-        pageUrl: sanitizeUrlForFeedback(pageUrl || ""),
+        pageUrl: feedbackPageUrl(pageUrl || ""),
         urlSign: urlSign || "",
         originalTitle: originalTitle || "",
         convertedTitle: convertedTitle || "",
         clickbaitLevel: (clickbaitLevel !== undefined && clickbaitLevel !== null) ? String(clickbaitLevel) : "",
         feedbackType: feedbackType || "",
         comment: String(comment).trim() || "-",
-        databaseUpdated: databaseUpdated || ""
+        databaseUpdated: databaseStatus?.databaseGenerationDate || "Unknown"
     };
 
-    const required = ["pageUrl", "urlSign", "originalTitle", "convertedTitle", "feedbackType", "databaseUpdated"];
+    const required = ["pageUrl", "urlSign", "originalTitle", "convertedTitle", "feedbackType"];
     if (required.some((key) => !payload[key]) || payload.clickbaitLevel === "") {
         return null;
     }
