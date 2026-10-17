@@ -209,7 +209,8 @@ async function getConfig() {
 
         // Providers own only their URL, order and enabled flag here; what each one resolved to lives
         // in its own storage.local namespace and is read as one batched call below, not one per
-        // provider -- src/providers.js is the read/write API for everything about that shape.
+        // provider. src/providers.js writes that shape; the config keeps it as `providerData`, so the
+        // read side never loads a namespace again.
         const providers = Array.isArray(syncData.providers) ? syncData.providers : [];
 
         const activeEnv = userPreferences.environment || DEFAULT_CONFIG.environment || "free";
@@ -244,12 +245,14 @@ async function getConfig() {
             provider?.enabled && provider?.url && isUsableProvider(provider.url, defaultProviders));
         const enabledProviderUrls = enabledProviders.map((provider) => provider.url);
         const providerKeys = enabledProviderUrls.map((url) => `${PROVIDER_KEY_PREFIX}${url}`);
-        const providerData = providerKeys.length > 0 ? await browser.storage.local.get(providerKeys) : {};
+        const storedProviderData = providerKeys.length > 0 ? await browser.storage.local.get(providerKeys) : {};
+        const providerData = Object.fromEntries(enabledProviderUrls.map((url) =>
+            [url, storedProviderData[`${PROVIDER_KEY_PREFIX}${url}`] || {}]));
 
         const mergedSiteConfigs = { ...DEFAULT_CONFIG.siteConfigs };
-        // Which provider (if any) a domain came from -- absent means the bundled set. Suola naming and
-        // the Rahti scoped lookup both key off this, through model.js's getSourceForHost().
-        const siteConfigSource = {};
+        // The providers that a domain's site came from, in the order they were applied; the last one is the
+        // winner. Absent means the bundled set. model.js's sourcesForHost() builds the lookup chain from this.
+        const siteConfigSources = {};
 
         // Folded in before the override loop below, not after: that loop is what applies
         // userSiteOverrides and fills in a default origin, and a provider-only site needs both. A
@@ -270,13 +273,13 @@ async function getConfig() {
         // A site whose origins this build cannot request is left out: it could never be turned on. In the store
         // build, that is a site its manifest does not declare. refreshOne() logs it once per fetch.
         for (const provider of enabledProviders) {
-            const data = providerData[`${PROVIDER_KEY_PREFIX}${provider.url}`];
             const isDefault = defaultProviders.has(provider.url);
-            for (const [domain, siteConfig] of Object.entries(data?.siteConfigs || {})) {
+            for (const [domain, siteConfig] of Object.entries(providerData[provider.url].siteConfigs || {})) {
                 if (!isDefault && !siteConfig.enabled) continue;
-                if (!canRequestOrigins(siteConfig.origins || [`https://${domain}/*`], manifest)) continue;
+                const origins = siteConfig.origins || [`https://${domain}/*`];
+                if (!canRequestOrigins(origins, manifest)) continue;
                 mergedSiteConfigs[domain] = isDefault ? siteConfig : { ...siteConfig, enabled: false };
-                siteConfigSource[domain] = provider.url;
+                (siteConfigSources[domain] ||= []).push({ url: provider.url, origins });
             }
         }
 
@@ -308,13 +311,12 @@ async function getConfig() {
             },
             environmentConfigs: mergedEnvConfigs,
             siteConfigs: mergedSiteConfigs, // Use properly merged site configs
-            siteConfigSource,
+            siteConfigSources,
+            // Enabled providers only, so that a disabled one gives "no data", not its last resolved content.
+            providerData,
             activeEnv: activeEnv,
-            // Which provider URLs are currently enabled -- getRahtiEntry() and the database status
-            // readers use this to make a disabled provider (default or third-party) degrade to "no
-            // data" instead of serving its last-resolved content forever.
             enabledProviderUrls,
-            // In defaultProviders order, because a later default provider wins in getRahtiEntry().
+            // In defaultProviders order, because a later default provider wins in getRahtiEntries().
             enabledDefaultProviderUrls: (envData.defaultProviders || []).filter((url) => enabledProviderUrls.includes(url)),
             // Synced, so the warning about the "all headlines" level is dismissed once per person
             // rather than once per device.

@@ -127,7 +127,7 @@ class ProvidersSetting extends ComponentBase {
         // Fires once with the current value, which is the first render, and again when the sites the providers
         // claim move -- an environment switch included, which changes the default providers.
         this.addTeardown(onConfigValue(
-            (config) => [Object.keys(config.siteConfigSource || {}).sort(), Object.values(config.siteConfigSource || {})],
+            (config) => Object.entries(config.siteConfigSources || {}).map(([domain, sources]) => `${domain} ${sources.at(-1).url}`).sort(),
             () => this.#scheduleRender(),
         ));
 
@@ -275,18 +275,18 @@ class ProvidersSetting extends ComponentBase {
 
     /** What went wrong on the last resolve: rejected sites and fetch errors. */
     #describeProblems(data, config) {
-        const siteConfigSource = config.siteConfigSource || {};
+        const siteConfigSources = config.siteConfigSources || {};
         return [
-            ...(data.rejected || []).map((rejection) => this.#describeRejection(rejection, siteConfigSource)),
+            ...(data.rejected || []).map((rejection) => this.#describeRejection(rejection, siteConfigSources)),
             ...(data.errors || []).map(errorText)
         ];
     }
 
     /** Names which source actually holds a rejected key, so an "already claimed" reason is not a dead end. */
-    #describeRejection(rejection, siteConfigSource) {
+    #describeRejection(rejection, siteConfigSources) {
         if (!rejection.key) return rejection.reason;
         if (/already claimed/.test(rejection.reason)) {
-            const winner = siteConfigSource[rejection.key] || (browser.i18n.getMessage('providerBundledSet') || 'the bundled set');
+            const winner = siteConfigSources[rejection.key]?.at(-1).url || (browser.i18n.getMessage('providerBundledSet') || 'the bundled set');
             return browser.i18n.getMessage('providerClaimedBy', [rejection.key, winner]) || `${rejection.key}: claimed by ${winner}`;
         }
         return `${rejection.key}: ${rejection.reason}`;

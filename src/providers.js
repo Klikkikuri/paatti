@@ -22,9 +22,8 @@ import { getFaviconKey } from "./faviconCache.js";
 
 const log = getLogger("providers");
 
-/** "17 is generous" -- keeps the sync list far under its quota and bounds refreshProviders() too. One
- *  more than before: the default provider now takes a slot in this same list (see config.js's
- *  defaultProviders / background.js's seedDefaultProviders()). */
+/** Keeps the sync list far under its quota and bounds refreshProviders(). The default providers take slots in this
+ *  same list (see seedDefaultProviders()). */
 const MAX_PROVIDERS = 17;
 
 /** The local storage namespace one provider's resolved content lives in. Read too by config.js's own merge. */
@@ -41,7 +40,7 @@ function documentsKeyFor(url) {
     return `${namespaceFor(url)}_documents`;
 }
 
-/** The sync provider list: `{ url, enabled }` in the order the user added them. */
+/** The sync provider list: `{ url, enabled }` in precedence order, lowest first. See `seedDefaultProviders()`. */
 async function getProviders() {
     const { providers } = await browser.storage.sync.get("providers");
     return Array.isArray(providers) ? providers : [];
@@ -63,6 +62,34 @@ async function addProvider(url) {
 
     const updated = [...providers, { url, enabled: true }];
     await browser.storage.sync.set({ providers: updated });
+    return updated;
+}
+
+/**
+ * Put the active environment's default providers at the front of the sync list, in `defaultUrls` order.
+ *
+ * The list order is the precedence order, lowest first: the bundled set is always applied first (see the design),
+ * and the default providers publish it. The other entries keep the order the user added them in. A default that
+ * is not in the list is added, enabled, while there is space. Nothing is removed: a URL that is no longer a
+ * default stays where it is, as an ordinary provider.
+ *
+ * @param {string[]} defaultUrls
+ * @returns {Promise<Array>} The updated list.
+ */
+async function seedDefaultProviders(defaultUrls) {
+    const providers = await getProviders();
+    const byUrl = new Map(providers.map((provider) => [provider.url, provider]));
+    const defaults = [];
+    let free = MAX_PROVIDERS - providers.length;
+    for (const url of new Set(defaultUrls)) {
+        if (byUrl.has(url)) defaults.push(byUrl.get(url));
+        else if (free-- > 0) defaults.push({ url, enabled: true });
+        else log(`No space to seed default provider ${url}.`);
+    }
+    const defaultSet = new Set(defaults.map((provider) => provider.url));
+    const updated = [...defaults, ...providers.filter((provider) => !defaultSet.has(provider.url))];
+
+    if (updated.some((provider, i) => provider !== providers[i])) await browser.storage.sync.set({ providers: updated });
     return updated;
 }
 
@@ -314,11 +341,11 @@ async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) 
 }
 
 /**
- * Refresh every enabled provider, in the order the user added them.
+ * Refresh every enabled provider, in list order (see `getProviders()`).
  *
  * Sequential, not parallel: each provider's declared scope becomes part of `claimedSiteKeys` for the
- * ones after it, which is what gives ties between two providers the "order the user added them in"
- * precedence the design calls for. The bundled set's own keys seed the claim before any provider runs,
+ * ones after it, which is what gives ties between two providers the list-order precedence the design
+ * calls for. The bundled set's own keys seed the claim before any provider runs,
  * so weight `0` still claims no precedence over it -- except for a default provider, which publishes the
  * bundled set and so may replace it.
  *
@@ -490,6 +517,6 @@ async function _reconcileSuolaRules() {
 }
 
 export {
-    MAX_PROVIDERS, namespaceFor, getProviders, addProvider, removeProvider, setProviderEnabled,
+    MAX_PROVIDERS, namespaceFor, getProviders, addProvider, seedDefaultProviders, removeProvider, setProviderEnabled,
     getProviderData, errorText, refreshProviders, retryDelayMs, reconcileSuolaRules
 };

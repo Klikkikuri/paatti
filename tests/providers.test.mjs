@@ -7,7 +7,7 @@ const fake = createFakeBrowser();
 globalThis.browser = fake.browser;
 
 const {
-    MAX_PROVIDERS, getProviders, addProvider, removeProvider, setProviderEnabled,
+    MAX_PROVIDERS, getProviders, addProvider, seedDefaultProviders, removeProvider, setProviderEnabled,
     getProviderData, refreshProviders, reconcileSuolaRules, retryDelayMs
 } = await import('../src/providers.js');
 
@@ -98,6 +98,44 @@ describe('the provider list', () => {
         for (let i = 0; i < MAX_PROVIDERS; i++) await addProvider(`https://provider.example/${i}.json`);
         await assert.rejects(addProvider('https://provider.example/one-too-many.json'), /At most/);
         assert.equal((await getProviders()).length, MAX_PROVIDERS);
+    });
+
+    describe('seedDefaultProviders puts the defaults first, in their own order', () => {
+        const [A, B, X, Y] = ['a', 'b', 'x', 'y'].map((name) => `https://${name}.example/manifest.json`);
+        const on = (url) => ({ url, enabled: true });
+        const cases = [
+            { name: 'adds a missing default in front of a third-party provider', list: [on(X)], defaults: [A], expected: [on(A), on(X)] },
+            { name: 'moves a default that was added later', list: [on(X), on(A), on(Y)], defaults: [A], expected: [on(A), on(X), on(Y)] },
+            { name: 'keeps a disabled default disabled', list: [on(X), { url: A, enabled: false }], defaults: [A], expected: [{ url: A, enabled: false }, on(X)] },
+            { name: 'orders several defaults as listed', list: [on(B), on(X)], defaults: [A, B], expected: [on(A), on(B), on(X)] },
+            { name: 'keeps a former default as an ordinary provider', list: [on(B), on(X)], defaults: [A], expected: [on(A), on(B), on(X)] },
+        ];
+        for (const { name, list, defaults, expected } of cases) {
+            test(name, async () => {
+                await fake.browser.storage.sync.set({ providers: list });
+                assert.deepEqual(await seedDefaultProviders(defaults), expected);
+                assert.deepEqual(await getProviders(), expected);
+            });
+        }
+
+        test('does not write a list that is already in order', async () => {
+            await fake.browser.storage.sync.set({ providers: [on(A), on(X)] });
+            let writes = 0;
+            const listener = (changes, area) => { if (area === 'sync') writes++; };
+            fake.browser.storage.onChanged.addListener(listener);
+            try {
+                await seedDefaultProviders([A]);
+            } finally {
+                fake.browser.storage.onChanged.removeListener(listener);
+            }
+            assert.equal(writes, 0);
+        });
+
+        test('adds no default past the provider cap', async () => {
+            const full = Array.from({ length: MAX_PROVIDERS }, (_, i) => on(`https://provider.example/${i}.json`));
+            await fake.browser.storage.sync.set({ providers: full });
+            assert.deepEqual(await seedDefaultProviders([A]), full);
+        });
     });
 
     test('setProviderEnabled toggles without losing the provider', async () => {

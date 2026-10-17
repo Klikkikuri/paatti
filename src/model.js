@@ -4,7 +4,6 @@ import browser from "./browser-api.js";
 import { getLogger } from "./utils.js";
 import { getConfig, PROVIDER_KEY_PREFIX } from "./config.js";
 import { mergeStats } from "./stats.js";
-import { getProviderData } from "./providers.js";
 
 const log = getLogger("model");
 
@@ -134,7 +133,7 @@ function matchesAnyOrigin(hostname, origins) {
 /**
  * The `[domain, siteConfig]` entry of `siteConfigs` whose origins cover `hostname`, or `[null, null]`.
  * The one host-matching lookup `isEnabled`, `getMatchingSiteDomain`, `getSiteRules` and
- * `getSourceForHost` all need, each just reading a different field off the result.
+ * `sourcesForHost` all need, each just reading a different field off the result.
  *
  * @param {object} siteConfigs
  * @param {string} hostname
@@ -146,6 +145,79 @@ function findSiteConfig(siteConfigs, hostname) {
         if (siteConfig.origins && matchesAnyOrigin(hostname, siteConfig.origins)) return entry;
     }
     return [null, null];
+}
+
+/**
+ * The sources a link to `hostname` is looked up in, highest precedence first.
+ *
+ * Each enabled default provider is a layer, a later one first. A provider site that the user turned on adds a
+ * layer for each provider that offers the site and whose own origins cover the host, the last one applied first.
+ * With shadowing on, the providers come before the defaults. With shadowing off, they come after the defaults,
+ * so that a provider only fills the gaps in the official data.
+ *
+ * @param {object} config - From `getConfig()`.
+ * @param {string} hostname
+ * @returns {Array<{url: string, claims: boolean}>} `claims`: the provider's own site config covers the host.
+ */
+function sourcesForHost(config, hostname) {
+    const [domain, siteConfig] = findSiteConfig(config.siteConfigs, hostname);
+    const claimingUrls = new Set((config.siteConfigSources[domain] || [])
+        .filter(({ origins }) => matchesAnyOrigin(hostname, origins))
+        .map(({ url }) => url));
+    const defaultUrls = config.enabledDefaultProviderUrls;
+
+    const defaults = [...defaultUrls].reverse().map((url) => ({ url, claims: claimingUrls.has(url) }));
+    const providers = !siteConfig?.enabled ? [] : [...claimingUrls]
+        .filter((url) => !defaultUrls.includes(url))
+        .reverse()
+        .map((url) => ({ url, claims: true }));
+    return config.providerShadowingEnabled ? [...providers, ...defaults] : [...defaults, ...providers];
+}
+
+/** The stored data of each enabled default provider, in `defaultProviders` order. */
+function defaultProviderData(config) {
+    return config.enabledDefaultProviderUrls.map((url) => config.providerData[url]);
+}
+
+/**
+ * Sign each URL once for each layer of its host's lookup chain, under the rules of that layer.
+ *
+ * A layer signs under its provider's named Suola set when the provider claims the host. A provider that has
+ * Suola rules but no active set (`defineRules` refused them) gets `sign: null`: a sign from the wrong rules is
+ * a valid string that no later check can catch. All other layers use the base rules.
+ *
+ * `officialSign` is the sign of the highest default layer. It is the base sign when no default is enabled, or when
+ * that layer has no sign because its rules were refused. It identifies the link to the feedback server and in the statistics, so it must not change with provider coverage.
+ *
+ * @param {object} config - From `getConfig()`.
+ * @param {string[]} urls
+ * @param {{hashUrl: Function, activeNames: Set<string>}} suola - Suola's `hashUrl` and its `listRules()` names.
+ * @returns {Object<string, {layers: Array<{source: string, sign: string|null}>, officialSign: string}|null>}
+ *   Null for a URL that cannot be signed.
+ */
+function signUrls(config, urls, { hashUrl, activeNames }) {
+    const chains = new Map();
+    const signs = {};
+    for (const url of urls) {
+        try {
+            const hostname = new URL(url).hostname;
+            if (!chains.has(hostname)) chains.set(hostname, sourcesForHost(config, hostname));
+
+            let baseSign;
+            const base = () => (baseSign ??= hashUrl(url));
+            const layers = chains.get(hostname).map(({ url: source, claims }) => {
+                if (claims && activeNames.has(source)) return { source, sign: hashUrl(url, source) };
+                if (claims && config.providerData[source].suolaRules) return { source, sign: null };
+                return { source, sign: base() };
+            });
+            const defaultLayer = layers.find(({ source }) => config.enabledDefaultProviderUrls.includes(source));
+            signs[url] = { layers, officialSign: defaultLayer?.sign ?? base() };
+        } catch (err) {
+            log(`Error signing URL '${url}':`, err);
+            signs[url] = null;
+        }
+    }
+    return signs;
 }
 
 /**
@@ -399,7 +471,7 @@ const model = (() => {
              */
             getDatabaseStatus: async () => {
                 const config = await getConfig();
-                const results = await Promise.all(config.enabledDefaultProviderUrls.map(getProviderData));
+                const results = defaultProviderData(config);
                 return {
                     lastDatabaseUpdate: results.reduce((max, r) => Math.max(max, r.updated || 0), 0) || null,
                     lastDatabaseCheck: results.reduce((max, r) => Math.max(max, r.checked || r.updated || 0), 0) || null,
@@ -411,12 +483,11 @@ const model = (() => {
 
             /**
              * How many titles the local database holds, summed across the active environment's enabled
-             * default provider(s). Reads each provider's own `entryCount` field (computed once, at
-             * refresh time, by refreshOne) rather than deserializing `rahtiData` here -- the same "don't
-             * pay to deserialize on every status read" reasoning the old flat-index design had, just
-             * moved to per-provider storage. A summed count, not a true set union: today there is
-             * exactly one default provider per environment, so this is exact; a future second default
-             * provider whose data overlaps the first on some `sign` would be a minor overcount, accepted
+             * default provider(s). Reads each provider's own `entryCount` field, computed once at refresh
+             * time by refreshOne, so that a status read does not count `rahtiData`. A summed count, not a
+             * true set union: today there is exactly one default provider per environment, so this is
+             * exact; a future second default provider whose data overlaps the first on some `sign` would
+             * be a minor overcount, accepted
              * as this is a UI "roughly how much data" signal, not used for correctness.
              *
              * This, not lastDatabaseUpdate, is the test for an empty database. That timestamp is
@@ -427,7 +498,7 @@ const model = (() => {
              */
             getDatabaseEntryCount: async () => {
                 const config = await getConfig();
-                const results = await Promise.all(config.enabledDefaultProviderUrls.map(getProviderData));
+                const results = defaultProviderData(config);
                 return results.reduce((sum, r) => sum + (r.entryCount || 0), 0);
             },
 
@@ -491,18 +562,23 @@ const model = (() => {
             },
 
             /**
-             * Which source is authoritative for `hostname`: a provider's manifest URL, or null for the
-             * bundled set (or no site claiming it at all). The one place this precedence is decided --
-             * background.js's Suola naming and rahti.js's scoped lookup both call this rather than each
-             * re-deriving it from siteConfigs/siteConfigSource themselves.
+             * The Rahti entry of each link, from the first layer of its chain that has the layer's sign.
              *
-             * @param {string} hostname
-             * @returns {Promise<string|null>}
+             * Reads the provider data that `getConfig()` already holds, so a page of links costs no
+             * storage reads. A layer of a provider that is not enabled now is skipped.
+             *
+             * @param {Object<string, {layers: Array<{source: string, sign: string|null}>}|null>} signsByUrl - From `signUrls()`.
+             * @returns {Promise<Object<string, object|null>>} By the same keys.
              */
-            getSourceForHost: async (hostname) => {
-                const config = await getConfig();
-                const [domain] = findSiteConfig(config.siteConfigs, hostname);
-                return domain ? (config.siteConfigSource[domain] || null) : null;
+            getRahtiEntries: async (signsByUrl) => {
+                const { providerData } = await getConfig();
+                const entryOf = ({ source, sign }) => (sign ? providerData[source]?.rahtiData?.[sign] : undefined);
+                const entries = {};
+                for (const [url, signs] of Object.entries(signsByUrl)) {
+                    const layer = signs?.layers.find((candidate) => entryOf(candidate) !== undefined);
+                    entries[url] = layer ? entryOf(layer) : null;
+                }
+                return entries;
             },
 
 
@@ -582,8 +658,8 @@ const model = (() => {
              * matter is environment-dependent (config.defaultProviders varies by environment) and can
              * change at runtime; the caller's own re-read of getDatabaseStatus()/getDatabaseEntryCount()
              * is what actually decides relevance. This does over-fire on a third-party provider's data
-             * changing too -- accepted, since the re-read those two functions do is cheap (small
-             * per-provider fields, not full blobs) and correctness (never missing a relevant change)
+             * changing too -- accepted, since those two functions read the cached config, which loads
+             * again once per change, and correctness (never missing a relevant change)
              * matters more here than trimming an occasional redundant refresh.
              *
              * @param {() => void} callback
@@ -602,4 +678,4 @@ const model = (() => {
     };
 })();
 
-export { model, klikkikuriStatus, Clickbaitiness, clampProbability, matchesAnyOrigin };
+export { model, klikkikuriStatus, Clickbaitiness, clampProbability, matchesAnyOrigin, signUrls };

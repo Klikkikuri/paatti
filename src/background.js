@@ -3,8 +3,8 @@
 import browser from "./browser-api.js";
 import { getLogger, getActiveTab } from "./utils.js";
 import { getConfig, PROVIDER_KEY_PREFIX } from "./config.js";
-import { refreshProviders, retryDelayMs, reconcileSuolaRules, addProvider } from "./providers.js";
-import { model } from "./model.js";
+import { refreshProviders, retryDelayMs, reconcileSuolaRules, seedDefaultProviders } from "./providers.js";
+import { model, signUrls } from "./model.js";
 import { controller } from "./controller.js";
 import { storeFavicon } from "./favicon-fetch.js";
 import { buildFeedbackRequest } from "./feedback.js";
@@ -93,26 +93,6 @@ async function scheduleAlarm(minutes) {
     log(`Alarm rescheduled for every ${minutes} minutes.`);
 }
 
-/**
- * Make sure the active environment's default provider(s) are present in the synced `providers` list.
- * Additive only -- never removes anything, so it can never touch a provider the user added themselves,
- * and it never needs to know whether a given URL used to be default in some earlier version. A URL
- * retired from `config.defaultProviders` simply stops being re-added here and (per providers-setting.js)
- * regains its own Remove button on the next render -- no marker or reconciliation state needed.
- *
- * Called only through `seedAndRefresh()`.
- */
-async function seedDefaultProviders() {
-    const config = await getConfig();
-    for (const url of config.defaultProviders || []) {
-        try {
-            await addProvider(url); // no-op if already present, per providers.js's own check
-        } catch (err) {
-            log(`Failed to seed default provider ${url}:`, err);
-        }
-    }
-}
-
 /** The periodic refresh interval in minutes. */
 function refreshIntervalMinutes(config) {
     return config.refreshIntervalMinutes || 30;
@@ -151,7 +131,8 @@ async function refreshAndScheduleRetry(options = {}, attempt = 1) {
  */
 async function seedAndRefresh(reason, attempt = 1) {
     try {
-        await seedDefaultProviders();
+        await seedDefaultProviders((await getConfig()).defaultProviders || [])
+            .catch((err) => log("Failed to seed the default providers:", err));
         await refreshAndScheduleRetry({}, attempt);
         await reconcileSuola();
     } catch (err) {
@@ -395,32 +376,11 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 return;
             }
 
-            // The name a link signs under is the source that owns its host, not the page's: a
-            // provider must not be able to answer for a link to a site it does not run. Resolved
-            // per URL, since a page can link to hosts several sources are authoritative for.
-            //
-            // A source is only passed as a name when it actually has a named set defined: a
-            // provider can shadow a domain's site-configs alone, with no suola-rules resource of its
-            // own, and hashUrl(url, name) fails closed (null) for a name with nothing behind it --
-            // falling back to the bundled/catch-all signature is correct here, not a bug to surface.
+            // Signed by the link's own host, not the page's: a provider must not be able to answer for a
+            // link to a site it does not run. See model.js's signUrls().
             const activeNames = new Set(typeof globalThis.listRules === "function" ? globalThis.listRules() : []);
-            const results = {};
-            for (const url of message.urls) {
-                try {
-                    let source = null;
-                    try {
-                        source = await model.read.getSourceForHost(new URL(url).hostname);
-                    } catch {
-                        // Not a parseable URL; hashUrl below rejects it on its own terms.
-                    }
-                    const name = source && activeNames.has(source) ? source : null;
-                    results[url] = name ? globalThis.hashUrl(url, name) : globalThis.hashUrl(url);
-                } catch (e) {
-                    log(`Error hashing URL '${url}':`, e);
-                    results[url] = null;
-                }
-            }
-            sendResponse({ success: true, hashes: results });
+            const hashes = signUrls(await getConfig(), message.urls, { hashUrl: globalThis.hashUrl, activeNames });
+            sendResponse({ success: true, hashes });
         }).catch((err) => {
             sendResponse({ success: false, error: err.message || String(err) });
         });

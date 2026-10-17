@@ -222,14 +222,14 @@ describe('providers folded into siteConfigs', () => {
             await withDefaultProvider('development', (config) => {
                 assert.equal(config.siteConfigs['www.hs.fi'].enabled, true);
                 assert.deepEqual(config.siteConfigs['www.hs.fi'].rules, hs.rules);
-                assert.equal(config.siteConfigSource['www.hs.fi'], DEFAULT_RAHTI_MANIFEST_URL);
+                assert.equal(config.siteConfigSources['www.hs.fi'].at(-1).url, DEFAULT_RAHTI_MANIFEST_URL);
             });
         });
 
         test('keeps a site it marks enabled: false, off, as the bundled set does', async () => {
             await withDefaultProvider('free', (config) => {
                 assert.equal(config.siteConfigs['www.ampparit.com'].enabled, false);
-                assert.equal(config.siteConfigSource['www.ampparit.com'], DEFAULT_RAHTI_MANIFEST_URL, 'listed, not withdrawn');
+                assert.equal(config.siteConfigSources['www.ampparit.com'].at(-1).url, DEFAULT_RAHTI_MANIFEST_URL, 'listed, not withdrawn');
             });
         });
 
@@ -341,6 +341,20 @@ describe('default providers and enabledProviderUrls', () => {
         const config = await getConfig();
 
         assert.deepEqual(config.enabledProviderUrls, ['https://on.example/manifest.json']);
+    });
+
+    test('providerData holds the stored data of the enabled providers only', async () => {
+        const on = 'https://on.example/manifest.json';
+        const off = 'https://off.example/manifest.json';
+        await sync.set({ providers: [{ url: on, enabled: true }, { url: off, enabled: false }] });
+        await local.set({
+            [`provider:${on}`]: { rahtiData: { sign: { title: 'On' } } },
+            [`provider:${off}`]: { rahtiData: { sign: { title: 'Off' } } }
+        });
+
+        const config = await getConfig();
+
+        assert.deepEqual(config.providerData, { [on]: { rahtiData: { sign: { title: 'On' } } } });
     });
 
     test('enabledDefaultProviderUrls lists the enabled default providers in defaultProviders order', async () => {
