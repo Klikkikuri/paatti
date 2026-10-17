@@ -1,14 +1,18 @@
-import test, { describe } from 'node:test';
+import test, { describe, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createFakeBrowser } from './helpers/fake-browser.mjs';
+import { installDom, dispatchTrusted } from './helpers/dom.mjs';
+
+const dom = installDom();
+after(() => dom.teardown());
 
 // feedback-dialog.js reaches model.js through feedback.js, and that resolves the namespace at module
 // evaluation -- so the mock has to be in place before the dynamic import below. See AGENTS.md.
 const fake = createFakeBrowser();
 globalThis.browser = fake.browser;
 
-const { anchorRect, isAnchorGone, placeCard } = await import('../src/components/feedback-dialog.js');
+const { anchorRect, createFeedbackDialog, isAnchorGone, placeCard } = await import('../src/components/feedback-dialog.js');
 
 /** A DOMRect-alike: the geometry reads the edges, and nothing else. */
 const rect = (left, top, width, height) => ({
@@ -128,5 +132,127 @@ describe('isAnchorGone', () => {
         assert.equal(isAnchorGone(rect(0, 900, 400, 100), VIEWPORT), true);     // top exactly the fold
         assert.equal(isAnchorGone(rect(-400, 100, 400, 100), VIEWPORT), true);  // right exactly 0
         assert.equal(isAnchorGone(rect(1280, 100, 400, 100), VIEWPORT), true);  // left exactly the width
+    });
+});
+
+describe('the card submits only what the user does', () => {
+    // What jsdom does not have, and the card needs only to exist: popover, animation, observers, the sheets.
+    globalThis.CSSStyleSheet = dom.window.CSSStyleSheet;
+    globalThis.matchMedia = () => ({ matches: false });
+    globalThis.ResizeObserver = class { observe() {} unobserve() {} };
+    globalThis.fetch = async () => ({ text: async () => '' });
+    dom.window.HTMLElement.prototype.showPopover = function () {};
+    dom.window.HTMLElement.prototype.animate = () => ({ cancel() {}, finished: Promise.resolve() });
+    Object.defineProperty(dom.window.ShadowRoot.prototype, 'adoptedStyleSheets', { value: [], writable: true });
+
+    let sent;
+    let root;
+
+    beforeEach(() => {
+        for (const host of document.querySelectorAll('klikkikuri-feedback-dialog')) host.remove();
+        document.body.replaceChildren();
+        sent = [];
+
+        const dialog = createFeedbackDialog({
+            browser: {
+                ...fake.browser,
+                runtime: {
+                    ...fake.browser.runtime,
+                    sendMessage: async (message) => {
+                        sent.push(message);
+                        return { success: true };
+                    }
+                }
+            },
+            getDatabaseStatus: async () => ({ databaseGenerationDate: '2026-10-17T12:57:49Z' }),
+            log: () => {}
+        });
+
+        const target = document.createElement('div');
+        Object.assign(target.dataset, {
+            klikkikuriUrlSign: 'abc123',
+            klikkikuriOriginalTitle: 'Tämä yksi temppu',
+            klikkikuriConvertedTitle: 'Kunta korotti veroja',
+            klikkikuriClickbaitLevel: '3'
+        });
+        // jsdom does no layout, and a card whose headline has no box closes at once.
+        target.getBoundingClientRect = () => ({ left: 10, top: 10, width: 300, height: 40, right: 310, bottom: 50 });
+        document.body.append(target);
+
+        dialog.open(target);
+        root = document.querySelector('klikkikuri-feedback-dialog').shadowRoot;
+    });
+
+    /** Lets the submission's awaits finish, so a message that would be sent has been sent. */
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    const el = (selector) => root.querySelector(selector);
+    const submitted = () => sent.filter((message) => message.action === 'submitFeedback').map(({ payload }) => payload);
+    const trustedClick = (target) => dispatchTrusted(target, 'click', { bubbles: true, composed: true }, 'MouseEvent');
+    const enter = { key: 'Enter', bubbles: true, cancelable: true };
+
+    /** The user's "Is no good" opens the comment form; jsdom would let a test type into a hidden one. */
+    const openCommentForm = () => {
+        trustedClick(el('.feedback-action-btn.bad'));
+        assert.ok(!el('.feedback-input-container').classList.contains('hidden'), '"Is no good" did not open the form');
+    };
+
+    test('a synthetic click on "Is good" sends nothing', async () => {
+        el('.feedback-action-btn.good').click();
+        await settle();
+
+        assert.deepEqual(submitted(), []);
+    });
+
+    test('a synthetic click on Submit sends nothing', async () => {
+        trustedClick(el('.feedback-action-btn.bad'));
+        el('.feedback-text-input').value = 'fake comment';
+        el('.feedback-submit-button').click();
+        await settle();
+
+        assert.deepEqual(submitted(), []);
+    });
+
+    test('a synthetic Enter in the comment field sends nothing', async () => {
+        trustedClick(el('.feedback-action-btn.bad'));
+        el('.feedback-text-input').value = 'fake comment';
+        el('.feedback-text-input').dispatchEvent(new dom.window.KeyboardEvent('keydown', enter));
+        await settle();
+
+        assert.deepEqual(submitted(), []);
+    });
+
+    test('the user\'s click on "Is good" submits positive feedback', async () => {
+        trustedClick(el('.feedback-action-btn.good'));
+        await settle();
+
+        const [payload, ...rest] = submitted();
+        assert.equal(rest.length, 0);
+        assert.equal(payload.feedbackType, 'good_conversion');
+        assert.equal(payload.urlSign, 'abc123');
+    });
+
+    test('the user\'s click on Submit submits negative feedback with the comment', async () => {
+        openCommentForm();
+        el('.feedback-text-input').value = 'Otsikko ei vastaa juttua';
+        trustedClick(el('.feedback-submit-button'));
+        await settle();
+
+        const [payload, ...rest] = submitted();
+        assert.equal(rest.length, 0);
+        assert.equal(payload.feedbackType, 'bad_conversion');
+        assert.equal(payload.comment, 'Otsikko ei vastaa juttua');
+    });
+
+    test('the user\'s Enter in the comment field submits negative feedback', async () => {
+        openCommentForm();
+        el('.feedback-text-input').value = 'Otsikko ei vastaa juttua';
+        dispatchTrusted(el('.feedback-text-input'), 'keydown', enter, 'KeyboardEvent');
+        await settle();
+
+        const [payload, ...rest] = submitted();
+        assert.equal(rest.length, 0);
+        assert.equal(payload.feedbackType, 'bad_conversion');
+        assert.equal(payload.comment, 'Otsikko ei vastaa juttua');
     });
 });

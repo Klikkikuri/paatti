@@ -100,9 +100,35 @@ function updateBadgeLabels(element, defaultLabel) {
     }
 }
 
+/** The badge whose keyboard activation is dispatching its click right now. */
+let keyboardActivated = null;
+
+/** Clicks the badge for a key the user pressed. The click is untrusted; see `isUserActivation`. */
+function activate(element) {
+    keyboardActivated = element;
+    try {
+        element.click();
+    } finally {
+        keyboardActivated = null;
+    }
+}
+
+/**
+ * Whether a click on a badge came from the user: a trusted click, or the click that a trusted key on
+ * that badge dispatched. A badge is in a page the extension does not own, and the page can call
+ * `click()` on it too. The page cannot write to this module from its own world.
+ *
+ * @param {Event} event
+ * @returns {boolean}
+ */
+export function isUserActivation(event) {
+    return event.isTrusted || (keyboardActivated !== null && event.target === keyboardActivated);
+}
+
 /**
  * Keyboard activation, routed through `click()` so the pointer and the keyboard arrive at the one
- * listener the badge's owner registered.
+ * listener the badge's owner registered. Only trusted keys activate; the listener accepts the
+ * resulting click through `isUserActivation`.
  *
  * A button's two keys do not behave alike, and these follow the native contract: Enter acts on the
  * way down, Space on the way up. Acting on every Space keydown would activate once per repeat while
@@ -115,18 +141,18 @@ function updateBadgeLabels(element, defaultLabel) {
 function badgeKeyHandlers(element) {
     return {
         onKeydown: (event) => {
-            if (!element.hasAttribute("action")) return;
+            if (!event.isTrusted || !element.hasAttribute("action")) return;
             if (event.key === " ") {
                 event.preventDefault();
             } else if (event.key === "Enter" && !event.repeat) {
                 event.preventDefault();
-                element.click();
+                activate(element);
             }
         },
         onKeyup: (event) => {
-            if (!element.hasAttribute("action") || event.key !== " ") return;
+            if (!event.isTrusted || !element.hasAttribute("action") || event.key !== " ") return;
             event.preventDefault();
-            element.click();
+            activate(element);
         }
     };
 }
@@ -182,7 +208,7 @@ export function buildBadge({ tagName, svgMarkup, defaultLabel, label, tooltip, a
  *
  * `action` names the control the badge becomes: giving it turns the badge from an image into a button,
  * with a tab stop, a role, that name, and Enter or Space. The badge does not know what the action is --
- * whoever set the attribute listens for the click. The name arrives already translated, as `label` and
+ * whoever set the attribute listens for the click, and acts only when `isUserActivation` accepts it. The name arrives already translated, as `label` and
  * `tooltip` do: a badge never reads `browser.i18n` itself.
  *
  * Name it as a noun phrase, not as a command. A badge sits inside the headline's link, and a link takes

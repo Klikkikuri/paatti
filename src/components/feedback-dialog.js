@@ -250,14 +250,14 @@ function deepActiveElement() {
  *
  * @param {object} deps
  * @param {typeof globalThis.browser} deps.browser - Extension namespace, resolved by the content script.
- * @param {() => Promise<string>} deps.getDatabaseUpdated
+ * @param {() => Promise<object>} deps.getDatabaseStatus - `model.read.getDatabaseStatus`, for the payload's dataset date.
  * @param {(...args: unknown[]) => void} deps.log
  * @param {(element: Element, on: boolean) => void} [deps.setHighlighted] - Marks the article the card reports
  *   on, so it stands out for as long as the card is up. The content script points this at the overlay's card
  *   highlight, which is kept apart from the popup's hover so a closing popup does not clear it.
  * @returns {{ open: (target: Element, activator?: Element) => void, close: () => void }}
  */
-export function createFeedbackDialog({ browser, getDatabaseUpdated, log, setHighlighted = () => {} }) {
+export function createFeedbackDialog({ browser, getDatabaseStatus, log, setHighlighted = () => {} }) {
     const host = document.createElement("klikkikuri-feedback-dialog");
     // Manual, not auto: the card keeps its own Escape and outside-click handling rather than taking the
     // light-dismiss behaviour, which would also tie it to the page's own popover stack.
@@ -466,7 +466,7 @@ export function createFeedbackDialog({ browser, getDatabaseUpdated, log, setHigh
             ...readTarget(current),
             feedbackType: type,
             comment,
-            databaseUpdated: await getDatabaseUpdated()
+            databaseStatus: await getDatabaseStatus()
         });
 
         if (!payload) {
@@ -563,19 +563,23 @@ export function createFeedbackDialog({ browser, getDatabaseUpdated, log, setHigh
             ok ? "var(--color-success-strong)" : "var(--color-danger-strong)"
         );
 
-        goodBtn.addEventListener("click", async () => {
+        // The shadow root is open, so the page can reach these controls and send fake feedback in the user's
+        // name. Only trusted events act. A key press on a button gives a trusted click.
+        goodBtn.addEventListener("click", async (event) => {
+            if (!event.isTrusted) return;
             setStatus(actions, "...", "var(--color-text-muted)");
             report(await submit("good_conversion", ""));
         }, { signal });
 
-        badBtn.addEventListener("click", () => {
+        badBtn.addEventListener("click", (event) => {
+            if (!event.isTrusted) return;
             actions.style.display = "none";
             form.classList.remove("hidden");
             input.focus();
         }, { signal });
 
-        const triggerSubmit = async () => {
-            if (!input.value.trim()) return;
+        const triggerSubmit = async (event) => {
+            if (!event.isTrusted || !input.value.trim()) return;
 
             // Take focus to the card before disabling the field that holds it. A disabled control hands focus
             // to <body> while staying connected, so nothing after this point could tell that it happened --
@@ -596,7 +600,7 @@ export function createFeedbackDialog({ browser, getDatabaseUpdated, log, setHigh
         input.addEventListener("keydown", (event) => {
             if (event.key === "Enter") {
                 event.preventDefault();
-                triggerSubmit();
+                triggerSubmit(event);
             }
         }, { signal });
     }

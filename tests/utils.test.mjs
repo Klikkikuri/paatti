@@ -8,32 +8,8 @@ import { createFakeBrowser } from './helpers/fake-browser.mjs';
 const fake = createFakeBrowser();
 globalThis.browser = fake.browser;
 
-const { parseSemVer, sanitizeUrlForFeedback, canAppendSpan, getActiveTab, getCurrentTabHostname } =
+const { parseSemVer, canAppendSpan, getActiveTab, getCurrentTabHostname } =
     await import('../src/utils.js');
-
-describe('sanitizeUrlForFeedback', () => {
-    const cases = [
-        {
-            name: 'strips utm_*, fbclid, ref and session parameters while preserving content parameters',
-            input: 'https://example.com/article?utm_source=twitter&utm_medium=social&id=123&fbclid=abc1234&ref=homepage&sid=sess99',
-            expected: 'https://example.com/article?id=123'
-        },
-        {
-            name: 'leaves URLs without tracking parameters untouched',
-            input: 'https://example.com/search?q=news&page=2',
-            expected: 'https://example.com/search?q=news&page=2'
-        },
-        {
-            name: 'handles empty or invalid URL strings gracefully',
-            input: 'not-a-valid-url',
-            expected: 'not-a-valid-url'
-        }
-    ];
-
-    for (const { name, input, expected } of cases) {
-        test(name, () => assert.equal(sanitizeUrlForFeedback(input), expected));
-    }
-});
 
 describe('parseSemVer', () => {
     const cases = [

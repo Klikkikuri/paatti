@@ -350,6 +350,8 @@ export function createHighlightOverlay({ onLabelActivate, canActivate } = {}) {
                 if (!label.disabled) pressed = element;
             });
             label.addEventListener("click", (event) => {
+                // The shadow root is open, so the page can click the pill too. A key press on a button gives a trusted click.
+                if (!event.isTrusted) return;
                 // The box sits on top of a link. Without both of these the click would navigate, and the
                 // page's own document listeners would see a click they cannot explain.
                 event.preventDefault();

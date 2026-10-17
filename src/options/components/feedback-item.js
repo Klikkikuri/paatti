@@ -190,7 +190,7 @@ class FeedbackItem extends HTMLElement {
                 clickbaitLevel: this._item.clickbaitLevel,
                 feedbackType: type,
                 comment,
-                databaseUpdated: dbStatus.lastDatabaseUpdate ? new Date(dbStatus.lastDatabaseUpdate).toISOString() : "Unknown"
+                databaseStatus: dbStatus
             });
 
             if (!payload) {

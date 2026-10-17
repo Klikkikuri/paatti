@@ -1,6 +1,6 @@
 # Privacy Policy for Klikkikuri Paatti
 
-*Last updated: July 22, 2026*
+*Last updated: October 17, 2026*
 
 This Privacy Policy describes how *Klikkikuri* ("Klikkikuri Paatti", "the Extension", "we", "us", or "our") handles user information and data. We are committed to protecting your privacy and ensuring transparency about what data is processed, how it is used, and where it is sent.
 
@@ -30,10 +30,10 @@ Data is sent to Google Forms endpoints ([`docs.google.com/forms/...`](https://do
 
 When you submit a feedback item or correction report via the extension:
 
-* The address of the **news page** containing the headline (`entry.1944615860`).
+* The address of the **news page** containing the headline, without its query string or fragment (`entry.1944615860`).
 * The **original and/or converted headline title** (`entry.917360051`, `entry.1935829065`).
 * Any optional **comments, feedback, or corrections** you type into the feedback field (`entry.78795748`).
-* Technical **metadata related to the feedback item** (URL signature hash, clickbait severity level rating, feedback type, database status).
+* Technical **metadata related to the feedback item** (URL signature hash, clickbait severity level rating, feedback type, the date of the headline dataset in use).
 
 #### 2. Paid Version Invitation / Waitlist
 
