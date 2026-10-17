@@ -115,6 +115,20 @@ describe('the default providers', () => {
         });
     }
 
+    test('keep the claim on a host that a more specific site of another provider covers', async () => {
+        const wwwLink = `https://www.${SITE}/story`;
+        await setEnvironment();
+        await seedProvider(DEFAULT, { origins: [`https://*.${SITE}/*`], suolaRules: {} });
+        await seedProvider(PROVIDER);
+        await fake.browser.storage.local.set({ [`provider:${PROVIDER}`]: { suolaRules: {}, siteConfigs: {
+            [`www.${SITE}`]: { name: `www.${SITE}`, enabled: true, origins: [`https://www.${SITE}/*`], rules: [] }
+        } } });
+
+        const { signs } = await lookup(wwwLink);
+
+        assert.deepEqual(signs, { layers: [{ source: DEFAULT, sign: named(DEFAULT, wwwLink) }], officialSign: named(DEFAULT, wwwLink) });
+    });
+
     test('none configured gives null, and the base sign as the official one', async () => {
         await setEnvironment({ defaults: [] });
 

@@ -179,6 +179,9 @@ function findSiteConfig(siteConfigs, hostname) {
  * claimant still answers, a later one first. With shadowing on, the claimants come before these; with shadowing
  * off, after them, so that a provider only fills the gaps in the official data.
  *
+ * A default provider that is not a claimant can still have a less specific site of its own that covers the host.
+ * It then claims the host in its own position, so that a provider site does not change the official sign.
+ *
  * @param {object} config - From `getConfig()`.
  * @param {string} hostname
  * @returns {Array<{url: string, claims: boolean}>} `claims`: the provider's own site config covers the host.
@@ -186,6 +189,8 @@ function findSiteConfig(siteConfigs, hostname) {
 function sourcesForHost(config, hostname) {
     const [domain, siteConfig] = findSiteConfig(config.siteConfigs, hostname);
     const defaultUrls = config.enabledDefaultProviderUrls;
+    const covers = (url) => Object.values(config.siteConfigSources).some((sources) =>
+        sources.some((source) => source.url === url && matchesAnyOrigin(hostname, source.origins)));
 
     const claimants = (config.siteConfigSources[domain] || [])
         .filter(({ url, origins }) => matchesAnyOrigin(hostname, origins) && (siteConfig?.enabled || defaultUrls.includes(url)))
@@ -193,7 +198,7 @@ function sourcesForHost(config, hostname) {
     const claimantUrls = new Set(claimants.map(({ url }) => url));
     const otherDefaults = [...defaultUrls].reverse()
         .filter((url) => !claimantUrls.has(url))
-        .map((url) => ({ url, claims: false }));
+        .map((url) => ({ url, claims: covers(url) }));
     return config.providerShadowingEnabled ? [...claimants, ...otherDefaults] : [...otherDefaults, ...claimants];
 }
 
