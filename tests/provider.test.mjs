@@ -315,6 +315,29 @@ describe('resolve: fetch discipline and isolation', () => {
         assert.ok(result.errors.some((e) => /malformed href/.test(e.message)));
     });
 
+    test('an href with a host wildcard is a malformed href, also when the wildcard is percent-encoded', async () => {
+        installed = mockFetch({});
+        const manifest = await parsedManifest([{ type: 'suola-rules', href: ['https://*/rules.json', 'https://%2A/rules.json'] }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.equal(installed.calls.length, 0);
+        assert.equal(result.errors.filter((e) => /malformed href/.test(e.message)).length, 2);
+    });
+
+    test('inspect does not disclose an origin with a host wildcard', async () => {
+        const manifestUrl = 'https://provider.example/manifest.json';
+        installed = mockFetch({
+            [manifestUrl]: jsonResponse(manifestDoc([
+                { type: 'rahti-data', href: ['https://*/data.json', 'https://%2A/data.json', 'https://data.example/data.json'] }
+            ]))
+        });
+
+        const result = await inspect(manifestUrl, {});
+
+        assert.deepEqual([...result.origins], ['https://data.example']);
+    });
+
     test('a malformed href does not crash inspect either', async () => {
         const manifestUrl = 'https://provider.example/manifest.json';
         installed = mockFetch({
@@ -561,6 +584,19 @@ describe('resolve: site-configs safety', () => {
 
         assert.deepEqual(result.siteConfigs, {});
         assert.ok(result.rejected.some((r) => r.key === 'www.hs.fi/x' && /bare hostname/.test(r.reason)));
+    });
+
+    test('a site key with a host wildcard is rejected, thus it cannot claim headlines on every site', async () => {
+        const manifest = await parsedManifest([{
+            type: 'site-configs',
+            sites: { '*': site('*'), '*.hs.fi': site('*.hs.fi'), 'a*b.fi': site('a*b.fi') }
+        }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(result.siteConfigs, {});
+        assert.deepEqual(result.rejected.map((r) => r.key).sort(), ['*', '*.hs.fi', 'a*b.fi']);
+        assert.ok(result.rejected.every((r) => /bare hostname/.test(r.reason)));
     });
 
     test('a site key carrying a port or a scheme is rejected the same way', async () => {

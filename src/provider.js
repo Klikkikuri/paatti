@@ -3,6 +3,7 @@
 import { getLogger, parseSemVer } from "./utils.js";
 import { safeFetch, blockReason, readCapped, isLoopbackHost } from "./safe-fetch.js";
 import { validRahtiData, rahtiToKeyed } from "./rahti/schema.js";
+import { isConcreteHost } from "./options/origins.js";
 
 /**
  * Resolves a third-party provider manifest into the resources Paatti understands, and applies the
@@ -199,13 +200,14 @@ function knownResources(manifest) {
 }
 
 /**
- * `href` resolved against the manifest's own URL -- the only base a resource document ever gets. Null
- * rather than a throw: a provider's `href` is untrusted content, and a resource with one malformed
- * entry must be isolated like any other failure, not crash the whole resolution.
+ * The absolute URL of `href`. The base is always the manifest URL. Null if `href` does not parse, or if its host
+ * is not one host. A provider `href` is not trusted. Thus, a bad `href` must stop only its resource, not all of the
+ * resolution.
  */
 function resolveHref(manifestUrl, href) {
     try {
-        return new URL(href, manifestUrl).href;
+        const absolute = new URL(href, manifestUrl);
+        return isConcreteHost(absolute.hostname) ? absolute.href : null;
     } catch {
         return null;
     }
@@ -275,22 +277,21 @@ function isHttpUrl(value) {
 }
 
 /**
- * Whether `key` is exactly a bare hostname -- no scheme, path, port or credentials. Load-bearing for
- * the declared-scope/shadowing gate: that gate compares `key` as a literal string, but a host is looked
- * up later by `matchesOrigin`, which reads only the authority up to the first `/` and so ignores any
- * path a key was allowed to carry. Without this check, a provider could claim `www.hs.fi/x` -- a
- * string `claimedSiteKeys` has never seen, so the shadowing gate never fires -- whose default origin
- * `https://www.hs.fi/x/*` still matches the real `www.hs.fi` at lookup time, taking over an
- * already-claimed host while the check meant to gate exactly that never ran.
+ * True if `key` is only a hostname: no scheme, path, port, credentials or `*`.
  *
- * A key must round-trip unchanged through hostname parsing: `new URL("https://KEY/").hostname === KEY`
- * fails for anything that is not already a bare, lowercase, portless host.
+ * The shadowing gate compares `key` as a literal string. But `matchesOrigin` reads only the host of an origin, up to
+ * the first `/`. Thus, a provider could use the key `www.hs.fi/x`, which is not in `claimedSiteKeys`. Its default
+ * origin `https://www.hs.fi/x/*` would then match the real `www.hs.fi`, and the provider would get a claimed host.
+ *
+ * The URL parser accepts `*` in a host. Thus, this function refuses a `*` before it parses `key`. After that, `key`
+ * must not change when the parser reads it: `new URL("https://KEY/").hostname === KEY` is false for a key that is
+ * not already a lowercase hostname without a port.
  *
  * @param {string} key
  * @returns {boolean}
  */
 function isBareHostname(key) {
-    if (typeof key !== "string" || key === "") return false;
+    if (typeof key !== "string" || !isConcreteHost(key)) return false;
     try {
         return new URL(`https://${key}/`).hostname === key;
     } catch {
@@ -299,11 +300,10 @@ function isBareHostname(key) {
 }
 
 /**
- * Whether every entry of `origins` is exactly `http(s)://<key>/*`.
+ * True if each entry of `origins` is exactly `http(s)://<key>/*`.
  *
- * No Public Suffix List exists to tell a bare public suffix from a real one, so a host wildcard is
- * refused outright rather than partly trusted -- and the same exact-match rule is what stops a key
- * claiming an origin it does not name: `www.hs.fi` may not list `https://www.lapinkansa.fi/*`.
+ * This rule stops a key that claims an origin that it does not name: `www.hs.fi` cannot list
+ * `https://www.lapinkansa.fi/*`. The rule alone accepts the key `*`. `isBareHostname` refuses that key.
  *
  * @param {string} key
  * @param {string[]} origins

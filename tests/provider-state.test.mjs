@@ -41,6 +41,10 @@ describe('originsToGrant', () => {
         assert.equal(originsToGrant({ enabled: true }, { errors: [accessError(origins)] }, STORE), null);
     });
 
+    test('nothing for a stored origin with a host wildcard, also in a build that declares the wildcard', () => {
+        assert.equal(originsToGrant({ enabled: true }, { errors: [accessError(['https://*/*'])] }, WILDCARD), null);
+    });
+
     test('nothing without an access stop', () => {
         assert.equal(originsToGrant({ enabled: true }, { errors: [{ kind: 'fetch' }] }, WILDCARD), null);
         assert.equal(originsToGrant({ enabled: true }, { errors: [accessError([])] }, WILDCARD), null);

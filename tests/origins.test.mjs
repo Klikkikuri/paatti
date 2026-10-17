@@ -1,7 +1,7 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { originPatterns, missingOrigins, canRequestOrigins } from '../src/options/origins.js';
+import { originPatterns, missingOrigins, canRequestOrigins, isConcreteHost } from '../src/options/origins.js';
 
 /** A `contains` that records what it was asked and answers from `covered`. */
 function fakeContains(covered = []) {
@@ -18,6 +18,11 @@ describe('originPatterns', () => {
         // Not a narrowing that was lost: a host permission ignores the path, so the pattern now says what
         // the browser actually grants and what the missing-permission warning shows.
         assert.deepEqual(originPatterns(['http://localhost:3000/data.json?v=2']), ['http://localhost/*']);
+    });
+
+    test('drops a URL whose host is a wildcard, also when the wildcard is percent-encoded', () => {
+        assert.deepEqual(originPatterns(['https://*/x', 'https://*.hs.fi/', 'https://www.hs.fi/']), ['https://www.hs.fi/*']);
+        assert.deepEqual(originPatterns(['https://%2A/x', 'https://%2a.hs.fi/x']), []);
     });
 
     test('deduplicates URLs on one host that differ by path or query, and keeps first-seen order', () => {
@@ -91,7 +96,20 @@ describe('canRequestOrigins', () => {
         assert.equal(canRequestOrigins(['https://badexample.fi/*'], sub), false);
     });
 
+    test('the wildcard does not cover an origin whose host is a wildcard', () => {
+        const wildcard = { optional_host_permissions: ['*://*/*'] };
+        assert.equal(canRequestOrigins(['https://*/*'], wildcard), false);
+        assert.equal(canRequestOrigins(['https://www.hs.fi/*', 'https://*.hs.fi/*'], wildcard), false);
+    });
+
     test('a manifest without permission lists can request nothing', () => {
         assert.equal(canRequestOrigins(['https://www.hs.fi/*'], {}), false);
+    });
+});
+
+describe('isConcreteHost', () => {
+    test('true for one host, false for an empty host or a host with a wildcard', () => {
+        for (const host of ['www.hs.fi', 'localhost', '127.0.0.1']) assert.equal(isConcreteHost(host), true);
+        for (const host of ['', '*', '*.hs.fi', 'a*b.fi']) assert.equal(isConcreteHost(host), false);
     });
 });

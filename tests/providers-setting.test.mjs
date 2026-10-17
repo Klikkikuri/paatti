@@ -5,7 +5,6 @@ import { installDom } from './helpers/dom.mjs';
 import { createFakeBrowser } from './helpers/fake-browser.mjs';
 
 const WILDCARD_MANIFEST = { optional_host_permissions: ['https://www.ampparit.com/*', '*://*/*'] };
-const ARBITRARY_ORIGINS = '*://*/*';
 
 const dom = installDom();
 const fake = createFakeBrowser({
@@ -226,8 +225,11 @@ describe('the add flow', () => {
         assert.match(addError(el).textContent, /Not granted/);
     });
 
-    test('never passes the wildcard origin to permissions.request', async () => {
-        fetchMap[url] = jsonResponse(manifestDoc([{ type: 'site-configs', sites: { 'news.example': site('news.example') } }]));
+    test('never passes an origin with a host wildcard to permissions.request', async () => {
+        fetchMap[url] = jsonResponse(manifestDoc([
+            { type: 'site-configs', sites: { 'news.example': site('news.example') } },
+            { type: 'rahti-data', href: ['https://*/data.json', 'https://%2A/data.json', 'https://data.example/data.json'] }
+        ]));
         const el = await mount();
         urlInput(el).value = url;
         addBtn(el).click();
@@ -235,9 +237,8 @@ describe('the add flow', () => {
         confirmBtn(el).click();
         await settled();
 
-        for (const origins of requests) {
-            assert.ok(!origins.includes(ARBITRARY_ORIGINS));
-        }
+        assert.ok(requests.flat().includes('https://data.example/*'));
+        assert.ok(requests.flat().every((origin) => !new URL(origin).hostname.includes('*')));
     });
 
     test('requests both permissions while the click is still being handled, as Firefox requires', async () => {

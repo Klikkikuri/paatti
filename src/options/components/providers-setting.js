@@ -1,6 +1,6 @@
 import browser from '../../browser-api.js';
 import { getConfig, onConfigValue, PROVIDER_KEY_PREFIX } from '../../config.js';
-import { originPatterns, canAddProviders, ARBITRARY_ORIGINS } from '../origins.js';
+import { originPatterns, canAddProviders } from '../origins.js';
 import { providerStateTag, originsToGrant } from '../provider-state.js';
 import { siteLinks } from '../site-links.js';
 import { localizeDocument } from '../utils.js';
@@ -387,7 +387,7 @@ class ProvidersSetting extends ComponentBase {
         const inspected = this.#pendingInspection;
         if (!url || !inspected) return;
 
-        const patterns = originPatterns([...inspected.origins]).filter((pattern) => pattern !== ARBITRARY_ORIGINS);
+        const patterns = originPatterns([...inspected.origins]);
 
         // Gesture two: requested synchronously, before any await below. Nothing left to request for
         // an all-relative manifest, so this resolves at once and the click is pure confirmation.
