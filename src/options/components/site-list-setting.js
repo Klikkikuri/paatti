@@ -13,12 +13,13 @@ class SiteListSetting extends ComponentBase {
     #renderGeneration = 0;
 
     onConnect() {
-        // The set of configured sites is no longer fixed: a provider can add or drop one at
-        // runtime. Selecting just the sorted domain list, not the whole siteConfigs object, keeps
-        // this from re-rendering (and losing each site-toggle-setting's own in-flight state) on an
-        // unrelated field changing, such as a site being turned on -- that owns itself already.
+        // A provider refresh can add or drop a site, or change what a row shows and the origins it requests. The
+        // enabled state is not selected: a re-render loses each site-toggle-setting's in-flight state, and the
+        // toggle owns that state itself.
         this.addTeardown(onConfigValue(
-            (config) => Object.keys(config.siteConfigs || {}).sort(),
+            (config) => Object.entries(config.siteConfigs || {})
+                .map(([domain, { name, origins, links }]) => [domain, name, origins, links])
+                .sort(([a], [b]) => a.localeCompare(b)),
             () => this.render(),
         ));
     }
