@@ -61,6 +61,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         ripgrep bat \
         fd-find \
         jq yq \
+        shellcheck \
     # Link fd-find to fd, so that coding agents can find it in the PATH
     && ln -sf "$(command -v fdfind)" /usr/local/bin/fd \
     && ln -sf "$(command -v batcat)" /usr/local/bin/bat
