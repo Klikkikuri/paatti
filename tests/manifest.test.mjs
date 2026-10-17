@@ -112,24 +112,22 @@ describe('the real overlays', () => {
     });
 });
 
-describe('the wildcard web_accessible_resources group', () => {
-    // Not needed by a runtime-added site's content script: the wasm module is fetched by the
-    // background page alone, and nothing under src/ references the icon via runtime.getURL().
-    const NOT_NEEDED_AT_RUNTIME = new Set(['build/js.wasm', 'icons/klikkikuri-48.png']);
-
+describe('the web_accessible_resources groups', () => {
     const [named, wildcard] = base.web_accessible_resources;
 
-    test('matches only the wildcard host pattern, distinct from the named group', () => {
+    test('the wildcard group matches only the wildcard host pattern, distinct from the named group', () => {
         assert.deepEqual(wildcard.matches, [ARBITRARY_ORIGINS]);
         assert.ok(!named.matches.includes(ARBITRARY_ORIGINS));
     });
 
-    test('carries exactly the named group\'s resources minus what only the background page needs', () => {
-        const expected = named.resources.filter((resource) => !NOT_NEEDED_AT_RUNTIME.has(resource));
-        assert.deepEqual(wildcard.resources, expected);
+    test('both groups carry the same resources', () => {
+        assert.deepEqual(wildcard.resources, named.resources);
     });
 
-    test('never carries build/js.wasm: a provider site has no business loading the wasm module directly', () => {
-        assert.ok(!wildcard.resources.includes('build/js.wasm'));
+    // Only the background page loads the wasm module, and the extension origin needs no WAR entry.
+    test('no group carries build/js.wasm', () => {
+        for (const group of base.web_accessible_resources) {
+            assert.ok(!group.resources.includes('build/js.wasm'));
+        }
     });
 });

@@ -47,7 +47,6 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "icons/klikkikuri-48.png",
         "src/browser-api.js",
         "src/utils.js",
         "src/model.js",
@@ -74,8 +73,7 @@
         "src/components/badge-style.js",
         "src/components/klikkikuri-ai-badge.js",
         "src/components/klikkikuri-video-badge.js",
-        "src/components/klikkikuri-converted-badge.js",
-        "build/js.wasm"
+        "src/components/klikkikuri-converted-badge.js"
       ],
       "matches": [
         "https://www.iltalehti.fi/*",

@@ -39,6 +39,11 @@ document.querySelector('script[src^="moz-extension://"]')
 Chrome is different. Chrome gives the same address to all installations of the same extension. Therefore
 the address shows only that the extension is installed.
 
+A page in Chrome can request a file of the extension at this address. If the request succeeds, the page
+knows that Paatti is installed. The version from the Chrome Web Store permits this request only on the
+supported news sites, which can see the badges anyway. The version from GitHub permits it on all sites,
+because it must load its modules on the sites that you add.
+
 Paatti puts no extension address in the page, in either browser.
 
 ## The content script builds the badges
@@ -101,6 +106,11 @@ content script must be able to read the markup of a badge without a registration
 isolated world a registry, and an upgrade there fights the element that `buildBadge` makes. The pages of
 the extension register the badges themselves, in
 `src/options/components/title-modifier-setting.js`.
+
+Do not add `use_dynamic_url` to `web_accessible_resources` to stop the Chrome probe. Chromium 153 serves
+the dynamic address as a redirect to the fixed address. A module then resolves its relative imports
+against the fixed address, Chrome refuses them, and the content script stops. A content script that is
+one bundled file needs no `web_accessible_resources` entry, and is the correct fix.
 
 `AGENTS.md` records what each browser does with the registry and with constructable stylesheets in a
 content script. These were measured in Chromium and in Firefox, not assumed.
