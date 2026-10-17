@@ -354,6 +354,8 @@ function coverageHostsOf(resource) {
  */
 function validateSiteEntry(key, entry) {
     if (!isBareHostname(key)) return { reason: `site key is not a bare hostname: ${key}` };
+    // Sites live in plain objects. A key such as `constructor` or `__proto__` would find an inherited value there.
+    if (key in Object.prototype) return { reason: `site key is reserved: ${key}` };
     if (!entry || typeof entry !== "object" || typeof entry.name !== "string") {
         return { reason: "malformed site entry" };
     }

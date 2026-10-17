@@ -663,6 +663,18 @@ describe('resolve: site-configs safety', () => {
         assert.ok(result.rejected.some((r) => r.key === 'www.hs.fi/x' && /bare hostname/.test(r.reason)));
     });
 
+    test('a site key that names an inherited property is rejected, not merged into the prototype', async () => {
+        const manifest = await parsedManifest([{
+            type: 'site-configs',
+            sites: JSON.parse('{"constructor":{"name":"x"},"__proto__":{"name":"y"},"ok.example":{"name":"z"}}')
+        }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(Object.keys(result.siteConfigs), ['ok.example']);
+        assert.deepEqual(result.rejected.map((r) => r.key).sort(), ['__proto__', 'constructor']);
+    });
+
     test('a site key with a host wildcard is rejected, thus it cannot claim headlines on every site', async () => {
         const manifest = await parsedManifest([{
             type: 'site-configs',

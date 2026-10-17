@@ -402,7 +402,14 @@ async function _refreshProviders(force = false) {
         const claimedSiteKeys = defaultProviders.has(provider.url)
             ? new Set(providerClaims)
             : new Set([...BUNDLED_SITE_KEYS, ...providerClaims]);
-        const outcome = await refreshOne(provider.url, config, claimedSiteKeys, { force });
+        let outcome;
+        try {
+            outcome = await refreshOne(provider.url, config, claimedSiteKeys, { force });
+        } catch (err) {
+            // One provider must not stop the refresh of those after it, the default one included.
+            log(`Refresh of ${provider.url} failed:`, err.message);
+            outcome = { scope: new Set(), error: err.message, transient: false };
+        }
         results.push({ url: provider.url, ...outcome });
         for (const key of outcome.scope) providerClaims.add(key);
     }

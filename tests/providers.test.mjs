@@ -303,6 +303,30 @@ describe('getProviderData', () => {
 });
 
 describe('refreshProviders', () => {
+    test('a provider whose refresh throws does not stop the providers after it', async () => {
+        const first = 'https://first.example/manifest.json';
+        const second = 'https://second.example/manifest.json';
+        await addProvider(first);
+        await addProvider(second);
+        installed = mockFetch({ [first]: jsonResponse(manifestDoc([])), [second]: jsonResponse(manifestDoc([])) });
+        const originalSet = fake.browser.storage.local.set;
+        fake.browser.storage.local.set = async (items) => {
+            if (Object.keys(items).some((key) => key.includes(first))) throw new Error('QUOTA_BYTES quota exceeded');
+            return originalSet.call(fake.browser.storage.local, items);
+        };
+
+        let results;
+        try {
+            results = await refreshProviders();
+        } finally {
+            fake.browser.storage.local.set = originalSet;
+        }
+
+        assert.deepEqual(results.map((result) => result.url), [first, second]);
+        assert.match(results[0].error, /quota/);
+        assert.equal(results[1].error, undefined);
+    });
+
     test('skips a disabled provider entirely', async () => {
         const url = 'https://provider.example/manifest.json';
         await addProvider(url);
