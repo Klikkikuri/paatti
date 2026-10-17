@@ -100,11 +100,7 @@ async function scheduleAlarm(minutes) {
  * retired from `config.defaultProviders` simply stops being re-added here and (per providers-setting.js)
  * regains its own Remove button on the next render -- no marker or reconciliation state needed.
  *
- * Called from onInstalled (covers a fresh install and every upgrade, since "update"/"browser_update"
- * reach onInstalled too), the environment-change branch, and the periodic alarm -- the last one makes
- * this self-healing against `providers`' own read-modify-write sync races (the same pattern
- * addProvider/removeProvider/setProviderEnabled already use) rather than a one-shot assertion hoping it
- * sticks.
+ * Called only through `seedAndRefresh()`.
  */
 async function seedDefaultProviders() {
     const config = await getConfig();
@@ -136,12 +132,31 @@ async function refreshAndScheduleRetry(options = {}, attempt = 1) {
     const results = await refreshProviders(options);
 
     const config = await getConfig();
-    const defaultUrls = new Set((config.defaultProviders || []).filter((u) => config.enabledProviderUrls.includes(u)));
+    const defaultUrls = new Set(config.enabledDefaultProviderUrls);
     const delayMs = retryDelayMs(results, defaultUrls, attempt, refreshIntervalMinutes(config) * 60 * 1000);
     if (delayMs !== null) log(`Default provider refresh failed (attempt ${attempt}); retrying in ${delayMs / 1000}s`);
     await replaceRetryAlarm(attempt + 1, delayMs);
 
     return results;
+}
+
+/**
+ * Seed the default providers, refresh every provider, and install the new Suola rules.
+ *
+ * Seeding on each pass makes the default provider self-healing against the read-modify-write races of the
+ * synced provider list. It is idempotent. Never throws: a failure is logged with `reason`.
+ *
+ * @param {string} reason - What started the pass, for the log.
+ * @param {number} [attempt] - The number of this pass, from 1. See `refreshAndScheduleRetry()`.
+ */
+async function seedAndRefresh(reason, attempt = 1) {
+    try {
+        await seedDefaultProviders();
+        await refreshAndScheduleRetry({}, attempt);
+        await reconcileSuola();
+    } catch (err) {
+        log(`Failed to refresh providers on ${reason}:`, err);
+    }
 }
 
 let retryAlarmUpdate = Promise.resolve();
@@ -206,9 +221,7 @@ browser.storage.onChanged.addListener(async (changes, area) => {
         }
         if (newVal.environment !== oldVal.environment) {
             log("Environment changed, refreshing providers...");
-            seedDefaultProviders()
-                .then(() => refreshAndScheduleRetry())
-                .catch((err) => log("Failed to refresh providers on environment change:", err));
+            seedAndRefresh("environment change");
         }
         if (newVal.clickbaitLevel !== oldVal.clickbaitLevel
             || newVal.enabled !== oldVal.enabled
@@ -251,13 +264,8 @@ browser.runtime.onInstalled.addListener(async ({ reason }) => {
         }
     }
 
-    // Seed the active environment's default provider(s) -- both the fresh-install case and the
-    // upgrade path for an existing install that would otherwise silently lose its corrections dataset
-    // -- then refresh every provider, with retry scoped to the default one(s).
-    await seedDefaultProviders();
-    await refreshAndScheduleRetry().then(() => reconcileSuola()).catch((err) => {
-        log("Failed to refresh providers on install:", err);
-    });
+    // On an update too, so that an existing install gets the default provider of its environment.
+    await seedAndRefresh("install");
 
     // Set up periodic fetching of Rahti data
     const config = await getConfig();
@@ -271,19 +279,11 @@ browser.runtime.onInstalled.addListener(async ({ reason }) => {
 browser.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === PULL_ALARM_NAME) {
         log("Alarm triggered: refreshing providers.");
-        // Re-seeding here too (not just on install/environment-change) makes the default provider
-        // self-healing against providers' own read-modify-write sync races -- cheap and idempotent,
-        // so there is no cost to reasserting it on every tick.
-        seedDefaultProviders()
-            .then(() => refreshAndScheduleRetry())
-            .then(() => reconcileSuola())
-            .catch((err) => log("Failed to refresh providers on alarm:", err));
+        seedAndRefresh("alarm");
     } else if (alarm.name.startsWith(RETRY_ALARM_PREFIX)) {
         const attempt = Number(alarm.name.slice(RETRY_ALARM_PREFIX.length));
         log(`Retry alarm triggered: refresh attempt ${attempt}.`);
-        refreshAndScheduleRetry({}, attempt)
-            .then(() => reconcileSuola())
-            .catch((err) => log("Failed to retry the provider refresh:", err));
+        seedAndRefresh("retry", attempt);
     }
 });
 
@@ -362,7 +362,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
         refreshAndScheduleRetry({ force: true })
             .then(async (results) => {
                 const config = await getConfig();
-                const defaultUrls = new Set(config.defaultProviders || []);
+                const defaultUrls = new Set(config.enabledDefaultProviderUrls);
                 const defaultResults = results.filter((r) => defaultUrls.has(r.url));
                 const anySucceeded = defaultResults.some((r) => !r.error);
 
@@ -448,11 +448,6 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 });
 
-// Perform initial update of dynamic content scripts on startup
-updateDynamicContentScripts().catch((err) => {
-    log("Failed to run initial script update:", err);
-});
-
 /**
  * Checks whether the last refresh attempt is missing or older than the refresh interval. The attempt and
  * not the last success, so that a failing provider is not fetched again on each worker start.
@@ -475,28 +470,23 @@ async function isDatabaseStale() {
     }
 }
 
-// Handle browser startup event to ensure database freshness
+// At browser start, apply the current interval: no other listener sees a synced interval change. The
+// listener also wakes the worker, so the script evaluation below runs the stale check.
 if (browser.runtime && browser.runtime.onStartup) {
     browser.runtime.onStartup.addListener(async () => {
         log("Browser startup detected.");
         try {
-            const config = await getConfig();
-            const intervalMinutes = refreshIntervalMinutes(config);
-            await scheduleAlarm(intervalMinutes);
-            if (await isDatabaseStale()) {
-                log("Database is stale on browser startup, refreshing providers with retry...");
-                refreshAndScheduleRetry().catch((err) => {
-                    log("Failed to refresh providers on browser startup:", err);
-                });
-            }
+            await scheduleAlarm(refreshIntervalMinutes(await getConfig()));
         } catch (err) {
             log("Startup check failed:", err);
         }
     });
 }
 
-// Ensure periodic alarm is scheduled, content scripts are registered, and database is checked on background script load
+// Ensure content scripts are registered, the periodic alarm is scheduled, and the database is checked on background
+// script load. The registration runs first and handles its own errors, so an alarm or config failure cannot skip it.
 (async () => {
+    await updateDynamicContentScripts();
     try {
         const alarm = await browser.alarms.get(PULL_ALARM_NAME);
         const config = await getConfig();
@@ -504,7 +494,6 @@ if (browser.runtime && browser.runtime.onStartup) {
         if (!alarm) {
             await scheduleAlarm(intervalMinutes);
         }
-        await updateDynamicContentScripts();
         if (await isDatabaseStale()) {
             log("Database is stale on script evaluation, refreshing providers with retry...");
             refreshAndScheduleRetry().catch((err) => {
@@ -512,7 +501,7 @@ if (browser.runtime && browser.runtime.onStartup) {
             });
         }
     } catch (err) {
-        log("Failed checking alarm, content scripts, and database status on script evaluation:", err);
+        log("Failed checking alarm and database status on script evaluation:", err);
     }
 })();
 

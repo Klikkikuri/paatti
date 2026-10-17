@@ -124,6 +124,22 @@ describe('the web_accessible_resources groups', () => {
         assert.deepEqual(wildcard.resources, named.resources);
     });
 
+    // A module that the content script reaches but that is not listed fails to load on real pages only.
+    test('every module the content script reaches is listed', () => {
+        const root = new URL('../', import.meta.url);
+        const source = (path) => readFileSync(new URL(path, root), 'utf8');
+        const reached = new Set([...source('src/contentScript.js').matchAll(/getURL\(["'](src\/[^"']+\.js)["']\)/g)]
+            .map(([, path]) => path));
+        for (const path of reached) {
+            for (const [, specifier] of source(path).matchAll(/^\s*(?:import|export)\s+(?:[^'"]*?\s+from\s+)?["'](\.{1,2}\/[^"']+)["']/gm)) {
+                reached.add(new URL(specifier, new URL(path, root)).href.slice(root.href.length));
+            }
+        }
+
+        const missing = [...reached].filter((path) => !named.resources.includes(path));
+        assert.deepEqual(missing, []);
+    });
+
     // Only the background page loads the wasm module, and the extension origin needs no WAR entry.
     test('no group carries build/js.wasm', () => {
         for (const group of base.web_accessible_resources) {

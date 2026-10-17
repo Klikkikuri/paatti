@@ -242,7 +242,8 @@ async function getConfig() {
         const manifest = browser.runtime.getManifest();
         const enabledProviders = providers.filter((provider) =>
             provider?.enabled && provider?.url && isUsableProvider(provider.url, defaultProviders));
-        const providerKeys = enabledProviders.map((provider) => `${PROVIDER_KEY_PREFIX}${provider.url}`);
+        const enabledProviderUrls = enabledProviders.map((provider) => provider.url);
+        const providerKeys = enabledProviderUrls.map((url) => `${PROVIDER_KEY_PREFIX}${url}`);
         const providerData = providerKeys.length > 0 ? await browser.storage.local.get(providerKeys) : {};
 
         const mergedSiteConfigs = { ...DEFAULT_CONFIG.siteConfigs };
@@ -312,7 +313,9 @@ async function getConfig() {
             // Which provider URLs are currently enabled -- getRahtiEntry() and the database status
             // readers use this to make a disabled provider (default or third-party) degrade to "no
             // data" instead of serving its last-resolved content forever.
-            enabledProviderUrls: enabledProviders.map((provider) => provider.url),
+            enabledProviderUrls,
+            // In defaultProviders order, because a later default provider wins in getRahtiEntry().
+            enabledDefaultProviderUrls: (envData.defaultProviders || []).filter((url) => enabledProviderUrls.includes(url)),
             // Synced, so the warning about the "all headlines" level is dismissed once per person
             // rather than once per device.
             clickbaitLevelWarningSeen: syncData.clickbaitLevelWarningSeen === true

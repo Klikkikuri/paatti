@@ -307,6 +307,7 @@ describe('refreshProviders', () => {
         const results = await refreshProviders();
 
         assert.match(results[0].error, /HTTP 500/);
+        assert.equal(results[0].transient, true);
         const data = await getProviderData(url);
         assert.ok(data.siteConfigs['news.example'], 'stale content was discarded on a transient failure');
         assert.equal(data.errors.length, 1);

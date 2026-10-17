@@ -399,8 +399,7 @@ const model = (() => {
              */
             getDatabaseStatus: async () => {
                 const config = await getConfig();
-                const enabledDefaults = (config.defaultProviders || []).filter((u) => config.enabledProviderUrls.includes(u));
-                const results = await Promise.all(enabledDefaults.map(getProviderData));
+                const results = await Promise.all(config.enabledDefaultProviderUrls.map(getProviderData));
                 return {
                     lastDatabaseUpdate: results.reduce((max, r) => Math.max(max, r.updated || 0), 0) || null,
                     lastDatabaseCheck: results.reduce((max, r) => Math.max(max, r.checked || r.updated || 0), 0) || null,
@@ -428,8 +427,7 @@ const model = (() => {
              */
             getDatabaseEntryCount: async () => {
                 const config = await getConfig();
-                const enabledDefaults = (config.defaultProviders || []).filter((u) => config.enabledProviderUrls.includes(u));
-                const results = await Promise.all(enabledDefaults.map(getProviderData));
+                const results = await Promise.all(config.enabledDefaultProviderUrls.map(getProviderData));
                 return results.reduce((sum, r) => sum + (r.entryCount || 0), 0);
             },
 

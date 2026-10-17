@@ -101,16 +101,15 @@ function providerBlockReason(url, loopbackProvidersEnabled) {
  * @param {number} [maxBytes]
  * @param {object} [options]
  * @param {{etag?: string|null, lastModified?: string|null}} [options.cacheEntry]
- * @param {boolean} [options.force] - Bypass `cacheEntry` and fetch unconditionally.
  * @returns {Promise<{content: object, etag: string|null, lastModified: string|null}|{notModified: true}|
  *   {error: string, transient: boolean, retryAfterMs?: number}>}
  */
-async function fetchDocument(url, loopbackProvidersEnabled, maxBytes = MAX_RESOURCE_BYTES, { cacheEntry, force = false } = {}) {
+async function fetchDocument(url, loopbackProvidersEnabled, maxBytes = MAX_RESOURCE_BYTES, { cacheEntry } = {}) {
     const reason = providerBlockReason(url, loopbackProvidersEnabled);
     if (reason) return { error: reason, transient: false };
 
     const headers = {};
-    if (cacheEntry && !force) {
+    if (cacheEntry) {
         if (cacheEntry.etag) headers["If-None-Match"] = cacheEntry.etag;
         if (cacheEntry.lastModified) headers["If-Modified-Since"] = cacheEntry.lastModified;
     }
@@ -520,14 +519,71 @@ async function inspect(manifestUrl, options = {}) {
         }
 
         if (resource.inline !== undefined) {
-            const document = { schema_version: SUPPORTED_SCHEMA_VERSION, sites: resource.inline };
-            const result = mergeSiteConfigsDocument(sites, document, mergeOptions);
+            const result = mergeSiteConfigsDocument(sites, inlineDocument(resource), mergeOptions);
             sites = result.siteConfigs;
             rejected.push(...result.rejected);
         }
     }
 
     return { manifest, origins, sites, rejected, ignoredCount };
+}
+
+/**
+ * The first phase of `resolve()`: the resources in merge order, and every href to fetch.
+ *
+ * Resource-level checks that need no fetched content run here. Every href that will be requested is collected
+ * up front, deduped and capped at MAX_FETCHES, so that `resolve()` can fetch them all at once instead of paying
+ * each one's latency back-to-back. An href over the cap is in `plans` but not in `toFetch`.
+ *
+ * @param {object} manifest
+ * @param {string} manifestUrl
+ * @returns {{plans: Array<{resource: object, sameOrigin: boolean, absoluteHrefs: string[]}>, toFetch: string[],
+ *   rahtiDataHrefs: Set<string>, errors: Array, rejected: Array}}
+ */
+function planFetches(manifest, manifestUrl) {
+    const manifestOrigin = new URL(manifestUrl).origin;
+    // .sort() has been a stable sort since ES2019, so this alone preserves document order for equal
+    // weights -- knownResources() filters out of manifest.resources without reordering.
+    const ordered = knownResources(manifest).slice().sort((a, b) => a.weight - b.weight);
+
+    const plans = [];
+    const toFetch = [];
+    const rahtiDataHrefs = new Set();
+    const errors = [];
+    const rejected = [];
+
+    for (const resource of ordered) {
+        const sameOrigin = isSameOrigin(resource, manifestUrl, manifestOrigin);
+
+        const originsError = resource.type === "site-configs" ? originsDeclarationError(resource, sameOrigin) : null;
+        if (originsError) {
+            rejected.push({ key: null, reason: originsError });
+            continue;
+        }
+
+        const absoluteHrefs = [];
+        for (const href of resource.href) {
+            const absolute = resolveHref(manifestUrl, href);
+            if (!absolute) {
+                errors.push({ type: resource.type, href, message: "malformed href" });
+                continue;
+            }
+            absoluteHrefs.push(absolute);
+            if (resource.type === "rahti-data") rahtiDataHrefs.add(absolute);
+            if (!toFetch.includes(absolute) && toFetch.length < MAX_FETCHES) toFetch.push(absolute);
+        }
+
+        plans.push({ resource, sameOrigin, absoluteHrefs });
+    }
+
+    return { plans, toFetch, rahtiDataHrefs, errors, rejected };
+}
+
+/** A resource's inline payload as a document of its type. Inline sites get the envelope that a `sites.json` has. */
+function inlineDocument(resource) {
+    return resource.type === "site-configs"
+        ? { schema_version: SUPPORTED_SCHEMA_VERSION, sites: resource.inline }
+        : resource.inline;
 }
 
 /**
@@ -566,96 +622,46 @@ async function resolve(manifest, manifestUrl, options = {}) {
         force = false
     } = options;
 
-    const manifestOrigin = new URL(manifestUrl).origin;
-    // .sort() has been a stable sort since ES2019, so this alone preserves document order for equal
-    // weights -- knownResources() filters out of manifest.resources without reordering.
-    const ordered = knownResources(manifest).slice().sort((a, b) => a.weight - b.weight);
+    const { plans, toFetch, rahtiDataHrefs, errors, rejected } = planFetches(manifest, manifestUrl);
 
-    const fetchErrors = [];
-    const errors = [];
-    const rejected = [];
-
-    // Phase 1: plan. Resource-level checks that need no fetched content run here, and every href that
-    // will actually be requested is collected up front -- deduped and capped at MAX_FETCHES -- so phase
-    // 2 can fetch them all at once instead of paying each one's latency back-to-back.
-    const toFetch = [];
-    const budgeted = new Set();
-    const plans = [];
-    const rahtiDataHrefs = new Set();
-
-    for (const resource of ordered) {
-        const sameOrigin = isSameOrigin(resource, manifestUrl, manifestOrigin);
-
-        const originsError = resource.type === "site-configs" ? originsDeclarationError(resource, sameOrigin) : null;
-        if (originsError) {
-            rejected.push({ key: null, reason: originsError });
-            continue;
-        }
-
-        const absoluteHrefs = [];
-        for (const href of resource.href) {
-            const absolute = resolveHref(manifestUrl, href);
-            if (!absolute) {
-                errors.push({ type: resource.type, href, message: "malformed href" });
-                continue;
-            }
-            absoluteHrefs.push(absolute);
-            if (resource.type === "rahti-data") rahtiDataHrefs.add(absolute);
-
-            if (budgeted.has(absolute)) continue;
-            if (toFetch.length >= MAX_FETCHES) continue; // stays unbudgeted; reported once fetches resolve
-            budgeted.add(absolute);
-            toFetch.push(absolute);
-        }
-
-        plans.push({ resource, sameOrigin, absoluteHrefs });
-    }
-
-    // Phase 2: fetch the plan, concurrently, and pick each href's document for this pass.
+    // Fetch the plan, concurrently, and pick each href's document: fresh, or the cached copy on a 304 or a
+    // temporary failure.
     const fetched = new Map(
         await Promise.all(toFetch.map(async (url) => {
-            const cacheEntry = rahtiDataHrefs.has(url) ? documents[url] : undefined;
-            return [url, await fetchDocument(url, loopbackProvidersEnabled, undefined, { cacheEntry, force })];
+            const cached = documents[url];
+            const cacheEntry = rahtiDataHrefs.has(url) && !force ? cached : undefined;
+            const result = await fetchDocument(url, loopbackProvidersEnabled, undefined, { cacheEntry });
+            const document = !result.error && !result.notModified
+                ? { content: result.content, etag: result.etag, lastModified: result.lastModified }
+                : (result.notModified || result.transient ? cached : undefined);
+            return [url, { ...result, document }];
         }))
     );
 
-    const newDocuments = {};
-    for (const [url, result] of fetched) {
-        if (!result.error && !result.notModified) {
-            newDocuments[url] = { content: result.content, etag: result.etag, lastModified: result.lastModified };
-        } else if ((result.notModified || result.transient) && documents[url]) {
-            newDocuments[url] = documents[url];
-        }
-    }
-
-    // Phase 3: merge, in the same (weight, document order) the plan was built in.
+    // Merge, in the same (weight, document order) the plan was built in.
+    const fetchErrors = [];
     let siteConfigs = {};
-    let rahtiData = {};
+    const rahtiData = {};
     let suolaSites = [];
     let databaseGenerationDate = null;
 
     for (const { resource, sameOrigin, absoluteHrefs } of plans) {
         const contents = [];
         for (const absolute of absoluteHrefs) {
-            if (!budgeted.has(absolute)) {
+            const result = fetched.get(absolute);
+            if (!result) {
                 errors.push({ type: resource.type, href: absolute, message: "fetch budget exhausted" });
                 continue;
             }
-            const { error, transient, retryAfterMs } = fetched.get(absolute);
-            if (error) {
+            if (result.error) {
                 fetchErrors.push({
-                    kind: "fetch", type: resource.type, href: absolute, message: error, transient,
-                    ...(retryAfterMs !== undefined && { retryAfterMs })
+                    kind: "fetch", type: resource.type, href: absolute, message: result.error, transient: result.transient,
+                    ...(result.retryAfterMs !== undefined && { retryAfterMs: result.retryAfterMs })
                 });
             }
-            if (newDocuments[absolute]) contents.push(newDocuments[absolute].content);
+            if (result.document) contents.push(result.document.content);
         }
-
-        if (resource.inline !== undefined) {
-            contents.push(resource.type === "site-configs"
-                ? { schema_version: SUPPORTED_SCHEMA_VERSION, sites: resource.inline }
-                : resource.inline);
-        }
+        if (resource.inline !== undefined) contents.push(inlineDocument(resource));
 
         for (const content of contents) {
             if (resource.type === "suola-rules") {
@@ -664,7 +670,7 @@ async function resolve(manifest, manifestUrl, options = {}) {
             } else if (resource.type === "rahti-data") {
                 try {
                     if (validRahtiData(content)) {
-                        rahtiData = { ...rahtiData, ...rahtiToKeyed(content) };
+                        Object.assign(rahtiData, rahtiToKeyed(content));
                         if (content.updated && (!databaseGenerationDate || new Date(content.updated) > new Date(databaseGenerationDate))) {
                             databaseGenerationDate = content.updated;
                         }
@@ -684,6 +690,11 @@ async function resolve(manifest, manifestUrl, options = {}) {
                 rejected.push(...result.rejected);
             }
         }
+    }
+
+    const newDocuments = {};
+    for (const [url, { document }] of fetched) {
+        if (document) newDocuments[url] = document;
     }
 
     return {

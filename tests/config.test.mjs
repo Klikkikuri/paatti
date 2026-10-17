@@ -343,6 +343,20 @@ describe('default providers and enabledProviderUrls', () => {
         assert.deepEqual(config.enabledProviderUrls, ['https://on.example/manifest.json']);
     });
 
+    test('enabledDefaultProviderUrls lists the enabled default providers in defaultProviders order', async () => {
+        const [a, b, c] = ['a', 'b', 'c'].map((name) => `https://${name}.example/manifest.json`);
+        await local.set({
+            userPreferences: { environment: 'free', environmentConfigs: { free: { defaultProviders: [a, b, c] } } }
+        });
+        await sync.set({
+            providers: [{ url: c, enabled: true }, { url: b, enabled: false }, { url: a, enabled: true }]
+        });
+
+        const config = await getConfig();
+
+        assert.deepEqual(config.enabledDefaultProviderUrls, [a, c]);
+    });
+
     test('a build that cannot add providers lists only its default provider, not one that sync brought in', async () => {
         const originalGetManifest = fake.browser.runtime.getManifest;
         fake.browser.runtime.getManifest = () => ({ ...originalGetManifest(), optional_host_permissions: [] });

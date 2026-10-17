@@ -18,8 +18,7 @@ import { namespaceFor } from "./providers.js";
  * provider whose own site-configs claims the host, or the active environment's default provider(s)
  * otherwise.
  *
- * Multiple default providers merge with the same precedence `titleDataUrls` used to have: later entries
- * in `config.defaultProviders` win on a colliding sign.
+ * Of several default providers, a later one in `config.defaultProviders` wins on a colliding sign.
  *
  * @param {string} sign
  * @param {string} linkHost
@@ -29,15 +28,15 @@ async function getRahtiEntry(sign, linkHost) {
     const source = await model.read.getSourceForHost(linkHost);
     const config = await getConfig();
 
-    const candidates = source ? [source] : (config.defaultProviders || []); // defensive: never assume shape
+    if (source && !config.enabledProviderUrls.includes(source)) return null;
+    const candidates = source ? [source] : config.enabledDefaultProviderUrls;
 
     let entry = null;
     for (const url of candidates) {
-        if (!config.enabledProviderUrls.includes(url)) continue;
         const providerStorage = await initStorage(namespaceFor(url));
         const providerRahtiData = await providerStorage.get("rahtiData");
         const hit = providerRahtiData?.[sign];
-        if (hit !== undefined) entry = hit; // later entries win, matching titleDataUrls' old merge order
+        if (hit !== undefined) entry = hit;
     }
     return entry;
 }

@@ -5,7 +5,7 @@ import { providerStateTag, originsToGrant } from '../provider-state.js';
 import { siteLinks } from '../site-links.js';
 import { localizeDocument } from '../utils.js';
 import {
-    MAX_PROVIDERS, getProviders, addProvider, removeProvider, setProviderEnabled, getProviderData,
+    MAX_PROVIDERS, getProviders, addProvider, removeProvider, setProviderEnabled, getProviderData, errorText,
     refreshProviders
 } from '../../providers.js';
 import { inspect } from '../../provider.js';
@@ -275,15 +275,11 @@ class ProvidersSetting extends ComponentBase {
 
     /** What went wrong on the last resolve: rejected sites and fetch errors. */
     #describeProblems(data, config) {
-        const parts = [];
-        for (const rejection of data.rejected || []) {
-            parts.push(this.#describeRejection(rejection, config.siteConfigSource || {}));
-        }
-        for (const error of data.errors || []) {
-            const message = error.message || String(error);
-            parts.push(error.href ? `${error.href}: ${message}` : message);
-        }
-        return parts;
+        const siteConfigSource = config.siteConfigSource || {};
+        return [
+            ...(data.rejected || []).map((rejection) => this.#describeRejection(rejection, siteConfigSource)),
+            ...(data.errors || []).map(errorText)
+        ];
     }
 
     /** Names which source actually holds a rejected key, so an "already claimed" reason is not a dead end. */

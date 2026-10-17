@@ -143,6 +143,14 @@ async function setProviderEnabled(url, enabled) {
     return updated;
 }
 
+/** The content of a provider that has never resolved. A function, so that no caller shares its objects. */
+function emptyProviderData() {
+    return {
+        siteConfigs: {}, rahtiData: {}, suolaRules: null, scope: [], rejected: [], errors: [], updated: null,
+        checked: null, entryCount: 0, databaseGenerationDate: null, origins: [], name: null, links: []
+    };
+}
+
 /**
  * One provider's last resolved content, or the empty shape for one that has never resolved.
  *
@@ -154,46 +162,49 @@ async function setProviderEnabled(url, enabled) {
  */
 async function getProviderData(url) {
     const storage = await initStorage(namespaceFor(url));
-    return {
-        siteConfigs: (await storage.get("siteConfigs")) || {},
-        rahtiData: (await storage.get("rahtiData")) || {},
-        suolaRules: (await storage.get("suolaRules")) || null,
-        scope: new Set((await storage.get("scope")) || []),
-        rejected: (await storage.get("rejected")) || [],
-        errors: (await storage.get("errors")) || [],
-        updated: await storage.get("updated"),
-        checked: await storage.get("checked"),
-        entryCount: (await storage.get("entryCount")) || 0,
-        databaseGenerationDate: await storage.get("databaseGenerationDate"),
-        origins: (await storage.get("origins")) || [],
-        name: (await storage.get("name")) ?? null,
-        links: (await storage.get("links")) || []
-    };
+    const data = emptyProviderData();
+    for (const key of Object.keys(data)) data[key] = (await storage.get(key)) ?? data[key];
+    return { ...data, scope: new Set(data.scope) };
 }
 
 /**
- * Record why a refresh stopped, and keep the provider's last resolved content. `kind` is `build`, `access` or
- * `fetch`; an `access` stop also records the `origins` to grant. A `fetch` stop passes on whether a retry can help.
+ * Record why a refresh stopped, and keep the provider's last resolved content.
+ *
+ * @param {object} storage - The provider's namespace.
+ * @param {string} url
+ * @param {Array<{kind: string, message: string, href?: string, origins?: string[], transient?: boolean,
+ *   retryAfterMs?: number}>} errors - `kind` is `build`, `access` or `fetch`. An `access` error also gives the
+ *   `origins` to grant.
+ * @returns {Promise<{scope: Set<string>, error: string, transient: boolean, retryAfterMs?: number}>}
  */
-async function keepLastResolved(storage, url, error, { kind, origins, transient, retryAfterMs } = {}) {
-    log(`Refresh of ${url} stopped, keeping the last resolved content:`, error);
-    await storage.store({ errors: [{ message: error, kind, origins }], checked: Date.now() });
-    return {
-        scope: new Set((await storage.get("scope")) || []),
-        error,
-        ...(transient !== undefined && { transient }),
-        ...(retryAfterMs !== undefined && { retryAfterMs })
-    };
+async function keepLastResolved(storage, url, errors) {
+    const failure = failureOf(errors);
+    log(`Refresh of ${url} stopped, keeping the last resolved content:`, failure.error);
+    await storage.store({ errors, checked: Date.now() });
+    return { scope: new Set((await storage.get("scope")) || []), ...failure };
 }
 
-/** The fetch errors of a resolve as a refresh result: the first one's message, and whether a retry can help. */
-function fetchFailure(errors) {
-    const fetchErrors = errors.filter((error) => error.kind === "fetch");
-    if (fetchErrors.length === 0) return {};
-    const retryAfters = fetchErrors.map((error) => error.retryAfterMs).filter((ms) => ms !== undefined);
+/**
+ * An error as text for the provider row: the message, after the href of the file when the error is about one.
+ *
+ * @param {{message: string, href?: string}} error - One of `getProviderData().errors`.
+ * @returns {string}
+ */
+function errorText(error) {
+    return error.href ? `${error.href}: ${error.message}` : error.message;
+}
+
+/**
+ * The refresh result for `errors`: the text of the first failure, whether a retry can help, and the longest
+ * `Retry-After`. An error with a `kind` is a failure. An error without one is about content.
+ */
+function failureOf(errors) {
+    const failures = errors.filter((error) => error.kind);
+    if (failures.length === 0) return {};
+    const retryAfters = failures.map((error) => error.retryAfterMs).filter((ms) => ms !== undefined);
     return {
-        error: `${fetchErrors[0].href}: ${fetchErrors[0].message}`,
-        transient: fetchErrors.some((error) => error.transient),
+        error: errorText(failures[0]),
+        transient: failures.some((error) => error.transient === true),
         ...(retryAfters.length > 0 && { retryAfterMs: Math.max(...retryAfters) })
     };
 }
@@ -205,15 +216,10 @@ function documentsChanged(cached, next) {
     return hrefs.length !== Object.keys(cached).length || hrefs.some((href) => next[href] !== cached[href]);
 }
 
-/** The origins this browser has not granted, and a message naming them; null when every one is granted. */
+/** An `access` error that names the origins this browser has not granted; null when every one is granted. */
 async function accessError(urls) {
     const missing = await missingOrigins(urls, (pattern) => browser.permissions.contains({ origins: [pattern] }));
-    return missing.length > 0 ? { message: `no access to ${missing.join(", ")}`, origins: missing } : null;
-}
-
-/** Stop a refresh on missing origins. */
-function keepForAccess(storage, url, { message, origins }) {
-    return keepLastResolved(storage, url, message, { kind: "access", origins });
+    return missing.length > 0 ? { kind: "access", message: `no access to ${missing.join(", ")}`, origins: missing } : null;
 }
 
 /**
@@ -240,22 +246,25 @@ async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) 
     const storage = await initStorage(namespaceFor(url));
 
     if (!isUsableProvider(url, new Set(config.defaultProviders || []))) {
-        return keepLastResolved(storage, url, browser.i18n.getMessage("providerNotUsableInBuild")
-            || "This version of the extension has no permission to use this provider.", { kind: "build" });
+        return keepLastResolved(storage, url, [{
+            kind: "build",
+            message: browser.i18n.getMessage("providerNotUsableInBuild")
+                || "This version of the extension has no permission to use this provider."
+        }]);
     }
 
     const manifestAccessError = await accessError([url]);
-    if (manifestAccessError) return keepForAccess(storage, url, manifestAccessError);
+    if (manifestAccessError) return keepLastResolved(storage, url, [manifestAccessError]);
 
     const { manifest, error, transient, retryAfterMs } = await fetchManifest(url, config.loopbackProvidersEnabled);
-    if (error) return keepLastResolved(storage, url, error, { kind: "fetch", transient, retryAfterMs });
+    if (error) return keepLastResolved(storage, url, [{ kind: "fetch", message: error, transient, retryAfterMs }]);
 
     // Before the resource check, so a provider still waiting for its resource grant already shows its name.
     await storage.store({ name: manifest.name ?? null, links: manifest.links });
 
     const origins = [...resourceOrigins(manifest, url)];
     const resourceAccessError = await accessError(origins);
-    if (resourceAccessError) return keepForAccess(storage, url, resourceAccessError);
+    if (resourceAccessError) return keepLastResolved(storage, url, [resourceAccessError]);
 
     const documentsKey = documentsKeyFor(url);
     const { [documentsKey]: cachedDocuments } = await browser.storage.local.get(documentsKey);
@@ -266,12 +275,11 @@ async function refreshOne(url, config, claimedSiteKeys, { force = false } = {}) 
         documents: cachedDocuments || {},
         force
     });
-    const failure = fetchFailure(result.errors);
+    const failure = failureOf(result.errors);
 
     // Content resolved before the document cache existed has no copy of each file to fall back on.
     if (!cachedDocuments && failure.transient && await storage.get("updated")) {
-        return keepLastResolved(storage, url, failure.error,
-            { kind: "fetch", transient: failure.transient, retryAfterMs: failure.retryAfterMs });
+        return keepLastResolved(storage, url, result.errors.filter((error) => error.kind));
     }
 
     // getConfig() hides these sites; this says why, once per fetch.
@@ -483,5 +491,5 @@ async function _reconcileSuolaRules() {
 
 export {
     MAX_PROVIDERS, namespaceFor, getProviders, addProvider, removeProvider, setProviderEnabled,
-    getProviderData, refreshProviders, retryDelayMs, reconcileSuolaRules
+    getProviderData, errorText, refreshProviders, retryDelayMs, reconcileSuolaRules
 };

@@ -28,6 +28,7 @@
 - Keep each function at one level of abstraction. Return early for input that the function rejects.
 - A name must agree with the names of similar functions, must tell exactly what the value contains, and must use the spelling that the code already uses.
 - When you change an area, refactor it if this removes duplication or makes the flow clearer. Do not change behavior. The existing tests under `make test` are the regression check.
+- Integration has priority over addition. Before you add a function, merge it with code that does nearly the same thing. You can change the surrounding code to do this.
 
 ### Code comments and documentation
 
@@ -57,7 +58,7 @@ The dev container provides `git`, `make`, `curl`, `wget`, `tree`, `node`/`npm`/`
 
 - Run tests with `make test` (`node --test` over `tests/**/*.test.mjs`). Test through the module's exports. Put input cases in a table, and use named constants for shared fixtures.
 - Lint with `make lint` (eslint) and `make lint-webext` (the AMO checks).
-- The project has no formatter. Do not reformat code that you did not write. Change only the lines that the change needs.
+- The project has no formatter. Do not change only the formatting of code that you do not otherwise change. This rule is about formatting. It does not limit a refactor (see JavaScript style).
 - Run `shellcheck` over changes to a shell script (for example `run.sh`, `assets/sources/*.sh`).
 - Prefer `rg` over `grep` and `fd` over `find`. Both respect `.gitignore`, which matters in a tree carrying
   submodules, notebooks and `.venv`.
@@ -100,8 +101,9 @@ Two traps around it:
 - The extension must never declare `devtools_page`. That turns the `browser` namespace off for the *entire*
   extension, not just the DevTools page.
 - A new module under `src/` that the content script can reach must be added to `web_accessible_resources` in
-  `manifest.json`. Nothing in `make test` checks this; a missing entry 404s the import and kills the content
-  script on real pages only.
+  `manifest.json`. A missing entry 404s the import and kills the content script on real pages only. `make test`
+  checks the static imports and re-exports (`tests/manifest.test.mjs`). Prefer to keep a new import out of that graph: every
+  listed file is visible to every page.
 
 In tests, mock `globalThis.browser` **before** importing the module under test, which means a dynamic
 `await import(...)`. A static import is hoisted above any assignment in the module body, so `browser-api.js`

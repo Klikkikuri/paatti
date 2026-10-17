@@ -9,14 +9,12 @@ const log = getLogger("storage");
  */
 class Storage {
     /**
-     * Creates a new Storage instance.
+     * Creates an empty Storage instance. `initStorage()` loads it from browser storage.
      * @param {string} ns - The namespace for this storage instance.
-     * @param {Object} [data={}] - Initial data object.
-     * @param {Set} [index=new Set()] - Initial index of keys.
      */
-    constructor(ns, data, index) {
-        this.data = data || {};
-        this.index = index || new Set();
+    constructor(ns) {
+        this.data = {};
+        this.index = new Set();
         this.ns = ns;
         this.indexKey = `${ns}_index`;
     }
@@ -41,10 +39,7 @@ class Storage {
     async set(key, value) {
         this.data[key] = value;
         this.index.add(key);
-        await browser.storage.local.set({ 
-            [this.ns]: this.data,
-            [this.indexKey]: Array.from(this.index)
-        });
+        await this.#persist();
     }
 
     /**
@@ -66,10 +61,7 @@ class Storage {
     async delete(key) {
         delete this.data[key];
         this.index.delete(key);
-        await browser.storage.local.set({ 
-            [this.ns]: this.data,
-            [this.indexKey]: Array.from(this.index)
-        });
+        await this.#persist();
     }
 
     /**
@@ -80,10 +72,7 @@ class Storage {
     async store(entries) {
         Object.assign(this.data, entries);
         Object.keys(entries).forEach(key => this.index.add(key));
-        await browser.storage.local.set({ 
-            [this.ns]: this.data,
-            [this.indexKey]: Array.from(this.index)
-        });
+        await this.#persist();
     }
 
     /**
@@ -96,7 +85,12 @@ class Storage {
             delete this.data[key];
             this.index.delete(key);
         });
-        await browser.storage.local.set({ 
+        await this.#persist();
+    }
+
+    /** Writes the namespace data and its index to browser storage. */
+    async #persist() {
+        await browser.storage.local.set({
             [this.ns]: this.data,
             [this.indexKey]: Array.from(this.index)
         });
@@ -134,12 +128,10 @@ class Storage {
  * @returns {Promise<Storage>} A fully initialized Storage instance.
  */
 const initStorage = async (ns) => {
-    const indexKey = `${ns}_index`;
-    const stored = await browser.storage.local.get([ns, indexKey]);
-    const data = stored[ns] || {};
-    const index = stored[indexKey] ? new Set(stored[indexKey]) : new Set(Object.keys(data));
-    log(`Initialized storage for namespace: ${ns} with ${index.size} keys.`);
-    return new Storage(ns, data, index);
+    const storage = new Storage(ns);
+    await storage.reload();
+    log(`Initialized storage for namespace: ${ns} with ${storage.index.size} keys.`);
+    return storage;
 };
 
 export { initStorage };
