@@ -20,7 +20,9 @@ carry their own copies with a store version. Publishing does not change `updates
 1. Make sure that `main` is clean and up to date.
 2. Make sure that the `suola` submodule is at a tag. The release build downloads the `suola` artifacts of
    that tag.
-3. Make sure that the repository has these secrets under **Settings → Secrets and variables → Actions**. A
+3. Run `make check-sites-latest`. If it fails, Rahti has changed the sites: run `make sites-sync`, then commit
+   and push the result. See [Bundled Sites](#bundled-sites).
+4. Make sure that the repository has these secrets under **Settings → Secrets and variables → Actions**. A
    repository admin creates them.
 
    | Secret | Environment variable the tool reads | Use |
@@ -36,7 +38,7 @@ carry their own copies with a store version. Publishing does not change `updates
    map each secret to the environment variable in the second column. When you run `make publish-firefox` or
    `make publish-chrome` outside the workflows, export the environment variables of the second column.
 
-4. Read the current version in the Chrome Web Store developer dashboard. The store accepts only a version
+5. Read the current version in the Chrome Web Store developer dashboard. The store accepts only a version
    that is higher than its last upload.
 
 ## Make a Release
@@ -62,6 +64,7 @@ carry their own copies with a store version. Publishing does not change `updates
 3. Wait for the release workflow. On a `v*` tag, `release.yml` does these steps:
    - It makes sure that the tag is equal to the version in `manifest.json`.
    - It makes sure that `updates.json` has an entry for the version.
+   - It compares the bundled sites with the Rahti commit that they record. See [Bundled Sites](#bundled-sites).
    - It builds the Chrome and Firefox packages with the non-OSS assets.
    - It makes sure that the `suola` artifacts carry the `suola` build attestation.
    - It sends the Firefox package to Mozilla for unlisted signing, with the source code for review.
@@ -82,7 +85,8 @@ Each store has its own workflow. The two workflows have the same steps.
 5. Select **Run workflow**.
 
 The workflow installs the store tool and runs `make publish-firefox` or `make publish-chrome`. The make target
-builds the store tree, makes sure that the `suola` artifacts carry their attestation, and then uploads the
+first makes sure that the tag has its GitHub Release. `release.yml` makes the Release only after the sites check
+passes. Do not make a Release by hand: the target cannot tell it from a Release of `release.yml`. Then the target builds the store tree, makes sure that the `suola` artifacts carry their attestation, and then uploads the
 package. AMO puts the version in its review queue. The Chrome Web Store puts the version in its review queue
 when the upload is complete. The workflow does not wait for the review.
 
@@ -120,14 +124,7 @@ Check out the release tag first. The packages carry the version of `manifest.jso
 A store build always includes the non-OSS assets and downloads the attested `suola` artifacts of the pinned
 tag; it does not compile `suola`.
 
-A store build first runs `make check-sites-published`. It stops if the bundled sites in `src/generated/sites.js`
-differ from the sites of the published provider manifest, and it names each site that is added, removed or
-changed. A store build cannot request a site origin that its manifest does not declare, so it must carry the
-published sites. To correct it, run `make sites-sync`, commit the result, and tag again.
-
-A store build also runs `make check-sites`. It stops if a site origin that was optional in the previous release is now
-in `host_permissions`. A new required host permission makes Chrome disable the extension at update.
-[Adding a new site](development/adding-a-new-site.md) tells which origins are required.
+A store build runs `make check-sites` first. It does not connect to Rahti. See [Bundled Sites](#bundled-sites).
 
 The two zip files have the same names as the output of `make package` and `make build`, which write the GitHub
 channel builds. The file on disk is the output of the make target that ran last. Run `make store-build`
@@ -149,6 +146,37 @@ again to the Chrome Web Store. An older tag needs a new release.
 
 - Chrome Web Store: unpublish the item in the developer dashboard.
 - AMO: disable the version in the Developer Hub.
+
+## Bundled Sites
+
+`src/generated/sites.js` holds the sites of Rahti, and `manifest.json` holds their origins. A store build cannot
+request a site origin that its manifest does not declare. `make sites-sync` writes both files from the official
+provider manifest, and records the Rahti commit in `SITES_COMMIT`. A developer runs the sync and commits the
+result. No workflow writes these files.
+
+Rahti `main` changes many times each hour. Thus the checks compare with the recorded commit, not with `main`, and
+a given Paatti commit always gets the same result. A retry, or the second store, cannot fail because Rahti
+changed. While the sites stay the same, a new sync keeps the recorded commit, so it gives no diff.
+
+| Check | Where it runs | It stops if |
+|---|---|---|
+| `make check-sites` | `make test`, every store build, `release.yml` | The module is not from the official manifest, or records no commit. A site origin in `manifest.json` does not agree with the module. A site origin that was optional in the previous release is in `host_permissions`. |
+| `make check-sites-published` | `build.yml`, `release.yml` | The recorded commit is not in the history of Rahti `main`. The sites at that commit differ from the module. |
+| `make check-sites-latest` | `sites-latest.yml`, each day; before a release | The sites of Rahti `main` now differ from the module. |
+
+`make check-sites` does not connect to the network. It reads the previous release from the last `v*` tag before
+`HEAD`. In CI, a missing tag is an error. A new required host permission makes Chrome disable the extension at
+update. [Adding a new site](development/adding-a-new-site.md) tells which origins are required.
+
+`make check-sites-published` uses the GitHub API to find the commit in the history of `main`, because
+raw.githubusercontent.com also gives the files of a commit in a fork. It sends `GITHUB_TOKEN` when the variable is
+set. Its result changes only if Rahti removes the commit from its history. Then run `make sites-sync` and release
+a new version.
+
+A failed run of `sites-latest.yml` blocks nothing. It tells you that a new release does not have the current sites:
+run `make sites-sync` and commit the result. GitHub sends the failure only to the user who last changed the `cron`
+line of the workflow. GitHub also disables the schedule after 60 days with no activity in the repository. Enable
+it again in **Actions**.
 
 ## Browser Manifests
 

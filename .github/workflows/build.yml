@@ -57,3 +57,9 @@ jobs:
             build/klikkikuri-paatti-chrome.zip
             build/klikkikuri-paatti-firefox.zip
           if-no-files-found: error
+
+      - name: "🔍 Check Sites Against the Pinned Rahti Commit"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          make check-sites-published

@@ -1,0 +1,25 @@
+name: Sites Latest
+
+# Each day, compare the bundled sites with Rahti main. A failed run means that a developer must run
+# `make sites-sync` and commit the result; it blocks no build or release. See docs/release.md.
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: "🔍 Compare the Sites with Rahti main"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: "🔄 Checkout Repository"
+        uses: actions/checkout@v7
+
+      - name: "🔍 Check Sites Against Rahti main"
+        run: |
+          make check-sites-latest

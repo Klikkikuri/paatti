@@ -72,13 +72,15 @@ make sites-sync SITES_MANIFEST=http://127.0.0.1:8000/manifest.json
 ```
 
 The sync resolves the manifest with the same validation that a provider gets at runtime, and stops if it refuses a
-site. It writes `src/generated/sites.js` and the site origins in `manifest.json`: `host_permissions` for an enabled
+site. It also stops if a `site-configs` href is not in the directory of the manifest, so that the recorded Rahti
+commit pins the sites too. It writes `src/generated/sites.js` and the site origins in `manifest.json`: `host_permissions` for an enabled
 site, `optional_host_permissions` for a disabled site or an origin that was optional in the previous release, and the
 `web_accessible_resources` matches for all sites. The previous release is the last `v*` tag before `HEAD`. Without
 git history or tags, as in a source archive, the committed `manifest.json` takes its place.
 Reload the unpacked extension to test.
 
-`make test` fails while the bundled sites come from a local copy. That is intentional: do not commit them.
+`make test` fails while the bundled sites come from a local copy. That is intentional: do not commit them. A sync
+from a local copy records no Rahti commit, and CI stops on it too.
 
 ---
 
@@ -92,5 +94,6 @@ make sites-sync
 make test
 ```
 
-`make test` includes `make check-sites`, which fails if `manifest.json` does not agree with the bundled sites. A store
-build runs `make check-sites-published` first, and stops if the bundled sites differ from the published sites.
+`make test` includes `make check-sites`, which fails if `manifest.json` does not agree with the bundled sites. CI
+compares the bundled sites with the Rahti commit that the sync recorded. [Bundled Sites](../release.md#bundled-sites)
+tells which check runs where.
