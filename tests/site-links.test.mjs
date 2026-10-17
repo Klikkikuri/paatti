@@ -20,6 +20,12 @@ describe('siteLinks', () => {
         assert.deepEqual(siteLinks(links, 'en', getMessage), [{ href: 'https://example.fi/a', label: 'Other' }]);
     });
 
+    test('labels a rel that names an Object property with its title', () => {
+        const links = [{ rel: 'constructor', href: 'https://example.fi/a', title: 'Other' }];
+        const getStringMessage = (key) => { assert.equal(typeof key, 'string'); return getMessage(key); };
+        assert.deepEqual(siteLinks(links, 'en', getStringMessage), [{ href: 'https://example.fi/a', label: 'Other' }]);
+    });
+
     test('of the links with one rel, prefers the UI language, else the first', () => {
         const links = [
             { rel: 'x-publisher-policy', href: 'https://example.fi/en', hreflang: 'en' },

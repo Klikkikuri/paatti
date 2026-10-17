@@ -40,7 +40,7 @@ export function siteLinks(links, uiLanguage, getMessage) {
     }
 
     return [...byRel.entries()].flatMap(([rel, { link }]) => {
-        const label = (REL_MESSAGES[rel] && getMessage(REL_MESSAGES[rel])) || link.title;
+        const label = (Object.hasOwn(REL_MESSAGES, rel) && getMessage(REL_MESSAGES[rel])) || link.title;
         return label ? [{ href: link.href, label }] : [];
     });
 }
