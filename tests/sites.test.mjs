@@ -67,15 +67,15 @@ describe('the committed sites', () => {
 
 describe('diffSites', () => {
     test('names each added, removed and changed site, and nothing else', () => {
-        const bundled = { 'same.example': site('same.example', true), 'gone.example': site('gone.example', true), 'edit.example': site('edit.example', true) };
+        const recorded = { 'same.example': site('same.example', true), 'gone.example': site('gone.example', true), 'edit.example': site('edit.example', true) };
         const published = { 'same.example': site('same.example', true), 'new.example': site('new.example', true), 'edit.example': site('edit.example', false) };
 
-        assert.deepEqual(diffSites(bundled, published).sort(), [
-            '+ new.example: published, not bundled',
-            '- gone.example: bundled, not published',
+        assert.deepEqual(diffSites(recorded, published).sort(), [
+            '+ new.example: published, not recorded',
+            '- gone.example: recorded, not published',
             '~ edit.example: changed',
         ]);
-        assert.deepEqual(diffSites(bundled, structuredClone(bundled)), []);
+        assert.deepEqual(diffSites(recorded, structuredClone(recorded)), []);
     });
 });
 

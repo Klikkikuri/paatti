@@ -3,12 +3,14 @@
 
 /**
  * @file sites.mjs
- * Writes the bundled site configurations from a provider manifest, and the manifest origins they need.
+ * Records the default sites from a provider manifest, and writes the manifest origins they need.
  *
- * The site configurations live in Rahti's `sites.json`, linked from the official provider manifest. This script
- * resolves the manifest with `src/provider.js`, so the bundled set passes the same validation as a provider at
- * runtime, and writes the result to `src/generated/sites.js`. The module is committed: the repo root is itself a
- * loadable unpacked extension, and there is no bundler to fetch it at load time.
+ * The default sites are the sites of the default provider: Rahti's `sites.json`, linked from its provider manifest.
+ * The extension downloads them at runtime, like the sites of any other provider, and does not read the record. A
+ * store build can request only the origins that `manifest.json` declares, so this script writes them there. It
+ * resolves the manifest with `src/provider.js`, so the sites pass the same validation as at runtime, and writes the
+ * record to `src/generated/sites.js`. The record is committed, so that the checks run offline and a Paatti commit
+ * always names the same sites.
  *
  * The module records the Rahti commit it comes from, so that a check against Rahti gives the same result for a
  * given Paatti commit. A sync keeps the recorded commit while the sites stay the same, because Rahti `main` moves
@@ -226,16 +228,16 @@ export function patchManifest(manifest, siteConfigs, released) {
 }
 
 /**
- * @param {object} bundled
+ * @param {object} recorded
  * @param {object} published
  * @returns {string[]} One line for each site that is added, removed or changed.
  */
-export function diffSites(bundled, published) {
-    const keys = new Set([...Object.keys(bundled), ...Object.keys(published)]);
+export function diffSites(recorded, published) {
+    const keys = new Set([...Object.keys(recorded), ...Object.keys(published)]);
     return [...keys].flatMap((key) => {
-        if (!(key in bundled)) return [`+ ${key}: published, not bundled`];
-        if (!(key in published)) return [`- ${key}: bundled, not published`];
-        return isDeepStrictEqual(bundled[key], published[key]) ? [] : [`~ ${key}: changed`];
+        if (!(key in recorded)) return [`+ ${key}: published, not recorded`];
+        if (!(key in published)) return [`- ${key}: recorded, not published`];
+        return isDeepStrictEqual(recorded[key], published[key]) ? [] : [`~ ${key}: changed`];
     });
 }
 
@@ -319,7 +321,7 @@ async function checkLatest(source) {
     const latest = await fetchLatest(source);
     const changes = diffSites(SITE_CONFIGS, latest.siteConfigs);
     if (changes.length > 0) {
-        throw new Error(`The bundled sites (Rahti ${SITES_COMMIT}) differ from ${source} (Rahti ${latest.commit}). `
+        throw new Error(`The recorded default sites (Rahti ${SITES_COMMIT}) differ from ${source} (Rahti ${latest.commit}). `
             + `Run \`make sites-sync\`.\n  ${changes.join("\n  ")}`);
     }
 }

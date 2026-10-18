@@ -222,7 +222,7 @@ describe('providers folded into siteConfigs', () => {
             }
         }
 
-        test('replaces a bundled site and keeps it enabled, in development too', async () => {
+        test('keeps a default site enabled, in development too', async () => {
             await withDefaultProvider('development', (config) => {
                 assert.equal(config.siteConfigs['www.hs.fi'].enabled, true);
                 assert.deepEqual(config.siteConfigs['www.hs.fi'].rules, hs.rules);
@@ -230,7 +230,7 @@ describe('providers folded into siteConfigs', () => {
             });
         });
 
-        test('keeps a site it marks enabled: false, off, as the bundled set does', async () => {
+        test('keeps a default site that it marks enabled: false, off', async () => {
             await withDefaultProvider('free', (config) => {
                 assert.equal(config.siteConfigs['www.ampparit.com'].enabled, false);
                 assert.equal(config.siteConfigSources['www.ampparit.com'][0].url, DEFAULT_RAHTI_MANIFEST_URL, 'listed, not withdrawn');
@@ -271,7 +271,7 @@ describe('providers folded into siteConfigs', () => {
         });
     });
 
-    test('a sync override reaches a provider-only domain, exactly as it does a bundled one', async () => {
+    test('a sync override reaches a provider-only domain, exactly as it does a default site', async () => {
         await sync.set({
             providers: [{ url, enabled: true }],
             userSiteOverrides: { 'news.example': { enabled: true } }
@@ -437,7 +437,7 @@ describe('default providers and enabledProviderUrls', () => {
         assert.match(DEFAULT_RAHTI_MANIFEST_URL, /^https:\/\//);
     });
 
-    test('the bundled sites are synced from DEFAULT_RAHTI_MANIFEST_URL, not from a local copy', async () => {
+    test('the recorded default sites are synced from DEFAULT_RAHTI_MANIFEST_URL, not from a local copy', async () => {
         const { SITES_SOURCE } = await import('../src/generated/sites.js');
         assert.equal(SITES_SOURCE, DEFAULT_RAHTI_MANIFEST_URL, 'Run `make sites-sync` against the published manifest.');
     });

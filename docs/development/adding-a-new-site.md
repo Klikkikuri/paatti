@@ -64,23 +64,41 @@ describes the format.
 
 ## 2. Test the Site from a Local Rahti Checkout
 
-Serve the Rahti checkout on the loopback address, and sync the bundled sites from it:
+Serve the Rahti checkout on the loopback address:
 
 ```bash
 (cd ../rahti && python3 -m http.server 8000 --bind 127.0.0.1)
+```
+
+Add the checkout to an unpacked build as a provider:
+
+1. On the settings page, under **🐛 Debug Settings** → **🔌 Providers**, turn on **Allow providers on this
+   machine**.
+2. Enter `http://127.0.0.1:8000/manifest.json`, select **Add**, then **Add provider**, and accept the browser
+   prompts.
+3. Turn on the new site in the site list, and accept the browser prompt for its origin. A site that a provider
+   supplies is off until you turn it on.
+
+The `development` environment lets a provider override sites, so the checkout also takes over the sites that
+Rahti already has. Turn on again each of them that you test. Paatti downloads the checkout again at each database
+update: select **Update Database** after you change `sites.json`. [Providers](../providers.md) tells the rules.
+
+To see the origins that the new site adds to `manifest.json`, sync from the checkout:
+
+```bash
 make sites-sync SITES_MANIFEST=http://127.0.0.1:8000/manifest.json
 ```
 
 The sync resolves the manifest with the same validation that a provider gets at runtime, and stops if it refuses a
 site. It also stops if a `site-configs` href is not in the directory of the manifest, so that the recorded Rahti
-commit pins the sites too. It writes `src/generated/sites.js` and the site origins in `manifest.json`: `host_permissions` for an enabled
-site, `optional_host_permissions` for a disabled site or an origin that was optional in the previous release, and the
-`web_accessible_resources` matches for all sites. The previous release is the last `v*` tag before `HEAD`. Without
-git history or tags, as in a source archive, the committed `manifest.json` takes its place.
-Reload the unpacked extension to test.
+commit pins the sites too. It writes `src/generated/sites.js` and the site origins in `manifest.json`:
+`host_permissions` for an enabled site, `optional_host_permissions` for a disabled site or an origin that was
+optional in the previous release, and the `web_accessible_resources` matches for all sites. The previous release
+is the last `v*` tag before `HEAD`. Without git history or tags, as in a source archive, the committed
+`manifest.json` takes its place. The sync does not change which sites the extension uses.
 
-`make test` fails while the bundled sites come from a local copy. That is intentional: do not commit them. A sync
-from a local copy records no Rahti commit, and CI stops on it too.
+`make test` fails after a sync from a local copy. That is intentional: do not commit the result. A sync from a
+local copy records no Rahti commit, and CI stops on it too.
 
 ---
 
@@ -94,6 +112,6 @@ make sites-sync
 make test
 ```
 
-`make test` includes `make check-sites`, which fails if `manifest.json` does not agree with the bundled sites. CI
-compares the bundled sites with the Rahti commit that the sync recorded. [Bundled Sites](../release.md#bundled-sites)
-tells which check runs where.
+`make test` includes `make check-sites`, which fails if `manifest.json` does not agree with the recorded default
+sites. CI compares the record with the Rahti commit that the sync recorded.
+[Default Site Permissions](../release.md#default-site-permissions) tells which check runs where.

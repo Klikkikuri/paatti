@@ -26,9 +26,9 @@ const RETRY_ALARM_PREFIX = "default-provider-retry:";
  * origins.
  *
  * Filtered to origins the browser has actually granted before it reaches registerContentScripts():
- * every bundled origin is covered by the static host_permissions and always passes this, but a
+ * every default site origin is covered by the static host_permissions and always passes this, but a
  * provider's origin may not be granted yet (or ever), and registerContentScripts() refuses its whole
- * array over one ungranted pattern -- which would otherwise silently stop correction on every bundled
+ * array over one ungranted pattern -- which would otherwise silently stop correction on every default
  * site too, not only the provider's.
  */
 async function updateDynamicContentScripts() {

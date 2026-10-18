@@ -7,7 +7,7 @@ BUILD_TEST_DATA := $(TEST_DATA_BUILD_DIR)/data.json
 BUILD_SOURCE_DIST := $(BUILD_DIR)/source-code.zip
 STORE_REVISION ?= 1
 CHROME_EXTENSION_ID := jalegaigmgljhnaakmbbaajooffgcbgc
-# The provider manifest the bundled sites come from. Same URL as DEFAULT_RAHTI_MANIFEST_URL in src/config.js.
+# The provider manifest of the default sites. Same URL as DEFAULT_RAHTI_MANIFEST_URL in src/config.js.
 SITES_MANIFEST ?= https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/manifest.json
 RELEASE_TAG = v$$(node -p "require('./manifest.json').version")
 AMO_METADATA := $(BUILD_DIR)/amo-metadata.json
@@ -173,8 +173,9 @@ icons:
 check-icons:
 	@node tools/inline-icons.mjs --check
 
-# The bundled sites come from the provider manifest, and manifest.json takes its site origins from them. Both are
-# committed, for the same reason as the icons, with the Rahti commit they come from. check-sites is offline: the
+# The extension downloads the default sites at runtime. sites-sync records them in src/generated/sites.js, with the
+# Rahti commit they come from, and writes their origins into manifest.json, because a store build can request only
+# the origins that manifest.json declares. Both files are committed, so that the checks run offline. check-sites is offline: the
 # store build runs it, and it reads the previous v* tag. check-sites-published compares with the recorded commit,
 # so a tag gives the same result each time; build.yml and release.yml run it. check-sites-latest compares with
 # Rahti main; sites-latest.yml runs it each day.
