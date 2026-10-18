@@ -431,24 +431,6 @@ const model = (() => {
                 await browser.storage.local.remove("statistics");
             },
 
-            setTitleDataUrl: async (value) => {
-                const data = await browser.storage.local.get("userPreferences");
-                const userPreferences = data.userPreferences || {};
-                if (!userPreferences.titleDataUrls) {
-                    userPreferences.titleDataUrls = [];
-                }
-                userPreferences.titleDataUrls = [value];
-                await browser.storage.local.set({ userPreferences });
-                // TODO: Need event here or just manually do it at controller?
-            },
-
-            setTestTitleDataUrl: async (value) => {
-                const data = await browser.storage.local.get("userPreferences");
-                const userPreferences = data.userPreferences || {};
-                userPreferences.testTitleDataUrl = value;
-                await browser.storage.local.set({ userPreferences });
-            },
-
             setEmail: async (value, env) => {
                 // Email is property of environment
                 if (!env) {
@@ -607,12 +589,6 @@ const model = (() => {
                     entries[url] = layer ? entryOf(layer) : null;
                 }
                 return entries;
-            },
-
-
-            getTestTitleDataUrl: async () => {
-                const config = await getConfig();
-                return config.testTitleDataUrl;
             },
 
             getStatistics: async (hostname) => {
