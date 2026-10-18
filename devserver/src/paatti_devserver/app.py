@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from .captured import CapturedSites
 from .chaos import Chaos
 from .conditional import conditional_get
 from .layout import netloc
@@ -43,6 +44,7 @@ def create_app(settings: Settings) -> FastAPI:
     app = FastAPI(title="Paatti development server", version="0.1.0")
     app.state.devserver = build_state(settings)
     app.state.templates = Jinja2Templates(directory=PACKAGE / "templates")
+    app.state.captured = CapturedSites(settings)
 
     # Starlette runs the middleware added last first: the cache layer must see the body after the faults.
     # app.state.chaos lets an in-process test switch the faults between two refreshes; nothing else changes it.

@@ -266,8 +266,10 @@ test-devserver: export NODE_PATH = $(shell npm root -g)
 test-devserver: $(WASM_OUTPUTS)
 	$(DEVSERVER) pytest
 	@port=$$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'); \
-	$(DEVSERVER) paatti-devserver --port=$$port --log_level=WARNING & pid=$$!; \
-	trap 'kill $$pid 2>/dev/null' EXIT; \
+	data=$$(mktemp -d); \
+	$(DEVSERVER) paatti-devserver --port=$$port --log_level=WARNING --data_dir="$$data" \
+		--rahti_commit="$$(jq -r .commit sites.lock.json)" & pid=$$!; \
+	trap 'kill $$pid 2>/dev/null; rm -rf "$$data"' EXIT; \
 	for _ in $$(seq 100); do curl -sf -o /dev/null "http://localhost:$$port/manifest/ilta-pulu/manifest.json" && break; sleep 0.2; done; \
 	node tools/devserver-drift.mjs "http://localhost:$$port"
 
