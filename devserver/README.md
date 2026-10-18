@@ -74,7 +74,7 @@ Each content case is on by default. Turning one off removes only that case: the 
 | `features.no_entry` | Articles that `data.json` does not contain: the SKIPPED status. |
 | `features.missing_href` | A card whose link has no `href`. |
 | `features.duplicate_link` | The same article twice, with the same address. |
-| `features.edge_headlines` | Very long and very short headlines, emoji, markup as text, non-ASCII letters, extra spaces. |
+| `features.edge_headlines` | Very long and very short headlines, emoji, markup as text, non-ASCII letters, soft hyphens, extra spaces. |
 | `features.href_variants` | Links as relative, absolute, with a query, with a trailing slash, with a fragment, or with an upper-case section. Each variant gets the same signature. |
 | `features.load_more` | A "Load more" button and infinite scroll. |
 | `features.ticker` | A news ticker whose items are replaced every 5 seconds. |

@@ -4,7 +4,7 @@ import pytest
 
 from .conftest import LiveServer, statuses, wait_until
 
-FULL = 185  # The entries of the default pool; test_pool.py covers the pool itself.
+FULL = 186  # The entries of the default pool; test_pool.py covers the pool itself.
 
 CASES = [
     # (faults, check of the provider data after the failing refresh)
