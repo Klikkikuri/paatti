@@ -27,6 +27,9 @@ Or in this directory:
 uv run paatti-devserver --port=3000 --seed=42
 ```
 
+At start, the server prints the seeds, the features that are off, the faults that are on and off, and the command
+that starts a server with the same settings.
+
 ## Routes
 
 | Route | Content |
@@ -80,7 +83,16 @@ Each content case is on by default. Turning one off removes only that case: the 
 
 ### Faults
 
-Every fault is off by default.
+Every fault is off by default. `--chaos` takes a profile, or a JSON object of the settings below:
+
+| Profile | Faults |
+| --- | --- |
+| `none`, `false` | None (the default) |
+| `true`, or `--chaos` alone | Each fault except `page_hostile_css`, provider faults on all documents, `chaos.rate` 0.03: about 3 in 4 document requests get no fault |
+| `all` | Each fault, provider faults on all documents, `chaos.rate` 0.1: about 1 in 3 document requests get no fault |
+
+A setting also given on its own overrides the profile, in any order: `--chaos=true --chaos.provider_timeout=` is the
+`true` profile without timeouts. The environment takes the same values: `PAATTI_DEVSERVER_CHAOS=true`.
 
 A provider fault names the documents that it applies to: `manifest`, `sites`, `rules`, `data`. It fires on a
 request when `Random(f"{chaos.seed}:{flag}:{document}:{n}").random() < chaos.rate`. `n` counts the requests to that
