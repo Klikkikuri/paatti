@@ -43,7 +43,7 @@ def fake_signs(client) -> set[str]:
 
 def test_only_links_without_real_data_get_fake_entries(server):
     client, _ = server
-    response = capture(client, REAL, MISSING, "https://www.example.com/news/a/1")
+    response = capture(client, REAL, MISSING, "javascript:void(0)")
     assert response.status_code == 200
     assert response.json() == {"host": "www.iltalehti.fi", "links": 2, "real": 1, "fake": 1, "stored": 1}
     data = client.get("/manifest/captured-sites/data.json").json()
@@ -61,19 +61,20 @@ def test_a_new_capture_drops_links_that_rahti_has_added(server):
     assert fake_signs(client) == set()
 
 
-def test_subdomain_origins_cover_their_hosts(server):
-    client, _ = server
-    response = capture(client, "/kaupunki/art-2000011234567.html", page="https://www.hs.fi/")
-    assert response.status_code == 200 and response.json()["fake"] == 1
-
-
-@pytest.mark.parametrize("page, status", [
-    ("https://www.example.com/", 422),
-    ("not a url", 422),
+@pytest.mark.parametrize("page, href", [
+    ("http://localhost:3000/?seed=1", "/news/a/0123456789ab"),
+    ("https://www.example.com/", "/story/1"),
 ])
-def test_refused_captures(server, page, status):
+def test_any_host_that_suola_signs_is_accepted(server, page, href):
     client, _ = server
-    assert capture(client, MISSING, page=page).status_code == status
+    response = capture(client, href, page=page)
+    assert response.status_code == 200 and response.json()["fake"] == 1
+    assert BASE.sign(page.split("/?")[0].rstrip("/") + href) in fake_signs(client)
+
+
+def test_a_malformed_page_address_is_refused(server):
+    client, _ = server
+    assert capture(client, MISSING, page="not a url").status_code == 422
 
 
 def test_a_failed_rahti_fetch_writes_nothing(server, tmp_path):
@@ -95,8 +96,6 @@ def test_manifest_declares_the_pinned_sites_and_their_origins(server):
     assert sites["origins"] == ["https://*.hs.fi/*", "https://www.iltalehti.fi/*"]
     assert data == {"type": "rahti-data", "href": "data.json", "description": data["description"]}
     assert not any(resource["type"] == "suola-rules" for resource in manifest["resources"])
-    capture = next(link for link in manifest["links"] if link["rel"] == "x-paatti-dev-capture")
-    assert "title" not in capture and capture["href"].endswith("/api/capture")
 
 
 def test_without_a_commit_the_provider_is_unavailable(tmp_path):

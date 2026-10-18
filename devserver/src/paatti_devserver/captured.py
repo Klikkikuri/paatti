@@ -1,8 +1,9 @@
 """The captured-sites provider: Rahti's real sites, with fake corrections for the links that Rahti has no entry for.
 
-Paatti's popup sends the links and headlines of a page on a Rahti site to `POST /api/capture`. The server signs
-each link with the base Suola rules, which equal Rahti's rules at the pinned commit, so the provider needs no
-`suola-rules` and its signs are Paatti's official signs.
+Paatti's popup sends the links and headlines of a page to `POST /api/capture`. The server signs each link with the
+base Suola rules, whose catch-all signs any host. They equal Rahti's rules at the pinned commit, so the provider
+needs no `suola-rules` and its signs are Paatti's official signs. The corrections take effect on the sites that the
+provider supplies: Rahti's sites. A capture from another host is stored, but Paatti does not look it up.
 
 With "Allow providers to override sites" on, this provider ranks before Rahti on equal weight, and Paatti looks a
 link up here first. Thus a fake entry for a link that Rahti covers would hide the real correction. Each capture
@@ -81,15 +82,6 @@ class CapturedSites:
         return sorted({origin for key, site in self.pinned_sites().items()
                        for origin in site.get("origins") or [f"https://{key}/*"]})
 
-    def covers(self, host: str | None) -> bool:
-        """Whether a pinned Rahti site covers `host`, as its origins name it (`www.hs.fi`, or `*.hs.fi`)."""
-        if not host:
-            return False
-        for pattern in map(origin_host, self.origins()):
-            if host == pattern or (pattern.startswith("*.") and (host == pattern[2:] or host.endswith(pattern[1:]))):
-                return True
-        return False
-
     def manifest(self, links: list[dict]) -> dict:
         return {
             "schema_version": "0.1.0",
@@ -118,8 +110,6 @@ class CapturedSites:
     def capture(self, page_url: str, links: list[tuple[str, str]]) -> dict:
         """Store the links of one page that Rahti has no entry for, and drop stored ones that Rahti now has."""
         host = urlsplit(page_url).hostname
-        if not self.covers(host):
-            raise CaptureError(422, f"No Rahti site at commit {self.settings.rahti_commit} covers {host}")
         try:
             real = self.fetch_real_signs()
         except Exception as err:  # Any failure: writing fake data blind could hide a real correction.
@@ -130,7 +120,7 @@ class CapturedSites:
         for href, title in links:
             absolute = urljoin(page_url, href)
             parts = urlsplit(absolute)
-            if parts.scheme not in ("http", "https") or not self.covers(parts.hostname):
+            if parts.scheme not in ("http", "https"):
                 continue
             sign = self._signs().sign(absolute)
             if sign:

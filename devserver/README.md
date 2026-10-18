@@ -37,7 +37,7 @@ uv run paatti-devserver --port=3000 --seed=42
 | `/privacy` | The privacy notice that the manifests link. |
 | `/manifest/ilta-pulu/manifest.json` | The Ilta-Pulu provider: `sites.json`, `rules.json` and `data.json` beside it. |
 | `/manifest/captured-sites/manifest.json` | Rahti's real sites with fake corrections for captured links: `data.json` beside it. Needs `rahti_commit`. |
-| `POST /api/capture` | Stores the links of a page on a Rahti site (see "Captured sites"). Paatti's popup calls it. |
+| `POST /api/capture` | Stores the links of a page that Rahti has no correction for (see "Captured sites"). Paatti's popup calls it. |
 | `/api/fragment?seed=&kind=&n=` | HTML that `site.js` inserts: `more` (load more), `churn` (one card), `ticker` (one item). |
 | `/docs` | The OpenAPI description of the routes. |
 
@@ -112,11 +112,13 @@ A page fault is decided from the page seed, so a reload of one seed gives the sa
 
 The captured-sites provider makes test data for a real Rahti site, for example www.iltalehti.fi, where Rahti has
 no correction for a link. In a development build, Paatti's popup sends the page address and the links and
-headlines of the page to `POST /api/capture`, with one click. Only this provider's manifest names the capture endpoint, so
-Paatti shows its **Send page** button only on the sites of this provider, not on Ilta-Pulu.
+headlines of the page to `POST /api/capture`, with one click.
 
-- The server signs each link with the base Suola rules. At the pinned commit, they equal Rahti's rules, so the
-  provider has no `suola-rules` and its signs are Paatti's official signs.
+- The server accepts a page of any host, and signs each link with the base Suola rules, whose catch-all signs
+  any host. At the pinned commit, they equal Rahti's rules, so the provider has no `suola-rules` and its signs are
+  Paatti's official signs.
+- The corrections take effect only on the sites that the provider supplies: Rahti's sites. A capture from another
+  host, Ilta-Pulu included, is stored, but Paatti does not look it up.
 - It fetches Rahti's current `data.json` and keeps only the links whose sign Rahti does not have. The other links
   keep their real correction: with "Allow providers to override sites" on, Paatti looks a link up in this provider
   first, so a fake entry would hide the real one.
