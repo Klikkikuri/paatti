@@ -111,9 +111,11 @@
             <h2 id="settingsview-devmode-title" class="settingsview-header"></h2>
             <hr>
             <ul style="list-style: none; padding: 0; margin-top: 10px; display: flex; flex-direction: column; gap: 12px; width: 100%;">
-                <li style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                    <span id="devmode-dumpLinkHash-label" style="font-weight: bold;"></span>
-                    <button id="devmode-dumpLinkHash" class="push-button" style="margin: 0; padding: 6px 12px; min-height: 32px; font-size: 0.9em;"></button>
+                <li id="devmode-capture" class="hidden" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; width: 100%;">
+                    <span style="font-weight: bold;" data-i18n="devmodeCaptureLabel"></span>
+                    <button id="devmode-capture-button" class="push-button" style="margin: 0; padding: 6px 12px; min-height: 32px; font-size: 0.9em;" data-i18n="devmodeCaptureBtn"></button>
+                    <span id="devmode-capture-hint" class="hidden" style="width: 100%; font-size: 0.9em;" data-i18n="devmodeCaptureHint"></span>
+                    <span id="devmode-capture-status" role="status" style="width: 100%; font-size: 0.9em;"></span>
                 </li>
                 <visual-highlight-setting layout="compact"></visual-highlight-setting>
             </ul>
@@ -160,10 +162,6 @@
                 <img src="images/klikkihAI_logo_1.png" height="15" alt="Klikkikuri logo" data-i18n-alt="iconLogoAlt">
                 <span class="devmode hidden">🤓</span>
             </label>
-            <!-- Start of hidden devmode controls list -->
-            <input class="hidden" id="copy-link-signatures">
-            <label for="copy-link-signatures" class="devmode">🧂</label>
-            <!-- End of list -->
         </span>
         <span data-i18n="logoByKlikkikuri">by Klikkikuri</span>
     </div>

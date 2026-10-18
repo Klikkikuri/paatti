@@ -1,9 +1,6 @@
 DOCKER ?= docker
 NON_OSS ?= 0
 BUILD_DIR := $(shell pwd)/build
-TEST_DATA_BUILD_DIR := $(BUILD_DIR)/test_data
-TEST_DATA_SIGNATURES := $(TEST_DATA_BUILD_DIR)/signatures.txt
-BUILD_TEST_DATA := $(TEST_DATA_BUILD_DIR)/data.json
 BUILD_SOURCE_DIST := $(BUILD_DIR)/source-code.zip
 STORE_REVISION ?= 1
 CHROME_EXTENSION_ID := jalegaigmgljhnaakmbbaajooffgcbgc
@@ -158,10 +155,6 @@ source-dist:
 	rm -f $(BUILD_SOURCE_DIST)
 	git ls-files --recurse-submodules | zip -@ $(BUILD_SOURCE_DIST)
 
-test-data:
-	mkdir -p "$(TEST_DATA_BUILD_DIR)"
-	./generate_test_data.py $(TEST_DATA_SIGNATURES)
-
 # Badge icons are authored as .svg under assets/icons/ and written into the module that
 # draws them. The result is committed: the repo root is itself a loadable unpacked
 # extension, so src/ must never hold a placeholder. The extension icon PNGs come from
@@ -192,7 +185,6 @@ check-sites-latest:
 	@node tools/sites.mjs --check-latest $(SITES_MANIFEST)
 
 clean:
-	rm -f "$(BUILD_TEST_DATA)" "$(TEST_DATA_SIGNATURES)"
 	rm -f $(BUILD_DIR)/klikkikuri-*.xpi
 	rm -f $(BUILD_DIR)/klikkikuri-paatti-*.xpi
 	rm -rf "$(BUILD_DIR)"
@@ -294,4 +286,4 @@ test-wasm:
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
 	fi
 
-.PHONY: serve test-devserver test-e2e build init ensure-suola check-tinygo package source-dist test-data icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
+.PHONY: serve test-devserver test-e2e build init ensure-suola check-tinygo package source-dist icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext

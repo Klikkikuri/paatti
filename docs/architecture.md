@@ -108,7 +108,7 @@ classDiagram
         +setLoopbackProvidersEnabled(value)
         +updateStatistics(update)
         +resetStatistics()
-        +devmode.dumpLinkSignatures()
+        +devmode.capturePage()
     }
     class ProvidersModule {
         +getProviders()
@@ -165,7 +165,7 @@ classDiagram
         +processSite()
         +command: convertClickbaits
         +command: getConversions
-        +command: devmode_generateLinkSignatures
+        +command: devmode_capturePage
     }
     class FeedbackDialog {
         +createFeedbackDialog(options)
