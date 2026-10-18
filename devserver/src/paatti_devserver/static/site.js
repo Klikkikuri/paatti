@@ -42,6 +42,27 @@
             const replacement = await fragment("ticker", tick);
             items[tick % items.length].replaceWith(replacement);
         }, 5000);
+
+        // Scroll the ticker with scrollLeft, not by moving its items: a moved item is a new node to the content script.
+        const ticker = document.querySelector(".newsticker");
+        if (ticker && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            let position = 0;
+            let last = 0;
+            let paused = false;
+            ticker.addEventListener("mouseenter", () => { paused = true; });
+            ticker.addEventListener("mouseleave", () => { paused = false; position = ticker.scrollLeft; });
+            const step = (now) => {
+                const elapsed = last ? now - last : 0;
+                last = now;
+                if (!paused) {
+                    position += elapsed * 0.06;
+                    if (position >= ticker.scrollWidth - ticker.clientWidth) position = 0;
+                    ticker.scrollLeft = position;
+                }
+                requestAnimationFrame(step);
+            };
+            requestAnimationFrame(step);
+        }
     }
 
     if ("gap" in body.dataset) {
