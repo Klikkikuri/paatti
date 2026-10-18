@@ -41,8 +41,8 @@ class Article:
         return f"/{self.section}/a/{self.id}"
 
 
-def _article(pool_seed: int, case: str, index: int, pair: Pair, *, level: int, labels=(), converted=True,
-             has_entry=True, original: str | None = None) -> Article:
+def _article(pool_seed: int, case: str, index: int, pair: Pair, *, labels=(), converted=True, has_entry=True,
+             original: str | None = None) -> Article:
     scope = (pool_seed, "article", case, index)
     fake = faker(*scope)
     clickbait, neutral = fill(pair, fake, rng(*scope, "names"))
@@ -51,7 +51,7 @@ def _article(pool_seed: int, case: str, index: int, pair: Pair, *, level: int, l
         section=pair.section,
         original=original or clickbait,
         converted=neutral if converted else None,
-        level=level,
+        level=pair.level,
         labels=tuple(labels),
         has_entry=has_entry,
         case=case,
@@ -59,26 +59,30 @@ def _article(pool_seed: int, case: str, index: int, pair: Pair, *, level: int, l
     )
 
 
-def _pair(pool_seed: int, case: str, index: int) -> Pair:
-    return rng(pool_seed, "pair", case, index).choice(PAIRS)
+def _pair(pool_seed: int, case: str, index: int, level: int | None = None) -> Pair:
+    """A pair from `PAIRS`, at `level` if it is given."""
+    pairs = [pair for pair in PAIRS if level is None or pair.level == level]
+    return rng(pool_seed, "pair", case, index).choice(pairs)
 
 
 def build_pool(pool_seed: int, features: FeatureSettings) -> list[Article]:
     """Every article: the base articles first, then one group per active coverage case."""
-    def group(case, count, options):
-        return [_article(pool_seed, case, i, _pair(pool_seed, case, i), **options(i)) for i in range(count)]
+    def group(case, count, level=None, **options):
+        return [_article(pool_seed, case, i, _pair(pool_seed, case, i, level), **options) for i in range(count)]
 
-    articles = group("base", BASE_ARTICLES, lambda i: {"level": rng(pool_seed, "level", i).randint(2, 4)})
+    articles = group("base", BASE_ARTICLES)
     cases = {
-        "levels": lambda: group("levels", len(ex.LEVELS), lambda i: {"level": i}),
-        "ai_slop": lambda: group("ai_slop", 3, lambda i: {"level": 3, "labels": [ex.LABEL_AI_SLOP]}),
-        "video": lambda: group("video", 3, lambda i: {"level": 3, "labels": [ex.LABEL_VIDEO]}),
-        "sponsored": lambda: group("sponsored", 2, lambda i: {"level": 2, "labels": [ex.LABEL_SPONSORED]}),
-        "paywalled": lambda: group("paywalled", 3,
-                                   lambda i: {"level": 2, "labels": [ex.LABEL_PAYWALLED], "converted": False}),
-        "no_entry": lambda: group("no_entry", 4, lambda i: {"level": 0, "has_entry": False}),
+        "levels": lambda: [
+            _article(pool_seed, "levels", level, _pair(pool_seed, "levels", level, level))
+            for level in range(len(ex.LEVELS))
+        ],
+        "ai_slop": lambda: group("ai_slop", 3, level=3, labels=[ex.LABEL_AI_SLOP]),
+        "video": lambda: group("video", 3, level=3, labels=[ex.LABEL_VIDEO]),
+        "sponsored": lambda: group("sponsored", 2, level=2, labels=[ex.LABEL_SPONSORED]),
+        "paywalled": lambda: group("paywalled", 3, level=2, labels=[ex.LABEL_PAYWALLED], converted=False),
+        "no_entry": lambda: group("no_entry", 4, has_entry=False),
         "edge_headlines": lambda: [
-            _article(pool_seed, "edge_headlines", i, pair, level=3) for i, pair in enumerate(EDGE_PAIRS)
+            _article(pool_seed, "edge_headlines", i, pair) for i, pair in enumerate(EDGE_PAIRS)
         ],
     }
     for name, make in cases.items():
@@ -86,7 +90,7 @@ def build_pool(pool_seed: int, features: FeatureSettings) -> list[Article]:
             articles += make()
     if features.xfail:
         articles += [
-            _article(pool_seed, f"xfail_{kind}", 0, PAIRS[0], level=4, original=title)
+            _article(pool_seed, f"xfail_{kind}", 0, _pair(pool_seed, f"xfail_{kind}", 0, 4), original=title)
             for kind, title in XFAIL_TARGETS.items()
         ]
     return articles
