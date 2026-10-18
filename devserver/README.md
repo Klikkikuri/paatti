@@ -36,6 +36,8 @@ uv run paatti-devserver --port=3000 --seed=42
 | `/<section>/a/<id>` | An article page. The section can have any letter case. |
 | `/privacy` | The privacy notice that the manifests link. |
 | `/manifest/ilta-pulu/manifest.json` | The Ilta-Pulu provider: `sites.json`, `rules.json` and `data.json` beside it. |
+| `/manifest/captured-sites/manifest.json` | Rahti's real sites with fake corrections for captured links: `data.json` beside it. Needs `rahti_commit`. |
+| `POST /api/capture` | Stores the links of a page on a Rahti site (see "Captured sites"). Paatti's popup calls it. |
 | `/api/fragment?seed=&kind=&n=` | HTML that `site.js` inserts: `more` (load more), `churn` (one card), `ticker` (one item). |
 | `/docs` | The OpenAPI description of the routes. |
 
@@ -105,6 +107,27 @@ logged, and is named in the response header `X-Devserver-Chaos`.
 | `chaos.page_late_content` | Some blocks are inserted 1.5 seconds after the page loads | The later conversion pass handles them |
 
 A page fault is decided from the page seed, so a reload of one seed gives the same page.
+
+## Captured sites
+
+The captured-sites provider makes test data for a real Rahti site, for example www.iltalehti.fi, where Rahti has
+no correction for a link. In a development build, Paatti's popup sends the page address and the links and
+headlines of the page to `POST /api/capture`, with one click.
+
+- The server signs each link with the base Suola rules. At the pinned commit, they equal Rahti's rules, so the
+  provider has no `suola-rules` and its signs are Paatti's official signs.
+- It fetches Rahti's current `data.json` and keeps only the links whose sign Rahti does not have. The other links
+  keep their real correction: with "Allow providers to override sites" on, Paatti looks a link up in this provider
+  first, so a fake entry would hide the real one.
+- A capture of the same page again drops the links that Rahti has added since. If Rahti cannot be read, the
+  capture fails with 502 and writes nothing.
+- A fake corrected title starts with `[dev] `. Its level and labels come from the sign, so a link always gets the
+  same ones.
+- The captures are in `<data_dir>/captures/<host>.json`. Delete a file to forget the captures of that host.
+
+The provider's `site-configs` resource is Rahti's `sites.json` at `rahti_commit`, so it declares the origins of
+those sites. Adding the provider turns the Rahti sites off in Paatti until you turn them on, because a site that a
+provider supplies starts off.
 
 ## Ilta-Pulu
 

@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from niitti.logging import get_logger
 
 from .. import documents
+from ..captured import CaptureError
 from ..layout import netloc
 from ..pool import updated_at
 from ..signing import ilta_pulu_rules
@@ -49,3 +50,21 @@ def ilta_pulu_data(request: Request):
 def ilta_pulu_ignored():
     log.warning("Paatti fetched a resource of an unknown type; it must ignore it")
     raise HTTPException(status_code=410, detail="A resource of an unknown type must not be fetched")
+
+
+def _captured(request: Request, build) -> JSONResponse:
+    try:
+        return JSONResponse(build(request.app.state.captured))
+    except CaptureError as err:
+        raise HTTPException(status_code=err.status, detail=str(err)) from err
+
+
+@router.get("/captured-sites/manifest.json", summary="Rahti's sites with fake corrections for captured links")
+def captured_manifest(request: Request):
+    links = documents.links(request.app.state.devserver.settings)
+    return _captured(request, lambda captured: captured.manifest(links))
+
+
+@router.get("/captured-sites/data.json", summary="The fake Rahti data of the captured links")
+def captured_data(request: Request):
+    return _captured(request, lambda captured: captured.data())

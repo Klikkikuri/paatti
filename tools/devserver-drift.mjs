@@ -100,6 +100,24 @@ await loadSuola();
 const refused = globalThis.defineRules(manifestUrl, JSON.stringify(resolved.suolaRules));
 if (refused) fail(`Suola refused the provider rules: ${refused}`);
 
+// The captured-sites provider is served only when the server knows the Rahti commit. Its sites come from Rahti on
+// another origin, so this is the check that their declared origins still cover them.
+const capturedUrl = new URL("/manifest/captured-sites/manifest.json", base).href;
+if ((await fetch(capturedUrl)).ok) {
+    const capturedInspected = await inspect(capturedUrl, { loopbackProvidersEnabled: true });
+    const captured = capturedInspected.error
+        ? { error: capturedInspected.error }
+        : await resolve(capturedInspected.manifest, capturedUrl, { loopbackProvidersEnabled: true });
+    console.log(`Provider ${capturedUrl}`);
+    if (captured.error) fail(`captured-sites: ${captured.error}`);
+    else {
+        if (captured.rejected.length) fail(`captured-sites rejected: ${JSON.stringify(captured.rejected)}`);
+        if (captured.errors.length) fail(`captured-sites errors: ${JSON.stringify(captured.errors)}`);
+        if (Object.keys(captured.siteConfigs).length === 0) fail("captured-sites has no sites");
+        console.log(`  ${Object.keys(captured.siteConfigs).length} Rahti sites`);
+    }
+}
+
 const rules = resolved.siteConfigs.localhost?.rules ?? [];
 for (const seed of seeds) {
     const pageUrl = new URL(`/?seed=${seed}`, base).href;
