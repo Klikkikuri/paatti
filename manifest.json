@@ -47,17 +47,12 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "icons/klikkikuri-48.png",
         "src/browser-api.js",
         "src/utils.js",
         "src/model.js",
         "src/controller.js",
         "src/config.js",
-        "src/storage.js",
-        "src/rahti.js",
-        "src/rahti/schema.js",
-        "src/rahti/fetcher.js",
-        "src/rahti/sync.js",
+        "src/options/origins.js",
         "src/modifiers.js",
         "src/stats.js",
         "src/feedback.js",
@@ -70,17 +65,41 @@
         "src/components/badge-style.js",
         "src/components/klikkikuri-ai-badge.js",
         "src/components/klikkikuri-video-badge.js",
-        "src/components/klikkikuri-converted-badge.js",
-        "build/js.wasm"
+        "src/components/klikkikuri-converted-badge.js"
       ],
       "matches": [
-        "https://www.iltalehti.fi/*",
-        "https://www.hs.fi/*",
-        "https://yle.fi/*",
-        "https://www.mtvuutiset.fi/*",
         "https://aksa.fi/*",
         "https://www.ampparit.com/*",
-        "https://old.reddit.com/*"
+        "https://www.hs.fi/*",
+        "https://www.iltalehti.fi/*",
+        "https://www.mtvuutiset.fi/*",
+        "https://yle.fi/*"
+      ]
+    },
+    {
+      "resources": [
+        "src/browser-api.js",
+        "src/utils.js",
+        "src/model.js",
+        "src/controller.js",
+        "src/config.js",
+        "src/options/origins.js",
+        "src/modifiers.js",
+        "src/stats.js",
+        "src/feedback.js",
+        "src/feedback-card.css",
+        "src/options/theme.css",
+        "src/options/components.css",
+        "src/components/badge-base.js",
+        "src/components/highlight-overlay.js",
+        "src/components/feedback-dialog.js",
+        "src/components/badge-style.js",
+        "src/components/klikkikuri-ai-badge.js",
+        "src/components/klikkikuri-video-badge.js",
+        "src/components/klikkikuri-converted-badge.js"
+      ],
+      "matches": [
+        "*://*/*"
       ]
     }
   ],
@@ -93,15 +112,15 @@
   },
   "host_permissions": [
     "https://raw.githubusercontent.com/Klikkikuri/rahti/*",
-    "https://www.iltalehti.fi/*",
+    "https://aksa.fi/*",
     "https://www.hs.fi/*",
-    "https://yle.fi/*",
+    "https://www.iltalehti.fi/*",
     "https://www.mtvuutiset.fi/*",
-    "https://aksa.fi/*"
+    "https://yle.fi/*"
   ],
   "optional_host_permissions": [
-    "https://www.ampparit.com/*",
-    "*://*/*"
+    "*://*/*",
+    "https://www.ampparit.com/*"
   ],
   "permissions": [
     "storage",

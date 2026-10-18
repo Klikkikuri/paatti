@@ -7,9 +7,12 @@ BUILD_TEST_DATA := $(TEST_DATA_BUILD_DIR)/data.json
 BUILD_SOURCE_DIST := $(BUILD_DIR)/source-code.zip
 STORE_REVISION ?= 1
 CHROME_EXTENSION_ID := jalegaigmgljhnaakmbbaajooffgcbgc
+# The provider manifest of the default sites. Same URL as DEFAULT_RAHTI_MANIFEST_URL in src/config.js.
+SITES_MANIFEST ?= https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/manifest.json
+RELEASE_TAG = v$$(node -p "require('./manifest.json').version")
 AMO_METADATA := $(BUILD_DIR)/amo-metadata.json
 DIST_DIR := $(BUILD_DIR)/dist
-EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md docs/PRIVACY_POLICY.md
+EXTENSION_ASSETS := icons _locales manifest.json src LICENSE.md LISENSSI.md docs/PRIVACY_POLICY.md docs/PRIVACY_POLICY_DEVELOPMENT.md
 WASM_ASSETS := js.wasm wasm_exec.js
 WASM_OUTPUTS := $(addprefix $(BUILD_DIR)/, $(WASM_ASSETS))
 # The module's inputs, taken from the submodule so the list cannot drift.
@@ -124,7 +127,7 @@ dist-chrome dist-firefox: dist-%: manifest.%.json dist
 # the non-OSS assets and the attested suola artifacts of the pinned tag; the recursive make is how
 # both flags reach the parse-time conditionals in dist and the Wasm rule. One shared staging step,
 # so that `make -j store-build` does not run two of them into the same $(DIST_DIR).
-store-dist:
+store-dist: check-sites
 	$(MAKE) dist NON_OSS=1 USE_RELEASE_ARTIFACTS=1
 
 store-chrome store-firefox: store-%: manifest.%.json store-dist
@@ -170,6 +173,24 @@ icons:
 check-icons:
 	@node tools/inline-icons.mjs --check
 
+# The extension downloads the default sites at runtime. sites-sync writes their origins into manifest.json, because
+# a store build can request only the origins that manifest.json declares, and records the origins and the Rahti
+# commit in sites.lock.json (tools/sites.mjs tells why). check-sites is offline: the store build runs it, and it
+# reads the previous v* tag. check-sites-published compares with the pinned commit, so a tag gives the same result
+# each time; build.yml and release.yml run it. check-sites-latest compares with Rahti main; sites-latest.yml runs it
+# each day.
+sites-sync:
+	node tools/sites.mjs $(SITES_MANIFEST)
+
+check-sites:
+	@node tools/sites.mjs --check $(SITES_MANIFEST)
+
+check-sites-published:
+	@node tools/sites.mjs --check-published $(SITES_MANIFEST)
+
+check-sites-latest:
+	@node tools/sites.mjs --check-latest $(SITES_MANIFEST)
+
 clean:
 	rm -f "$(BUILD_TEST_DATA)" "$(TEST_DATA_SIGNATURES)"
 	rm -f $(BUILD_DIR)/klikkikuri-*.xpi
@@ -188,19 +209,24 @@ verify-suola: $(WASM_OUTPUTS)
 
 # Store submission, run by publish-amo.yml and publish-chrome.yml, which install web-ext or
 # chrome-webstore-upload-cli on the runner and pass the credentials in env.
+# release.yml creates the GitHub Release of a tag only after the sites check passes, and the store
+# build does not contact Rahti, so a store takes only a tag that has its Release.
+release-exists:
+	@gh release view "$(RELEASE_TAG)" > /dev/null || { echo "No GitHub Release $(RELEASE_TAG): publish only a tag whose release.yml run passed."; exit 1; }
+
 # AMO shows the GitHub Release body of the tag as the version's release notes, so the Release
-# must exist and be written before publishing. The reviewer notes are static.
+# must be written before publishing. The reviewer notes are static.
 amo-metadata:
 	mkdir -p $(BUILD_DIR)
-	gh release view "v$$(node -p "require('./manifest.json').version")" --json body --jq .body \
+	gh release view "$(RELEASE_TAG)" --json body --jq .body \
 		| node tools/amo-metadata.mjs docs/amo-reviewer-notes.md > $(AMO_METADATA)
 
-publish-firefox: store-firefox source-dist verify-suola amo-metadata
+publish-firefox: release-exists store-firefox source-dist verify-suola amo-metadata
 	web-ext sign --source-dir $(BUILD_DIR)/store-firefox --channel listed --approval-timeout 0 \
 		--upload-source-code $(BUILD_SOURCE_DIST) --amo-metadata $(AMO_METADATA) \
 		--artifacts-dir $(BUILD_DIR)/web-ext-artifacts
 
-publish-chrome: store-build verify-suola
+publish-chrome: release-exists store-build verify-suola
 	chrome-webstore-upload --extension-id $(CHROME_EXTENSION_ID) --source $(BUILD_DIR)/klikkikuri-paatti-chrome.zip
 
 publish: publish-firefox publish-chrome
@@ -219,7 +245,7 @@ lint-webext: dist-firefox
 # jsdom is a global install (see .devcontainer/Dockerfile), and ESM resolution ignores
 # NODE_PATH -- tests/helpers/dom.mjs reaches it through the CJS resolver, which does not.
 test: export NODE_PATH = $(shell npm root -g)
-test: test-wasm
+test: test-wasm check-sites
 	node --test 'tests/**/*.test.mjs'
 
 # suola's own smoke test for the browser module, run against the artifacts
@@ -237,4 +263,4 @@ test-wasm:
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
 	fi
 
-.PHONY: build init ensure-suola check-tinygo package source-dist test-data icons check-icons clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
+.PHONY: build init ensure-suola check-tinygo package source-dist test-data icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext

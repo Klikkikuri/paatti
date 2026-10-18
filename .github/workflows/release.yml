@@ -71,6 +71,12 @@ jobs:
           console.log('updates.json contains version ' + version);
           "
 
+      - name: "🔍 Check Sites Against the Pinned Rahti Commit"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          make check-sites check-sites-published
+
       - name: "🏗️ Build Extension Package"
         run: |
           make package dist-firefox USE_RELEASE_ARTIFACTS=1 NON_OSS=1

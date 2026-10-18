@@ -156,6 +156,7 @@ function createFakeBrowser({ local = {}, sync = {}, messages = {} } = {}) {
                     return text.replaceAll(`$${index + 1}`, value);
                 }, message);
             },
+            getUILanguage: () => "en",
         },
         permissions: {
             contains: async () => true,
@@ -168,7 +169,8 @@ function createFakeBrowser({ local = {}, sync = {}, messages = {} } = {}) {
         },
         runtime: {
             getURL: (path) => `chrome-extension://fake/${path}`,
-            getManifest: () => ({ version: "0.0.0" }),
+            // The self-hosted build: it declares the wildcard, so it can request any origin. Override it to model the store build.
+            getManifest: () => ({ version: "0.0.0", host_permissions: [], optional_host_permissions: ["*://*/*"] }),
         },
     };
 

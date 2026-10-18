@@ -42,7 +42,7 @@ detailedTemplate.innerHTML = `
                     <span id="dbGenerationDateText">—</span>
                 </div>
             </div>
-            <button type="button" class="btn-secondary" id="manualUpdateBtn" style="flex: 0 0 auto; width: auto; min-width: 150px; padding: 8px 16px; margin: 0;" data-i18n="databaseUpdateBtn">Update Database</button>
+            <button type="button" class="push-button" id="manualUpdateBtn" style="padding: 8px 16px;" data-i18n="databaseUpdateBtn">Update Database</button>
         </div>
     </div>
 `;
@@ -55,9 +55,6 @@ detailedTemplate.innerHTML = `
  * Its handles are classes rather than ids because the popup carries two compact instances at once.
  * `setting-saved` is dispatched from every layout; which page listens is that page's business.
  */
-/** The local keys the shown timestamps come from. Neither is part of the merged config. */
-const STATUS_KEYS = ['lastDatabaseUpdate', 'databaseGenerationDate'];
-
 class DatabaseStatusSetting extends ComponentBase {
     onConnect() {
         const layout = this.getAttribute('layout') || 'detailed';
@@ -74,14 +71,8 @@ class DatabaseStatusSetting extends ComponentBase {
 
         this.loadState(layout);
 
-        // Filtered to the two keys shown: statistics are written constantly, and
-        // re-rendering the timestamps on every one of those writes is wasted work.
-        const onStorageChanged = (changes, areaName) => {
-            if (areaName !== 'local' || !STATUS_KEYS.some((key) => key in changes)) return;
-            this.sync(layout);
-        };
-        browser.storage.onChanged.addListener(onStorageChanged);
-        this.addTeardown(() => browser.storage.onChanged.removeListener(onStorageChanged));
+        // The shown timestamps come from the default provider's own storage now, not a flat key pair.
+        this.addTeardown(model.watch.onDatabaseStatusChanged(() => this.sync(layout)));
     }
 
     /**

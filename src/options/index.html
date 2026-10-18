@@ -82,7 +82,7 @@
                     <hr>
                     <h3 style="margin-bottom: 15px; color: var(--color-brand);" data-i18n="invitationTitle">📧 Invitation to paid version</h3>
                     <p style="color: var(--color-text-secondary); margin-bottom: 15px; line-height: 1.5;" data-i18n="invitationDesc">The paid version is not yet available. Enter your email address to receive an invitation when it launches.</p>
-                    <div class="email-input-wrapper">
+                    <div class="email-input-wrapper input-group">
                         <div class="email-icon">
                             <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                 <path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="m3.5 5.5 7.893 6.036a1 1 0 0 0 1.214 0L20.5 5.5M4 19h16a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1Z"/>
@@ -99,19 +99,19 @@
                     <h3 style="margin-bottom: 15px; color: var(--color-brand);" data-i18n="debugSettingsTitle">🐛 Debug Settings</h3>
                     <visual-highlight-setting></visual-highlight-setting>
                     <easter-egg-setting></easter-egg-setting>
-                    <div class="setting-group" style="margin-top: 15px;">
-                        <div class="number-input-group" style="margin: 0; padding: 15px; background: var(--color-surface-muted); border-radius: 8px; display: flex; flex-direction: column; gap: 10px;">
-                            <div class="label-text">
-                                <strong data-i18n="devTitleDataUrlsTitle">Database URLs (titleDataUrls)</strong>
-                                <span style="display: block; margin-top: 5px; margin-bottom: 8px;" data-i18n="devTitleDataUrlsDesc">Enter JSON database URLs for the development environment, one URL per line.</span>
-                            </div>
-                            <textarea id="devTitleDataUrls" rows="3" placeholder="http://localhost:3000/data.json" style="width: 100%; padding: 10px; border: 2px solid var(--color-border); border-radius: 8px; font-size: 1rem; font-family: monospace; resize: vertical; box-sizing: border-box;"></textarea>
-                            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 5px;">
-                                <datasource-permission-setting></datasource-permission-setting>
-                                <button type="button" class="btn-primary" id="saveDevUrlsBtn" style="flex: 0 0 auto; padding: 8px 16px; width: auto;" data-i18n="saveDevUrlsBtn">💾 Save URLs</button>
-                            </div>
-                        </div>
-                    </div>
+
+                    <!-- Dev-only for now: the optional_host_permissions wildcard a provider's cross-origin
+                         fetch needs draws extra store-review scrutiny (see tools/manifest.mjs's
+                         storeManifest() stripping it from store builds already). Nothing below is
+                         logically coupled to "development" -- moving this block to an always-visible
+                         fieldset is a markup-only change whenever that boundary is revisited. -->
+                    <hr>
+                    <h3 style="margin-bottom: 15px; color: var(--color-brand);"><span data-i18n="legendProviders">🔌 Providers</span>
+                        <a href="https://github.com/Klikkikuri/paatti/blob/main/docs/providers.md" data-doc="docs/providers.md" target="_blank" rel="noopener noreferrer" class="info-dot help-dot" title="How providers work" data-i18n-title="providersHelpLink" data-i18n-aria-label="providersHelpLink">?</a></h3>
+                    <p class="section-description" data-i18n="descProviders">Add a third-party provider manifest for more sites, correction data or URL-normalization rules</p>
+                    <providers-setting></providers-setting>
+                    <provider-shadowing-setting></provider-shadowing-setting>
+                    <loopback-providers-setting></loopback-providers-setting>
                 </div>
             </fieldset>
 

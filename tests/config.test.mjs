@@ -1,49 +1,17 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 
 import { createFakeBrowser } from './helpers/fake-browser.mjs';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8'));
 
 const fake = createFakeBrowser();
 globalThis.browser = fake.browser;
 
 // Imported dynamically: a static import is hoisted above the assignment above, so
 // browser-api.js would resolve the namespace before globalThis.browser exists.
-const { getConfig, onConfigValue } = await import('../src/config.js');
+const { getConfig, onConfigValue, DEFAULT_RAHTI_MANIFEST_URL } = await import('../src/config.js');
 
 const { local, sync } = fake.browser.storage;
-
-describe('manifest agrees with the site configs', async () => {
-    const { siteConfigs } = await getConfig();
-
-    const hostPermissions = new Set(manifest.host_permissions || []);
-    const optionalHostPermissions = new Set(manifest.optional_host_permissions || []);
-    const webAccessibleMatches = new Set(
-        (manifest.web_accessible_resources || []).flatMap((group) => group.matches || [])
-    );
-
-    for (const [domain, siteConfig] of Object.entries(siteConfigs)) {
-        const enabledByDefault = siteConfig.enabled !== false;
-        const origins = siteConfig.origins || [`https://${domain}/*`];
-
-        for (const origin of origins) {
-            test(`${domain}: "${origin}" is in ${enabledByDefault ? '' : 'optional_'}host_permissions`, () => {
-                const expected = enabledByDefault ? hostPermissions : optionalHostPermissions;
-                assert.ok(expected.has(origin),
-                    `Dynamic imports and content scripts will fail for "${domain}" without it.`);
-            });
-
-            test(`${domain}: "${origin}" is in web_accessible_resources matches`, () => {
-                assert.ok(webAccessibleMatches.has(origin), 'Dynamic imports will 404 on this site.');
-            });
-        }
-    }
-});
 
 describe('the config cache', () => {
     test('the first getConfig queries storage once per area', async () => {
@@ -111,7 +79,11 @@ describe('the config cache', () => {
 
 describe('merging stored values over the defaults', () => {
     test('a sync override is applied to a site, and origins are filled in', async () => {
-        await sync.set({ userSiteOverrides: { 'yle.fi': { enabled: false } } });
+        await sync.set({
+            providers: [{ url: DEFAULT_RAHTI_MANIFEST_URL, enabled: true }],
+            userSiteOverrides: { 'yle.fi': { enabled: false } }
+        });
+        await local.set({ [`provider:${DEFAULT_RAHTI_MANIFEST_URL}`]: { siteConfigs: { 'yle.fi': { name: 'Yle', enabled: true, rules: [] } } } });
         const config = await getConfig();
 
         assert.equal(config.siteConfigs['yle.fi'].enabled, false);
@@ -143,6 +115,351 @@ describe('merging stored values over the defaults', () => {
         const config = await getConfig();
 
         assert.equal(config.modifiers.video, false);
+    });
+});
+
+describe('providers folded into siteConfigs', () => {
+    const url = 'https://provider.example/manifest.json';
+
+    test('an enabled provider\'s site appears in siteConfigs, with a default origin filled in', async () => {
+        await sync.set({ providers: [{ url, enabled: true }] });
+        await local.set({
+            [`provider:${url}`]: { siteConfigs: { 'news.example': { name: 'News', enabled: true, rules: [] } } }
+        });
+
+        const config = await getConfig();
+
+        assert.ok(config.siteConfigs['news.example']);
+        assert.deepEqual(config.siteConfigs['news.example'].origins, ['https://news.example/*']);
+    });
+
+    test('a disabled provider contributes nothing', async () => {
+        await sync.set({ providers: [{ url, enabled: false }] });
+        await local.set({
+            [`provider:${url}`]: { siteConfigs: { 'news.example': { name: 'News', enabled: true, rules: [] } } }
+        });
+
+        const config = await getConfig();
+
+        assert.equal(config.siteConfigs['news.example'], undefined);
+    });
+
+    test('a provider site is offered but off by default, even though the provider marked it enabled', async () => {
+        await sync.set({ providers: [{ url, enabled: true }] });
+        await local.set({
+            [`provider:${url}`]: {
+                siteConfigs: { 'news.example': { name: 'News', enabled: true, origins: ['https://news.example/*'], rules: [] } }
+            }
+        });
+
+        const config = await getConfig();
+
+        assert.ok(config.siteConfigs['news.example'], 'the site should still be offered, i.e. present');
+        assert.equal(config.siteConfigs['news.example'].enabled, false);
+    });
+
+    test('a provider marking a site enabled: false withdraws the offer entirely, not just turns it off', async () => {
+        await sync.set({ providers: [{ url, enabled: true }] });
+        await local.set({
+            [`provider:${url}`]: {
+                siteConfigs: { 'news.example': { name: 'News', enabled: false, origins: ['https://news.example/*'], rules: [] } }
+            }
+        });
+
+        const config = await getConfig();
+
+        assert.equal(config.siteConfigs['news.example'], undefined);
+    });
+
+    describe('a default provider', () => {
+        const hs = { name: 'HS', enabled: true, origins: ['https://www.hs.fi/*'], rules: [{ container: 'new', link: 'a', title: 'h3' }] };
+        const ampparit = { name: 'Ampparit', enabled: false, origins: ['https://www.ampparit.com/*'], rules: [] };
+        const added = { name: 'New', enabled: true, origins: ['https://new.example.fi/*'], rules: [] };
+
+        async function withDefaultProvider(env, check) {
+            await local.set({
+                userPreferences: { environment: env },
+                [`provider:${DEFAULT_RAHTI_MANIFEST_URL}`]: { siteConfigs: { 'www.hs.fi': hs, 'www.ampparit.com': ampparit, 'new.example.fi': added } }
+            });
+            await sync.set({ providers: [{ url: DEFAULT_RAHTI_MANIFEST_URL, enabled: true }], userSiteOverrides: {} });
+            try {
+                await check(await getConfig());
+            } finally {
+                await local.set({ userPreferences: {} });
+                await sync.set({ providers: [] });
+            }
+        }
+
+        test('keeps a default site enabled, in development too', async () => {
+            await withDefaultProvider('development', (config) => {
+                assert.equal(config.siteConfigs['www.hs.fi'].enabled, true);
+                assert.deepEqual(config.siteConfigs['www.hs.fi'].rules, hs.rules);
+                assert.equal(config.siteConfigSources['www.hs.fi'][0].url, DEFAULT_RAHTI_MANIFEST_URL);
+            });
+        });
+
+        test('keeps a default site that it marks enabled: false, off', async () => {
+            await withDefaultProvider('free', (config) => {
+                assert.equal(config.siteConfigs['www.ampparit.com'].enabled, false);
+                assert.equal(config.siteConfigSources['www.ampparit.com'][0].url, DEFAULT_RAHTI_MANIFEST_URL, 'listed, not withdrawn');
+            });
+        });
+
+        test('a new site of its own is hidden when the build cannot request its origin, as in a store build', async () => {
+            const original = fake.browser.runtime.getManifest;
+            fake.browser.runtime.getManifest = () => ({
+                host_permissions: ['https://www.hs.fi/*'], optional_host_permissions: ['https://www.ampparit.com/*']
+            });
+            try {
+                await withDefaultProvider('free', (config) => {
+                    assert.equal(config.siteConfigs['new.example.fi'], undefined);
+                    assert.equal(config.siteConfigs['www.hs.fi'].enabled, true);
+                    assert.ok(config.siteConfigs['www.ampparit.com']);
+                });
+            } finally {
+                fake.browser.runtime.getManifest = original;
+            }
+        });
+
+        test('a new site of its own is enabled only when the browser grants its origin', async () => {
+            const { isSiteEnabled } = await import('../src/options/utils.js');
+            const original = fake.browser.permissions.contains;
+            await withDefaultProvider('free', async (config) => {
+                assert.equal(config.siteConfigs['new.example.fi'].enabled, true);
+                try {
+                    fake.browser.permissions.contains = async ({ origins }) => !origins.includes('https://new.example.fi/*');
+                    assert.equal(await isSiteEnabled('new.example.fi'), false, 'not granted, as in a store build');
+                    assert.equal(await isSiteEnabled('www.hs.fi'), true);
+                    fake.browser.permissions.contains = async () => true;
+                    assert.equal(await isSiteEnabled('new.example.fi'), true);
+                } finally {
+                    fake.browser.permissions.contains = original;
+                }
+            });
+        });
+    });
+
+    test('a sync override reaches a provider-only domain, exactly as it does a default site', async () => {
+        await sync.set({
+            providers: [{ url, enabled: true }],
+            userSiteOverrides: { 'news.example': { enabled: true } }
+        });
+        await local.set({
+            [`provider:${url}`]: {
+                siteConfigs: { 'news.example': { name: 'News', enabled: true, origins: ['https://news.example/*'], rules: [] } }
+            }
+        });
+
+        const config = await getConfig();
+
+        assert.equal(config.siteConfigs['news.example'].enabled, true, 'the user\'s own choice must be able to turn it on');
+    });
+
+    describe('two providers that supply one site', () => {
+        const first = 'https://first.example/manifest.json';
+        const second = 'https://second.example/manifest.json';
+        const supplied = (name) => ({ name, enabled: true, origins: ['https://news.example/*'], rules: [] });
+
+        async function withProviders({ shadowing, weights = {} }, check) {
+            await local.set({
+                userPreferences: { environmentConfigs: { free: { providerShadowingEnabled: shadowing } } },
+                [`provider:${first}`]: { siteConfigs: { 'news.example': supplied('First') }, siteWeights: { 'news.example': weights.first ?? 0 } },
+                [`provider:${second}`]: { siteConfigs: { 'news.example': supplied('Second') }, siteWeights: { 'news.example': weights.second ?? 0 } }
+            });
+            await sync.set({ providers: [{ url: first, enabled: true }, { url: second, enabled: true }], userSiteOverrides: {} });
+            try {
+                await check(await getConfig());
+            } finally {
+                await local.set({ userPreferences: {} });
+                await sync.set({ providers: [] });
+            }
+        }
+
+        const winners = (config) => config.siteConfigSources['news.example'].map(({ url }) => url);
+
+        test('the later one wins when the weights are equal and shadowing is on', async () => {
+            await withProviders({ shadowing: true }, (config) => {
+                assert.deepEqual(winners(config), [second, first]);
+                assert.equal(config.siteConfigs['news.example'].name, 'Second');
+            });
+        });
+
+        test('the heavier one wins, whichever comes first', async () => {
+            await withProviders({ shadowing: true, weights: { first: 1 } }, (config) => {
+                assert.deepEqual(winners(config), [first, second]);
+                assert.equal(config.siteConfigs['news.example'].name, 'First');
+            });
+        });
+
+        test('only the first one counts when shadowing is off, whatever the weights', async () => {
+            await withProviders({ shadowing: false, weights: { second: 9 } }, (config) => {
+                assert.deepEqual(winners(config), [first]);
+                assert.equal(config.siteConfigs['news.example'].name, 'First');
+            });
+        });
+
+        test('data stored without weights counts as weight 0', async () => {
+            await local.set({ [`provider:${first}`]: { siteConfigs: { 'news.example': supplied('First') } } });
+            await withProviders({ shadowing: true }, (config) => {
+                assert.deepEqual(winners(config), [second, first]);
+            });
+        });
+    });
+
+    test('writing a provider\'s resolved data invalidates the cache', async () => {
+        await sync.set({ providers: [{ url, enabled: true }] });
+        const first = await getConfig();
+        const before = fake.reads.local;
+
+        await local.set({ [`provider:${url}`]: { siteConfigs: { 'news.example': { name: 'News', enabled: true, rules: [] } } } });
+        const second = await getConfig();
+
+        assert.ok(fake.reads.local > before, 'the cache was not invalidated');
+        assert.notEqual(first, second);
+        assert.ok(second.siteConfigs['news.example']);
+    });
+});
+
+describe('default providers and enabledProviderUrls', () => {
+    test('every environment ships DEFAULT_RAHTI_MANIFEST_URL as its default provider', async () => {
+        for (const env of ['free', 'paid', 'development']) {
+            await local.set({ userPreferences: { environment: env } });
+            const config = await getConfig();
+            assert.deepEqual(config.defaultProviders, [DEFAULT_RAHTI_MANIFEST_URL]);
+        }
+    });
+
+    test('a userPreferences override replaces the active environment\'s defaultProviders list', async () => {
+        await local.set({
+            userPreferences: { environment: 'free', environmentConfigs: { free: { defaultProviders: [] } } }
+        });
+
+        const config = await getConfig();
+
+        assert.deepEqual(config.defaultProviders, []);
+    });
+
+    test('enabledProviderUrls lists only enabled, URL-bearing providers', async () => {
+        await sync.set({
+            providers: [
+                { url: 'https://on.example/manifest.json', enabled: true },
+                { url: 'https://off.example/manifest.json', enabled: false },
+                { enabled: true } // partially-written sync record, no url
+            ]
+        });
+
+        const config = await getConfig();
+
+        assert.deepEqual(config.enabledProviderUrls, ['https://on.example/manifest.json']);
+    });
+
+    test('providerData holds the stored data of the enabled providers only', async () => {
+        const on = 'https://on.example/manifest.json';
+        const off = 'https://off.example/manifest.json';
+        await sync.set({ providers: [{ url: on, enabled: true }, { url: off, enabled: false }] });
+        await local.set({
+            [`provider:${on}`]: { rahtiData: { sign: { title: 'On' } } },
+            [`provider:${off}`]: { rahtiData: { sign: { title: 'Off' } } }
+        });
+
+        const config = await getConfig();
+
+        assert.deepEqual(config.providerData, { [on]: { rahtiData: { sign: { title: 'On' } } } });
+    });
+
+    test('enabledDefaultProviderUrls lists the enabled default providers in defaultProviders order', async () => {
+        const [a, b, c] = ['a', 'b', 'c'].map((name) => `https://${name}.example/manifest.json`);
+        await local.set({
+            userPreferences: { environment: 'free', environmentConfigs: { free: { defaultProviders: [a, b, c] } } }
+        });
+        await sync.set({
+            providers: [{ url: c, enabled: true }, { url: b, enabled: false }, { url: a, enabled: true }]
+        });
+
+        const config = await getConfig();
+
+        assert.deepEqual(config.enabledDefaultProviderUrls, [a, c]);
+    });
+
+    test('a build that cannot add providers lists only its default provider, not one that sync brought in', async () => {
+        const originalGetManifest = fake.browser.runtime.getManifest;
+        fake.browser.runtime.getManifest = () => ({ ...originalGetManifest(), optional_host_permissions: [] });
+        try {
+            await local.set({ userPreferences: { environment: 'free' } });
+            await sync.set({
+                providers: [
+                    { url: DEFAULT_RAHTI_MANIFEST_URL, enabled: true },
+                    { url: 'https://synced.example/manifest.json', enabled: true }
+                ]
+            });
+
+            const config = await getConfig();
+
+            assert.deepEqual(config.enabledProviderUrls, [DEFAULT_RAHTI_MANIFEST_URL]);
+        } finally {
+            fake.browser.runtime.getManifest = originalGetManifest;
+        }
+    });
+
+    test('DEFAULT_RAHTI_MANIFEST_URL is exported and is an https URL', () => {
+        assert.match(DEFAULT_RAHTI_MANIFEST_URL, /^https:\/\//);
+    });
+
+    test('sites.lock.json is synced from DEFAULT_RAHTI_MANIFEST_URL, not from a local copy', () => {
+        const lock = JSON.parse(readFileSync(new URL('../sites.lock.json', import.meta.url), 'utf8'));
+        assert.equal(lock.source, DEFAULT_RAHTI_MANIFEST_URL, 'Run `make sites-sync` against the published manifest.');
+    });
+});
+
+describe('the provider safety toggles', () => {
+    test('free and paid default both toggles off', async () => {
+        await sync.remove(['environmentConfigs']);
+
+        for (const env of ['free', 'paid']) {
+            await local.set({ userPreferences: { environment: env } });
+            const config = await getConfig();
+            assert.equal(config.providerShadowingEnabled, false, env);
+            assert.equal(config.loopbackProvidersEnabled, false, env);
+        }
+    });
+
+    test('development defaults shadowing on, loopback off', async () => {
+        await sync.remove(['environmentConfigs']);
+        await local.set({ userPreferences: { environment: 'development' } });
+        const config = await getConfig();
+
+        assert.equal(config.providerShadowingEnabled, true);
+        assert.equal(config.loopbackProvidersEnabled, false);
+    });
+
+    test('a local override in development wins over the environment default', async () => {
+        await sync.remove(['environmentConfigs']);
+        await local.set({
+            userPreferences: {
+                environment: 'development',
+                environmentConfigs: { development: { providerShadowingEnabled: false, loopbackProvidersEnabled: true } }
+            }
+        });
+        const config = await getConfig();
+
+        assert.equal(config.providerShadowingEnabled, false);
+        assert.equal(config.loopbackProvidersEnabled, true);
+    });
+
+    test('a synced value for either toggle is ignored, even while the local value is false', async () => {
+        await local.set({
+            userPreferences: {
+                environment: 'free',
+                environmentConfigs: { free: { providerShadowingEnabled: false, loopbackProvidersEnabled: false } }
+            }
+        });
+        await sync.set({
+            environmentConfigs: { free: { providerShadowingEnabled: true, loopbackProvidersEnabled: true } }
+        });
+        const config = await getConfig();
+
+        assert.equal(config.providerShadowingEnabled, false, 'a synced value turned shadowing on');
+        assert.equal(config.loopbackProvidersEnabled, false, 'a synced value turned loopback providers on');
     });
 });
 

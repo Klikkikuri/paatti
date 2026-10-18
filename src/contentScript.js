@@ -7,7 +7,7 @@
 
 const LABEL_PAYWALLED = "com.github.klikkikuri/paywalled=true";
 
-let hrefSign;
+let hrefSigns;
 
 // Main.
 (async () => {
@@ -22,7 +22,6 @@ let hrefSign;
     const { createHighlightOverlay } = await import(browser.runtime.getURL("src/components/highlight-overlay.js"));
     const { createFeedbackDialog } = await import(browser.runtime.getURL("src/components/feedback-dialog.js"));
 
-    const { rahtiStorage } = await import(browser.runtime.getURL("src/rahti.js"));
     const { applyModifiers, LABEL_CONVERTED } = await import(browser.runtime.getURL("src/modifiers.js"));
     const { buildPageSnapshot, createSessionTracker } = await import(browser.runtime.getURL("src/stats.js"));
 
@@ -100,7 +99,7 @@ let hrefSign;
         log("storeFavicon message failed (non-fatal):", err);
     });
 
-    hrefSign = async (url) => {
+    hrefSigns = async (url) => {
         try {
             const urlObj = new URL(url, window.location.href);
             const response = await browser.runtime.sendMessage({ action: "hashUrls", urls: [urlObj.href] });
@@ -137,7 +136,6 @@ let hrefSign;
     ////////////////////////////////////////////////////////////////////////////
     // Global state.
 
-    const rahti = await rahtiStorage;
     const newsSite = window.location.hostname;
     const matchingDomain = await model.read.getMatchingSiteDomain(newsSite);
     const sessionTracker = createSessionTracker();
@@ -182,13 +180,6 @@ let hrefSign;
             });
         }
     });
-
-    if (!rahti) {
-        log("No Rahti data found, aborting conversion.", rahti);
-        return;
-    } else {
-        log("Rahti data loaded, starting conversion procedure.", rahti);
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Processing subroutines.
@@ -240,12 +231,12 @@ let hrefSign;
 
         // Batch generate signatures from background service worker
         const uniqueUrls = Array.from(new Set(linksToProcess.map(x => x.href)));
-        let urlHashes = {};
+        let urlSigns = {};
         if (uniqueUrls.length > 0) {
             try {
                 const response = await browser.runtime.sendMessage({ action: "hashUrls", urls: uniqueUrls });
                 if (response && response.success) {
-                    urlHashes = response.hashes;
+                    urlSigns = response.hashes;
                 } else {
                     log("Batch hashing failed:", response?.error);
                 }
@@ -254,7 +245,9 @@ let hrefSign;
             }
         }
 
-        // Process each element using pre-computed hashes
+        // Process each element using pre-computed hashes. Scoped by the link's own host, not the page's: see
+        // signUrls() in model.js.
+        const rahtiEntries = await model.read.getRahtiEntries(urlSigns);
         const processingPromises = linksToProcess.map(async ({ container, link, rule, href, titleElem }) => {
             let what = klikkikuriStatus.SKIPPED;
             let why = "";
@@ -263,15 +256,15 @@ let hrefSign;
             let urlSign = null;
 
             try {
-                urlSign = urlHashes[href];
-                if (!urlSign) {
+                if (!urlSigns[href]) {
                     why = `Failed to generate signature for URL '${href}'`;
                     container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
                     return { what, why, how, clickbaitiness, urlSign: null };
                 }
-                container.dataset.klikkikuriUrlSign = urlSign;
+                urlSign = urlSigns[href].officialSign;
+                container.dataset.klikkikuriUrlSign = urlSign || "";
 
-                const rahtiEntry = await rahti.get(urlSign);
+                const rahtiEntry = rahtiEntries[href];
                 if (!rahtiEntry) {
                     why = `No Rahti entry found for hash '${urlSign}'`;
                     container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
@@ -522,7 +515,7 @@ let hrefSign;
                 return true;
             case "devmode_generateLinkSignatures": {
                 const links = Array.from(document.querySelectorAll("a"));
-                const signaturePromises = links.map((x) => hrefSign(x.href));
+                const signaturePromises = links.map(async (x) => (await hrefSigns(x.href))?.officialSign ?? null);
                 Promise.all(signaturePromises)
                     .then((result) => sendResponse(result))
                     .catch((err) => {
@@ -581,32 +574,30 @@ let hrefSign;
                         }
                     }
 
-                    if (rahti) {
-                        try {
-                            const pageUrl = window.location.href;
-                            const pageSign = await hrefSign(pageUrl);
-                            if (pageSign) {
-                                const pageRahtiEntry = await rahti.get(pageSign);
-                                if (pageRahtiEntry) {
-                                    const pageOriginalTitle = document.querySelector("h1")?.textContent?.trim() || document.title;
-                                    const h1 = document.querySelector("h1");
-                                    const highlightId = `kk-hl-main`;
-                                    if (h1) {
-                                        h1.dataset.klikkikuriHighlightId = highlightId;
-                                    }
-                                    results.unshift({
-                                        highlightId,
-                                        urlSign: pageSign,
-                                        originalTitle: pageOriginalTitle,
-                                        convertedTitle: pageRahtiEntry.title,
-                                        clickbaitLevel: pageRahtiEntry.clickbaitiness,
-                                        isMainPage: true
-                                    });
+                    try {
+                        const pageUrl = window.location.href;
+                        const pageSigns = await hrefSigns(pageUrl);
+                        if (pageSigns) {
+                            const pageRahtiEntry = (await model.read.getRahtiEntries({ [pageUrl]: pageSigns }))[pageUrl];
+                            if (pageRahtiEntry) {
+                                const pageOriginalTitle = document.querySelector("h1")?.textContent?.trim() || document.title;
+                                const h1 = document.querySelector("h1");
+                                const highlightId = `kk-hl-main`;
+                                if (h1) {
+                                    h1.dataset.klikkikuriHighlightId = highlightId;
                                 }
+                                results.unshift({
+                                    highlightId,
+                                    urlSign: pageSigns.officialSign,
+                                    originalTitle: pageOriginalTitle,
+                                    convertedTitle: pageRahtiEntry.title,
+                                    clickbaitLevel: pageRahtiEntry.clickbaitiness,
+                                    isMainPage: true
+                                });
                             }
-                        } catch (err) {
-                            log("Error checking current page URL signature:", err);
                         }
+                    } catch (err) {
+                        log("Error checking current page URL signature:", err);
                     }
 
                     return results;

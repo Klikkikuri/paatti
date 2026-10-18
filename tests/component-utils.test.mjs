@@ -13,7 +13,7 @@ globalThis.browser = createFakeBrowser({
     },
 }).browser;
 
-const { ComponentBase, defineComponent, emitSettingSaved } =
+const { ComponentBase, defineComponent, emitSettingSaved, detailLinks } =
     await import('../src/options/components/component-utils.js');
 const { settingSavedDetail } = await import('../src/options/components/setting-message.js');
 
@@ -133,5 +133,17 @@ describe('emitSettingSaved dispatches a bubbling event', () => {
 
         assert.deepEqual(seen, [{ key: 'enabled', value: true, success: true, message: 'Saved!' }]);
         host.remove();
+    });
+});
+
+describe('detailLinks builds external link buttons', () => {
+    test('opens in a new tab and sends no referrer', () => {
+        const [link] = detailLinks([{ href: 'https://example.fi/privacy', label: 'Privacy policy' }]);
+
+        assert.equal(link.href, 'https://example.fi/privacy');
+        assert.equal(link.target, '_blank');
+        assert.equal(link.rel, 'noopener noreferrer');
+        assert.equal(link.className, 'detail-button');
+        assert.equal(link.textContent, 'Privacy policy ↗');
     });
 });

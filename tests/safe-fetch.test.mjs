@@ -97,6 +97,33 @@ describe('blockReason', () => {
         assert.equal(blockReason(new URL('https://example.test/')), null);
         assert.notEqual(blockReason(new URL('http://127.0.0.1/')), null);
     });
+
+    describe('allowLoopback', () => {
+        const LOOPBACK = [
+            'http://127.0.0.1/', 'https://127.0.0.1/', 'http://[::1]/', 'http://[::ffff:127.0.0.1]/',
+            'http://localhost/', 'https://sub.localhost/'
+        ];
+        const STILL_BLOCKED = [
+            'http://0.0.0.0/', 'http://[::]/', 'http://192.168.1.1/', 'http://10.0.0.1/',
+            'https://[fe80::1]/', 'http://printer.local/'
+        ];
+
+        for (const url of LOOPBACK) {
+            test(`admits ${url}`, () => {
+                assert.equal(blockReason(url, { allowLoopback: true }), null);
+            });
+        }
+
+        for (const url of STILL_BLOCKED) {
+            test(`still refuses ${url}`, () => {
+                assert.notEqual(blockReason(url, { allowLoopback: true }), null);
+            });
+        }
+
+        test('does nothing when off', () => {
+            assert.notEqual(blockReason('http://127.0.0.1/'), null);
+        });
+    });
 });
 
 describe('safeFetch', () => {

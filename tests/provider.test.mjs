@@ -1,0 +1,855 @@
+import test, { describe, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+    caretCompatible, providerBlockReason, parseManifest, originsMatchKey,
+    inspect, resolve, MAX_RESOURCES
+} from '../src/provider.js';
+
+/** Replaces global fetch with a strict router: any URL not listed throws, so a stray fetch fails loudly. */
+function mockFetch(map) {
+    const calls = [];
+    const requests = [];
+    const original = globalThis.fetch;
+    globalThis.fetch = async (url, init) => {
+        const key = String(url);
+        calls.push(key);
+        requests.push({ key, headers: init?.headers });
+        const entry = map[key];
+        if (entry === undefined) throw new Error(`unexpected fetch: ${key}`);
+        if (entry instanceof Error) throw entry;
+        return entry;
+    };
+    return { calls, requests, restore: () => { globalThis.fetch = original; } };
+}
+
+const jsonResponse = (body, headers = {}) => new Response(JSON.stringify(body), { status: 200, headers });
+const notFound = () => new Response('', { status: 404 });
+
+const manifestDoc = (resources, overrides = {}) => ({
+    schema_version: '0.1.0',
+    name: 'Test provider',
+    updated: '2026-09-14T00:00:00Z',
+    resources,
+    ...overrides
+});
+
+const siteDoc = (sites) => ({ schema_version: '0.1.0', sites });
+const site = (key, extra = {}) => ({ name: key, enabled: true, origins: [`https://${key}/*`], rules: [], ...extra });
+
+const rahtiDoc = (entries) => ({ schema_version: '0.1.0', updated: '2026-09-14T00:00:00Z', entries });
+
+let installed;
+afterEach(() => { if (installed) { installed.restore(); installed = null; } });
+
+describe('caretCompatible', () => {
+    test('accepts the same major and minor while the major is 0', () => {
+        assert.equal(caretCompatible('0.1.7'), true);
+    });
+    test('refuses a minor bump while the major is 0', () => {
+        assert.equal(caretCompatible('0.2.0'), false);
+    });
+    test('refuses a major bump', () => {
+        assert.equal(caretCompatible('1.0.0'), false);
+    });
+    test('refuses an unparsable version', () => {
+        assert.equal(caretCompatible(undefined), false);
+    });
+});
+
+describe('providerBlockReason', () => {
+    test('requires HTTPS for a remote host, unlike blockReason', () => {
+        assert.match(providerBlockReason('http://example.test/manifest.json', false), /https/);
+    });
+    test('allows a loopback address at either scheme once enabled', () => {
+        assert.equal(providerBlockReason('http://localhost:3000/manifest.json', true), null);
+        assert.equal(providerBlockReason('https://127.0.0.1:3000/manifest.json', true), null);
+    });
+    test('refuses loopback when the setting is off', () => {
+        assert.match(providerBlockReason('http://localhost:3000/manifest.json', false), /.+/);
+    });
+    test('a private address is refused at either setting', () => {
+        assert.match(providerBlockReason('https://192.168.1.1/manifest.json', true), /reserved/);
+    });
+});
+
+describe('parseManifest', () => {
+    test('rejects a manifest whose schema_version fails the caret rule', () => {
+        const { error } = parseManifest(manifestDoc([], { schema_version: '0.2.0' }));
+        assert.match(error, /schema_version/);
+    });
+
+    test('rejects a negative weight', () => {
+        const { error } = parseManifest(manifestDoc([{ type: 'suola-rules', href: './rules.json', weight: -1 }]));
+        assert.match(error, /malformed/);
+    });
+
+    test('rejects more resources than the limit', () => {
+        const resources = Array.from({ length: MAX_RESOURCES + 1 }, (_, i) => ({ type: 'x-anything', href: `./r${i}.json` }));
+        const { error } = parseManifest(manifestDoc(resources));
+        assert.match(error, /too many resources/);
+    });
+
+    test('parses an unknown type as ignored rather than failing', () => {
+        const { manifest, error } = parseManifest(manifestDoc([{ type: 'x-future-thing', href: './whatever.json' }]));
+        assert.equal(error, undefined);
+        assert.equal(manifest.resources[0].known, false);
+    });
+
+    test('keeps a name only when it is non-empty text', () => {
+        assert.equal(parseManifest(manifestDoc([], { name: '  Klikkikuri  ' })).manifest.name, 'Klikkikuri');
+        for (const name of [{ x: 1 }, 123, '   ', undefined]) {
+            assert.equal(parseManifest(manifestDoc([], { name })).manifest.name, null);
+        }
+    });
+
+    test('keeps only absolute http(s) links, the same as for a site', () => {
+        const links = [
+            { rel: 'about', href: 'https://provider.example/about' },
+            { rel: 'license', href: './LICENSE' },
+            { rel: 'privacy-policy', href: 'javascript:alert(1)' },
+            { href: 'https://provider.example/no-rel' },
+        ];
+        assert.deepEqual(parseManifest(manifestDoc([], { links })).manifest.links, [links[0]]);
+    });
+});
+
+describe('inspect', () => {
+    test('issues zero fetches when the manifest URL itself is blocked', async () => {
+        installed = mockFetch({});
+        const result = await inspect('http://localhost:8080/api/shutdown', { loopbackProvidersEnabled: false });
+        assert.match(result.error, /.+/);
+        assert.deepEqual(installed.calls, []);
+    });
+
+    test('fetches only the manifest for cross-origin resources, and reports their origins', async () => {
+        const manifestUrl = 'https://provider.example/manifest.json';
+        installed = mockFetch({
+            [manifestUrl]: jsonResponse(manifestDoc([
+                { type: 'rahti-data', href: 'http://localhost:8080/data.json' },
+                { type: 'suola-rules', href: 'http://192.168.1.1/rules.json' }
+            ]))
+        });
+
+        const result = await inspect(manifestUrl, { loopbackProvidersEnabled: false });
+
+        assert.deepEqual(installed.calls, [manifestUrl]);
+        assert.ok(result.origins.has('http://localhost:8080'));
+        assert.ok(result.origins.has('http://192.168.1.1'));
+    });
+
+    test('reads a same-origin site-configs document but not a cross-origin one', async () => {
+        const manifestUrl = 'https://provider.example/manifest.json';
+        const sitesUrl = 'https://provider.example/sites.json';
+        installed = mockFetch({
+            [manifestUrl]: jsonResponse(manifestDoc([
+                { type: 'site-configs', href: './sites.json' },
+                { type: 'rahti-data', href: 'https://data.example/data.json' }
+            ])),
+            [sitesUrl]: jsonResponse(siteDoc({ 'news.example': site('news.example') }))
+        });
+
+        const result = await inspect(manifestUrl, {});
+
+        assert.deepEqual(installed.calls, [manifestUrl, sitesUrl]);
+        assert.ok(result.sites['news.example']);
+        assert.ok(result.origins.has('https://data.example'), 'rahti-data origin still disclosed though not fetched');
+    });
+
+    test('never discloses a same-origin site that resolve() would go on to reject', async () => {
+        const manifestUrl = 'https://provider.example/manifest.json';
+        installed = mockFetch({
+            [manifestUrl]: jsonResponse(manifestDoc([{
+                type: 'site-configs',
+                sites: { 'news.example': site('news.example') },
+                origins: ['https://news.example/*'] // same-origin resources must not declare this
+            }]))
+        });
+
+        const inspected = await inspect(manifestUrl, {});
+        assert.deepEqual(inspected.sites, {});
+
+        const { manifest } = parseManifest(manifestDoc([{
+            type: 'site-configs', sites: { 'news.example': site('news.example') }, origins: ['https://news.example/*']
+        }]));
+        const resolved = await resolve(manifest, manifestUrl);
+        assert.deepEqual(resolved.siteConfigs, {});
+        assert.deepEqual(inspected.rejected, resolved.rejected, 'the preview and the outcome give the same reason');
+    });
+
+    test('an all-relative manifest declares no cross-origin resource and resolves inline site-configs', async () => {
+        const manifestUrl = 'https://provider.example/manifest.json';
+        installed = mockFetch({
+            [manifestUrl]: jsonResponse(manifestDoc([
+                { type: 'site-configs', sites: { 'news.example': site('news.example') } }
+            ]))
+        });
+
+        const result = await inspect(manifestUrl, {});
+
+        assert.deepEqual(installed.calls, [manifestUrl]);
+        assert.ok(result.sites['news.example']);
+        assert.equal(result.origins.size, 0);
+    });
+});
+
+describe('resolve: fetch discipline and isolation', () => {
+    async function parsedManifest(resources) {
+        const { manifest } = parseManifest(manifestDoc(resources));
+        return manifest;
+    }
+
+    test('an x-typed resource issues no fetch and contributes nothing', async () => {
+        installed = mockFetch({});
+        const manifest = await parsedManifest([{ type: 'x-anything', href: 'https://provider.example/whatever.json' }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(installed.calls, []);
+        assert.deepEqual(result.errors, []);
+    });
+
+    test('a response that would redirect fails rather than being followed', async () => {
+        const href = 'https://provider.example/rules.json';
+        installed = mockFetch({ [href]: new TypeError('fetch failed: redirect') });
+        const manifest = await parsedManifest([{ type: 'suola-rules', href }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.equal(result.suolaRules, null);
+        assert.equal(result.errors.length, 1);
+        assert.match(result.errors[0].message, /redirect/);
+    });
+
+    test('two hrefs on one resource are both fetched and merged in list order', async () => {
+        const a = 'https://provider.example/rules-a.json';
+        const b = 'https://provider.example/rules-b.json';
+        installed = mockFetch({
+            [a]: jsonResponse({ sites: [{ domain: 'a.example' }] }),
+            [b]: jsonResponse({ sites: [{ domain: 'b.example' }] })
+        });
+        const manifest = await parsedManifest([{ type: 'suola-rules', href: [a, b] }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(result.suolaRules.sites.map((s) => s.domain), ['a.example', 'b.example']);
+    });
+
+    test('when one href of a resource 404s, the other still merges and the failure is reported', async () => {
+        const good = 'https://provider.example/rules-good.json';
+        const bad = 'https://provider.example/rules-bad.json';
+        installed = mockFetch({ [good]: jsonResponse({ sites: [{ domain: 'a.example' }] }), [bad]: notFound() });
+        const manifest = await parsedManifest([{ type: 'suola-rules', href: [good, bad] }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(result.suolaRules.sites, [{ domain: 'a.example' }]);
+        assert.equal(result.errors.length, 1);
+        assert.equal(result.errors[0].href, bad);
+    });
+
+    test('href and inline combine fetched first, inline last', async () => {
+        const href = 'https://provider.example/rules.json';
+        installed = mockFetch({ [href]: jsonResponse({ sites: [{ domain: 'fetched.example' }] }) });
+        const manifest = await parsedManifest([
+            { type: 'suola-rules', href, rules: { sites: [{ domain: 'inline.example' }] } }
+        ]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(result.suolaRules.sites.map((s) => s.domain), ['fetched.example', 'inline.example']);
+    });
+
+    test('a resource beyond the fetch budget is refused rather than fetched', async () => {
+        // 32 resources (the resource-count limit): one carries two hrefs, the rest one each, for 33
+        // distinct hrefs between them -- one over MAX_FETCHES, so this exercises that limit and not
+        // MAX_RESOURCES.
+        const urls = Array.from({ length: 33 }, (_, i) => `https://provider.example/r${i}.json`);
+        const map = {};
+        for (const url of urls) map[url] = jsonResponse({ sites: [] });
+        installed = mockFetch(map);
+
+        const resources = [{ type: 'suola-rules', href: [urls[0], urls[1]] }];
+        for (const href of urls.slice(2)) resources.push({ type: 'suola-rules', href });
+        const manifest = await parsedManifest(resources);
+
+        assert.equal(resources.length, 32);
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.equal(installed.calls.length, 32);
+        assert.ok(result.errors.some((e) => /budget/.test(e.message)));
+    });
+
+    test('a duplicated href is fetched once', async () => {
+        const href = 'https://provider.example/rules.json';
+        installed = mockFetch({ [href]: jsonResponse({ sites: [{ domain: 'a.example' }] }) });
+        const manifest = await parsedManifest([
+            { type: 'suola-rules', href },
+            { type: 'suola-rules', href }
+        ]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.equal(installed.calls.length, 1);
+        assert.deepEqual(result.suolaRules.sites, [{ domain: 'a.example' }, { domain: 'a.example' }]);
+    });
+
+    test('a malformed href is reported against its resource rather than crashing resolve', async () => {
+        const good = 'https://provider.example/good.json';
+        installed = mockFetch({ [good]: jsonResponse({ sites: [{ domain: 'a.example' }] }) });
+        const manifest = await parsedManifest([{ type: 'suola-rules', href: ['http://[::1', good] }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(result.suolaRules.sites, [{ domain: 'a.example' }]);
+        assert.ok(result.errors.some((e) => /malformed href/.test(e.message)));
+    });
+
+    test('an href with a host wildcard is a malformed href, also when the wildcard is percent-encoded', async () => {
+        installed = mockFetch({});
+        const manifest = await parsedManifest([{ type: 'suola-rules', href: ['https://*/rules.json', 'https://%2A/rules.json'] }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.equal(installed.calls.length, 0);
+        assert.equal(result.errors.filter((e) => /malformed href/.test(e.message)).length, 2);
+    });
+
+    test('inspect does not disclose an origin with a host wildcard', async () => {
+        const manifestUrl = 'https://provider.example/manifest.json';
+        installed = mockFetch({
+            [manifestUrl]: jsonResponse(manifestDoc([
+                { type: 'rahti-data', href: ['https://*/data.json', 'https://%2A/data.json', 'https://data.example/data.json'] }
+            ]))
+        });
+
+        const result = await inspect(manifestUrl, {});
+
+        assert.deepEqual([...result.origins], ['https://data.example']);
+    });
+
+    test('a malformed href does not crash inspect either', async () => {
+        const manifestUrl = 'https://provider.example/manifest.json';
+        installed = mockFetch({
+            [manifestUrl]: jsonResponse(manifestDoc([{ type: 'suola-rules', href: 'http://[::1' }]))
+        });
+
+        const result = await inspect(manifestUrl, {});
+
+        assert.equal(result.error, undefined);
+    });
+
+    test('resources are fetched in (weight, document order)', async () => {
+        const low = 'https://provider.example/low.json';
+        const high = 'https://provider.example/high.json';
+        installed = mockFetch({
+            [low]: jsonResponse({ sites: [{ domain: 'low' }] }),
+            [high]: jsonResponse({ sites: [{ domain: 'high' }] })
+        });
+        const manifest = await parsedManifest([
+            { type: 'suola-rules', href: high, weight: 5 },
+            { type: 'suola-rules', href: low, weight: 1 }
+        ]);
+
+        await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(installed.calls, [low, high]);
+    });
+});
+
+describe('resolve: rahti-data', () => {
+    async function parsedManifest(resources) {
+        const { manifest } = parseManifest(manifestDoc(resources));
+        return manifest;
+    }
+
+    test('keys entries by sign, last resource wins per signature', async () => {
+        const a = 'https://provider.example/data-a.json';
+        const b = 'https://provider.example/data-b.json';
+        installed = mockFetch({
+            [a]: jsonResponse(rahtiDoc([{ urls: [{ sign: 's1' }], title: 'first' }])),
+            [b]: jsonResponse(rahtiDoc([{ urls: [{ sign: 's1' }], title: 'second' }]))
+        });
+        const manifest = await parsedManifest([
+            { type: 'rahti-data', href: a },
+            { type: 'rahti-data', href: b }
+        ]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.equal(result.rahtiData.s1.title, 'second');
+    });
+
+    test('a major-version mismatch is isolated to its own resource', async () => {
+        const good = 'https://provider.example/data-good.json';
+        const bad = 'https://provider.example/data-bad.json';
+        installed = mockFetch({
+            [good]: jsonResponse(rahtiDoc([{ urls: [{ sign: 's1' }], title: 'ok' }])),
+            [bad]: jsonResponse({ schema_version: '9.0.0', entries: [] })
+        });
+        const manifest = await parsedManifest([
+            { type: 'rahti-data', href: good },
+            { type: 'rahti-data', href: bad }
+        ]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.equal(result.rahtiData.s1.title, 'ok');
+        assert.equal(result.errors.length, 1);
+    });
+});
+
+describe('resolve: conditional GET (rahti-data only) and the document cache', () => {
+    const manifestUrl = 'https://provider.example/manifest.json';
+    const dataUrl = 'https://provider.example/data.json';
+    const sitesUrl = 'https://provider.example/sites.json';
+    const CACHED_RAHTI = rahtiDoc([{ urls: [{ sign: 's1' }], title: 'cached' }]);
+    const FRESH_RAHTI = rahtiDoc([{ urls: [{ sign: 's1' }], title: 'fresh' }]);
+    const CACHED_SITES = siteDoc({ 'news.example': site('news.example') });
+    const notModified = () => new Response(null, { status: 304 });
+    const cached = (content) => ({ content, etag: '"v1"', lastModified: null });
+
+    async function parsedManifest(resources) {
+        const { manifest } = parseManifest(manifestDoc(resources));
+        return manifest;
+    }
+
+    test('a fresh 200 response is returned in documents with its etag and lastModified', async () => {
+        installed = mockFetch({
+            [dataUrl]: jsonResponse(FRESH_RAHTI, { ETag: '"v2"', 'Last-Modified': 'Mon, 01 Jan 2024 00:00:00 GMT' })
+        });
+        const manifest = await parsedManifest([{ type: 'rahti-data', href: dataUrl }]);
+
+        const result = await resolve(manifest, manifestUrl);
+
+        assert.equal(result.rahtiData.s1.title, 'fresh');
+        assert.deepEqual(result.documents[dataUrl],
+            { content: FRESH_RAHTI, etag: '"v2"', lastModified: 'Mon, 01 Jan 2024 00:00:00 GMT' });
+    });
+
+    const CONDITIONAL_CASES = [
+        { name: 'a cached rahti-data document', type: 'rahti-data', documents: { [dataUrl]: cached(CACHED_RAHTI) }, sent: '"v1"' },
+        { name: 'no cached document', type: 'rahti-data', documents: {}, sent: undefined },
+        { name: 'a cached document and force', type: 'rahti-data', documents: { [dataUrl]: cached(CACHED_RAHTI) }, force: true, sent: undefined },
+        { name: 'a cached site-configs document', type: 'site-configs', documents: { [dataUrl]: cached(CACHED_SITES) }, sent: undefined }
+    ];
+    for (const { name, type, documents, force, sent } of CONDITIONAL_CASES) {
+        test(`If-None-Match with ${name}: ${sent ?? 'not sent'}`, async () => {
+            installed = mockFetch({ [dataUrl]: jsonResponse(type === 'rahti-data' ? FRESH_RAHTI : CACHED_SITES) });
+            const manifest = await parsedManifest([{ type, href: dataUrl }]);
+
+            await resolve(manifest, manifestUrl, { documents, force });
+
+            assert.equal(installed.requests[0].headers?.['If-None-Match'], sent);
+        });
+    }
+
+    const RAHTI_OUTCOMES = [
+        { name: '200', response: () => jsonResponse(FRESH_RAHTI), title: 'fresh' },
+        { name: '304', response: notModified, title: 'cached' },
+        { name: '429', response: () => new Response('', { status: 429 }), title: 'cached', transient: true },
+        { name: 'a network failure', response: () => new TypeError('fetch failed'), title: 'cached', transient: true },
+        { name: '404', response: notFound, title: undefined, transient: false },
+        { name: 'invalid JSON', response: () => new Response('{', { status: 200 }), title: undefined, transient: false },
+        { name: 'an invalid document', response: () => jsonResponse({ schema_version: '0.1.0' }), title: undefined }
+    ];
+    for (const { name, response, title, transient } of RAHTI_OUTCOMES) {
+        test(`rahti-data with a cached copy, answered with ${name}: ${title ?? 'no entries'}`, async () => {
+            installed = mockFetch({ [dataUrl]: response() });
+            const manifest = await parsedManifest([{ type: 'rahti-data', href: dataUrl }]);
+
+            const result = await resolve(manifest, manifestUrl, { documents: { [dataUrl]: cached(CACHED_RAHTI) } });
+
+            assert.equal(result.rahtiData.s1?.title, title);
+            const fetchError = result.errors.find((error) => error.kind === 'fetch');
+            assert.equal(fetchError?.transient, transient);
+            if (transient !== undefined) assert.equal(fetchError.href, dataUrl);
+        });
+    }
+
+    test('a temporary failure without a cached copy gives no entries and no document', async () => {
+        installed = mockFetch({ [dataUrl]: new Response('', { status: 503 }) });
+        const manifest = await parsedManifest([{ type: 'rahti-data', href: dataUrl }]);
+
+        const result = await resolve(manifest, manifestUrl);
+
+        assert.deepEqual(result.rahtiData, {});
+        assert.deepEqual(result.documents, {});
+        assert.equal(result.errors[0].transient, true);
+    });
+
+    const SITE_OUTCOMES = [
+        { name: 'a temporary failure', response: () => new Response('', { status: 503 }), kept: true },
+        { name: 'a permanent failure', response: notFound, kept: false }
+    ];
+    for (const { name, response, kept } of SITE_OUTCOMES) {
+        test(`site-configs with a cached copy and ${name}: sites ${kept ? 'kept' : 'dropped'}`, async () => {
+            installed = mockFetch({ [sitesUrl]: response() });
+            const manifest = await parsedManifest([{ type: 'site-configs', href: sitesUrl }]);
+
+            const result = await resolve(manifest, manifestUrl, { documents: { [sitesUrl]: cached(CACHED_SITES) } });
+
+            assert.equal(Boolean(result.siteConfigs['news.example']), kept);
+            assert.equal(sitesUrl in result.documents, kept);
+        });
+    }
+
+    test('a blocked URL never uses its cached copy', async () => {
+        const blocked = 'http://provider.example/data.json';
+        installed = mockFetch({});
+        const manifest = await parsedManifest([{ type: 'rahti-data', href: blocked }]);
+
+        const result = await resolve(manifest, manifestUrl, { documents: { [blocked]: cached(CACHED_RAHTI) } });
+
+        assert.deepEqual(installed.calls, []);
+        assert.deepEqual(result.rahtiData, {});
+        assert.deepEqual(result.documents, {});
+        assert.equal(result.errors[0].transient, false);
+    });
+
+    test('one href in rahti-data and site-configs gives the cached copy to both on a 304', async () => {
+        const both = { ...CACHED_RAHTI, ...CACHED_SITES };
+        installed = mockFetch({ [dataUrl]: notModified() });
+        const manifest = await parsedManifest([
+            { type: 'rahti-data', href: dataUrl },
+            { type: 'site-configs', href: dataUrl }
+        ]);
+
+        const result = await resolve(manifest, manifestUrl, { documents: { [dataUrl]: cached(both) } });
+
+        assert.equal(result.rahtiData.s1.title, 'cached');
+        assert.ok(result.siteConfigs['news.example']);
+        assert.equal(installed.calls.length, 1);
+    });
+
+    test('a mixed batch (one 304, one 200) fetches each href one time', async () => {
+        const a = 'https://provider.example/data-a.json';
+        const b = 'https://provider.example/data-b.json';
+        installed = mockFetch({
+            [a]: notModified(),
+            [b]: jsonResponse(rahtiDoc([{ urls: [{ sign: 'sb' }], title: 'from-b' }]))
+        });
+        const manifest = await parsedManifest([
+            { type: 'rahti-data', href: a },
+            { type: 'rahti-data', href: b }
+        ]);
+
+        const result = await resolve(manifest, manifestUrl, {
+            documents: { [a]: cached(rahtiDoc([{ urls: [{ sign: 'sa' }], title: 'from-a' }])) }
+        });
+
+        assert.deepEqual(installed.calls, [a, b]);
+        assert.equal(result.rahtiData.sa.title, 'from-a');
+        assert.equal(result.rahtiData.sb.title, 'from-b');
+    });
+
+    test('documents keeps no href that the manifest no longer names or that is over the fetch budget', async () => {
+        const urls = Array.from({ length: 33 }, (_, i) => `https://provider.example/r${i}.json`);
+        installed = mockFetch(Object.fromEntries(urls.map((url) => [url, notModified()])));
+        const documents = Object.fromEntries([...urls, dataUrl].map((url) => [url, cached(CACHED_RAHTI)]));
+        const manifest = await parsedManifest([{ type: 'rahti-data', href: urls }]);
+
+        const result = await resolve(manifest, manifestUrl, { documents });
+
+        assert.deepEqual(Object.keys(result.documents), urls.slice(0, 32));
+    });
+
+    test('the payload\'s own updated field becomes databaseGenerationDate', async () => {
+        installed = mockFetch({
+            [dataUrl]: jsonResponse({
+                schema_version: '0.1.0', updated: '2026-05-01T00:00:00Z',
+                entries: [{ urls: [{ sign: 's1' }], title: 'x' }]
+            })
+        });
+        const manifest = await parsedManifest([{ type: 'rahti-data', href: dataUrl }]);
+
+        const result = await resolve(manifest, manifestUrl);
+
+        assert.equal(result.databaseGenerationDate, '2026-05-01T00:00:00Z');
+    });
+});
+
+describe('resolve: fetch error classification', () => {
+    const manifestUrl = 'https://provider.example/manifest.json';
+    const dataUrl = 'https://provider.example/data.json';
+    const timeout = () => new DOMException('The operation timed out.', 'TimeoutError');
+    const status = (code, headers = {}) => () => new Response('', { status: code, headers });
+
+    const CASES = [
+        { name: 'a timeout before the headers', response: timeout, transient: true },
+        {
+            name: 'a timeout during the body',
+            response: () => new Response(new ReadableStream({ pull(controller) { controller.error(timeout()); } })),
+            transient: true
+        },
+        { name: 'a network failure', response: () => new TypeError('fetch failed'), transient: true },
+        { name: 'HTTP 408', response: status(408), transient: true },
+        { name: 'HTTP 429 with Retry-After seconds', response: status(429, { 'Retry-After': '40' }), transient: true, retryAfterMs: [40000, 40000] },
+        {
+            name: 'HTTP 503 with a Retry-After date',
+            response: () => status(503, { 'Retry-After': new Date(Date.now() + 60000).toUTCString() })(),
+            transient: true,
+            retryAfterMs: [58000, 60000]
+        },
+        { name: 'HTTP 500', response: status(500), transient: true },
+        { name: 'HTTP 404', response: status(404), transient: false },
+        { name: 'a body over the size limit', response: status(200, { 'content-length': String(9 * 1024 * 1024) }), transient: false },
+        { name: 'invalid JSON', response: () => new Response('{', { status: 200 }), transient: false }
+    ];
+    for (const { name, response, transient, retryAfterMs } of CASES) {
+        test(`${name} is ${transient ? 'temporary' : 'permanent'}`, async () => {
+            installed = mockFetch({ [dataUrl]: response() });
+            const { manifest } = parseManifest(manifestDoc([{ type: 'rahti-data', href: dataUrl }]));
+
+            const [error] = (await resolve(manifest, manifestUrl)).errors;
+
+            assert.equal(error.kind, 'fetch');
+            assert.equal(error.transient, transient);
+            if (retryAfterMs) {
+                assert.ok(error.retryAfterMs >= retryAfterMs[0] && error.retryAfterMs <= retryAfterMs[1], String(error.retryAfterMs));
+            } else {
+                assert.equal(error.retryAfterMs, undefined);
+            }
+        });
+    }
+});
+
+describe('resolve: site-configs safety', () => {
+    async function parsedManifest(resources) {
+        const { manifest } = parseManifest(manifestDoc(resources));
+        return manifest;
+    }
+
+    test('a site claiming an origin that is not its own key is rejected', async () => {
+        const manifest = await parsedManifest([{
+            type: 'site-configs',
+            sites: { 'lapinkansa.fi': site('lapinkansa.fi', { origins: ['https://www.hs.fi/*'] }) }
+        }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(result.siteConfigs, {});
+        assert.ok(result.rejected.some((r) => r.key === 'lapinkansa.fi'));
+    });
+
+    test('a site key that is not a bare hostname cannot escape the ranking via matchesOrigin\'s path-stripping', async () => {
+        // matchesOrigin (model.js) reads only the authority up to the first "/" of an origin pattern,
+        // so a key like "www.hs.fi/x" would (if accepted) still resolve for lookups against the real
+        // "www.hs.fi" -- while the ranking, which compares the key string literally, would never
+        // have set it against the site of that host. The key itself must be rejected before that gap opens.
+        const manifest = await parsedManifest([{
+            type: 'site-configs',
+            sites: { 'www.hs.fi/x': { name: 'evil', enabled: true, rules: [] } }
+        }]);
+
+        const result = await resolve(manifest, 'https://attacker.example/manifest.json');
+
+        assert.deepEqual(result.siteConfigs, {});
+        assert.ok(result.rejected.some((r) => r.key === 'www.hs.fi/x' && /bare hostname/.test(r.reason)));
+    });
+
+    test('a site key that names an inherited property is rejected, not merged into the prototype', async () => {
+        const manifest = await parsedManifest([{
+            type: 'site-configs',
+            sites: JSON.parse('{"constructor":{"name":"x"},"__proto__":{"name":"y"},"ok.example":{"name":"z"}}')
+        }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(Object.keys(result.siteConfigs), ['ok.example']);
+        assert.deepEqual(result.rejected.map((r) => r.key).sort(), ['__proto__', 'constructor']);
+    });
+
+    test('a site key with a host wildcard is rejected, thus it cannot claim headlines on every site', async () => {
+        const manifest = await parsedManifest([{
+            type: 'site-configs',
+            sites: { '*': site('*'), '*.hs.fi': site('*.hs.fi'), 'a*b.fi': site('a*b.fi') }
+        }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(result.siteConfigs, {});
+        assert.deepEqual(result.rejected.map((r) => r.key).sort(), ['*', '*.hs.fi', 'a*b.fi']);
+        assert.ok(result.rejected.every((r) => /bare hostname/.test(r.reason)));
+    });
+
+    test('a site key carrying a port or a scheme is rejected the same way', async () => {
+        const manifest = await parsedManifest([{
+            type: 'site-configs',
+            sites: {
+                'example.com:8080': { name: 'x', enabled: true, rules: [] },
+                'https://example.com': { name: 'x', enabled: true, rules: [] }
+            }
+        }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(result.siteConfigs, {});
+        assert.equal(result.rejected.length, 2);
+    });
+
+    test('a wildcard for the subdomains of the key is accepted; any other host wildcard is rejected', async () => {
+        const manifest = await parsedManifest([{
+            type: 'site-configs',
+            sites: {
+                'example.com': site('example.com', { origins: ['https://*.example.com/*'] }),
+                'example.fi': site('example.fi', { origins: ['https://*.fi/*'] }),
+                'other.example': site('other.example', { origins: ['https://*.example/*'] }),
+                'fi': site('fi', { origins: ['https://*.fi/*'] })
+            }
+        }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(Object.keys(result.siteConfigs), ['example.com']);
+    });
+
+    test('a javascript: link is dropped, the site is kept', async () => {
+        const manifest = await parsedManifest([{
+            type: 'site-configs',
+            sites: {
+                'news.example': site('news.example', {
+                    links: [{ rel: 'x-publisher-policy', href: 'javascript:alert(1)' }, { rel: 'license', href: 'https://news.example/license' }]
+                })
+            }
+        }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.equal(result.siteConfigs['news.example'].links.length, 1);
+        assert.equal(result.siteConfigs['news.example'].links[0].href, 'https://news.example/license');
+    });
+
+    test('same-origin site-configs must not declare origins', async () => {
+        const manifest = await parsedManifest([{
+            type: 'site-configs',
+            sites: { 'news.example': site('news.example') },
+            origins: ['https://news.example/*']
+        }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(result.siteConfigs, {});
+        assert.ok(result.rejected.some((r) => /must not declare/.test(r.reason)));
+    });
+
+    test('a malformed site-configs href does not crash resolve either', async () => {
+        // An unparsable href can't be proven same-origin, so it takes the cross-origin path and is
+        // refused there for lacking a declared `origins` -- the point under test is that this reports
+        // cleanly rather than throwing out of isSameOrigin().
+        const manifest = await parsedManifest([{ type: 'site-configs', href: 'http://[::1' }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(result.siteConfigs, {});
+        assert.ok(result.rejected.some((r) => /cross-origin/.test(r.reason)));
+    });
+
+    test('cross-origin site-configs without declared origins is refused', async () => {
+        const href = 'https://cdn.example/sites.json';
+        installed = mockFetch({ [href]: jsonResponse(siteDoc({ 'news.example': site('news.example') })) });
+        const manifest = await parsedManifest([{ type: 'site-configs', href }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(installed.calls, [], 'refused before it could be fetched');
+        assert.deepEqual(result.siteConfigs, {});
+        assert.ok(result.rejected.some((r) => /declares no origins/.test(r.reason)));
+    });
+
+    test('a cross-origin document adding a site beyond its declared origins is rejected', async () => {
+        const href = 'https://cdn.example/sites.json';
+        installed = mockFetch({
+            [href]: jsonResponse(siteDoc({
+                'lapinkansa.fi': site('lapinkansa.fi'),
+                'unexpected.example': site('unexpected.example')
+            }))
+        });
+        const manifest = await parsedManifest([{
+            type: 'site-configs', href, origins: ['https://www.lapinkansa.fi/*', 'https://lapinkansa.fi/*']
+        }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.ok(result.siteConfigs['lapinkansa.fi']);
+        assert.equal(result.siteConfigs['unexpected.example'], undefined);
+        assert.ok(result.rejected.some((r) => r.key === 'unexpected.example'));
+    });
+
+    test('array fields concatenate and dedupe across two resources of one manifest', async () => {
+        const manifest = await parsedManifest([
+            { type: 'site-configs', sites: { 'news.example': site('news.example', { rules: [{ container: 'a' }] }) } },
+            { type: 'site-configs', sites: { 'news.example': site('news.example', { rules: [{ container: 'a' }, { container: 'b' }] }) } }
+        ]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(result.siteConfigs['news.example'].rules, [{ container: 'a' }, { container: 'b' }]);
+    });
+
+    test('the weight of a site is the highest weight of the resources that supply it', async () => {
+        const manifest = await parsedManifest([
+            { type: 'site-configs', weight: 2, sites: { 'news.example': site('news.example'), 'other.example': site('other.example') } },
+            { type: 'site-configs', weight: 5, sites: { 'news.example': site('news.example') } },
+            { type: 'site-configs', weight: 9, sites: { 'bad.example': site('bad.example', { origins: ['https://other.example/*'] }) } }
+        ]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json');
+
+        assert.deepEqual(result.siteWeights, { 'news.example': 5, 'other.example': 2 });
+        assert.equal(result.siteConfigs['news.example'].weight, undefined, 'the weight stays out of the site');
+    });
+});
+
+describe('resolve: loopback gating', () => {
+    async function parsedManifest(resources) {
+        const { manifest } = parseManifest(manifestDoc(resources));
+        return manifest;
+    }
+
+    test('a loopback resource is refused with the setting off, admitted with it on', async () => {
+        const href = 'http://localhost:3000/rules.json';
+        installed = mockFetch({ [href]: jsonResponse({ sites: [{ domain: 'a' }] }) });
+        const manifest = await parsedManifest([{ type: 'suola-rules', href }]);
+
+        const off = await resolve(manifest, 'https://provider.example/manifest.json', { loopbackProvidersEnabled: false });
+        assert.equal(off.suolaRules, null);
+        assert.deepEqual(installed.calls, []);
+
+        const on = await resolve(manifest, 'https://provider.example/manifest.json', { loopbackProvidersEnabled: true });
+        assert.deepEqual(on.suolaRules.sites, [{ domain: 'a' }]);
+    });
+
+    test('a private (non-loopback) address stays refused even with the setting on', async () => {
+        const href = 'https://192.168.1.1/rules.json';
+        installed = mockFetch({});
+        const manifest = await parsedManifest([{ type: 'suola-rules', href }]);
+
+        const result = await resolve(manifest, 'https://provider.example/manifest.json', { loopbackProvidersEnabled: true });
+
+        assert.equal(result.suolaRules, null);
+        assert.deepEqual(installed.calls, []);
+    });
+});
+
+describe('originsMatchKey', () => {
+    test('accepts the exact host, https or http', () => {
+        assert.equal(originsMatchKey('news.example', ['https://news.example/*']), true);
+        assert.equal(originsMatchKey('news.example', ['http://news.example/*']), true);
+    });
+    test('rejects a different host', () => {
+        assert.equal(originsMatchKey('news.example', ['https://other.example/*']), false);
+    });
+    test('accepts the subdomains of a key that has a dot', () => {
+        assert.equal(originsMatchKey('example.com', ['https://*.example.com/*', 'http://example.com/*']), true);
+        assert.equal(originsMatchKey('localhost', ['https://*.localhost/*']), false);
+    });
+    test('rejects the subdomains of another host, and any other wildcard', () => {
+        assert.equal(originsMatchKey('example.com', ['https://*.com/*']), false);
+        assert.equal(originsMatchKey('news.example.com', ['https://*.example.com/*']), false);
+        assert.equal(originsMatchKey('example.com', ['https://*/*']), false);
+    });
+    test('rejects an empty list', () => {
+        assert.equal(originsMatchKey('news.example', []), false);
+    });
+});

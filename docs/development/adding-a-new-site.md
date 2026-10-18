@@ -1,32 +1,52 @@
 # Adding Support for a New Site
 
-To add support for a new news website in Klikkikuri Paatti, follow these three steps:
+The site configurations are not in Paatti. They are in `sites.json` in the
+[Rahti repository](https://github.com/Klikkikuri/rahti), which the default provider manifest links. The extension
+reads the sites from its providers when it runs. Paatti keeps only the origins of the default sites, in
+[manifest.json](../../manifest.json) and [sites.lock.json](../../sites.lock.json), because a store build can request
+only the origins that `manifest.json` declares. `make sites-sync` writes both files. Do not edit them by hand.
 
 ---
 
-## 1. Configure the Site Rules in `src/config.js`
+## 1. Add the Site to Rahti's `sites.json`
 
-Add a new configuration entry under `DEFAULT_CONFIG.siteConfigs` in [src/config.js](../../src/config.js).
+Add an entry under `sites`, keyed by the host of the site. `docs/provider-manifest.md` in the Meri repository
+describes the format.
 
-```javascript
+```json
 "www.example.com": {
     "name": "Example News",
-    "enabled": true, // Whether the site is enabled by default
-    "origins": ["https://*.example.com/*"], // Optional; defaults to key if omitted
+    "description": "Notes about the site.",
+    "enabled": false,
+    "origins": ["https://www.example.com/*"],
+    "links": [
+        { "rel": "x-publisher-policy", "href": "https://www.example.com/policy" }
+    ],
     "rules": [
         {
-            // CSS selector matching the container element for each news article card/link
-            "container": "article.news-card", 
-            
-            // Relative selector from the container to the <a> tag (use "self" if the container is the link)
-            "link": "a.card-link", 
-            
-            // Relative selector from the container to the text element holding the headline (use "self" if the link is the text element)
-            "title": "h3.card-title" 
+            "description": "Front page news cards",
+            "container": "article.news-card",
+            "link": "a.card-link",
+            "title": "h3.card-title"
         }
     ]
 }
 ```
+
+- `enabled`: whether the site is on by default. A site that is off by default gets an optional host permission.
+  `enabled: false` means "off by default", not "withdrawn": the site stays in the list, and the user can turn it on.
+  A new site that is on by default gets a required host permission. When an installed extension updates to a release
+  with a new required host permission, Chrome disables the extension until the user accepts the permission. Thus add a
+  new site with `enabled: false`. An origin that was optional in the previous release stays optional, also after you
+  set `enabled: true`: the site shows as off until the user grants access.
+- `origins`: optional. The default is `https://<key>/*`. Each origin must have the host of the key; `*` is not
+  permitted in the host.
+- `links`: optional. `x-publisher-policy` shows as the publisher's policy link on the options page.
+- `container`: CSS selector for each news card or link.
+- `link`: selector, relative to the container, for the `<a>` element. Use `self` if the container is the link.
+- `title`: selector, relative to the container, for the element that holds the headline. Use `self` if the
+  container holds the text.
+- `description`: optional, on the site and on a rule. It tells why the rule exists. Paatti does not use it.
 
 ### Selector Rules & Syntax Guidelines
 
@@ -42,22 +62,56 @@ Add a new configuration entry under `DEFAULT_CONFIG.siteConfigs` in [src/config.
 
 ---
 
-## 2. Update `manifest.json` Permissions
+## 2. Test the Site from a Local Rahti Checkout
 
-Update [manifest.json](file:///home/teemu/projects/klikkikuri/paatti/manifest.json) to declare the new site origins:
+Serve the Rahti checkout on the loopback address:
 
-1. **Permissions**: 
-   - Add the origin (e.g. `https://*.example.com/*`) to `host_permissions` if the site is enabled by default (`enabled: true` or omitted).
-   - Add it to `optional_host_permissions` if the site is disabled by default / optional (`enabled: false`).
-2. **Web Accessible Resources**:
-   - Add the origin to the `matches` array in the `web_accessible_resources` block. This is **required** to allow dynamic ES module imports (`src/model.js`, etc.) to load inside the site's content script context.
+```bash
+(cd ../rahti && python3 -m http.server 8000 --bind 127.0.0.1)
+```
+
+Add the checkout to an unpacked build as a provider:
+
+1. On the settings page, under **🐛 Debug Settings** → **🔌 Providers**, turn on **Allow providers on this
+   machine**.
+2. Enter `http://127.0.0.1:8000/manifest.json`, select **Add**, then **Add provider**, and accept the browser
+   prompts.
+3. Turn on the new site in the site list, and accept the browser prompt for its origin. A site that a provider
+   supplies is off until you turn it on.
+
+The `development` environment lets a provider override sites, so the checkout also takes over the sites that
+Rahti already has. Turn on again each of them that you test. Paatti downloads the checkout again at each database
+update: select **Update Database** after you change `sites.json`. [Providers](../providers.md) tells the rules.
+
+To see the origins that the new site adds to `manifest.json`, sync from the checkout:
+
+```bash
+make sites-sync SITES_MANIFEST=http://127.0.0.1:8000/manifest.json
+```
+
+The sync resolves the manifest with the same validation that a provider gets at runtime, and stops if it refuses a
+site. It also stops if a `site-configs` href is not in the directory of the manifest, so that the pinned Rahti
+commit pins the sites too. It writes `sites.lock.json` and the site origins in `manifest.json`:
+`host_permissions` for an enabled site, `optional_host_permissions` for a disabled site or an origin that was
+optional in the previous release, and the `web_accessible_resources` matches for all sites. The previous release
+is the last `v*` tag before `HEAD`. Without git history or tags, as in a source archive, the committed
+`manifest.json` takes its place. The sync does not change which sites the extension uses.
+
+`make test` fails after a sync from a local copy. That is intentional: do not commit the result. A sync from a
+local copy writes the local URL into `sites.lock.json` and records no Rahti commit, and CI stops on it too.
 
 ---
 
-## 3. Verify Alignments
+## 3. Publish, Then Sync from the Published Manifest
 
-Run the test suite to ensure that your site configurations in `config.js` and permissions in `manifest.json` are fully aligned:
+Commit and push `sites.json` in Rahti. Then sync Paatti from the published manifest, run the tests, and commit
+`sites.lock.json` and `manifest.json`:
 
 ```bash
+make sites-sync
 make test
 ```
+
+`make test` includes `make check-sites`, which fails if `manifest.json` does not agree with `sites.lock.json`. CI
+compares the lock with the Rahti commit that it pins.
+[Default Site Permissions](../release.md#default-site-permissions) tells which check runs where.

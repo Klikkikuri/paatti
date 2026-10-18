@@ -1,7 +1,7 @@
 "use strict";
 
 import browser from "./browser-api.js";
-import { getLogger, getCurrentTabHostname } from "./utils.js";
+import { getLogger } from "./utils.js";
 import { model } from "./model.js";
 
 const log = getLogger("controller");
@@ -55,14 +55,19 @@ const controller = {
         await model.write.setVisualHighlightEnabled(value);
     },
 
+    setProviderShadowingEnabled: async (value) => {
+        log(`Setting provider shadowing to ${value}`);
+        await model.write.setProviderShadowingEnabled(value);
+    },
+
+    setLoopbackProvidersEnabled: async (value) => {
+        log(`Setting loopback providers to ${value}`);
+        await model.write.setLoopbackProvidersEnabled(value);
+    },
+
     setRefreshIntervalMinutes: async (value) => {
         log(`Setting refresh interval minutes to ${value}`);
         await model.write.setRefreshIntervalMinutes(value);
-    },
-
-    setDevTitleDataUrls: async (urls) => {
-        log(`Setting development title data URLs:`, urls);
-        await model.write.setDevTitleDataUrls(urls);
     },
 
     /**
@@ -99,27 +104,6 @@ const controller = {
 
             log("Dumped.");
             return result;
-        },
-
-        setTitleDataUrl: async (url) => {
-            log("Setting title data URL...");
-
-            const tabs = browser.tabs;
-            const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
-
-            const currentTabHostname = await getCurrentTabHostname();
-
-            // First restore the original state seen on page so that will not
-            // mix the title data sources causing havoc visually.
-            const originalEnabledState = await model.read.isEnabled(currentTabHostname);
-            await _setSiteEnabled(false, currentTabHostname)
-            await tabs.sendMessage(activeTabId, { command: "convertClickbaits" });
-
-            await model.write.setTitleDataUrl(url);
-            await tabs.sendMessage(activeTabId, { command: "convertClickbaits" });
-            await _setSiteEnabled(originalEnabledState, currentTabHostname)
-
-            log(`Title data URL set to ${url}`);
         },
     },
 };

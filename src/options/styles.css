@@ -280,34 +280,10 @@ body {
     white-space: nowrap;
 }
 
-.stats-dot-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 15px;
-    height: 15px;
-    border-radius: 50%;
-    border: none;
-    color: var(--color-on-accent);
-    font-size: 10px;
-    font-weight: bold;
-    font-family: inherit;
-    cursor: pointer;
-    padding: 0;
-    margin: 0;
-    line-height: 1;
-    flex-shrink: 0;
-    user-select: none;
-    background-color: var(--color-neutral);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.stats-dot-btn:hover,
-.stats-dot-btn:focus-visible,
+/* An .info-dot (components.css), which rises while its row is open, and wears its level's colour. */
 .stats-row.is-open .stats-dot-btn {
     transform: scale(1.15);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-info) 40%, transparent);
-    outline: none;
 }
 
 /* Sky Blue & Sunset Orange (Above Threshold: Sky/Surface zone, Light -> Dark) */
@@ -586,80 +562,6 @@ img.icon {
 /* A navi button cannot be untoggled, so the active one does not invite a click. */
 #navi input:checked+.push-button:hover {
     cursor: default;
-}
-
-/* Push button */
-
-.push-button {
-    display: inline-block;
-    cursor: pointer;
-    background: var(--push-bg);
-    outline: 1px outset var(--color-border-strong);
-    border-radius: 0.375rem;
-    /* --push-offset sets the drop shadow's distance, and a pressed button sinks
-     * half of it into the space the shadow occupied. Override --push-offset on
-     * smaller buttons to scale the shadow and the travel together. */
-    box-shadow:
-        var(--push-shadow) var(--push-offset) var(--push-offset),
-        var(--push-shadow) 0px 0px inset;
-    transition:
-        transform 0.2s ease-in-out,
-        box-shadow 0.2s ease-in-out,
-        background 0.2s ease-in-out;
-
-    font-family: var(--font-display);
-    text-align: center;
-    min-width: 6.25rem;
-
-    color: var(--push-text);
-    margin: 0;
-    padding: 2%;
-    padding-bottom: 0.3125rem;
-    font-weight: bold;
-}
-
-.push-button:hover {
-    color: var(--push-accent);
-    outline: 2px solid var(--color-info);
-}
-
-/* When checked - looks like pressed in */
-.push-button:active,
-input:checked+.push-button {
-    box-shadow:
-        var(--push-shadow) 0px 0px,
-        var(--push-shadow) 1px 1px inset;
-
-    /* Sink halfway into the vacated shadow: enough to read as pressed without
-     * the button jumping a full shadow's width out of line with its siblings. */
-    transform: translate(calc(var(--push-offset) / 2), calc(var(--push-offset) / 2));
-
-    background: var(--push-bg-active);
-    outline: 1px solid var(--color-info);
-
-    animation-name: pulsate-glow;
-    animation-delay: 0s;
-    animation-duration: 2.0s;
-    animation-iteration-count: infinite;
-    animation-timing-function: ease-in;
-}
-
-/* Show that push buttons can be untoggled */
-input:checked+.push-button:hover {
-    color: var(--push-text);
-    outline: 2px solid var(--color-border-strong);
-}
-
-@keyframes pulsate-glow {
-    0% {
-        color: var(--push-accent);
-    }
-    80% {
-        color: var(--push-accent-bright);
-    }
-    100% {
-        color: var(--push-accent);
-    }
 }
 
 /* Misc */

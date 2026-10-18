@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const { mergeManifest, storeManifest, buildManifest } = await import('../tools/manifest.mjs');
-const { ARBITRARY_ORIGINS } = await import('../src/options/origins.js');
+const { ARBITRARY_ORIGINS, canRequestOrigins } = await import('../src/options/origins.js');
 
 const base = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
 
@@ -45,6 +45,25 @@ describe('storeManifest', () => {
             const store = storeManifest(buildManifest(browser), '1');
             assert.ok(!store.optional_host_permissions.includes(ARBITRARY_ORIGINS));
             assert.ok(store.optional_host_permissions.includes('https://www.ampparit.com/*'));
+        }
+    });
+
+    test('drops the wildcard web_accessible_resources group but keeps the named one', () => {
+        for (const browser of ['chrome', 'firefox']) {
+            const store = storeManifest(buildManifest(browser), '1');
+            assert.equal(store.web_accessible_resources.length, 1);
+            assert.ok(!store.web_accessible_resources[0].matches.includes(ARBITRARY_ORIGINS));
+            assert.ok(store.web_accessible_resources[0].matches.includes('https://www.hs.fi/*'));
+        }
+    });
+
+    test('a store build can request only the sites it declares; the self-hosted build can request any', () => {
+        for (const browser of ['chrome', 'firefox']) {
+            const store = storeManifest(buildManifest(browser), '1');
+            assert.equal(canRequestOrigins(['https://www.hs.fi/*'], store), true);
+            assert.equal(canRequestOrigins(['https://www.ampparit.com/*'], store), true);
+            assert.equal(canRequestOrigins(['https://new.example.fi/*'], store), false);
+            assert.equal(canRequestOrigins(['https://new.example.fi/*'], buildManifest(browser)), true);
         }
     });
 
@@ -90,5 +109,41 @@ describe('the real overlays', () => {
 
     test('a missing overlay names the file', () => {
         assert.throws(() => buildManifest('opera'), /manifest\.opera\.json/);
+    });
+});
+
+describe('the web_accessible_resources groups', () => {
+    const [named, wildcard] = base.web_accessible_resources;
+
+    test('the wildcard group matches only the wildcard host pattern, distinct from the named group', () => {
+        assert.deepEqual(wildcard.matches, [ARBITRARY_ORIGINS]);
+        assert.ok(!named.matches.includes(ARBITRARY_ORIGINS));
+    });
+
+    test('both groups carry the same resources', () => {
+        assert.deepEqual(wildcard.resources, named.resources);
+    });
+
+    // A module that the content script reaches but that is not listed fails to load on real pages only.
+    test('every module the content script reaches is listed', () => {
+        const root = new URL('../', import.meta.url);
+        const source = (path) => readFileSync(new URL(path, root), 'utf8');
+        const reached = new Set([...source('src/contentScript.js').matchAll(/getURL\(["'](src\/[^"']+\.js)["']\)/g)]
+            .map(([, path]) => path));
+        for (const path of reached) {
+            for (const [, specifier] of source(path).matchAll(/^\s*(?:import|export)\s+(?:[^'"]*?\s+from\s+)?["'](\.{1,2}\/[^"']+)["']/gm)) {
+                reached.add(new URL(specifier, new URL(path, root)).href.slice(root.href.length));
+            }
+        }
+
+        const missing = [...reached].filter((path) => !named.resources.includes(path));
+        assert.deepEqual(missing, []);
+    });
+
+    // Only the background page loads the wasm module, and the extension origin needs no WAR entry.
+    test('no group carries build/js.wasm', () => {
+        for (const group of base.web_accessible_resources) {
+            assert.ok(!group.resources.includes('build/js.wasm'));
+        }
     });
 });

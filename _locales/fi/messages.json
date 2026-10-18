@@ -15,7 +15,6 @@
     "message": "Klikkikuri - Purjehdi verkkoa ilman klikkiotsikkoja",
     "description": "Subtitle in header of options page."
   },
-
   "clickbaitinessLabel_Not_Clickbait_at_all": {
     "message": "Ei lainkaan klikkiotsikko",
     "description": "Label for the not clickbait at all title 'type' or 'severity'"
@@ -36,7 +35,6 @@
     "message": "Erittäin klikkiotsikko",
     "description": "Label for the extremely clickbaity title 'type' or 'severity'"
   },
-
   "clickbaitBadgeLevel0": {
     "message": "Neutraali",
     "description": "Short badge label for clickbait level 0 shown on feedback view cards"
@@ -57,7 +55,6 @@
     "message": "Äärimmäinen",
     "description": "Short badge label for clickbait level 4 shown on feedback view cards"
   },
-
   "siteTitleProcessingNotSupported": {
     "message": "Sivuston käsittelyä ei tueta",
     "description": "Message to show in 'main' title element when the visited site is not supported for processing"
@@ -66,7 +63,6 @@
     "message": "Sivuston käsittely on pois päältä",
     "description": "Message to show in 'main' title element when the visited site is disabled in settings"
   },
-
   "statsviewConvertedOfFound": {
     "message": "/ $FOUND$ ($PERCENT$ %)",
     "description": "Follows the converted title count in the stats view, giving it as a share of every title found on the site",
@@ -317,7 +313,6 @@
     "message": "Raja-arvo",
     "description": "Otsikko klikkitason raja-arvon erotinviivalle päänäkymän tilastolistassa"
   },
-
   "feedbackviewRateTitleOriginalTitleLabel": {
     "message": "Alkuperäinen:",
     "description": "Text marking the original title on the feedback view converted title rating section"
@@ -370,7 +365,6 @@
     "message": "Näytä klikkikynnyksen alittavat otsikot ($1)",
     "description": "Button to expand list showing headlines below clickbait threshold"
   },
-
   "settingsviewSitesEnabledTitle": {
     "message": "Käsiteltävät uutissivustot",
     "description": "Title of the settings view enabled sites section"
@@ -383,7 +377,6 @@
     "message": "Aktivoi Paatti",
     "description": "Label of the settings view master switch toggle"
   },
-
   "navigationMainLabel": {
     "message": "Klikkikuri",
     "description": "Label of the navigation menu main view button"
@@ -400,7 +393,6 @@
     "message": "Asetukset",
     "description": "Label of the navigation menu settings view button"
   },
-
   "homeviewStatusDisabled": {
     "message": "Paatti on pois käytöstä tällä sivustolla.",
     "description": "Text saying that Paatti is disabled on the current site"
@@ -413,52 +405,42 @@
     "message": "Tarkistetaan otsikoita…",
     "description": "Kotinäkymän teksti, kun Paatti odottaa sisältöskriptin ensimmäistä raporttia sivulta"
   },
-
   "homeviewStatusNoPageData": {
     "message": "Paatti ei saanut tietoja sivulta. Lataa sivu uudelleen.",
     "description": "Kotinäkymän teksti, kun sisältöskripti ei ehtinyt lähettää sivun tietoja"
   },
-
   "homeviewStatusDatabaseEmpty": {
     "message": "Otsikkotietokanta on tyhjä. Päivitä tietokanta.",
     "description": "Kotinäkymän teksti, kun paikallisessa otsikkotietokannassa ei ole yhtään merkintää"
   },
-
   "homeviewStatusNoTitlesFound": {
     "message": "Paatti ei löytänyt otsikoita tältä sivulta.",
     "description": "Kotinäkymän teksti, kun sivustosäännöt eivät osuneet yhteenkään sivun otsikkoon"
   },
-
   "homeviewStatusNoMatches": {
     "message": "Paatti löysi otsikoita, mutta niitä ei ole tietokannassa.",
     "description": "Kotinäkymän teksti, kun sivulta löytyi otsikoita mutta yksikään niistä ei ole otsikkotietokannassa"
   },
-
   "homeviewStatusLoadFailed": {
     "message": "Paatti ei saanut luettua tietojaan. Sulje ja avaa Paatti uudelleen.",
     "description": "Kotinäkymän teksti, kun ponnahdusikkuna ei saanut ladattua tietojaan"
   },
-
   "homeviewDatabaseUpdatedReload": {
     "message": "Tietokanta päivitetty. Lataa sivu uudelleen.",
     "description": "Kotinäkymän teksti tietokannan käsipäivityksen jälkeen; kehottaa lataamaan sivun uudelleen"
   },
-
   "homeviewStatusExtensionOff": {
     "message": "Paatti on pois päältä. Ota se käyttöön asetuksista.",
     "description": "Kotinäkymän teksti, kun laajennuksen pääkytkin on pois päältä"
   },
-
   "homeviewRequestSiteBtn": {
     "message": "Pyydä sivutukea",
     "description": "Label of the button to request site support on GitHub"
   },
-
   "preferencesViewMoreSettingsBtn": {
     "message": "Lisää asetuksia...",
     "description": "Label of the button in preferences view that opens options page"
   },
-
   "devmodeHiddenButtonTitle": {
     "message": "Asetuksia nörteille",
     "description": "Title-attribute of the hidden devmode activation button"
@@ -487,7 +469,6 @@
     "message": "Tietokannan tila",
     "description": "Title of the settings view database status section"
   },
-
   "databaseLastUpdated": {
     "message": "Haettu: $TIME$",
     "description": "Text showing when the database was last updated",
@@ -532,7 +513,6 @@
     "message": "Virhe!",
     "description": "Failure message after database update"
   },
-
   "settingsviewClickbaitLevelTitle": {
     "message": "Klikkiotsikoiden raja-arvo",
     "description": "Title of the settings view clickbait level section"
@@ -589,12 +569,26 @@
     "message": "Selvä",
     "description": "Painike joka sulkee tason 0 varoituksen niin ettei sitä näytetä uudelleen"
   },
-
+  "linkAboutText": {
+    "message": "Tietoja",
+    "description": "Short link text for a link with rel \"about\""
+  },
+  "linkPrivacyPolicyText": {
+    "message": "Tietosuojaseloste",
+    "description": "Short link text for a link with rel \"privacy-policy\""
+  },
+  "linkTermsOfServiceText": {
+    "message": "Käyttöehdot",
+    "description": "Short link text for a link with rel \"terms-of-service\""
+  },
+  "linkLicenseText": {
+    "message": "Lisenssi",
+    "description": "Short link text for a link with rel \"license\""
+  },
   "sitePolicyLinkText": {
     "message": "Julkaisijan periaatteet",
     "description": "Short link text for publisher's policy button"
   },
-
   "modifierAiSlopTitle": {
     "message": "Tekoälymerkintä (AI)",
     "description": "Otsikko tekoälymerkinnän valinnalle"
@@ -647,7 +641,6 @@
     "message": "Palaute oikaistusta otsikosta",
     "description": "Oikaisumerkinnän saavutettava nimi; merkinnästä avautuu palautekortti"
   },
-
   "settingSavedSuccess": {
     "message": "Asetus tallennettu!",
     "description": "Notification message shown when a setting is saved successfully"
@@ -660,7 +653,6 @@
     "message": "Vaihda laajennuksen tilaa nykyiselle sivustolle",
     "description": "Aria label for the power button that toggles the extension on/off for the current site"
   },
-
   "logoMadeWith": {
     "message": "Made with",
     "description": "Text in popup footer before logo"
@@ -689,7 +681,6 @@
     "message": "Klikkikuri-logo",
     "description": "Alt text for Klikkikuri logo"
   },
-
   "legendExtensionStatus": {
     "message": "🔌 Laajennuksen tila",
     "description": "Legend for extension status section"
@@ -714,7 +705,6 @@
     "message": "Virhe laajennuksen tilan tallentamisessa",
     "description": "Notification message when master switch state save fails"
   },
-
   "legendClickbaitLevel": {
     "message": "🎯 Klikkiotsikoiden taso",
     "description": "Legend for clickbait threshold section"
@@ -723,7 +713,6 @@
     "message": "Määritä, kuinka klikkikynnystä nostetaan",
     "description": "Description for clickbait threshold section"
   },
-
   "legendSiteConfig": {
     "message": "🌐 Sivustokohtaiset asetukset",
     "description": "Legend for site configuration section"
@@ -732,7 +721,6 @@
     "message": "Valitse, millä sivustoilla laajennus on käytössä",
     "description": "Description for site configuration section"
   },
-
   "legendTitleModifiers": {
     "message": "🏷️ Otsikkomerkinnät",
     "description": "Legend for title modifiers section"
@@ -741,7 +729,6 @@
     "message": "Ota käyttöön automaattiset ilmaisimet ja muokkaukset otsikoille (voimassa kaikilla laitteilla)",
     "description": "Description for title modifiers section"
   },
-
   "legendEnvironmentConfig": {
     "message": "⚙️ Ympäristön asetukset",
     "description": "Legend for environment configuration section"
@@ -782,7 +769,6 @@
     "message": "Virhe ympäristön tallentamisessa",
     "description": "Notification message when environment save fails"
   },
-
   "invitationTitle": {
     "message": "📧 Kutsu maksulliseen versioon",
     "description": "Title for paid version invitation section"
@@ -819,7 +805,6 @@
     "message": "Virhe sähköpostin rekisteröinnissä",
     "description": "Notification message on failed email registration"
   },
-
   "debugSettingsTitle": {
     "message": "🐛 Debug-asetukset",
     "description": "Title for debug settings section"
@@ -840,55 +825,10 @@
     "message": "Todennäköisyys, jolla piilotettu kuva ilmestyy sivun taustalle päivän ajaksi. Kummallakin teemalla on omansa; 0 % ei koskaan, 100 % joka päivä.",
     "description": "Description for the easter egg probability setting"
   },
-  "devTitleDataUrlsTitle": {
-    "message": "Tietokannan osoitteet (titleDataUrls)",
-    "description": "Title for development database URLs textarea"
+  "databaseUpdateNoDefaultProvider": {
+    "message": "Yhtään oletuslähdettä ei ole käytössä.",
+    "description": "Error shown when a manual database update finds no enabled default provider"
   },
-  "devTitleDataUrlsDesc": {
-    "message": "Syötä JSON-tietokantojen osoitteet kehitysympäristöä varten, yksi osoite per rivi.",
-    "description": "Description for development database URLs textarea"
-  },
-  "saveDevUrlsBtn": {
-    "message": "💾 Tallenna osoitteet",
-    "description": "Button to save development database URLs"
-  },
-  "requestDatasourcePermissionBtn": {
-    "message": "🔓 Pyydä käyttöoikeutta",
-    "description": "Button that asks the browser for host permission for the development database URLs"
-  },
-  "datasourcePermissionGranted": {
-    "message": "Käyttöoikeus tietokantaosoitteisiin myönnetty",
-    "description": "Notification message when the database URL host permission was granted"
-  },
-  "datasourcePermissionMissing": {
-    "message": "⚠️ Paatilla ei ole lupaa hakea: $ORIGINS$",
-    "description": "Warning beside the development database URLs, listing the origins the browser has not granted",
-    "placeholders": {
-      "origins": {
-        "content": "$1",
-        "example": "http://localhost/data.json*"
-      }
-    }
-  },
-  "devUrlsInvalid": {
-    "message": "Virheellinen kehitys-URL: $URL$",
-    "description": "Error message when a development URL is invalid",
-    "placeholders": {
-      "url": {
-        "content": "$1",
-        "example": "http://localhost:3000/data.json"
-      }
-    }
-  },
-  "devUrlsSavedSuccess": {
-    "message": "Kehitys-URL:t tallennettu!",
-    "description": "Notification message when development URLs are saved"
-  },
-  "devUrlsSavedError": {
-    "message": "Virhe tallennettaessa kehitys-URL:eja",
-    "description": "Notification message when development URLs save fails"
-  },
-
   "legendDatabaseUpdate": {
     "message": "🗄️ Tietokannan päivitys",
     "description": "Legend for database update section"
@@ -925,7 +865,6 @@
     "message": "Tietokannan luontiaika",
     "description": "Label for database generation timestamp"
   },
-
   "legendAbout": {
     "message": "ℹ️ Tietoja",
     "description": "Legend for about section"
@@ -1002,7 +941,6 @@
     "message": "ei mitään",
     "description": "Text displayed in about section when list is empty"
   },
-
   "aboutSpecialDayTitle": {
     "message": "Tänään",
     "description": "Heading of the about section line shown on a special day"
@@ -1051,7 +989,6 @@
     "message": "Teemun päivä.",
     "description": "Special day shown in the about section on 16 December. May contain a link."
   },
-
   "siteSettingSaved": {
     "message": "Sivuston $DOMAIN$ asetus tallennettu!",
     "description": "Notification message when site setting is saved",

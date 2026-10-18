@@ -2,8 +2,14 @@
 
 import browser from "./browser-api.js";
 import { getLogger } from "./utils.js";
+import { canRequestOrigins, canAddProviders } from "./options/origins.js";
 
 const log = getLogger("config");
+
+/** The official Rahti dataset's provider manifest, published in the sibling Klikkikuri/rahti repo
+ *  alongside its data.json -- not a paatti-owned resource, just the URL every environment's default
+ *  provider list points at. */
+const DEFAULT_RAHTI_MANIFEST_URL = "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/manifest.json";
 
 const DEFAULT_ENV = {
     "refreshIntervalMinutes": 20,
@@ -13,8 +19,12 @@ const DEFAULT_ENV = {
     // should feel like luck, not decoration.
     "easterEggProbability": 0.05,
     "email": "",
-    "titleDataUrls": ["https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"],
     "feedbackServerUrl": "https://docs.google.com/forms/d/e/1FAIpQLSf_vo9tpXAjbP1JyhNlgRdPnpPD1K3w6aPfern_jZfJVcHtCw/formResponse",
+    // Whether a provider may take over a site that an earlier provider already supplies, and whether one may be
+    // reached at a loopback address. Two independent powers, neither implied by the environment -- see
+    // getConfig() for why they must stay local, not synced.
+    "providerShadowingEnabled": false,
+    "loopbackProvidersEnabled": false,
 }
 
 const DEFAULT_CONFIG = {
@@ -27,307 +37,48 @@ const DEFAULT_CONFIG = {
         "converted": false
     },
 
-    // CONFIG: Configure per-site settings here.
-    "siteConfigs": {
-        "www.iltalehti.fi": {
-            "name": "Iltalehti",
-            "policyUrl": "https://www.iltalehti.fi/info/iltalehdesta",
-            "origins": ["https://www.iltalehti.fi/*"],
-            "enabled": true,
-            "rules": [
-                {
-                    // Breaking / Ticker section on front page
-                    "container": "div.newsticker > a.news-ticker-item",
-                    "link": "self",
-                    "title": "span.newsticker-title-text"
-                },
-                {
-                    // Sidebar content
-                    "container": "aside a.article-container",
-                    "link": "self",
-                    "title": "div.title"
-                },
-                {
-                    // card on front page
-                    "container": "main#main-content div.category-list div.card a",
-                    "link": "self",
-                    "title": "div.front-title"
-                },
-                {
-                    // card on topic index page
-                    "container": "main#main-content div.front div.card a",
-                    "link": "self",
-                    "title": "div.front-title"
-                },
-                {
-                    // Article page; inline "Lue myös" links
-                    "container": "article div.article-body div.related-article",
-                    "link": "a",
-                    "title": "a"
-                },
-                {
-                    // Article page: "Lue myös", "Suosittelemme" links
-                    "container": "article div.related-articles-list > a, article div.recommendations > a",
-                    "link": "self",
-                    "title": "div.title"
-                },
-                {
-                    // Luetuimmat card
-                    "container": "article div.card div.article-list > a",
-                    "link": "self",
-                    "title": "div.title"
-                }
-
-            ],
-        },
-        "www.hs.fi": {
-            "name": "Helsingin Sanomat",
-            "enabled": true,
-            "origins": ["https://www.hs.fi/*"],
-            "policyUrl": "https://www.hs.fi/info/art-2000006390609.html",
-            "rules": [
-                {
-                    // Sidebar content: "Luetuimmat", "Uusimmat"
-                    "container": "aside article ol > li",
-                    "link": "a",
-                    "title": "h3 span:last-child"
-                },
-                {
-                    // Main frontpage content card
-                    "container": "section[data-testid='main-lane-container'] article",
-                    "link": ":scope > a[class*='block']",
-                    "title": "h2 span:last-child"
-                },
-                {
-                    // Main frontpage list card, e.g. "Tärkeimmät tänään"
-                    "container": "section[data-testid='main-lane-container'] article > div > ol > li",
-                    "link": ":scope > a",
-                    "title": "h3 span:last-child"
-                },
-                {
-                    // Article page; "Artikkeliin liittyvää"
-                    "container": "section[data-testid='main-lane-container'] article .related-articles > a",
-                    "link": ":scope",
-                    "title": "h3 span:last-child"
-                }
-            ],
-        },
-        "yle.fi": {
-            "name": "Yle",
-            "enabled": true,
-            "policyUrl": "https://yle.fi/a/3-11405388",
-            "rules": [
-                { // "Tuoreimmat" section on front page
-                    "container": "aside li",
-                    "title": "h3 a",
-                    "link": "a[href*='/a/']",
-                },
-                {
-                    // The main article wrapper
-                    "container": "article.yle__article",
-                    // We look for 'Avaa koko juttu' link at the bottom
-                    "link": "section a[href^='/a/']:last-child",
-                    // The target to replace is the H2 heading
-                    "title": "header h2"
-                },
-                {
-                    // Lyhyesti -scroller without the last item that is just a "see more" -button.
-                    "container": "aside[aria-labelledby=newsbriefly-heading] li:not(:last-child) a",
-                    "link": "self",
-                    "title": "self"
-                },
-                { // Pääuutiset cards
-                    // The outermost wrapper that contains one full uutiskortti
-                    container: "#yle__contentAnchor div[class*='GenericStory__GenericStoryBackground']",
-
-                    // We target the link that contains the stable content-id attribute
-                    // We also look for the ID in the URL as a fallback
-                    link: "a[data-card-heading-content-id], a[href*='/a/']",
-
-                    // The title is always the <h3> or the <a> inside the <h3>
-                    title: "h3 a, h2 a"
-                },
-                {
-                    // Frontpage featured story card (title over image / video)
-                    container: "#yle__contentAnchor div[class*='FeatureStory__FeatureOverlay']",
-                    link: "h2 a",
-                    title: "h2 a"
-                },
-                {
-                    // Paikallisuutiset -scroller carousel on front page
-                    container: "ol > li div[class*='CarouselStory__Wrapper']",
-                    link: "a[href*='/a/']",
-                    title: "h3 a"
-                },
-                { // Aiheesta enemmän cards
-                    container: "[class*='yle__article__links'] [role=listitem]",
-                    link: "a[data-card-heading-content-id], a[href*='/a/']",
-                    title: "h3 a"
-                }
-            ],
-        },
-        "www.mtvuutiset.fi": {
-            "name": "MTV Uutiset",
-            "enabled": true,
-            "policyUrl": "https://www.mtvuutiset.fi/artikkeli/mtv-uutisten-periaatteet-tekoalyn-hyodyntamisessa/9305164",
-            // MTV uutiset uses react
-            "rules": [
-                {
-                    // Section: Main news cards and teaser components on the frontpage and category pages
-                    // Each individual news card is marked with this test id
-                    "container": "[data-testid='teaser-content']",
-                    "link": "a[data-testid='internal-link']",
-                    "title": "h2"
-                },
-                {
-                    // Section: Horizontal/vertical news ticker widget at the top of the frontpage (e.g. data-testid='news-ticker-component')
-                    // Ticker list at the top of frontpage
-                    "container": "ul[data-testid='news-ticker-component'] li",
-                    "link": "a[data-testid='internal-link']",
-                    "title": "span[class*='typography-title']"
-                },
-                {
-                    // Section: MTV Uutiset Nyt (newsfeed) feed carousel at the top of the frontpage
-                    // Ticker list (newsfeed) at the top of frontpage
-                    "container": "li[data-testid='newsfeed-list-item']",
-                    "link": "a[data-testid='internal-link']",
-                    "title": "span[data-testid='newsfeed-item-title'], span[class*='typography-subtitle']"
-                },
-                {
-                    // Section: "Tuoreimmat aiheesta" (Latest on topic) list shown under article pages
-                    "container": "ul[data-testid='unordered-list'] li",
-                    "link": "a[data-testid='internal-link']",
-                    "title": "h3"
-                },
-                {
-                    // Section: "Lisää aiheesta" (More on topic) suggestions links under/in articles
-                    // The link element is the container itself
-                    "container": "[data-testid='article-suggestions-component'] a[data-testid='internal-link']",
-                    "link": "self",
-                    "title": "self"
-                },
-                {
-                    // Section: Video gallery/carousel list items shown on video section pages (e.g. "Enemmän katsottavaa")
-                    "container": "[data-testid='video-gallery-list-item-view-component']",
-                    "link": "a[data-testid='internal-link']",
-                    "title": "h2[data-testid='video-title']"
-                },
-                {
-                    // In-body links to other articles (e.g. "Lue myös" links)
-                    "container": "div.article-text a[data-testid='internal-link'][role='link']",
-                    "link": "self",
-                    "title": "self"
-                },
-                {
-                    // Uutisvirta -page
-                    "container": "div.segment-uutisvirta section:has(h1) ul > li",
-                    "title": "h2",
-                    "link": "a[data-testid='internal-link'][role='link']"
-                }
-            ]
-        },
-        "aksa.fi": {
-            "name": "Äänekosken Kaupunkisanomat",
-            "enabled": true,
-            "rules": [
-                {
-                    // Front page big cards
-                    "container": "div.container div.block > div.w-full > div:not(.vaihtuvamainos)",
-                    "link": ":scope > a[href]",
-                    "title": ":scope > h2.entry-title"
-                },
-                {
-                    // Front page small cards
-                    "container": "div.w-full > div:not(.vaihtuvamainos) h3 > a",
-                    "link": "self",
-                    "title": "self"
-                },
-                {
-                    // Luetuimmat / Uusimmat
-                    "container": "div.sivupalkkilistauksetsisalto ul li > a",
-                    "link": "self",
-                    "title": "self"
-                },
-                {
-                    // "Aiheeseen liittyy"
-                    "container": "div.jp-relatedposts a",
-                    "link": "self",
-                    "title": "self"
-                },
-                {
-                    // Lue seuraavaksi
-                    "container": "li.relevanssi_related_post",
-                    "link": "a",
-                    "title": "a"
-                }
-            ]
-        },
-        "www.ampparit.com": {
-            "name": "Ampparit Uutispalvelut",
-            "enabled": false,  // Optional
-            "rules": [
-                {
-                    // Main list of news items on front page
-                    "container": "article.item",
-                    "link": ".item-title > a",
-                    "title": ".item-title > a"
-                },
-                {
-                    "container": "div.sidebox.popular .sidebox-content div.simple-item a[rel=\"noopener\"]",
-                    "link": "self",
-                    "title": "self"
-                }
-            ]
-        // },
-        // "old.reddit.com": {
-        //     "name": "Reddit (old)",
-        //     "enabled": false,  // Optional
-        //     "rules": [
-        //         {
-        //             // Main list of posts on front page and subreddit pages
-        //             "container": "div.linklisting div.entry",
-        //             "link": "p.title a.title",
-        //             "title": "p.title a.title"
-        //         }
-        //     ]
-        }
-    },
-
     "environmentConfigs": {
         "free": {
             ...DEFAULT_ENV,
-            "titleDataUrls": ["https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json"],
+            "defaultProviders": [DEFAULT_RAHTI_MANIFEST_URL],
         },
         "paid": {
             ...DEFAULT_ENV,
             "debugVisualsEnabled": false,
             "refreshIntervalMinutes": 10,
             "email": "",
+            "defaultProviders": [DEFAULT_RAHTI_MANIFEST_URL],
         },
         "development": {
             ...DEFAULT_ENV,
             "debugVisualsEnabled": true,
             "refreshIntervalMinutes": 1,
+            // On by default only here; loopbackProvidersEnabled is not, since reaching the user's
+            // own machine is an orthogonal power nothing about "development" implies.
+            "providerShadowingEnabled": true,
             "modifiers": {
                 "video": true,
                 "converted": true
             },
-            "titleDataUrls": [
-                "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json",
-                "http://localhost:3000/data.json"
-            ],
+            "defaultProviders": [DEFAULT_RAHTI_MANIFEST_URL],
             // "feedbackServerUrl": "http://localhost:3000/api/v1/feedback",
         },
     },
     "statistics": {},
 };
 
-// The keys getConfig() reads below. Everything else -- statistics above all, which are
-// written on every conversion batch -- leaves the cache alone.
+// The keys getConfig() reads below -- used both for the storage.sync.get() call itself and for cache
+// invalidation, so the two can never drift out of step the way they once did. Everything else --
+// statistics above all, which are written on every conversion batch -- leaves the cache alone.
 const WATCHED_KEYS = {
     local: ["userPreferences"],
-    sync: ["userSiteOverrides", "modifiers", "environmentConfigs", "clickbaitLevelWarningSeen"],
+    sync: ["userSiteOverrides", "modifiers", "environmentConfigs", "clickbaitLevelWarningSeen", "providers"],
 };
+
+// Where a provider's resolved content lives in storage.local: provider:<manifest url>. The source of
+// truth for the prefix: providers.js imports it from here rather than the other way around, since it
+// already depends on this module for settings.
+const PROVIDER_KEY_PREFIX = "provider:";
 
 let cachedConfig = null;
 let pendingConfigPromise = null;
@@ -339,7 +90,12 @@ const NOTHING = Symbol("nothing");
 
 // Registered on import, so it precedes every listener a module importing this one can add.
 browser.storage.onChanged.addListener((changes, areaName) => {
-    if (!WATCHED_KEYS[areaName]?.some((key) => key in changes)) return;
+    const watchedKeyChanged = WATCHED_KEYS[areaName]?.some((key) => key in changes);
+    // A provider's own namespace isn't a fixed key name, so it can't sit in WATCHED_KEYS -- caught by
+    // prefix instead, the same way its content is folded into siteConfigs below.
+    const providerDataChanged = areaName === "local"
+        && Object.keys(changes).some((key) => key.startsWith(PROVIDER_KEY_PREFIX));
+    if (!watchedKeyChanged && !providerDataChanged) return;
 
     log("Watched key changed in", areaName, "- invalidating config cache.");
     cachedConfig = null;
@@ -406,6 +162,35 @@ function onConfigValue(select, callback) {
 }
 
 /**
+ * Whether this build may use the provider at `url`. A build that cannot add providers uses only its default ones,
+ * also when browser sync brings in a provider that was added in another browser.
+ *
+ * @param {string} url
+ * @param {Set<string>} defaultProviders - The active environment's default provider URLs.
+ * @returns {boolean}
+ */
+function isUsableProvider(url, defaultProviders) {
+    return canAddProviders(browser.runtime.getManifest()) || defaultProviders.has(url);
+}
+
+/**
+ * The providers that supply one site, highest precedence first; the first one is the winner.
+ *
+ * A higher weight wins, and of equal weights the provider later in the list. With shadowing off, weight does not
+ * count: only the earliest provider is kept, and a later one fills no gap that an earlier one has filled.
+ *
+ * @param {Array<{weight: number}>} suppliers - In provider list order.
+ * @param {boolean} shadowing
+ */
+function rankSuppliers(suppliers, shadowing) {
+    if (!shadowing) return suppliers.slice(0, 1);
+    return suppliers
+        .map((supplier, position) => ({ supplier, position }))
+        .sort((a, b) => b.supplier.weight - a.supplier.weight || b.position - a.position)
+        .map(({ supplier }) => supplier);
+}
+
+/**
  * Gets the merged configuration for the current environment.
  */
 async function getConfig() {
@@ -419,7 +204,7 @@ async function getConfig() {
     const currentPromise = (async () => {
         const [localData, syncData] = await Promise.all([
             browser.storage.local.get("userPreferences"),
-            browser.storage.sync.get(["userSiteOverrides", "modifiers", "environmentConfigs", "clickbaitLevelWarningSeen"])
+            browser.storage.sync.get(WATCHED_KEYS.sync)
         ]);
 
         const userPreferences = localData.userPreferences || {};
@@ -427,23 +212,89 @@ async function getConfig() {
         const syncModifiers = syncData.modifiers || {};
         const syncEnvConfigs = syncData.environmentConfigs || {}; // Structure: { "free": { "easterEggProbability": 0.05 } }
 
+        // Providers own only their URL, order and enabled flag here; what each one resolved to lives
+        // in its own storage.local namespace and is read as one batched call below, not one per
+        // provider. src/providers.js writes that shape; the config keeps it as `providerData`, so the
+        // read side never loads a namespace again.
+        const providers = Array.isArray(syncData.providers) ? syncData.providers : [];
+
         const activeEnv = userPreferences.environment || DEFAULT_CONFIG.environment || "free";
 
         // Merge environment configs to avoid overwriting defaults
         const mergedEnvConfigs = {};
         const environments = ["free", "paid", "development"];
         for (const env of environments) {
+            // These two relax security, so they must be decided by the device they affect. Stripped
+            // out of the synced layer before the spread below, so a value arriving through sync --
+            // from a future change that syncs environmentConfigs wholesale, or a stale profile --
+            // can never override the local choice, in either direction.
+            const {
+                providerShadowingEnabled: _ignoredShadow,
+                loopbackProvidersEnabled: _ignoredLoopback,
+                ...syncedEnv
+            } = syncEnvConfigs[env] || {};
+
             mergedEnvConfigs[env] = {
                 ...DEFAULT_CONFIG.environmentConfigs[env],
                 ...(userPreferences.environmentConfigs?.[env] || {}),
                 // Synced settings win over the local ones, as with modifiers below.
-                ...(syncEnvConfigs[env] || {})
+                ...syncedEnv
             };
         }
 
         const envData = mergedEnvConfigs[activeEnv];
 
-        const mergedSiteConfigs = { ...DEFAULT_CONFIG.siteConfigs };
+        const defaultProviders = new Set(envData.defaultProviders || []);
+        const manifest = browser.runtime.getManifest();
+        const enabledProviders = providers.filter((provider) =>
+            provider?.enabled && provider?.url && isUsableProvider(provider.url, defaultProviders));
+        const enabledProviderUrls = enabledProviders.map((provider) => provider.url);
+        const providerKeys = enabledProviderUrls.map((url) => `${PROVIDER_KEY_PREFIX}${url}`);
+        const storedProviderData = providerKeys.length > 0 ? await browser.storage.local.get(providerKeys) : {};
+        const providerData = Object.fromEntries(enabledProviderUrls.map((url) =>
+            [url, storedProviderData[`${PROVIDER_KEY_PREFIX}${url}`] || {}]));
+
+        const mergedSiteConfigs = {};
+        // The providers that supply a domain's site, winner first: see rankSuppliers(). model.js's sourcesForHost()
+        // builds the lookup chain from this.
+        const siteConfigSources = {};
+
+        // Folded in before the override loop below, not after: that loop is what applies
+        // userSiteOverrides and fills in a default origin, and a provider-only site needs both.
+        //
+        // enabled: true means something different here than it does for a default provider: not
+        // "on", but "offered". A provider site always starts off regardless of what the provider
+        // declared, and only userSiteOverrides -- the user's own choice, made through the ordinary
+        // site toggle -- can turn it on; enabled: false in the provider's own data instead withdraws
+        // the offer entirely, so the site never appears at all.
+        //
+        // A default provider's sites keep their own `enabled`. A new site still needs its origin granted:
+        // isSiteEnabled() and the content script registration both check the permission.
+        //
+        // A site whose origins this build cannot request is left out: it could never be turned on. In the store
+        // build, that is a site its manifest does not declare. refreshOne() logs it once per fetch.
+        const suppliers = {};
+        for (const provider of enabledProviders) {
+            const isDefault = defaultProviders.has(provider.url);
+            const { siteConfigs = {}, siteWeights = {} } = providerData[provider.url];
+            for (const [domain, siteConfig] of Object.entries(siteConfigs)) {
+                if (!isDefault && !siteConfig.enabled) continue;
+                const origins = siteConfig.origins || [`https://${domain}/*`];
+                if (!canRequestOrigins(origins, manifest)) continue;
+                (suppliers[domain] ||= []).push({
+                    url: provider.url,
+                    origins,
+                    weight: siteWeights[domain] ?? 0,
+                    site: isDefault ? siteConfig : { ...siteConfig, enabled: false }
+                });
+            }
+        }
+        for (const [domain, candidates] of Object.entries(suppliers)) {
+            const ranked = rankSuppliers(candidates, envData.providerShadowingEnabled);
+            mergedSiteConfigs[domain] = ranked[0].site;
+            siteConfigSources[domain] = ranked.map(({ url, origins }) => ({ url, origins }));
+        }
+
         for (const [domain, siteConfig] of Object.entries(mergedSiteConfigs)) {
             // Merge siteConfigs with sync overrides
             if (syncOverrides.hasOwnProperty(domain)) {
@@ -464,7 +315,7 @@ async function getConfig() {
         const finalConfig = {
             ...DEFAULT_CONFIG,
             ...userPreferences, // Overwrite defaults with user choices (e.g., "enabled": false)
-            ...envData,         // Flatten environment data (e.g., titleDataUrl) into the top level
+            ...envData,         // Flatten environment data (e.g., defaultProviders) into the top level
             modifiers: {
                 ...DEFAULT_CONFIG.modifiers,
                 ...(envData?.modifiers || {}),
@@ -472,7 +323,13 @@ async function getConfig() {
             },
             environmentConfigs: mergedEnvConfigs,
             siteConfigs: mergedSiteConfigs, // Use properly merged site configs
+            siteConfigSources,
+            // Enabled providers only, so that a disabled one gives "no data", not its last resolved content.
+            providerData,
             activeEnv: activeEnv,
+            enabledProviderUrls,
+            // In defaultProviders order, because a later default provider wins in getRahtiEntries().
+            enabledDefaultProviderUrls: (envData.defaultProviders || []).filter((url) => enabledProviderUrls.includes(url)),
             // Synced, so the warning about the "all headlines" level is dismissed once per person
             // rather than once per device.
             clickbaitLevelWarningSeen: syncData.clickbaitLevelWarningSeen === true
@@ -491,4 +348,4 @@ async function getConfig() {
     return pendingConfigPromise;
 }
 
-export { getConfig, onConfigValue };
+export { getConfig, onConfigValue, isUsableProvider, PROVIDER_KEY_PREFIX, DEFAULT_RAHTI_MANIFEST_URL };

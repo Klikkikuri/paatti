@@ -2,7 +2,7 @@
 
 import browser from "./browser-api.js";
 import { getLogger } from "./utils.js";
-import { getConfig } from "./config.js";
+import { getConfig, onConfigValue } from "./config.js";
 import { mergeStats } from "./stats.js";
 
 const log = getLogger("model");
@@ -120,6 +120,19 @@ function matchesOrigin(hostname, originPattern) {
 }
 
 /**
+ * How narrowly an origin pattern names a host: an exact host beats `*.hs.fi`, a longer `*.` host beats a shorter one,
+ * and `*` is the least specific.
+ *
+ * @param {string} originPattern
+ * @returns {number}
+ */
+function originSpecificity(originPattern) {
+    const patternHost = originPattern.split("://")[1]?.split("/")[0] ?? "";
+    if (patternHost === "*") return 0;
+    return patternHost.startsWith("*.") ? patternHost.length : Number.MAX_SAFE_INTEGER;
+}
+
+/**
  * Checks if a hostname matches any of the given origin patterns.
  * 
  * @param {string} hostname - The hostname to test
@@ -128,6 +141,170 @@ function matchesOrigin(hostname, originPattern) {
  */
 function matchesAnyOrigin(hostname, origins) {
     return origins.some(origin => matchesOrigin(hostname, origin));
+}
+
+/**
+ * The `[domain, siteConfig]` entry of `siteConfigs` whose origins cover `hostname` most narrowly, or `[null, null]`.
+ * A site that names the host (`www.hs.fi`) comes before one that names its subdomains (`*.hs.fi`); of equal
+ * entries, the first one.
+ * The one host-matching lookup `isEnabled`, `getMatchingSiteDomain`, `getSiteRules` and
+ * `sourcesForHost` all need, each just reading a different field off the result.
+ *
+ * @param {object} siteConfigs
+ * @param {string} hostname
+ * @returns {[string, object]|[null, null]}
+ */
+function findSiteConfig(siteConfigs, hostname) {
+    let best = [null, null];
+    let bestSpecificity = -1;
+    for (const entry of Object.entries(siteConfigs)) {
+        const [, siteConfig] = entry;
+        const specificity = Math.max(-1, ...(siteConfig.origins || [])
+            .filter((origin) => matchesOrigin(hostname, origin))
+            .map(originSpecificity));
+        if (specificity > bestSpecificity) {
+            best = entry;
+            bestSpecificity = specificity;
+        }
+    }
+    return best;
+}
+
+/**
+ * The sources a link to `hostname` is looked up in, highest precedence first.
+ *
+ * The claimants come first among themselves in the order of `config.siteConfigSources`: the providers that supply the
+ * site of the host and whose own origins cover it. A default provider is always a claimant when it supplies the
+ * site; any other provider only when the user turned the site on. Every enabled default provider that is not a
+ * claimant still answers, a later one first. With shadowing on, the claimants come before these; with shadowing
+ * off, after them, so that a provider only fills the gaps in the official data.
+ *
+ * A default provider that is not a claimant can still have a less specific site of its own that covers the host.
+ * It then claims the host in its own position, so that a provider site does not change the official sign.
+ *
+ * @param {object} config - From `getConfig()`.
+ * @param {string} hostname
+ * @returns {Array<{url: string, claims: boolean}>} `claims`: the provider's own site config covers the host.
+ */
+function sourcesForHost(config, hostname) {
+    const [domain, siteConfig] = findSiteConfig(config.siteConfigs, hostname);
+    const defaultUrls = config.enabledDefaultProviderUrls;
+    const covers = (url) => Object.values(config.siteConfigSources).some((sources) =>
+        sources.some((source) => source.url === url && matchesAnyOrigin(hostname, source.origins)));
+
+    const claimants = (config.siteConfigSources[domain] || [])
+        .filter(({ url, origins }) => matchesAnyOrigin(hostname, origins) && (siteConfig?.enabled || defaultUrls.includes(url)))
+        .map(({ url }) => ({ url, claims: true }));
+    const claimantUrls = new Set(claimants.map(({ url }) => url));
+    const otherDefaults = [...defaultUrls].reverse()
+        .filter((url) => !claimantUrls.has(url))
+        .map((url) => ({ url, claims: covers(url) }));
+    return config.providerShadowingEnabled ? [...claimants, ...otherDefaults] : [...otherDefaults, ...claimants];
+}
+
+/**
+ * The timestamps of the official dataset, from the stored data of the enabled default provider(s).
+ *
+ * The official dataset is itself a provider (see config.js's defaultProviders), so its "last checked" and
+ * "generation date" live in its own provider namespace, same as any other. A disabled default provider is
+ * excluded -- it must read as having no data, not stale leftovers from before it was turned off.
+ *
+ * `lastDatabaseUpdate` is the last refresh with no fetch error; `lastDatabaseCheck` is the last attempt, failed or
+ * not. Content stored before `checked` existed falls back to `updated`.
+ *
+ * @param {object} config - From `getConfig()`.
+ */
+function databaseStatus(config) {
+    const results = config.enabledDefaultProviderUrls.map((url) => config.providerData[url]);
+    return {
+        lastDatabaseUpdate: results.reduce((max, r) => Math.max(max, r.updated || 0), 0) || null,
+        lastDatabaseCheck: results.reduce((max, r) => Math.max(max, r.checked || r.updated || 0), 0) || null,
+        databaseGenerationDate: results.reduce((max, r) =>
+            (r.databaseGenerationDate && (!max || new Date(r.databaseGenerationDate) > new Date(max)))
+                ? r.databaseGenerationDate : max, null)
+    };
+}
+
+/**
+ * How many titles the local database holds, summed across all enabled providers, so that a setup with only
+ * third-party providers is not empty.
+ *
+ * Reads each provider's own `entryCount` field, computed once at refresh time by refreshOne, so that a status read
+ * does not count `rahtiData`. A summed count, not a true set union: providers whose data overlaps on some `sign`
+ * give an overcount. This is accepted, because it is a UI "roughly how much data" signal, not used for correctness.
+ *
+ * This, not lastDatabaseUpdate, is the test for an empty database. That timestamp is evidence of a fetch and never
+ * of content -- it is written on an all-304 response, which touches no data, and a successful fetch can fail to
+ * write it at all.
+ *
+ * @param {object} config - From `getConfig()`.
+ * @returns {number} 0 when nothing has been stored.
+ */
+function databaseEntryCount(config) {
+    return Object.values(config.providerData).reduce((sum, r) => sum + (r.entryCount || 0), 0);
+}
+
+/**
+ * Sign each URL once for each layer of its host's lookup chain, under the rules of that layer.
+ *
+ * A layer signs under its provider's named Suola set when the provider claims the host. A provider that has
+ * Suola rules but no active set (`defineRules` refused them) gets `sign: null`: a sign from the wrong rules is
+ * a valid string that no later check can catch. All other layers use the base rules.
+ *
+ * `officialSign` is the sign of the highest default layer. It is the base sign when no default is enabled, or when
+ * that layer has no sign because its rules were refused. It identifies the link to the feedback server and in the statistics, so it must not change with provider coverage.
+ *
+ * @param {object} config - From `getConfig()`.
+ * @param {string[]} urls
+ * @param {{hashUrl: Function, activeNames: Set<string>}} suola - Suola's `hashUrl` and its `listRules()` names.
+ * @returns {Object<string, {layers: Array<{source: string, sign: string|null}>, officialSign: string}|null>}
+ *   Null for a URL that cannot be signed.
+ */
+function signUrls(config, urls, { hashUrl, activeNames }) {
+    const chains = new Map();
+    const signs = {};
+    for (const url of urls) {
+        try {
+            const hostname = new URL(url).hostname;
+            if (!chains.has(hostname)) chains.set(hostname, sourcesForHost(config, hostname));
+
+            let baseSign;
+            const base = () => (baseSign ??= hashUrl(url));
+            const layers = chains.get(hostname).map(({ url: source, claims }) => {
+                if (claims && activeNames.has(source)) return { source, sign: hashUrl(url, source) };
+                if (claims && config.providerData[source].suolaRules) return { source, sign: null };
+                return { source, sign: base() };
+            });
+            const defaultLayer = layers.find(({ source }) => config.enabledDefaultProviderUrls.includes(source));
+            signs[url] = { layers, officialSign: defaultLayer?.sign ?? base() };
+        } catch (err) {
+            log(`Error signing URL '${url}':`, err);
+            signs[url] = null;
+        }
+    }
+    return signs;
+}
+
+/**
+ * Write one field under `userPreferences.environmentConfigs[env]`, in storage.local. The shape every
+ * per-environment, device-local setting uses -- currently the two provider safety toggles, which must
+ * never be decided anywhere but the device they affect. See config.js's getConfig() for why this is
+ * local rather than sync.
+ *
+ * @param {string} field
+ * @param {*} value
+ * @param {string} [env] - Defaults to the active environment.
+ */
+async function setLocalEnvField(field, value, env) {
+    if (!env) env = await getConfig().then((cfg) => cfg.activeEnv);
+    log(`Setting ${field} for environment '${env}' to ${value}`);
+
+    const data = await browser.storage.local.get("userPreferences");
+    const userPreferences = data.userPreferences || {};
+    if (!userPreferences.environmentConfigs) userPreferences.environmentConfigs = {};
+    if (!userPreferences.environmentConfigs[env]) userPreferences.environmentConfigs[env] = {};
+    userPreferences.environmentConfigs[env][field] = value;
+    await browser.storage.local.set({ userPreferences });
 }
 
 /**
@@ -185,19 +362,17 @@ const model = (() => {
                 await browser.storage.local.set({ userPreferences });
             },
 
-            setDevTitleDataUrls: async (urls) => {
-                log(`Setting development title data URLs:`, urls);
-                const data = await browser.storage.local.get("userPreferences");
-                const userPreferences = data.userPreferences || {};
-                if (!userPreferences.environmentConfigs) {
-                    userPreferences.environmentConfigs = {};
-                }
-                if (!userPreferences.environmentConfigs.development) {
-                    userPreferences.environmentConfigs.development = {};
-                }
-                userPreferences.environmentConfigs.development.titleDataUrls = urls;
-                await browser.storage.local.set({ userPreferences });
-            },
+            /**
+             * Whether a provider may take over a site that an earlier provider already
+             * supplies. Per environment, local, and read only from
+             * `userPreferences.environmentConfigs[env]` -- see `getConfig()`, which strips this key
+             * out of anything arriving through sync so the device it protects is always the one that
+             * decides it.
+             */
+            setProviderShadowingEnabled: async (value, env) => setLocalEnvField("providerShadowingEnabled", value, env),
+
+            /** Whether a provider may be reached at a loopback address. Same storage shape and reasoning as above. */
+            setLoopbackProvidersEnabled: async (value, env) => setLocalEnvField("loopbackProvidersEnabled", value, env),
 
             setEasterEggProbability: async (value, env) => {
                 // Property of an environment, like the email below, but kept in sync
@@ -256,24 +431,6 @@ const model = (() => {
                 await browser.storage.local.remove("statistics");
             },
 
-            setTitleDataUrl: async (value) => {
-                const data = await browser.storage.local.get("userPreferences");
-                const userPreferences = data.userPreferences || {};
-                if (!userPreferences.titleDataUrls) {
-                    userPreferences.titleDataUrls = [];
-                }
-                userPreferences.titleDataUrls = [value];
-                await browser.storage.local.set({ userPreferences });
-                // TODO: Need event here or just manually do it at controller?
-            },
-
-            setTestTitleDataUrl: async (value) => {
-                const data = await browser.storage.local.get("userPreferences");
-                const userPreferences = data.userPreferences || {};
-                userPreferences.testTitleDataUrl = value;
-                await browser.storage.local.set({ userPreferences });
-            },
-
             setEmail: async (value, env) => {
                 // Email is property of environment
                 if (!env) {
@@ -329,14 +486,8 @@ const model = (() => {
                     return isGloballyEnabled;
                 }
 
-                // Find matching site config by checking if hostname matches any origin pattern
-                for (const [domain, siteConfig] of Object.entries(config.siteConfigs)) {
-                    if (siteConfig.origins && matchesAnyOrigin(hostname, siteConfig.origins)) {
-                        return isGloballyEnabled && siteConfig.enabled;
-                    }
-                }
-
-                return false;
+                const [, siteConfig] = findSiteConfig(config.siteConfigs, hostname);
+                return siteConfig ? isGloballyEnabled && siteConfig.enabled : false;
             },
 
 
@@ -355,30 +506,11 @@ const model = (() => {
                 return !!config.debugVisualsEnabled;
             },
 
-            getDatabaseStatus: async () => {
-                const data = await browser.storage.local.get(["lastDatabaseUpdate", "databaseGenerationDate"]);
-                return {
-                    lastDatabaseUpdate: data.lastDatabaseUpdate || null,
-                    databaseGenerationDate: data.databaseGenerationDate || null
-                };
-            },
+            /** See databaseStatus(). */
+            getDatabaseStatus: async () => databaseStatus(await getConfig()),
 
-            /**
-             * How many titles the local database holds.
-             *
-             * Kept out of getDatabaseStatus, whose callers re-read on every timestamp write: the
-             * index is one string per entry, and none of them want to deserialize it.
-             *
-             * This, not lastDatabaseUpdate, is the test for an empty database. That timestamp is
-             * evidence of a fetch and never of content -- it is written on an all-304 response,
-             * which touches no data, and a successful fetch can fail to write it at all.
-             *
-             * @returns {Promise<number>} Entry count, 0 when nothing has been stored.
-             */
-            getDatabaseEntryCount: async () => {
-                const data = await browser.storage.local.get("rahtiData_index");
-                return Array.isArray(data.rahtiData_index) ? data.rahtiData_index.length : 0;
-            },
+            /** See databaseEntryCount(). */
+            getDatabaseEntryCount: async () => databaseEntryCount(await getConfig()),
 
             /**
              * The salt that gives this install its own easter egg calendar.
@@ -429,33 +561,34 @@ const model = (() => {
             getMatchingSiteDomain: async (hostname) => {
                 if (!hostname) return null;
                 const config = await getConfig();
-                for (const [domain, siteConfig] of Object.entries(config.siteConfigs)) {
-                    if (siteConfig.origins && matchesAnyOrigin(hostname, siteConfig.origins)) {
-                        return domain;
-                    }
-                }
-                return null;
+                const [domain] = findSiteConfig(config.siteConfigs, hostname);
+                return domain;
             },
 
             getSiteRules: async (hostname) => {
                 const config = await getConfig();
-                for (const [domain, siteConfig] of Object.entries(config.siteConfigs)) {
-                    if (siteConfig.origins && matchesAnyOrigin(hostname, siteConfig.origins)) {
-                        return siteConfig.rules;
-                    }
+                const [, siteConfig] = findSiteConfig(config.siteConfigs, hostname);
+                return siteConfig ? siteConfig.rules : null;
+            },
+
+            /**
+             * The Rahti entry of each link, from the first layer of its chain that has the layer's sign.
+             *
+             * Reads the provider data that `getConfig()` already holds, so a page of links costs no
+             * storage reads. A layer of a provider that is not enabled now is skipped.
+             *
+             * @param {Object<string, {layers: Array<{source: string, sign: string|null}>}|null>} signsByUrl - From `signUrls()`.
+             * @returns {Promise<Object<string, object|null>>} By the same keys.
+             */
+            getRahtiEntries: async (signsByUrl) => {
+                const { providerData } = await getConfig();
+                const entryOf = ({ source, sign }) => (sign ? providerData[source]?.rahtiData?.[sign] : undefined);
+                const entries = {};
+                for (const [url, signs] of Object.entries(signsByUrl)) {
+                    const layer = signs?.layers.find((candidate) => entryOf(candidate) !== undefined);
+                    entries[url] = layer ? entryOf(layer) : null;
                 }
-                return null;
-            },
-
-
-            getTitleDataUrls: async () => {
-                const config = await getConfig();
-                return config.titleDataUrls;
-            },
-
-            getTestTitleDataUrl: async () => {
-                const config = await getConfig();
-                return config.testTitleDataUrl;
+                return entries;
             },
 
             getStatistics: async (hostname) => {
@@ -476,14 +609,16 @@ const model = (() => {
 
             getLinkTitleQuerySelectors: async (hostname) => {
                 const config = await getConfig();
-                const selectors = config.siteConfigs[hostname]?.linkTitleQuerySelectors;
+                const [, siteConfig] = findSiteConfig(config.siteConfigs, hostname);
+                const selectors = siteConfig?.linkTitleQuerySelectors;
                 log(`The title selectors for ${hostname}:`, selectors);
                 return selectors;
             },
 
             getMutationProneQuerySelectors: async (hostname) => {
                 const config = await getConfig();
-                const selectors = config.siteConfigs[hostname]?.mutationProneQuerySelectors;
+                const [, siteConfig] = findSiteConfig(config.siteConfigs, hostname);
+                const selectors = siteConfig?.mutationProneQuerySelectors;
                 log(`The mutation prone selectors for ${hostname}:`, selectors);
                 return selectors;
             },
@@ -519,7 +654,22 @@ const model = (() => {
                 return !!config.modifiers?.converted;
             }
         },
+
+        watch: {
+            /**
+             * Calls back once now, and then whenever getDatabaseStatus() or getDatabaseEntryCount() reads
+             * something different.
+             *
+             * Watches the values themselves, not storage keys, because a change to the provider list or to the
+             * environment changes them as much as a provider refresh does.
+             *
+             * @param {() => void} callback
+             * @returns {() => void} Unsubscribes when called.
+             */
+            onDatabaseStatusChanged: (callback) =>
+                onConfigValue((config) => [databaseStatus(config), databaseEntryCount(config)], () => callback())
+        }
     };
 })();
 
-export { model, klikkikuriStatus, Clickbaitiness, clampProbability };
+export { model, klikkikuriStatus, Clickbaitiness, clampProbability, matchesAnyOrigin, signUrls };

@@ -12,6 +12,10 @@
  * hostname with an `A` record inside RFC 1918 passes every check here, and nothing downstream catches
  * it -- CORS governs what a page may *read*, never whether the request was sent. This bounds the
  * careless and the naive case, not a determined one.
+ *
+ * `allowLoopback` is the one deliberate exception: a caller who has the user's own opt-in may re-admit
+ * loopback addresses alone, for a provider the user chose to reach on their own machine. Every other
+ * reserved range, and loopback itself without the option, stays refused.
  */
 
 /** How long a request may take before it is abandoned. */
@@ -83,12 +87,16 @@ function inRange(bytes, [network, prefixBits]) {
     return true;
 }
 
+/** The loopback CIDRs, named once so the block table and `LOOPBACK_V4`/`LOOPBACK_V6` below can't drift apart. */
+const LOOPBACK_V4_CIDR = ["127.0.0.0", 8];
+const LOOPBACK_V6_CIDR = ["::1", 128];
+
 /** Ranges that never hold a public server. Parsed through the same parsers, so a typo in the table shows up here. */
 const BLOCKED_V4 = [
     ["0.0.0.0", 8],         // unspecified, and "this host on this network"
     ["10.0.0.0", 8],        // private
     ["100.64.0.0", 10],     // carrier-grade NAT
-    ["127.0.0.0", 8],       // loopback
+    LOOPBACK_V4_CIDR,
     ["169.254.0.0", 16],    // link-local
     ["172.16.0.0", 12],     // private
     ["192.0.0.0", 24],      // IETF protocol assignments
@@ -104,7 +112,7 @@ const BLOCKED_V4 = [
 
 const BLOCKED_V6 = [
     ["::", 128],            // unspecified
-    ["::1", 128],           // loopback
+    LOOPBACK_V6_CIDR,
     ["64:ff9b::", 96],      // NAT64, which reaches an IPv4 address through a v6 spelling
     ["100::", 64],          // discard-only
     ["2001::", 32],         // Teredo, which carries an IPv4 address
@@ -118,13 +126,50 @@ const BLOCKED_V6 = [
 /** IPv4-mapped IPv6 is `::ffff:0:0/96`; the address it carries is the last 4 bytes. */
 const IPV4_MAPPED = [parseIPv6("[::ffff:0:0]"), 96];
 
+/** The loopback rows of the tables above, addressed on their own so `allowLoopback` can re-admit exactly them. */
+const LOOPBACK_V4 = [parseIPv4(LOOPBACK_V4_CIDR[0]), LOOPBACK_V4_CIDR[1]];
+const LOOPBACK_V6 = [parseIPv6(`[${LOOPBACK_V6_CIDR[0]}]`), LOOPBACK_V6_CIDR[1]];
+
+/**
+ * `hostname` as address bytes, with an IPv4-mapped IPv6 literal unwrapped to the IPv4 it carries -- the
+ * one classification step every address-range check here needs before it can compare against a table.
+ *
+ * @param {string} hostname
+ * @returns {number[]|null} 4 bytes for IPv4 (mapped or bare), 16 for IPv6, null for a name.
+ */
+function parseAddress(hostname) {
+    const v6 = parseIPv6(hostname);
+    if (v6) return inRange(v6, IPV4_MAPPED) ? v6.slice(12) : v6;
+    return parseIPv4(hostname);
+}
+
+/**
+ * Whether `hostname` is a loopback spelling: `127.0.0.0/8`, `::1`, an IPv4-mapped form of either, or
+ * the names `localhost` and `*.localhost`. Not `.local` -- mDNS, not loopback -- and not the
+ * unspecified addresses, which stay refused even where loopback is allowed.
+ *
+ * @param {string} hostname - Already lowercased and canonicalised, e.g. via `new URL().hostname`; this
+ *   does no normalisation of its own, so an uppercase-spelled name would not match `localhost` here.
+ * @returns {boolean}
+ */
+export function isLoopbackHost(hostname) {
+    const address = parseAddress(hostname);
+    if (address) return inRange(address, address.length === 4 ? LOOPBACK_V4 : LOOPBACK_V6);
+
+    const name = hostname.endsWith(".") ? hostname.slice(0, -1) : hostname;
+    return name === "localhost" || name.endsWith(".localhost");
+}
+
 /**
  * Why `url` must not be requested, or null when nothing here objects to it.
  *
  * @param {string|URL} url
+ * @param {object} [options]
+ * @param {boolean} [options.allowLoopback] - Re-admit loopback addresses, for a provider the user opted
+ *   into reaching on their own machine. Every other reserved range stays refused.
  * @returns {string|null}
  */
-export function blockReason(url) {
+export function blockReason(url, { allowLoopback = false } = {}) {
     let parsed;
     try {
         parsed = new URL(url);
@@ -135,18 +180,12 @@ export function blockReason(url) {
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return `scheme ${parsed.protocol}`;
 
     const host = parsed.hostname;
+    if (allowLoopback && isLoopbackHost(host)) return null;
 
-    const v6 = parseIPv6(host);
-    if (v6) {
-        const address = inRange(v6, IPV4_MAPPED) ? v6.slice(12) : v6;
+    const address = parseAddress(host);
+    if (address) {
         const blocked = address.length === 4 ? BLOCKED_V4 : BLOCKED_V6;
         if (blocked.some((range) => inRange(address, range))) return `reserved address ${host}`;
-        return null;
-    }
-
-    const v4 = parseIPv4(host);
-    if (v4) {
-        if (BLOCKED_V4.some((range) => inRange(v4, range))) return `reserved address ${host}`;
         return null;
     }
 
@@ -171,10 +210,11 @@ export function blockReason(url) {
  * @param {object} [options]
  * @param {RequestInit} [options.init] - Laid *under* the four fields above, which it cannot relax.
  * @param {number} [options.timeoutMs]
+ * @param {boolean} [options.allowLoopback] - See `blockReason`.
  * @returns {Promise<Response>}
  */
-export async function safeFetch(url, { init = {}, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
-    const reason = blockReason(url);
+export async function safeFetch(url, { init = {}, timeoutMs = DEFAULT_TIMEOUT_MS, allowLoopback = false } = {}) {
+    const reason = blockReason(url, { allowLoopback });
     if (reason) throw new Error(`Refused to fetch: ${reason}`);
 
     return fetch(url, {

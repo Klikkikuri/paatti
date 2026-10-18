@@ -217,13 +217,14 @@ the directory through `chrome://extensions` → **Developer mode** → **Load un
 
 - `host_permissions`: Paatti reads the headlines on the supported news sites and replaces their text, so it
   needs access to those pages. This permission also covers
-  `raw.githubusercontent.com/Klikkikuri/rahti/*`, which is where Paatti downloads the correction database
-  from.
+  `raw.githubusercontent.com/Klikkikuri/rahti/*`, which is where Paatti downloads the correction database,
+  the site settings and the URL normalization rules (Suola rules) from.
 - `optional_host_permissions`: Paatti asks for these only when you need them. `www.ampparit.com` is requested
-  when you switch that site on. The GitHub build also declares `*://*/*`, so that the **Request access
-  permission** button under Debug Settings can grant a database URL on any host. Paatti requests access only for
-  the URLs in your list. Firefox limits the grant to the path of each URL; Chrome grants the whole host. The
-  store build does not declare the wildcard.
+  when you switch that site on. The GitHub build also declares `*://*/*`, so that you can add a
+  [provider](docs/providers.md) under Debug Settings. A provider is a set of correction files that another
+  person or organization publishes on their own `https` server. Paatti asks for the provider's host when you add
+  it, for the hosts of its files when you confirm, and for the host of one of its sites when you turn that site
+  on. The store build does not declare the wildcard, so it cannot add a provider.
 - `alarms`: Paatti schedules the database download in the background. The alarm lets the background service
   worker sleep between downloads, which saves system resources.
 - `storage`: Paatti keeps the downloaded correction database, your settings, your statistics and the site icon
@@ -247,10 +248,12 @@ Klikkikuri Paatti is the browser extension. Three other projects stand behind it
 - [suola](https://github.com/Klikkikuri/suola) normalizes and hashes URLs. The backend and the extension use
   the same module, so both sides agree on the signature for an article.
 - [rahti](https://github.com/Klikkikuri/rahti) publishes the result as
-  [`data.json`](https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json).
+  [`data.json`](https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/data.json). Its
+  [manifest](https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/manifest.json) lists that file
+  with the site settings and the Suola rules.
 
-Paatti downloads that file, keeps it on your device, and looks each headline up in it. Your browsing does not
-leave your machine to make a lookup.
+Paatti downloads the files of that manifest, keeps them on your device, and looks each headline up in them. Your
+browsing does not leave your machine to make a lookup.
 
 Which headlines the database covers is decided by the backend, not by the extension. Sports headlines, for
 example, are not corrected, although they are often written in a sensational style.
@@ -299,9 +302,9 @@ make build
 (`js.wasm` and its support file `wasm_exec.js`) with Docker, or with a host toolchain when `DOCKER=false`. The
 two files must come from the same toolchain to work together, so run `make clean` when you change build method.
 Finally it stages the extension assets (`src/`, `icons/`, `_locales/`, `manifest.json`, `LICENSE.md`,
-`LISENSSI.md` and `docs/PRIVACY_POLICY.md`) with the WebAssembly binaries into `build/dist/`, writes one tree per
-browser into `build/dist-chrome/` and `build/dist-firefox/`, and packages them into
-`build/klikkikuri-paatti-chrome.zip` and `build/klikkikuri-paatti-firefox.zip`.
+`LISENSSI.md`, `docs/PRIVACY_POLICY.md` and `docs/PRIVACY_POLICY_DEVELOPMENT.md`) with the WebAssembly
+binaries into `build/dist/`, writes one tree per browser into `build/dist-chrome/` and `build/dist-firefox/`,
+and packages them into `build/klikkikuri-paatti-chrome.zip` and `build/klikkikuri-paatti-firefox.zip`.
 
 If the `suola` submodule is missing, `make` fetches it with `make init`. You can also clone the repository
 with `git clone --recursive` to get it from the start.
@@ -346,8 +349,9 @@ make build NON_OSS=1
 Other targets: `make package` zips the per-browser trees, `make dist-chrome` and `make dist-firefox` stage one
 browser's tree, `make store-build` overwrites the two zips with the store packages (always with `NON_OSS=1` and
 `USE_RELEASE_ARTIFACTS=1`) and adds the source archive for a manual store upload,
-`make source-dist` packages the source for review, `make rebuild-suola` forces a WebAssembly rebuild, and
-`make test-wasm` runs suola's own smoke test.
+`make source-dist` packages the source for review, `make rebuild-suola` forces a WebAssembly rebuild,
+`make test-wasm` runs suola's own smoke test, and `make sites-sync` writes the origins of the default sites into
+`manifest.json`. See [Default Site Permissions](docs/release.md#default-site-permissions).
 
 `manifest.json` is the base for both browsers; `manifest.chrome.json` and `manifest.firefox.json` remove what the
 other browser does not accept. See [Browser Manifests](docs/release.md#browser-manifests) for the merge rules.
@@ -388,7 +392,8 @@ make test
 The suites live in `tests/` and run on the built-in [`node:test`](https://nodejs.org/api/test.html) runner. A new
 `tests/*.test.mjs` file is picked up automatically — nothing to register. Shared fixtures go under
 `tests/helpers/`, which the runner does not treat as suites. `make test` also runs `suola`'s Wasm smoke test when
-`build/` holds the artifacts, and skips it with a note when it does not.
+`build/` holds the artifacts, and skips it with a note when it does not. It also runs `make check-sites`, which
+compares the origins in `manifest.json` with `sites.lock.json` and does not connect to the network.
 
 Tests that touch the extension APIs use the in-memory fake in
 [`tests/helpers/fake-browser.mjs`](./tests/helpers/fake-browser.mjs), which really dispatches
@@ -425,13 +430,14 @@ count is the one signal that separates a static template from markup a caller ca
 
 Paatti carries three environments, defined in `DEFAULT_CONFIG.environmentConfigs` in
 [`src/config.js`](./src/config.js). They differ in how often the database refreshes, which markers start on, and
-which database URLs are used.
+whether a provider can override a site. All three use the Rahti provider manifest as their default provider. See
+[docs/providers.md](./docs/providers.md).
 
 | Environment | Purpose |
 |---|---|
-| `free` | The released default. Downloads `data.json` from rahti. |
+| `free` | The released default. |
 | `paid` | Reserved for a paid service with additional lists. Not yet available. |
-| `development` | Refreshes every minute, turns the debug visuals on, and adds `http://localhost:3000/data.json` to the database URLs. |
+| `development` | Refreshes every minute, turns the debug visuals and the video and converted markers on, and lets a provider override a site. |
 
 **An unpacked build selects `development` by itself**, because `management.getSelf().installType` reports
 `development` for it. The defaults you see in a build you loaded yourself are therefore not the defaults a user
@@ -450,10 +456,8 @@ it while developer mode is on, and the hidden controls become visible. Turning i
   status Paatti gave it: converted, original, 🔒 paywalled, skipped or error. Two settings control the overlay:
   `debugVisualsEnabled` comes from the environment, and `visualHighlightEnabled` is your own override. Note
   that an open popup forces the outlines on, whatever the setting says.
-- The **signature dumper** copies the normalized SHA-256 signature of every article link on the page to the
-  clipboard. Use the 🧂 button, or the **Copy to Clipboard** button in the popup's **Salt Signatures** section.
-- The **Developer Settings** section of the settings page takes several database URLs (`titleDataUrls`), so you
-  can point Paatti at a local server.
+- The **signature dumper** copies the normalized SHA-256 signature of every link on the page to the
+  clipboard, navigation and footer links included. Use the 🧂 button, or the **Copy to Clipboard** button in the popup's **Salt Signatures** section.
 
 ### Badge Icons
 
@@ -491,34 +495,67 @@ A new badge needs its SVG, a module carrying the two markers above, and a `make 
 ### Local Test Data and Hashed Signatures
 
 For local development and testing, you can generate and serve a mock correction database with the two Python
-helper scripts ([`generate_test_data.py`](./generate_test_data.py) and [`httpserver.py`](./httpserver.py)).
-
-To add support for a new site, see
-[docs/development/adding-a-new-site.md](./docs/development/adding-a-new-site.md).
+helper scripts ([`generate_test_data.py`](./generate_test_data.py) and [`httpserver.py`](./httpserver.py)), and
+add it to the extension as a local provider. To add support for a new site, see
+[docs/development/adding-a-new-site.md](./docs/development/adding-a-new-site.md) instead.
 
 1. **Dump the signatures.** Turn developer mode on, open a supported news site, then open the popup and use the
    🧂 button or the **Copy to Clipboard** button in the **Salt Signatures** section. This copies the normalized
-   SHA-256 signature of every article link on the page.
-2. **Save them** to `test_data/signatures.txt`.
+   SHA-256 signature of every link on the page.
+2. **Save them** to `test_data/signatures.txt`, one signature on each line. Make the `test_data/` directory if
+   it does not exist.
 3. **Generate the database.** The script reads `test_data/signatures.txt` and writes `test_data/data.json`:
 
    ```sh
    python3 generate_test_data.py
    ```
 
-4. **Serve it.** This serves the mock data at `http://localhost:3000/data.json` with the CORS and cache headers
-   the extension expects:
+4. **Serve it.** Run the server from the repository root. It serves the mock data at
+   `http://localhost:3000/data.json` with the cache headers the extension expects, and the other files of the
+   current directory below `http://localhost:3000/`:
 
    ```sh
    python3 httpserver.py
    ```
 
-5. **Point the extension at it.** Set the environment to **Development**, which adds
-   `http://localhost:3000/data.json` to the database URLs. Under **Debug Settings** on the settings page, a
-   warning lists each database URL that the browser has not granted. Select **Request access permission** and
-   accept the browser prompt. When you save further URLs in the same place, Paatti asks for their permission at
-   once; if you refuse, the warning stays and **Request access permission** asks again. The button exists on the
-   GitHub and unpacked builds only.
+5. **Write a provider manifest** for it, and save it as `test_data/manifest.json`. The manifest takes the site
+   settings and the Suola rules from Rahti, and the corrections from your mock database:
+
+   ```json
+   {
+     "schema_version": "0.1.0",
+     "name": "Local test data",
+     "resources": [
+       { "type": "suola-rules", "href": "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/rules.json" },
+       { "type": "site-configs", "href": "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/sites.json",
+         "origins": ["https://www.iltalehti.fi/*", "https://www.hs.fi/*", "https://yle.fi/*",
+                     "https://www.mtvuutiset.fi/*", "https://aksa.fi/*"] },
+       { "type": "rahti-data", "href": "/data.json" }
+     ]
+   }
+   ```
+
+   Use Rahti's `rules.json`: the signature dumper copies the signs that Rahti's rules make, so other rules give
+   signs that your database does not contain. `origins` must include the host of each site that you test.
+   Paatti rejects a site whose host is not in this list. `/data.json` starts at the server root, where
+   `httpserver.py` serves `test_data/data.json`.
+
+6. **Add the provider.** Make sure that the environment is `development`: an unpacked build starts in it, and
+   developer mode (step 1) also selects it. On the settings page, under **🐛 Debug Settings** →
+   **🔌 Providers**, turn on **Allow providers on this machine**. Enter
+   `http://localhost:3000/test_data/manifest.json`, select **Add**, then **Add provider**, and accept the browser
+   prompts.
+
+7. **Turn the sites on again.** The `development` environment turns **Allow providers to override sites** on,
+   so your provider takes over the sites from Rahti. A site that a provider supplies is off until you turn it
+   on, so the sites that you did not switch yourself go off. Turn on each site that you test in the site list.
+   Paatti then uses your corrections first, and Rahti's after them.
+
+Paatti refreshes the provider at each database update. Use **Update Database** after you generate the database
+again. See [docs/providers.md](./docs/providers.md).
+
+`httpserver.py` listens on all network interfaces and serves the whole current directory. Do not run it on a
+network that you do not trust.
 
 ### Architecture
 
@@ -529,5 +566,5 @@ See [docs/architecture.md](./docs/architecture.md) for the module diagram and th
 `make release VERSION=x.y.z` bumps `manifest.json`, appends the release to `updates.json`, commits and tags.
 `git push origin HEAD --follow-tags` then lets CI build, sign and publish the GitHub Release. Write the changelog
 into that Release. The stores are published afterwards by hand, from the **Publish to AMO** and **Publish to
-Chrome Web Store** workflows on the Actions tab; AMO shows the Release body as its release notes. The full
-procedure is in [docs/release.md](./docs/release.md).
+Chrome Web Store** workflows on the Actions tab; AMO shows the Release body as its release notes. Read
+[docs/release.md](./docs/release.md) before your first release: it lists the checks to do before you start.

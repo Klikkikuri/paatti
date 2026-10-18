@@ -197,28 +197,11 @@ statistics-totals .totals-about summary::-webkit-details-marker {
     display: none;
 }
 
-/* The popup's .stats-dot-btn, in the one colour it wears where no level names it: this opens onto
- * the whole table rather than onto one level. */
-statistics-totals .totals-about-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: 15px;
-    height: 15px;
-    border-radius: 50%;
-    background-color: var(--color-neutral);
-    color: var(--color-on-accent);
-    font-size: 10px;
-    font-weight: bold;
-    line-height: 1;
-    user-select: none;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-statistics-totals .totals-about summary:hover .totals-about-icon,
-statistics-totals .totals-about summary:focus-visible .totals-about-icon,
-statistics-totals .totals-about[open] .totals-about-icon {
+/* The .info-dot in its neutral colour, because this opens onto the whole table, not onto one level. It rises
+ * with its whole summary, not only when the pointer is on the dot. */
+statistics-totals .totals-about summary:hover .info-dot,
+statistics-totals .totals-about summary:focus-visible .info-dot,
+statistics-totals .totals-about[open] .info-dot {
     transform: scale(1.15);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-info) 40%, transparent);
 }
@@ -315,13 +298,9 @@ statistics-totals .totals-site-domain {
 }
 
 /* The name is the control that opens the site's breakdown, so it is stripped back to the cell it
- * already was. The chip sits outside it: pressing the reading must not open the panel.
- *
- * The flex reset is load-bearing: options.css gives every button on the page `flex: 1`, which
- * would grow this one across its cell and push the chip to the far edge. */
+ * already was. The chip sits outside it: pressing the reading must not open the panel. */
 statistics-totals .totals-site-toggle {
     appearance: none;
-    flex: 0 1 auto;
     background: none;
     border: 0;
     padding: 0;
@@ -489,16 +468,15 @@ statistics-totals .totals-empty {
  * the width they were read on. */
 /* --- Reset --- */
 
-/* A footnote to the table, not a form action: options.css gives every button flex: 1 and a
- * 12px/24px pad, sized for the page's action row. Sized down and pushed to the end of the line. */
+/* A footnote to the table, not a form action: a push button sized down so it casts and travels less,
+ * and pushed to the end of the line. */
 statistics-totals .totals-reset {
+    --push-offset: 2px;
     display: block;
-    flex: 0 0 auto;
-    width: auto;
+    min-width: 0;
     margin: 10px 0 0 auto;
-    padding: 6px 12px;
+    padding: 5px 12px;
     font-size: 0.85em;
-    font-weight: normal;
 }
 
 /* Armed: the label already says "click again"; the colour says it is no longer a safe press, and
@@ -509,6 +487,7 @@ statistics-totals .totals-reset[data-armed] {
     overflow: hidden;
     background: var(--color-danger);
     color: var(--color-on-accent);
+    outline-color: var(--color-danger);
 }
 
 statistics-totals .totals-reset[data-armed]::after {

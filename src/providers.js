@@ -1,0 +1,525 @@
+"use strict";
+
+import browser from "./browser-api.js";
+import { getLogger } from "./utils.js";
+import { getConfig, isUsableProvider, PROVIDER_KEY_PREFIX } from "./config.js";
+import { initStorage } from "./storage.js";
+import { fetchManifest, resolve, resourceOrigins } from "./provider.js";
+import { canRequestOrigins, missingOrigins, originPatterns, sitePatterns } from "./options/origins.js";
+import { getFaviconKey } from "./faviconCache.js";
+
+/**
+ * The list of third-party providers the user added, and the resolved content each one currently
+ * contributes.
+ *
+ * Two storage areas, because they hold different things: `providers` in sync is nothing but the
+ * URLs, their order and whether each is enabled -- small enough for the 8 KB per-item sync quota, and
+ * inert on a device where its permissions were never granted. Everything a provider actually resolved
+ * to lives locally, in its own namespace keyed by its manifest URL -- a provider's identity, per the
+ * design -- so a fetch failure or a removed provider only ever touches its own data.
+ */
+
+const log = getLogger("providers");
+
+/** Keeps the sync list far under its quota and bounds refreshProviders(). The default providers take slots in this
+ *  same list (see seedDefaultProviders()). */
+const MAX_PROVIDERS = 17;
+
+/** The local storage namespace one provider's resolved content lives in. Read too by config.js's own merge. */
+function namespaceFor(url) {
+    return `${PROVIDER_KEY_PREFIX}${url}`;
+}
+
+/**
+ * The local storage key of one provider's document cache: the last good copy of each fetched file.
+ *
+ * A key of its own, not part of the namespace, so that the frequent readers of the namespace do not load it.
+ */
+function documentsKeyFor(url) {
+    return `${namespaceFor(url)}_documents`;
+}
+
+/** The sync provider list: `{ url, enabled }` in precedence order, lowest first. See `seedDefaultProviders()`. */
+async function getProviders() {
+    const { providers } = await browser.storage.sync.get("providers");
+    return Array.isArray(providers) ? providers : [];
+}
+
+/**
+ * Add a provider by its manifest URL. A no-op if it is already in the list.
+ *
+ * @param {string} url
+ * @returns {Promise<Array>} The updated list.
+ * @throws {Error} For an unparsable URL, or once `MAX_PROVIDERS` is already reached.
+ */
+async function addProvider(url) {
+    new URL(url); // Throws on anything unparsable; providerBlockReason judges reachability later.
+
+    const providers = await getProviders();
+    if (providers.some((provider) => provider.url === url)) return providers;
+    if (providers.length >= MAX_PROVIDERS) throw new Error(`At most ${MAX_PROVIDERS} providers are allowed.`);
+
+    const updated = [...providers, { url, enabled: true }];
+    await browser.storage.sync.set({ providers: updated });
+    return updated;
+}
+
+/**
+ * Put the active environment's default providers at the front of the sync list, in `defaultUrls` order.
+ *
+ * The list order is the precedence order between providers of equal weight, lowest first: the default providers
+ * come first. The other entries keep the order the user added them in. A default that is not in the list is added,
+ * enabled, while there is space. Nothing is removed: a URL that is no longer a default stays where it is, as an
+ * ordinary provider.
+ *
+ * @param {string[]} defaultUrls
+ * @returns {Promise<Array>} The updated list.
+ */
+async function seedDefaultProviders(defaultUrls) {
+    const providers = await getProviders();
+    const byUrl = new Map(providers.map((provider) => [provider.url, provider]));
+    const defaults = [];
+    let free = MAX_PROVIDERS - providers.length;
+    for (const url of new Set(defaultUrls)) {
+        if (byUrl.has(url)) defaults.push(byUrl.get(url));
+        else if (free-- > 0) defaults.push({ url, enabled: true });
+        else log(`No space to seed default provider ${url}.`);
+    }
+    const defaultSet = new Set(defaults.map((provider) => provider.url));
+    const updated = [...defaults, ...providers.filter((provider) => !defaultSet.has(provider.url))];
+
+    if (updated.some((provider, i) => provider !== providers[i])) await browser.storage.sync.set({ providers: updated });
+    return updated;
+}
+
+/**
+ * Remove a provider, drop everything it resolved to, and give back what only it used: the host permissions
+ * for its servers and sites, and the favicons of its sites.
+ *
+ * Removes the provider's three keys by their exact name rather than through `Storage.prune()`, which
+ * matches by prefix: two provider URLs where one is a literal prefix of the other (a differing query
+ * string, a `.json` vs `.json.bak` path) would otherwise make removing one also wipe the other's data.
+ *
+ * @param {string} url
+ * @returns {Promise<Array>} The updated list.
+ */
+async function removeProvider(url) {
+    const removed = await getProviderData(url);
+    const providers = await getProviders();
+    const updated = providers.filter((provider) => provider.url !== url);
+    await browser.storage.sync.set({ providers: updated });
+
+    const ns = namespaceFor(url);
+    await browser.storage.local.remove([ns, `${ns}_index`, documentsKeyFor(url)]);
+
+    await releaseUnused(url, removed, updated.map((provider) => provider.url).filter(Boolean));
+
+    return updated;
+}
+
+/** The `www.` and bare spellings of a host. favicon-fetch.js writes a favicon under both. */
+function hostSpellings(domain) {
+    return [domain, domain.startsWith("www.") ? domain.slice(4) : `www.${domain}`];
+}
+
+/** Every site's origins, with the default getConfig() gives a site that declares none. */
+function siteOrigins(siteConfigs) {
+    return Object.entries(siteConfigs).flatMap(([domain, site]) => site.origins || [`https://${domain}/*`]);
+}
+
+/**
+ * Revoke the host permissions and drop the favicons of a removed provider that nothing else uses. Every provider
+ * still in the list keeps its own, a disabled one included, and an origin the manifest requires cannot be revoked
+ * at all.
+ */
+async function releaseUnused(url, removed, remainingUrls) {
+    const remaining = await Promise.all(remainingUrls.map(getProviderData));
+    const keptSites = remaining.map((data) => data.siteConfigs);
+    const keptOrigins = new Set([
+        ...originPatterns([...remainingUrls, ...remaining.flatMap((data) => data.origins)]),
+        ...sitePatterns(keptSites.flatMap(siteOrigins))
+    ]);
+
+    const required = { host_permissions: browser.runtime.getManifest().host_permissions };
+    const grantedForAccess = removed.errors.flatMap((error) => error.origins || []);
+    const revoke = [
+        ...originPatterns([url, ...removed.origins, ...grantedForAccess]),
+        ...sitePatterns(siteOrigins(removed.siteConfigs))
+    ].filter((pattern) => !keptOrigins.has(pattern) && !canRequestOrigins([pattern], required));
+    if (revoke.length > 0) await browser.permissions.remove({ origins: revoke });
+
+    const keptHosts = new Set(keptSites.flatMap(Object.keys).flatMap(hostSpellings));
+    const faviconKeys = Object.keys(removed.siteConfigs).flatMap(hostSpellings)
+        .filter((host) => !keptHosts.has(host))
+        .map(getFaviconKey);
+    if (faviconKeys.length > 0) await browser.storage.local.remove(faviconKeys);
+}
+
+/**
+ * Enable or disable a provider without forgetting it. A disabled provider keeps its last resolved
+ * content in storage but is skipped by `refreshProviders()`.
+ *
+ * @param {string} url
+ * @param {boolean} enabled
+ * @returns {Promise<Array>} The updated list.
+ */
+async function setProviderEnabled(url, enabled) {
+    const providers = await getProviders();
+    const updated = providers.map((provider) => (provider.url === url ? { ...provider, enabled } : provider));
+    await browser.storage.sync.set({ providers: updated });
+    return updated;
+}
+
+/** The content of a provider that has never resolved. A function, so that no caller shares its objects. */
+function emptyProviderData() {
+    return {
+        siteConfigs: {}, siteWeights: {}, rahtiData: {}, suolaRules: null, rejected: [], errors: [], updated: null,
+        checked: null, entryCount: 0, databaseGenerationDate: null, origins: [], name: null, links: []
+    };
+}
+
+/**
+ * One provider's last resolved content, or the empty shape for one that has never resolved.
+ *
+ * @param {string} url
+ * @returns {Promise<{siteConfigs: object, siteWeights: Object<string, number>, rahtiData: object,
+ *   suolaRules: object|null, rejected: Array, errors: Array, updated: number|null, checked: number|null, entryCount: number,
+ *   databaseGenerationDate: string|null, origins: string[], name: string|null, links: Array}>} `updated` is the
+ *   time of the last refresh with no fetch error, `checked` the time of the last attempt.
+ */
+async function getProviderData(url) {
+    const storage = await initStorage(namespaceFor(url));
+    const data = emptyProviderData();
+    for (const key of Object.keys(data)) data[key] = (await storage.get(key)) ?? data[key];
+    return data;
+}
+
+/**
+ * Drop the stored data that an older version wrote and this one does not read: the declared `scope`, and the
+ * `rejected` list, which can name a refusal that this version no longer makes. The next refresh writes the list again.
+ *
+ * TODO: this is the first migration. Move it into the migration system (see TODO.md).
+ */
+async function dropStaleProviderData() {
+    for (const { url } of await getProviders()) {
+        if (!url) continue;
+        const storage = await initStorage(namespaceFor(url));
+        const stale = ["scope", "rejected"].filter((key) => storage.getKeys().includes(key));
+        if (stale.length > 0) await storage.remove(stale);
+    }
+}
+
+/**
+ * Record why a refresh stopped, and keep the provider's last resolved content.
+ *
+ * @param {object} storage - The provider's namespace.
+ * @param {string} url
+ * @param {Array<{kind: string, message: string, href?: string, origins?: string[], transient?: boolean,
+ *   retryAfterMs?: number}>} errors - `kind` is `build`, `access` or `fetch`. An `access` error also gives the
+ *   `origins` to grant.
+ * @returns {Promise<{error: string, transient: boolean, retryAfterMs?: number}>}
+ */
+async function keepLastResolved(storage, url, errors) {
+    const failure = failureOf(errors);
+    log(`Refresh of ${url} stopped, keeping the last resolved content:`, failure.error);
+    await storage.store({ errors, checked: Date.now() });
+    return failure;
+}
+
+/**
+ * An error as text for the provider row: the message, after the href of the file when the error is about one.
+ *
+ * @param {{message: string, href?: string}} error - One of `getProviderData().errors`.
+ * @returns {string}
+ */
+function errorText(error) {
+    return error.href ? `${error.href}: ${error.message}` : error.message;
+}
+
+/**
+ * The refresh result for `errors`: the text of the first failure, whether a retry can help, and the longest
+ * `Retry-After`. An error with a `kind` is a failure. An error without one is about content.
+ */
+function failureOf(errors) {
+    const failures = errors.filter((error) => error.kind);
+    if (failures.length === 0) return {};
+    const retryAfters = failures.map((error) => error.retryAfterMs).filter((ms) => ms !== undefined);
+    return {
+        error: errorText(failures[0]),
+        transient: failures.some((error) => error.transient === true),
+        ...(retryAfters.length > 0 && { retryAfterMs: Math.max(...retryAfters) })
+    };
+}
+
+/** Whether `next` holds an entry that `cached` does not hold as the same object. */
+function documentsChanged(cached, next) {
+    if (!cached) return true;
+    const hrefs = Object.keys(next);
+    return hrefs.length !== Object.keys(cached).length || hrefs.some((href) => next[href] !== cached[href]);
+}
+
+/** An `access` error that names the origins this browser has not granted; null when every one is granted. */
+async function accessError(urls) {
+    const missing = await missingOrigins(urls, (pattern) => browser.permissions.contains({ origins: [pattern] }));
+    return missing.length > 0 ? { kind: "access", message: `no access to ${missing.join(", ")}`, origins: missing } : null;
+}
+
+/**
+ * Refresh one provider: fetch its manifest, resolve every resource, and persist the result. A manifest
+ * that cannot be fetched leaves the previous resolved content in place -- a stale result, kept and
+ * flagged, rather than a working provider going dark on one network blip. A resource file that fails
+ * temporarily is merged from its cached copy (see `resolve()`).
+ *
+ * `updated` changes only on a refresh with no fetch error, so the status never shows a failed refresh
+ * as a fresh one. `checked` changes on every attempt.
+ *
+ * Nothing is requested from an origin this browser has not granted. Without a grant the browser still sends the
+ * request and only hides the response, so a synced provider, or a manifest that names a new host after the user
+ * confirmed it, would otherwise reach servers the user never agreed to on this device.
+ *
+ * @param {string} url
+ * @param {object} config - As returned by `getConfig()`.
+ * @param {object} [options]
+ * @param {boolean} [options.force] - Send no conditional request headers.
+ * @returns {Promise<{error?: string, transient?: boolean, retryAfterMs?: number}>}
+ */
+async function refreshOne(url, config, { force = false } = {}) {
+    const storage = await initStorage(namespaceFor(url));
+
+    if (!isUsableProvider(url, new Set(config.defaultProviders || []))) {
+        return keepLastResolved(storage, url, [{
+            kind: "build",
+            message: browser.i18n.getMessage("providerNotUsableInBuild")
+                || "This version of the extension has no permission to use this provider."
+        }]);
+    }
+
+    const manifestAccessError = await accessError([url]);
+    if (manifestAccessError) return keepLastResolved(storage, url, [manifestAccessError]);
+
+    const { manifest, error, transient, retryAfterMs } = await fetchManifest(url, config.loopbackProvidersEnabled);
+    if (error) return keepLastResolved(storage, url, [{ kind: "fetch", message: error, transient, retryAfterMs }]);
+
+    // Before the resource check, so a provider still waiting for its resource grant already shows its name.
+    await storage.store({ name: manifest.name ?? null, links: manifest.links });
+
+    const origins = [...resourceOrigins(manifest, url)];
+    const resourceAccessError = await accessError(origins);
+    if (resourceAccessError) return keepLastResolved(storage, url, [resourceAccessError]);
+
+    const documentsKey = documentsKeyFor(url);
+    const { [documentsKey]: cachedDocuments } = await browser.storage.local.get(documentsKey);
+    const result = await resolve(manifest, url, {
+        loopbackProvidersEnabled: config.loopbackProvidersEnabled,
+        documents: cachedDocuments || {},
+        force
+    });
+    const failure = failureOf(result.errors);
+
+    // Content resolved before the document cache existed has no copy of each file to fall back on.
+    if (!cachedDocuments && failure.transient && await storage.get("updated")) {
+        return keepLastResolved(storage, url, result.errors.filter((error) => error.kind));
+    }
+
+    // getConfig() hides these sites; this says why, once per fetch.
+    const unrequestable = Object.entries(result.siteConfigs)
+        .filter(([, site]) => !canRequestOrigins(site.origins, browser.runtime.getManifest()))
+        .map(([key]) => key);
+    if (unrequestable.length > 0) log(`${url}: this build cannot request the origins of these sites, so they are hidden:`, unrequestable);
+
+    if (documentsChanged(cachedDocuments, result.documents)) {
+        await browser.storage.local.set({ [documentsKey]: result.documents });
+    }
+
+    const checked = Date.now();
+    await storage.store({
+        siteConfigs: result.siteConfigs,
+        siteWeights: result.siteWeights,
+        rahtiData: result.rahtiData,
+        suolaRules: result.suolaRules,
+        rejected: result.rejected,
+        errors: result.errors,
+        ...(failure.error ? {} : { updated: checked }),
+        checked,
+        entryCount: Object.keys(result.rahtiData).length,
+        databaseGenerationDate: result.databaseGenerationDate,
+        // Every resource origin the provider has used, so removeProvider() can revoke one that it no longer names.
+        origins: originPatterns([...((await storage.get("origins")) || []), ...origins])
+    });
+    // Conditional-GET headers from before the document cache, which now holds them.
+    if (storage.getKeys().includes("resourceHeaders")) await storage.remove(["resourceHeaders"]);
+
+    return failure;
+}
+
+/**
+ * Refresh every enabled provider, in list order (see `getProviders()`).
+ *
+ * One provider after the other. Which provider wins a site is decided when the configuration is built, not here.
+ *
+ * Single-flight within this execution context, but a `force: true` call always gets its own pass rather
+ * than joining an in-flight non-forced one (which would silently return non-bypassed, possibly-cached
+ * results -- defeating the point of a forced refresh). It still never runs concurrently with another
+ * pass: it waits for whatever is currently in flight to settle first, then starts fresh. The identity
+ * check in the `.finally()` below matters here -- with `force` calls able to chain onto each other,
+ * more than one promise can occupy `refreshInFlight` in sequence, and an *earlier* one's cleanup firing
+ * after a *later* one has already taken over must not null out the later one's reference.
+ *
+ * This does not reach across contexts -- the background service worker and an open options page
+ * each hold their own promise -- so a refresh started in one can still race one started in the
+ * other; that is accepted as a rare, self-healing staleness rather than solved with a storage lock.
+ *
+ * @param {object} [options]
+ * @param {boolean} [options.force] - Send no conditional request headers.
+ * @returns {Promise<Array<{url: string, error?: string, transient?: boolean,
+ *   retryAfterMs?: number}>>}
+ */
+async function refreshProviders({ force = false } = {}) {
+    if (refreshInFlight && !force) return refreshInFlight;
+
+    // No `await` before this line: reading `refreshInFlight` and reassigning it is one synchronous
+    // step, so however many calls (forced or not) arrive back-to-back, each sees the previous one's
+    // own reassignment rather than racing it -- this is what makes concurrent force calls chain
+    // instead of running _refreshProviders() in parallel over the same storage writes.
+    const previous = refreshInFlight;
+    const run = previous ? previous.catch(() => {}).then(() => _refreshProviders(force)) : _refreshProviders(force);
+    refreshInFlight = run;
+    run.finally(() => { if (refreshInFlight === run) refreshInFlight = null; });
+    return run;
+}
+
+let refreshInFlight = null;
+
+async function _refreshProviders(force = false) {
+    const config = await getConfig();
+    const providers = await getProviders();
+    const results = [];
+    for (const provider of providers) {
+        // Same validity check getConfig() applies to enabledProviders: a URL-less entry (a
+        // partially-written sync record) must be skipped by both in the same way, not just one.
+        if (!provider.enabled || !provider.url) continue;
+
+        let outcome;
+        try {
+            outcome = await refreshOne(provider.url, config, { force });
+        } catch (err) {
+            // One provider must not stop the refresh of those after it, the default one included.
+            log(`Refresh of ${provider.url} failed:`, err.message);
+            outcome = { error: err.message, transient: false };
+        }
+        results.push({ url: provider.url, ...outcome });
+    }
+
+    return results;
+}
+
+/** A failed default provider gets this many refresh passes in total, the first one included. */
+const MAX_REFRESH_ATTEMPTS = 3;
+const RETRY_BACKOFF_MS = 30 * 1000;
+
+/**
+ * How long to wait before the next refresh pass, or null for no retry.
+ *
+ * Only a temporary failure of a default provider gets a retry, so a third-party manifest cannot make every
+ * provider refresh again. The wait starts at 30 s and doubles; a server's `Retry-After` can make it longer. The
+ * periodic refresh handles a wait longer than its interval.
+ *
+ * @param {Array<{url: string, transient?: boolean, retryAfterMs?: number}>} results - From `refreshProviders()`.
+ * @param {Set<string>} defaultUrls - The active environment's default provider URLs.
+ * @param {number} attempt - The pass that gave `results`, from 1.
+ * @param {number} intervalMs - The periodic refresh interval.
+ * @returns {number|null}
+ */
+function retryDelayMs(results, defaultUrls, attempt, intervalMs) {
+    const failed = results.filter((result) => defaultUrls.has(result.url) && result.transient);
+    if (failed.length === 0 || attempt >= MAX_REFRESH_ATTEMPTS) return null;
+
+    const retryAfterMs = Math.max(0, ...failed.map((result) => result.retryAfterMs ?? 0));
+    if (retryAfterMs > intervalMs) return null;
+    return Math.min(Math.max(RETRY_BACKOFF_MS * 2 ** (attempt - 1), retryAfterMs), intervalMs);
+}
+
+/**
+ * Install each enabled provider's Suola rules as its own named set, keyed by its manifest URL, and drop
+ * any currently-defined name that no longer belongs to one -- a removed provider, a disabled one, or
+ * one whose latest resolve produced no rules at all.
+ *
+ * Named sets do not survive a service-worker restart, so the caller must run this again on every
+ * `initSuola()` wake, after awaiting it: this assumes `defineRules`/`dropRules`/`listRules` already
+ * exist on `globalThis` and does not load the WASM module itself, so it can be tested without it by
+ * stubbing those three.
+ *
+ * Never throws: this runs ahead of every `hashUrls` request, and a provider-bookkeeping failure --
+ * a transient storage error, a malformed entry -- must degrade only the provider it belongs to, not
+ * block hashing a page that may not even reference a provider's site.
+ *
+ * Single-flight, for the same reason as `refreshProviders()`: this runs on every `hashUrls` request,
+ * and two overlapping passes reading `listRules()` at different points could each act on a different
+ * snapshot of what the other just defined or dropped.
+ *
+ * @returns {Promise<void>}
+ */
+async function reconcileSuolaRules() {
+    if (reconcileInFlight) return reconcileInFlight;
+    reconcileInFlight = _reconcileSuolaRules().finally(() => { reconcileInFlight = null; });
+    return reconcileInFlight;
+}
+
+let reconcileInFlight = null;
+
+async function _reconcileSuolaRules() {
+    let providers;
+    try {
+        providers = (await getProviders()).filter((provider) => provider?.enabled && provider?.url);
+    } catch (err) {
+        log("Failed to read the provider list; leaving Suola rule sets as they are:", err);
+        return;
+    }
+
+    const results = await Promise.all(providers.map(async (provider) => {
+        try {
+            const data = await getProviderData(provider.url);
+            return { url: provider.url, suolaRules: data.suolaRules };
+        } catch (err) {
+            log(`Failed to read resolved data for ${provider.url}:`, err);
+            return { url: provider.url, suolaRules: null };
+        }
+    }));
+
+    const activeNames = new Set();
+    for (const { url, suolaRules } of results) {
+        if (!suolaRules) continue;
+
+        try {
+            const refused = globalThis.defineRules(url, JSON.stringify(suolaRules));
+            if (refused) {
+                log(`defineRules refused the rules for ${url}:`, refused);
+                continue;
+            }
+            activeNames.add(url);
+        } catch (err) {
+            log(`defineRules threw for ${url}:`, err);
+        }
+    }
+
+    let defined = [];
+    try {
+        defined = typeof globalThis.listRules === "function" ? globalThis.listRules() : [];
+    } catch (err) {
+        log("listRules threw; stale named sets may remain defined this cycle:", err);
+    }
+
+    for (const name of defined) {
+        if (activeNames.has(name)) continue;
+        try {
+            globalThis.dropRules(name);
+        } catch (err) {
+            log(`dropRules failed for ${name}:`, err);
+        }
+    }
+}
+
+export {
+    MAX_PROVIDERS, namespaceFor, getProviders, addProvider, seedDefaultProviders, removeProvider, setProviderEnabled,
+    getProviderData, dropStaleProviderData, errorText, refreshProviders, retryDelayMs, reconcileSuolaRules
+};

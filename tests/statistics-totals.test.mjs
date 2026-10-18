@@ -49,6 +49,7 @@ await import('../src/options/components/statistics-totals.js');
 after(() => dom.teardown());
 
 const DAY = 24 * 60 * 60 * 1000;
+const PROVIDER = 'https://provider.example/manifest.json';
 
 /**
  * Two sites and a running tally, the shape the options page draws from.
@@ -85,7 +86,11 @@ async function mount() {
 
 beforeEach(async () => {
     await browser.storage.local.clear();
-    await browser.storage.local.set({ statistics: structuredClone(POPULATED) });
+    await browser.storage.local.set({
+        statistics: structuredClone(POPULATED),
+        [`provider:${PROVIDER}`]: { siteConfigs: { 'yle.fi': { name: 'Yle', enabled: true, rules: [] } } }
+    });
+    await browser.storage.sync.set({ providers: [{ url: PROVIDER, enabled: true }] });
     fake.reset();
 });
 
@@ -112,7 +117,7 @@ describe('statistics-totals', () => {
 
         const about = element.querySelector('.totals-about');
         assert.equal(about.open, false);
-        assert.equal(about.querySelector('.totals-about-icon').textContent, 'i');
+        assert.equal(about.querySelector('.info-dot').textContent, 'i');
         assert.equal(about.querySelector('summary [data-i18n]').textContent, 'How to read this table');
         // Each column of the table, answered under the heading it carries.
         assert.deepEqual([...about.querySelectorAll('.totals-about-list > *')].map((el) => el.textContent), [
@@ -258,7 +263,7 @@ describe('statistics-totals', () => {
         });
         await mount();
 
-        // yle.fi carries a name in the shipped siteConfigs; is.fi does not and keeps its domain.
+        // yle.fi carries a name in a provider's siteConfigs; is.fi does not and keeps its domain.
         assert.equal(element.querySelector('.totals-site-domain').textContent, 'Yle');
     });
 

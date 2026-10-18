@@ -48,6 +48,7 @@ module.exports = {
     'scripts/**',
     'docs/**',
     '!docs/PRIVACY_POLICY.md',
+    '!docs/PRIVACY_POLICY_DEVELOPMENT.md',
     'assets/sources/**',
     '**/__pycache__/**',
     '**/*.log',

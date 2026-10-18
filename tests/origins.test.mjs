@@ -1,7 +1,7 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { originPatterns, missingOrigins } from '../src/options/origins.js';
+import { originPatterns, sitePatterns, missingOrigins, canRequestOrigins, isConcreteHost, isSiteHost } from '../src/options/origins.js';
 
 /** A `contains` that records what it was asked and answers from `covered`. */
 function fakeContains(covered = []) {
@@ -18,6 +18,11 @@ describe('originPatterns', () => {
         // Not a narrowing that was lost: a host permission ignores the path, so the pattern now says what
         // the browser actually grants and what the missing-permission warning shows.
         assert.deepEqual(originPatterns(['http://localhost:3000/data.json?v=2']), ['http://localhost/*']);
+    });
+
+    test('drops a URL whose host is a wildcard, also when the wildcard is percent-encoded', () => {
+        assert.deepEqual(originPatterns(['https://*/x', 'https://*.hs.fi/', 'https://www.hs.fi/']), ['https://www.hs.fi/*']);
+        assert.deepEqual(originPatterns(['https://%2A/x', 'https://%2a.hs.fi/x']), []);
     });
 
     test('deduplicates URLs on one host that differ by path or query, and keeps first-seen order', () => {
@@ -58,5 +63,73 @@ describe('missingOrigins', () => {
         const { asked, contains } = fakeContains();
         assert.deepEqual(await missingOrigins([], contains), []);
         assert.deepEqual(asked, []);
+    });
+});
+
+describe('canRequestOrigins', () => {
+    const store = {
+        host_permissions: ['https://raw.githubusercontent.com/Klikkikuri/rahti/*', 'https://www.hs.fi/*'],
+        optional_host_permissions: ['https://www.ampparit.com/*'],
+    };
+
+    test('a declared origin can be requested, required or optional', () => {
+        assert.equal(canRequestOrigins(['https://www.hs.fi/*'], store), true);
+        assert.equal(canRequestOrigins(['https://www.ampparit.com/*'], store), true);
+    });
+
+    test('an origin the manifest does not declare cannot, and one undeclared origin is enough', () => {
+        assert.equal(canRequestOrigins(['https://new.example.fi/*'], store), false);
+        assert.equal(canRequestOrigins(['https://www.hs.fi/*', 'https://hs.fi/*'], store), false);
+    });
+
+    test('the wildcard and <all_urls> cover any http(s) origin', () => {
+        for (const pattern of ['*://*/*', '<all_urls>']) {
+            assert.equal(canRequestOrigins(['https://new.example.fi/*', 'http://other.example/*'], { optional_host_permissions: [pattern] }), true);
+        }
+    });
+
+    test('compares the scheme and the host, honours a *. host, and ignores the path', () => {
+        assert.equal(canRequestOrigins(['http://www.hs.fi/*'], store), false);
+        assert.equal(canRequestOrigins(['https://raw.githubusercontent.com/*'], store), true);
+        const sub = { host_permissions: ['https://*.example.fi/*'] };
+        assert.equal(canRequestOrigins(['https://example.fi/*', 'https://www.example.fi/*'], sub), true);
+        assert.equal(canRequestOrigins(['https://badexample.fi/*'], sub), false);
+    });
+
+    test('an origin for the subdomains of a host needs a declared wildcard for that host', () => {
+        assert.equal(canRequestOrigins(['https://*.hs.fi/*'], { optional_host_permissions: ['*://*/*'] }), true);
+        assert.equal(canRequestOrigins(['https://*.hs.fi/*'], { host_permissions: ['https://*.hs.fi/*'] }), true);
+        assert.equal(canRequestOrigins(['https://*.hs.fi/*'], { host_permissions: ['https://www.hs.fi/*'] }), false);
+    });
+
+    test('no manifest covers an origin whose host is any host, or all hosts of a suffix', () => {
+        const wildcard = { optional_host_permissions: ['*://*/*'] };
+        assert.equal(canRequestOrigins(['https://*/*'], wildcard), false);
+        assert.equal(canRequestOrigins(['https://*.fi/*'], wildcard), false);
+    });
+
+    test('a manifest without permission lists can request nothing', () => {
+        assert.equal(canRequestOrigins(['https://www.hs.fi/*'], {}), false);
+    });
+});
+
+describe('sitePatterns', () => {
+    test('keeps the subdomain wildcard, drops the path, and skips what is not a site origin', () => {
+        assert.deepEqual(sitePatterns(['https://www.hs.fi/a', 'https://*.hs.fi/*', 'https://*.hs.fi/b', 'https://*.fi/*', 'https://*/*', 'x']),
+            ['https://www.hs.fi/*', 'https://*.hs.fi/*']);
+    });
+});
+
+describe('isSiteHost', () => {
+    test('is one host, or the subdomains of a host that has a dot', () => {
+        for (const host of ['www.hs.fi', 'localhost', '*.hs.fi']) assert.equal(isSiteHost(host), true);
+        for (const host of ['', '*', '*.fi', '*.*.hs.fi', 'a*b.fi']) assert.equal(isSiteHost(host), false);
+    });
+});
+
+describe('isConcreteHost', () => {
+    test('true for one host, false for an empty host or a host with a wildcard', () => {
+        for (const host of ['www.hs.fi', 'localhost', '127.0.0.1']) assert.equal(isConcreteHost(host), true);
+        for (const host of ['', '*', '*.hs.fi', 'a*b.fi']) assert.equal(isConcreteHost(host), false);
     });
 });

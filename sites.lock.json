@@ -1,0 +1,16 @@
+{
+  "source": "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/manifest.json",
+  "commit": "dda566c30445e8e39ca938fad92c0db7255c46c0",
+  "origins": {
+    "enabled": [
+      "https://aksa.fi/*",
+      "https://www.hs.fi/*",
+      "https://www.iltalehti.fi/*",
+      "https://www.mtvuutiset.fi/*",
+      "https://yle.fi/*"
+    ],
+    "disabled": [
+      "https://www.ampparit.com/*"
+    ]
+  }
+}
