@@ -12,7 +12,7 @@ img { display: block; max-width: 100%; height: auto; background: var(--line); }
 .masthead__nav { display: flex; gap: 16px; padding: 8px 0; font: 600 13px system-ui, sans-serif; text-transform: uppercase; }
 
 .newsticker { display: flex; gap: 24px; overflow-x: auto; background: var(--ink); color: #fff; padding: 8px 24px;
-              font: 14px system-ui, sans-serif; white-space: nowrap; }
+              font: 14px system-ui, sans-serif; white-space: nowrap; scrollbar-width: none; }
 .ticker-item time { color: #ffb3bd; margin-right: 6px; }
 .ticker-content { display: inline; }
 
