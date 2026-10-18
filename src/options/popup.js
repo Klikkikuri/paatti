@@ -607,12 +607,12 @@ const showView = (viewName) => {
 };
 
 /**
- * The development server's capture row: shown on a supported site when a local provider names a capture endpoint.
+ * The development server's capture row: shown on a site that a local provider with a capture endpoint supplies.
  * The page can be sent only while its site is on, because the content script runs only there.
  */
-const _refreshCaptureControl = ({ config, isSupportedSite, canScan }) => {
-    const target = captureTarget(config);
-    document.getElementById("devmode-capture").classList.toggle("hidden", !target || !isSupportedSite);
+const _refreshCaptureControl = ({ config, domain, canScan }) => {
+    const target = captureTarget(config, domain);
+    document.getElementById("devmode-capture").classList.toggle("hidden", !target);
     document.getElementById("devmode-capture-button").classList.toggle("hidden", !canScan);
     document.getElementById("devmode-capture-hint").classList.toggle("hidden", canScan);
 };
@@ -660,9 +660,7 @@ const _loadIntoView = async () => {
         isDevelopmentEnv,
         config,
     });
-    _refreshCaptureControl({
-        config, isSupportedSite: Boolean(matchingDomain), canScan: isConversionEnabled && isCurrentSiteEnabled
-    });
+    _refreshCaptureControl({ config, domain: matchingDomain, canScan: isConversionEnabled && isCurrentSiteEnabled });
     _refreshHomeView({
         site: pageHostname,
         pageStats: cachedPageStats,
@@ -990,7 +988,8 @@ const __devmodeEnable = async () => {
 const __devmodeCapturePage = async (event) => {
     const button = event.currentTarget;
     const status = document.getElementById("devmode-capture-status");
-    const target = captureTarget(await getConfig());
+    const domain = await model.read.getMatchingSiteDomain(await getCurrentTabHostname());
+    const target = captureTarget(await getConfig(), domain);
     if (!target) return;
 
     button.disabled = true;

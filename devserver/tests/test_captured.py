@@ -95,6 +95,8 @@ def test_manifest_declares_the_pinned_sites_and_their_origins(server):
     assert sites["origins"] == ["https://*.hs.fi/*", "https://www.iltalehti.fi/*"]
     assert data == {"type": "rahti-data", "href": "data.json", "description": data["description"]}
     assert not any(resource["type"] == "suola-rules" for resource in manifest["resources"])
+    capture = next(link for link in manifest["links"] if link["rel"] == "x-paatti-dev-capture")
+    assert "title" not in capture and capture["href"].endswith("/api/capture")
 
 
 def test_without_a_commit_the_provider_is_unavailable(tmp_path):

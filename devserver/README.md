@@ -112,7 +112,8 @@ A page fault is decided from the page seed, so a reload of one seed gives the sa
 
 The captured-sites provider makes test data for a real Rahti site, for example www.iltalehti.fi, where Rahti has
 no correction for a link. In a development build, Paatti's popup sends the page address and the links and
-headlines of the page to `POST /api/capture`, with one click.
+headlines of the page to `POST /api/capture`, with one click. Only this provider's manifest names the capture endpoint, so
+Paatti shows its **Send page** button only on the sites of this provider, not on Ilta-Pulu.
 
 - The server signs each link with the base Suola rules. At the pinned commit, they equal Rahti's rules, so the
   provider has no `suola-rules` and its signs are Paatti's official signs.

@@ -61,7 +61,7 @@ def _captured(request: Request, build) -> JSONResponse:
 
 @router.get("/captured-sites/manifest.json", summary="Rahti's sites with fake corrections for captured links")
 def captured_manifest(request: Request):
-    links = documents.links(request.app.state.devserver.settings)
+    links = documents.links(request.app.state.devserver.settings, capture=True)
     return _captured(request, lambda captured: captured.manifest(links))
 
 
