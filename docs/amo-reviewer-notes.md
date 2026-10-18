@@ -18,4 +18,7 @@ To rebuild the package from the source archive, with Docker available:
    is newer than the suola source. Without step 2 it downloads the attested release module instead.
 4. Compare build/store-firefox/ with the submitted package.
 
+The devserver/ directory of the archive is a development server and test harness, written in Python. It is not
+part of the package.
+
 docs/release.md in the archive describes the build and the release process.
