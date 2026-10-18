@@ -184,6 +184,39 @@ let hrefSigns;
     ////////////////////////////////////////////////////////////////////////////
     // Processing subroutines.
 
+    /**
+     * Every link that the site rules find: each matched container, and each link in it with its title element, which
+     * is null when the rule's title selector finds nothing.
+     */
+    const scanSiteRules = (siteRules) => {
+        const containers = new Set();
+        const links = [];
+        for (const rule of siteRules) {
+            for (const container of document.querySelectorAll(rule.container)) {
+                containers.add(container);
+                const ruleLinks = (!rule.link || rule.link === "self" || rule.link === ":scope")
+                    ? [container]
+                    : container.querySelectorAll(rule.link);
+                for (const link of ruleLinks) {
+                    const titleElem = (rule.title === "self" || rule.title === ":scope")
+                        ? container
+                        : (rule.title ? container.querySelector(rule.title) : link);
+                    links.push({ container, link, rule, titleElem });
+                }
+            }
+        }
+        return { containers, links };
+    };
+
+    /** `href` resolved against the page, or null for an address that does not parse. */
+    const absoluteHref = (href) => {
+        try {
+            return new URL(href, window.location.href).href;
+        } catch {
+            return null;
+        }
+    };
+
     const processSite = async () => {
         const startTime = performance.now();
 
@@ -195,38 +228,16 @@ let hrefSigns;
         }
 
         // Scan and collect elements to process
+        const { containers: matchedContainers, links } = scanSiteRules(siteRules);
         const linksToProcess = [];
-        const matchedContainers = new Set();
-        for (const rule of siteRules) {
-            const containers = document.querySelectorAll(rule.container);
-            for (const container of containers) {
-                matchedContainers.add(container);
-                const links = (!rule.link || rule.link === "self" || rule.link === ":scope")
-                    ? [container]
-                    : container.querySelectorAll(rule.link);
-                for (const link of links) {
-                    const titleElem = (rule.title === "self" || rule.title === ":scope")
-                        ? container
-                        : (rule.title ? container.querySelector(rule.title) : link);
-
-                    if (!titleElem) {
-                        container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
-                        continue;
-                    }
-
-                    const href = link.getAttribute('href');
-                    if (href) {
-                        try {
-                            const urlObj = new URL(href, window.location.href);
-                            linksToProcess.push({ container, link, rule, href: urlObj.href, titleElem });
-                        } catch (e) {
-                            // ignore invalid URL
-                        }
-                    } else {
-                        container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
-                    }
-                }
+        for (const { container, link, rule, titleElem } of links) {
+            const href = titleElem && link.getAttribute('href');
+            if (!href) {
+                container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
+                continue;
             }
+            const absolute = absoluteHref(href);
+            if (absolute) linksToProcess.push({ container, link, rule, href: absolute, titleElem });
         }
 
         // Batch generate signatures from background service worker
@@ -513,14 +524,25 @@ let hrefSigns;
                         sendResponse({ success: false, error: err.message });
                     });
                 return true;
-            case "devmode_generateLinkSignatures": {
-                const links = Array.from(document.querySelectorAll("a"));
-                const signaturePromises = links.map(async (x) => (await hrefSigns(x.href))?.officialSign ?? null);
-                Promise.all(signaturePromises)
+            case "devmode_capturePage": {
+                // For the development server's captured-sites provider: the links that the site rules find, with
+                // the headline that the page itself shows. The server signs them; nothing here is sent anywhere.
+                (async () => {
+                    const { links } = scanSiteRules(await model.read.getSiteRules(newsSite) || []);
+                    const captured = [];
+                    for (const { link, titleElem } of links) {
+                        const raw = link.getAttribute("href");
+                        const href = titleElem && raw && absoluteHref(raw);
+                        if (!href || !/^https?:/.test(href)) continue;
+                        const title = titleElem.dataset.klikkikuriOriginalTitle ?? titleElem.textContent;
+                        captured.push({ href, title: title.trim() });
+                    }
+                    return { pageUrl: window.location.href, links: captured };
+                })()
                     .then((result) => sendResponse(result))
                     .catch((err) => {
-                        log("Error generating link signatures:", err);
-                        sendResponse([]);
+                        log("Error capturing the page:", err);
+                        sendResponse(null);
                     });
                 return true;
             }

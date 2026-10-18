@@ -39,7 +39,7 @@ The files contain only data (text, page selectors and address patterns). They do
 * The servers receive **standard HTTP request metadata**, such as your IP address and browser User-Agent.
 * A request for a correction database can repeat two values that the server sent with the copy that the extension already has: a version tag (ETag) and a date (Last-Modified). The server then sends the file only if it has changed. The server chooses these values, so the provider can use them to recognize repeated requests from the same installation.
 * The request contains the address that you entered. If a provider gives each person a different address, it can recognize your installation at each update, and see your IP address and when your browser is on.
-* The requests contain **no browsing history**, no addresses of pages that you visit, and no headlines.
+* The requests contain **no browsing history**, no addresses of pages that you visit, and no headlines. The only exception is **Send page** in Section 4, which you start yourself.
 
 **Klikkikuri does not receive this data.** The operator of the servers that the file list names decides how it handles the data. Before you add a provider, read its privacy information. Add only providers that you trust.
 
@@ -64,6 +64,8 @@ When this setting is on, a provider can take over a site that Klikkikuri's files
 
 This setting is on by default in the "Development" environment, and off in the other environments. The extension saves this setting only on your device. It does not go through browser sync.
 
+When this setting is on and a provider on your own computer names a capture address, the popup's developer settings show a **Send page** button. Only when you select it, the extension sends the address of the page and the links and headlines on it to that address. The extension refuses a capture address that is not on your own computer. This is a tool for people who develop Klikkikuri Paatti or a provider.
+
 ## 4. "Allow Providers on This Machine"
 
 When this setting is on, the extension can download a provider's files from a server on your own computer (localhost), also without encryption (http).
@@ -71,6 +73,8 @@ When this setting is on, the extension can download a provider's files from a se
 The extension refuses addresses in private networks, for example 192.168.x.x, also when this setting is on. It cannot see that a server name points to such an address.
 
 The extension saves this setting only on your device. It does not go through browser sync.
+
+When this setting is on and a provider on your own computer names a capture address, the popup's developer settings show a **Send page** button. Only when you select it, the extension sends the address of the page and the links and headlines on it to that address. The extension refuses a capture address that is not on your own computer. This is a tool for people who develop Klikkikuri Paatti or a provider.
 
 ## 5. Legal Basis
 

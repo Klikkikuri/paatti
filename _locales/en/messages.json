@@ -445,21 +445,49 @@
     "message": "Settings for nerds",
     "description": "Title-attribute of the hidden devmode activation button"
   },
-  "devmodeCopyLinkSignaturesTitle": {
-    "message": "Copy link signatures on this site to your clipboard",
-    "description": "Title-attribute of the hidden devmode link signature copying button"
-  },
   "devmodeSetDebugVisualsLabel": {
     "message": "Visual Highlight",
     "description": "Label of the devmode debug visuals toggle"
   },
-  "devmodeDumpLinkHashLabel": {
-    "message": "Salt Signatures",
-    "description": "Label for the devmode dump signatures section"
+  "devmodeCaptureLabel": {
+    "message": "Development server",
+    "description": "Label of the devmode row that sends the page to the development server"
   },
-  "devmodeDumpLinkHashBtn": {
-    "message": "Copy to Clipboard",
-    "description": "Button text to copy link signatures to clipboard"
+  "devmodeCaptureBtn": {
+    "message": "Send page",
+    "description": "Button that sends the links and headlines of the page to the development server"
+  },
+  "devmodeCaptureHint": {
+    "message": "Turn on this site to send its page to the development server.",
+    "description": "Shown instead of the send button when the site of the page is off"
+  },
+  "devmodeCaptureSending": {
+    "message": "Sending…",
+    "description": "Shown while the page is sent to the development server and the database is updated"
+  },
+  "devmodeCaptureDone": {
+    "message": "Done: $FAKE$ links got test corrections, $REAL$ links have real ones.",
+    "description": "Result of sending the page to the development server",
+    "placeholders": {
+      "fake": {
+        "content": "$1",
+        "example": "12"
+      },
+      "real": {
+        "content": "$2",
+        "example": "30"
+      }
+    }
+  },
+  "devmodeCaptureFailed": {
+    "message": "Not sent: $ERROR$",
+    "description": "Shown when sending the page to the development server fails",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "No Rahti site covers www.example.com"
+      }
+    }
   },
   "settingsviewDevmodeTitle": {
     "message": "Developer Settings",

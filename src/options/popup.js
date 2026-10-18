@@ -8,6 +8,8 @@ import { getConfig, onConfigValue } from "../config.js";
 import { computeGaugeValue, computeCollectingPeriod, sharePercent, summarizeLevels } from "../stats.js";
 import { isSiteEnabled, getClickbaitLevelInfo, levelToI18nKey, localizeDocument } from "./utils.js";
 import { homeStatus } from "./home-status.js";
+import { captureTarget } from "./capture-target.js";
+import { safeFetch } from "../safe-fetch.js";
 import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
 import "./components/master-switch-setting.js";
@@ -604,6 +606,17 @@ const showView = (viewName) => {
     }
 };
 
+/**
+ * The development server's capture row: shown on a supported site when a local provider names a capture endpoint.
+ * The page can be sent only while its site is on, because the content script runs only there.
+ */
+const _refreshCaptureControl = ({ config, isSupportedSite, canScan }) => {
+    const target = captureTarget(config);
+    document.getElementById("devmode-capture").classList.toggle("hidden", !target || !isSupportedSite);
+    document.getElementById("devmode-capture-button").classList.toggle("hidden", !canScan);
+    document.getElementById("devmode-capture-hint").classList.toggle("hidden", canScan);
+};
+
 let initialViewSelected = false;
 
 /**
@@ -646,6 +659,9 @@ const _loadIntoView = async () => {
         isConversionEnabled,
         isDevelopmentEnv,
         config,
+    });
+    _refreshCaptureControl({
+        config, isSupportedSite: Boolean(matchingDomain), canScan: isConversionEnabled && isCurrentSiteEnabled
     });
     _refreshHomeView({
         site: pageHostname,
@@ -788,20 +804,10 @@ const _loadIntoView = async () => {
 
     document.querySelector("label[for=enable-devmode] span").title =
         browser.i18n.getMessage("devmodeHiddenButtonTitle");
-    document.querySelector("label[for=copy-link-signatures]").title =
-        browser.i18n.getMessage("devmodeCopyLinkSignaturesTitle");
 
     const settingsviewDevmodeTitle = document.getElementById("settingsview-devmode-title");
     if (settingsviewDevmodeTitle) {
         settingsviewDevmodeTitle.textContent = browser.i18n.getMessage("settingsviewDevmodeTitle");
-    }
-    const devmodeDumpLinkHashLabel = document.getElementById("devmode-dumpLinkHash-label");
-    if (devmodeDumpLinkHashLabel) {
-        devmodeDumpLinkHashLabel.textContent = browser.i18n.getMessage("devmodeDumpLinkHashLabel");
-    }
-    const devmodeDumpLinkHashBtn = document.getElementById("devmode-dumpLinkHash");
-    if (devmodeDumpLinkHashBtn) {
-        devmodeDumpLinkHashBtn.textContent = browser.i18n.getMessage("devmodeDumpLinkHashBtn");
     }
     const openOptionsBtn = document.getElementById("open-options-btn");
     if (openOptionsBtn) {
@@ -937,14 +943,8 @@ const _setUpView = async (e) => {
     // Register devmode controls.
     document.getElementById("enable-devmode")
         .addEventListener("click", __devmodeEnable);
-    document.getElementById("copy-link-signatures")
-        .addEventListener("click", __devmodeCopyLinkSignatures);
 
-    // Wire up devmode settings elements
-    const dumpLinkHashBtn = document.getElementById("devmode-dumpLinkHash");
-    if (dumpLinkHashBtn) {
-        dumpLinkHashBtn.addEventListener("click", __devmodeCopyLinkSignatures);
-    }
+    document.getElementById("devmode-capture-button").addEventListener("click", __devmodeCapturePage);
     // devmode-setDebugVisuals change listener is managed by the visual-highlight-setting component
 
 
@@ -983,45 +983,43 @@ const __devmodeEnable = async () => {
     );
 };
 
-const __devmodeCopyLinkSignatures = async (e) => {
-    e.target.disabled = true;
+/**
+ * Send the links and headlines of the page to the development server, update the database, and convert the page
+ * again with the corrections that the server made.
+ */
+const __devmodeCapturePage = async (event) => {
+    const button = event.currentTarget;
+    const status = document.getElementById("devmode-capture-status");
+    const target = captureTarget(await getConfig());
+    if (!target) return;
 
-    const eventTargetLabel = document.querySelector(`label[for=${e.target.id}]`) || e.target;
-    const textContentTemp = eventTargetLabel.textContent;
+    button.disabled = true;
+    status.textContent = browser.i18n.getMessage("devmodeCaptureSending");
+    try {
+        const page = await controller.devmode.capturePage();
+        const response = await safeFetch(target.captureUrl, {
+            allowLoopback: true,
+            init: { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(page) }
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(typeof result.detail === "string" ? result.detail : `HTTP ${response.status}`);
+        }
 
-    // Show that processing has started.
-    eventTargetLabel.textContent = "•◦◦";
-    const processingAnimationId = setInterval(() => {
-        const progress = eventTargetLabel.textContent.split("◦")[0];
-        eventTargetLabel.textContent =
-            (progress.length >= 3)
-            ? "•"
-            : "•".repeat(progress.length + 1);
+        await browser.runtime.sendMessage({ action: "updateDatabase" });
+        // updateDatabase reports only the default providers; the provider's own errors say whether it refreshed.
+        const errors = (await getConfig()).providerData[target.providerUrl]?.errors || [];
+        if (errors.length > 0) throw new Error(errors.map((error) => error.message).join("; "));
 
-        eventTargetLabel.textContent = eventTargetLabel.textContent.padEnd(3, "◦");
-    }, 200);
- 
-    const pageSignatures = await controller.devmode.dumpLinkSignatures();
-    log("Received generated signatures:", pageSignatures);
-
-    const pageSignaturesDump = pageSignatures
-        .filter((x) => x !== null)
-        .map((x) => x.toString())
-        .join("\n");
-
-    await window.navigator.clipboard.write([new ClipboardItem({ "text/plain": pageSignaturesDump })]);
-
-    // Give the illusion that the processing took some time by showing a bit of
-    // the processing animation (gives expected feedback to user).
-    setTimeout(() => {
-        clearInterval(processingAnimationId);
-        // Show that processing has finished.
-        eventTargetLabel.textContent = "✅";
-        setTimeout(() => {
-            eventTargetLabel.textContent = textContentTemp;
-            e.target.disabled = false;
-        }, 1000);
-    }, 600);
+        const tab = await getActiveTab();
+        await browser.tabs.sendMessage(tab.id, { command: "convertClickbaits" });
+        status.textContent = browser.i18n.getMessage("devmodeCaptureDone", [String(result.fake), String(result.real)]);
+    } catch (err) {
+        log("Sending the page to the development server failed:", err);
+        status.textContent = browser.i18n.getMessage("devmodeCaptureFailed", [err.message]);
+    } finally {
+        button.disabled = false;
+    }
 };
 
 /**

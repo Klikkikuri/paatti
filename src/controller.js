@@ -1,7 +1,7 @@
 "use strict";
 
 import browser from "./browser-api.js";
-import { getLogger } from "./utils.js";
+import { getLogger, getActiveTab } from "./utils.js";
 import { model } from "./model.js";
 
 const log = getLogger("controller");
@@ -95,15 +95,10 @@ const controller = {
     },
 
     devmode: {
-        dumpLinkSignatures: async () => {
-            log("Generating dump of link signatures for the current page...");
-            // Get the active tab.
-            const tabs = browser.tabs;
-            const activeTabId = (await tabs.query({ active: true, currentWindow: true }))[0].id;
-            const result = await tabs.sendMessage(activeTabId, { command: "devmode_generateLinkSignatures" });
-
-            log("Dumped.");
-            return result;
+        /** The links and headlines that the site rules find on the active tab, for the development server. */
+        capturePage: async () => {
+            const tab = await getActiveTab();
+            return browser.tabs.sendMessage(tab.id, { command: "devmode_capturePage" });
         },
     },
 };

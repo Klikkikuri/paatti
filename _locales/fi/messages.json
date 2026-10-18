@@ -445,21 +445,49 @@
     "message": "Asetuksia nörteille",
     "description": "Title-attribute of the hidden devmode activation button"
   },
-  "devmodeCopyLinkSignaturesTitle": {
-    "message": "Kopioi tämän sivun linkkien suolaukset leikepöydällesi",
-    "description": "Title-attribute of the hidden devmode link signature copying button"
-  },
   "devmodeSetDebugVisualsLabel": {
     "message": "Visuaalinen korostus",
     "description": "Label of the devmode debug visuals toggle"
   },
-  "devmodeDumpLinkHashLabel": {
-    "message": "Linkkien suolaukset",
-    "description": "Label for the devmode dump signatures section"
+  "devmodeCaptureLabel": {
+    "message": "Kehityspalvelin",
+    "description": "Label of the devmode row that sends the page to the development server"
   },
-  "devmodeDumpLinkHashBtn": {
-    "message": "Kopioi leikepöydälle",
-    "description": "Button text to copy link signatures to clipboard"
+  "devmodeCaptureBtn": {
+    "message": "Lähetä sivu",
+    "description": "Button that sends the links and headlines of the page to the development server"
+  },
+  "devmodeCaptureHint": {
+    "message": "Ota tämä sivusto käyttöön, niin voit lähettää sivun kehityspalvelimelle.",
+    "description": "Shown instead of the send button when the site of the page is off"
+  },
+  "devmodeCaptureSending": {
+    "message": "Lähetetään…",
+    "description": "Shown while the page is sent to the development server and the database is updated"
+  },
+  "devmodeCaptureDone": {
+    "message": "Valmis: $FAKE$ linkkiä sai testikorjauksen, $REAL$ linkillä on oikea korjaus.",
+    "description": "Result of sending the page to the development server",
+    "placeholders": {
+      "fake": {
+        "content": "$1",
+        "example": "12"
+      },
+      "real": {
+        "content": "$2",
+        "example": "30"
+      }
+    }
+  },
+  "devmodeCaptureFailed": {
+    "message": "Ei lähetetty: $ERROR$",
+    "description": "Shown when sending the page to the development server fails",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "No Rahti site covers www.example.com"
+      }
+    }
   },
   "settingsviewDevmodeTitle": {
     "message": "Kehittäjäasetukset",

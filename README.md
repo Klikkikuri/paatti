@@ -356,8 +356,7 @@ browser's tree, `make store-build` overwrites the two zips with the store packag
 `manifest.json` is the base for both browsers; `manifest.chrome.json` and `manifest.firefox.json` remove what the
 other browser does not accept. See [Browser Manifests](docs/release.md#browser-manifests) for the merge rules.
 
-`make init` fetches the `suola` submodule. Do not use `make test-data`: it passes a signature-file path that
-[`generate_test_data.py`](./generate_test_data.py) ignores.
+`make init` fetches the `suola` submodule.
 
 ### Load a Development Build
 
@@ -460,8 +459,9 @@ it while developer mode is on, and the hidden controls become visible. Turning i
   status Paatti gave it: converted, original, 🔒 paywalled, skipped or error. Two settings control the overlay:
   `debugVisualsEnabled` comes from the environment, and `visualHighlightEnabled` is your own override. Note
   that an open popup forces the outlines on, whatever the setting says.
-- The **signature dumper** copies the normalized SHA-256 signature of every link on the page to the
-  clipboard, navigation and footer links included. Use the 🧂 button, or the **Copy to Clipboard** button in the popup's **Salt Signatures** section.
+- **Send page** in the popup's **Developer Settings** sends the links and headlines of the page to the
+  [development server](#development-server), which makes test corrections for the links that have none. The row
+  shows only when a provider on your own machine names a capture address.
 
 ### Badge Icons
 
@@ -533,6 +533,20 @@ the extension:
   Ilta-Pulu.
 
 The server listens on `127.0.0.1` only.
+
+**Test data for a real site.** The server also makes test corrections for the links of a supported site, for
+example www.iltalehti.fi, that the real database has no correction for:
+
+1. Start the server with `make serve`. It passes the Rahti commit of `sites.lock.json`.
+2. Add `http://localhost:3000/manifest/captured-sites/manifest.json` as a provider, as in step 2 above. The
+   development environment lets a provider take over a site, so the supported sites go off: turn on each site
+   that you want test data for.
+3. Open a page of the site, open the popup, and select **Send page** under **Developer Settings**.
+
+The server signs the links and keeps only those that the real database has no correction for, so the real
+corrections still show. A test correction starts with `[dev]`. Send the page again after a database update: links
+that the real database got since then lose their test correction. The server keeps the links that you sent in
+`test_data/captures/`. [devserver/README.md](./devserver/README.md#captured-sites) tells more.
 
 ### Architecture
 
