@@ -45,7 +45,9 @@ def create_app(settings: Settings) -> FastAPI:
     app.state.templates = Jinja2Templates(directory=PACKAGE / "templates")
 
     # Starlette runs the middleware added last first: the cache layer must see the body after the faults.
-    app.middleware("http")(Chaos(settings).middleware)
+    # app.state.chaos lets an in-process test switch the faults between two refreshes; nothing else changes it.
+    app.state.chaos = Chaos(settings)
+    app.middleware("http")(app.state.chaos.middleware)
     app.middleware("http")(conditional_get)
 
     app.mount("/static", StaticFiles(directory=PACKAGE / "static"), name="static")
