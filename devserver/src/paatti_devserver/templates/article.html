@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ article.original }} | Ilta-Pulu{% endblock %}
+{% block content %}
+<div class="layout">
+  <main class="column-main article">
+    <p class="article__section">{{ article.section | title }}</p>
+    <h1>{{ article.original }}</h1>
+    {% for paragraph in article.body %}<p>{{ paragraph }}</p>
+    {% endfor %}
+  </main>
+  <div class="column-side">
+    {% for block in page.side %}{{ block | safe }}
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

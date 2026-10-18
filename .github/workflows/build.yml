@@ -63,3 +63,40 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           make check-sites-published
+
+  devserver:
+    name: "🧪 Development Server"
+    runs-on: ubuntu-latest
+    # Debian, for the same chromium package as the dev container: Ubuntu ships Chromium only as a snap.
+    container: node:24-trixie
+    env:
+      HYPOTHESIS_PROFILE: ci
+
+    steps:
+      - name: "🔄 Checkout Repository"
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: "🏷️ Fetch Submodule Tags"
+        run: |
+          git config --global --add safe.directory '*'
+          git -C suola fetch --tags
+
+      - name: "🧰 Install Tools"
+        run: |
+          apt-get update
+          apt-get -y install --no-install-recommends chromium jq make python3 zip
+          npm install -g jsdom@27
+
+      - name: "📦 Install uv"
+        uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.13.1"
+
+      - name: "🧪 Test the Development Server and the Extension Against It"
+        run: |
+          make test-devserver test-e2e
+

@@ -84,6 +84,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # the `make test` target points NODE_PATH at the global root so the tests can reach it.
 RUN npm install -g eslint@10 web-ext@10 jsdom@27
 
+# uv runs the development server in devserver/ (`make serve`, `make test-devserver`). Keep the version in step with
+# the setup-uv step of .github/workflows/build.yml.
+COPY --from=ghcr.io/astral-sh/uv:0.13.1 /uv /uvx /usr/local/bin/
+
 # Disable passwordless sudo
 RUN rm -f /etc/sudoers.d/node
 

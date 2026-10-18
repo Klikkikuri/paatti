@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Ilta-Pulu{% endblock %}</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/site.css">
+{% if hostile_css %}<link rel="stylesheet" href="/static/hostile.css">{% endif %}
+<script src="/static/site.js" defer></script>
+</head>
+<body{{ body_data | xmlattr }}>
+<header class="masthead">
+  <a class="masthead__logo" href="/">Ilta-Pulu</a>
+  <p class="masthead__note">A fake news site for testing Paatti. All people, places and companies are invented.</p>
+  <nav class="masthead__nav">{% for section in ("news", "politics", "world", "sport", "showbiz", "money", "health", "tech") %}<span>{{ section | title }}</span>{% endfor %}</nav>
+</header>
+{% block content %}{% endblock %}
+<footer class="colophon">
+  {% if seed is defined %}<p>Seed <strong>{{ seed }}</strong> · <a href="/?seed={{ seed + 1 }}">next seed</a> · <a href="/">random seed</a> · <a href="/?seed={{ seed }}&amp;check=1">self-check</a></p>{% endif %}
+  <p>Reproduce: <code>{{ reproduce }}</code></p>
+  <p><a href="/privacy">Privacy</a> · <a href="/docs">API</a> · <a href="/manifest/ilta-pulu/manifest.json">Provider manifest</a></p>
+</footer>
+</body>
+</html>

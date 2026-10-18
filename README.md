@@ -32,7 +32,7 @@ Sail smoothly through the clickbait-infested web using this browser extension.
     - [Environments](#environments)
     - [Developer and Diagnostic Utilities](#developer-and-diagnostic-utilities)
     - [Badge Icons](#badge-icons)
-    - [Local Test Data and Hashed Signatures](#local-test-data-and-hashed-signatures)
+    - [Development Server](#development-server)
     - [Architecture](#architecture)
     - [Make a Release](#make-a-release)
 
@@ -315,7 +315,7 @@ with `git clone --recursive` to get it from the start.
 - Node.js. Every build runs `check-icons`, and `make test` and the release task need it too.
 - `eslint` and `web-ext` for the lint targets. Both come from the dev container image.
 - (optional) Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2)
-- (optional, for the test-data helpers) Python 3
+- (optional, for the development server) [`uv`](https://docs.astral.sh/uv/), which installs the Python that it needs
 - The [`suola`](https://github.com/Klikkikuri/suola) submodule
   - TinyGo 0.41+, to compile it locally without Docker
 
@@ -357,8 +357,7 @@ browser's tree, `make store-build` overwrites the two zips with the store packag
 other browser does not accept. See [Browser Manifests](docs/release.md#browser-manifests) for the merge rules.
 
 `make init` fetches the `suola` submodule. Do not use `make test-data`: it passes a signature-file path that
-[`generate_test_data.py`](./generate_test_data.py) ignores. Call the script directly instead, as described in
-[Local Test Data and Hashed Signatures](#local-test-data-and-hashed-signatures).
+[`generate_test_data.py`](./generate_test_data.py) ignores.
 
 ### Load a Development Build
 
@@ -394,6 +393,11 @@ The suites live in `tests/` and run on the built-in [`node:test`](https://nodejs
 `tests/helpers/`, which the runner does not treat as suites. `make test` also runs `suola`'s Wasm smoke test when
 `build/` holds the artifacts, and skips it with a note when it does not. It also runs `make check-sites`, which
 compares the origins in `manifest.json` with `sites.lock.json` and does not connect to the network.
+
+`make test-devserver` runs the development server's own tests, and then checks a running server with Paatti's own
+provider resolver, Suola module and content-script scan ([`tools/devserver-drift.mjs`](./tools/devserver-drift.mjs)).
+`make test-e2e` loads the unpacked build into Chromium and checks that each block on Ilta-Pulu gets its expected
+status. Both need `uv`; see [Development Server](#development-server).
 
 Tests that touch the extension APIs use the in-memory fake in
 [`tests/helpers/fake-browser.mjs`](./tests/helpers/fake-browser.mjs), which really dispatches
@@ -492,70 +496,43 @@ the glyph out with a `<mask>`, as [`src/components/badge-style.js`](./src/compon
 
 A new badge needs its SVG, a module carrying the two markers above, and a `make icons` run.
 
-### Local Test Data and Hashed Signatures
+### Development Server
 
-For local development and testing, you can generate and serve a mock correction database with the two Python
-helper scripts ([`generate_test_data.py`](./generate_test_data.py) and [`httpserver.py`](./httpserver.py)), and
-add it to the extension as a local provider. To add support for a new site, see
-[docs/development/adding-a-new-site.md](./docs/development/adding-a-new-site.md) instead.
+[`devserver/`](./devserver/) is a development server for Paatti. It serves **Ilta-Pulu**, a fake news site in
+English, and a provider manifest that supplies Ilta-Pulu's site rules, Suola rules and corrections. Ilta-Pulu
+exercises each path of the content script: link and title selectors of the shapes that real news sites use, every
+clickbait level, the badges, paywalled and skipped links, expected failures, and content that loads later. A seed
+decides the layout, so the same seed gives the same page. The server can also inject faults into the provider
+documents. [devserver/README.md](./devserver/README.md) lists all of its settings.
 
-1. **Dump the signatures.** Turn developer mode on, open a supported news site, then open the popup and use the
-   🧂 button or the **Copy to Clipboard** button in the **Salt Signatures** section. This copies the normalized
-   SHA-256 signature of every link on the page.
-2. **Save them** to `test_data/signatures.txt`, one signature on each line. Make the `test_data/` directory if
-   it does not exist.
-3. **Generate the database.** The script reads `test_data/signatures.txt` and writes `test_data/data.json`:
+1. **Start the server.** It needs [`uv`](https://docs.astral.sh/uv/), which the dev container has:
 
    ```sh
-   python3 generate_test_data.py
+   make serve                                    # http://localhost:3000/
+   make serve DEVSERVER_ARGS="--seed=42"         # a fixed page seed
    ```
 
-4. **Serve it.** Run the server from the repository root. It serves the mock data at
-   `http://localhost:3000/data.json` with the cache headers the extension expects, and the other files of the
-   current directory below `http://localhost:3000/`:
+2. **Add the provider.** Make sure that the environment is `development`: an unpacked build starts in it. On the
+   settings page, under **🐛 Debug Settings** → **🔌 Providers**, turn on **Allow providers on this machine**.
+   Enter `http://localhost:3000/manifest/ilta-pulu/manifest.json`, select **Add**, then **Add provider**, and
+   accept the browser prompts.
+3. **Turn on the site.** A site that a provider supplies is off until you turn it on. Turn on **Ilta-Pulu** in the
+   site list, and open `http://localhost:3000/`.
 
-   ```sh
-   python3 httpserver.py
-   ```
+Each page shows its seed and the command that gives the same page again. Add `&check=1` to the address to show
+the self-check panel: it compares the status that Paatti gave each block with the status that the page expects.
+The expectations apply to the default settings of the `development` environment.
 
-5. **Write a provider manifest** for it, and save it as `test_data/manifest.json`. The manifest takes the site
-   settings and the Suola rules from Rahti, and the corrections from your mock database:
+Use `localhost`, not `127.0.0.1`: the site's origin is `http://localhost/*`. Ilta-Pulu has these side effects in
+the extension:
 
-   ```json
-   {
-     "schema_version": "0.1.0",
-     "name": "Local test data",
-     "resources": [
-       { "type": "suola-rules", "href": "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/rules.json" },
-       { "type": "site-configs", "href": "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/sites.json",
-         "origins": ["https://www.iltalehti.fi/*", "https://www.hs.fi/*", "https://yle.fi/*",
-                     "https://www.mtvuutiset.fi/*", "https://aksa.fi/*"] },
-       { "type": "rahti-data", "href": "/data.json" }
-     ]
-   }
-   ```
+- Paatti refuses to download a favicon from a loopback address, but each attempt uses one of the favicon requests
+  that all sites share.
+- The statistics get an entry for `localhost`.
+- In the `development` environment, feedback goes to the production feedback form. Do not send feedback from
+  Ilta-Pulu.
 
-   Use Rahti's `rules.json`: the signature dumper copies the signs that Rahti's rules make, so other rules give
-   signs that your database does not contain. `origins` must include the host of each site that you test.
-   Paatti rejects a site whose host is not in this list. `/data.json` starts at the server root, where
-   `httpserver.py` serves `test_data/data.json`.
-
-6. **Add the provider.** Make sure that the environment is `development`: an unpacked build starts in it, and
-   developer mode (step 1) also selects it. On the settings page, under **🐛 Debug Settings** →
-   **🔌 Providers**, turn on **Allow providers on this machine**. Enter
-   `http://localhost:3000/test_data/manifest.json`, select **Add**, then **Add provider**, and accept the browser
-   prompts.
-
-7. **Turn the sites on again.** The `development` environment turns **Allow providers to override sites** on,
-   so your provider takes over the sites from Rahti. A site that a provider supplies is off until you turn it
-   on, so the sites that you did not switch yourself go off. Turn on each site that you test in the site list.
-   Paatti then uses your corrections first, and Rahti's after them.
-
-Paatti refreshes the provider at each database update. Use **Update Database** after you generate the database
-again. See [docs/providers.md](./docs/providers.md).
-
-`httpserver.py` listens on all network interfaces and serves the whole current directory. Do not run it on a
-network that you do not trust.
+The server listens on `127.0.0.1` only.
 
 ### Architecture
 

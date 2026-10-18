@@ -2,11 +2,11 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Start HTTP data server",
+            "label": "Start development server",
             "type": "shell",
-            "command": "${workspaceFolder}/httpserver.py",
+            "command": "make",
             "args": [
-                "--fetch-production"
+                "serve"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
@@ -20,8 +20,8 @@
                 },
                 "background": {
                     "activeOnStart": true,
-                    "beginsPattern": "^Starting HTTP server",
-                    "endsPattern": "^Serving HTTP on https?.*"
+                    "beginsPattern": "paatti-devserver",
+                    "endsPattern": "Uvicorn running on"
                 }
             },
             "presentation": {
@@ -30,7 +30,7 @@
             }
         },
         {
-            "label": "Stop HTTP data server",
+            "label": "Stop development server",
             "type": "shell",
             "command": "echo ${input:terminate}",
             "problemMatcher": []

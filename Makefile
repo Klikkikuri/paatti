@@ -248,6 +248,35 @@ test: export NODE_PATH = $(shell npm root -g)
 test: test-wasm check-sites
 	node --test 'tests/**/*.test.mjs'
 
+# The development server in devserver/: Ilta-Pulu, its local provider manifests and fault injection. It is a uv
+# project of its own; devserver/README.md lists its settings. DEVSERVER_ARGS passes more of them, for example
+# DEVSERVER_ARGS="--seed=42 --chaos.provider_5xx=data".
+UV ?= uv
+DEVSERVER_PORT ?= 3000
+DEVSERVER_ARGS ?=
+DEVSERVER := $(UV) run --directory devserver
+
+serve:
+	$(DEVSERVER) paatti-devserver --port=$(DEVSERVER_PORT) --data_dir="$(abspath test_data)" \
+		--rahti_commit="$$(jq -r .commit sites.lock.json)" $(DEVSERVER_ARGS)
+
+# The server's own tests, then the drift guard: Paatti's provider resolver, Suola module and content-script scan
+# against a live server on a free port (tools/devserver-drift.mjs).
+test-devserver: export NODE_PATH = $(shell npm root -g)
+test-devserver: $(WASM_OUTPUTS)
+	$(DEVSERVER) pytest
+	@port=$$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'); \
+	$(DEVSERVER) paatti-devserver --port=$$port --log_level=WARNING & pid=$$!; \
+	trap 'kill $$pid 2>/dev/null' EXIT; \
+	for _ in $$(seq 100); do curl -sf -o /dev/null "http://localhost:$$port/manifest/ilta-pulu/manifest.json" && break; sleep 0.2; done; \
+	node tools/devserver-drift.mjs "http://localhost:$$port"
+
+# The unpacked extension in Chromium against Ilta-Pulu (devserver/tests/e2e). CHROMIUM is the Debian package's
+# binary, never the /usr/bin/chromium wrapper, which injects an empty --load-extension=.
+CHROMIUM ?= /usr/lib/chromium/chromium
+test-e2e: dist
+	$(DEVSERVER) pytest tests/e2e --extension-dir="$(DIST_DIR)" --chromium="$(CHROMIUM)"
+
 # suola's own smoke test for the browser module, run against the artifacts
 # staged in $(BUILD_DIR). It is the only check that js.wasm loads and signs
 # URLs the way the rules say it should; the tests above never touch it. Needs
@@ -263,4 +292,4 @@ test-wasm:
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
 	fi
 
-.PHONY: build init ensure-suola check-tinygo package source-dist test-data icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
+.PHONY: serve test-devserver test-e2e build init ensure-suola check-tinygo package source-dist test-data icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext

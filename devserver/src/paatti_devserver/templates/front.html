@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+{{ page.ticker | safe }}
+<div class="layout">
+  <main class="column-main">
+    {% for block in page.main %}{{ block | safe }}
+    {% endfor %}
+    {% if body_data.get("data-load-more") %}<div id="more"></div><button id="load-more" type="button">Load more</button>{% endif %}
+  </main>
+  <div class="column-side">
+    {% for block in page.side %}{{ block | safe }}
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
