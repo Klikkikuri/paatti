@@ -1,6 +1,6 @@
 name: Sites Latest
 
-# Each day, compare the bundled sites with Rahti main. A failed run means that a developer must run
+# Each day, compare the site origins in sites.lock.json with Rahti main. A failed run means that a developer must run
 # `make sites-sync` and commit the result; it blocks no build or release. See docs/release.md.
 on:
   schedule:

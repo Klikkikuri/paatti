@@ -68,12 +68,12 @@
         "src/components/klikkikuri-converted-badge.js"
       ],
       "matches": [
-        "https://www.iltalehti.fi/*",
-        "https://www.hs.fi/*",
-        "https://yle.fi/*",
-        "https://www.mtvuutiset.fi/*",
         "https://aksa.fi/*",
-        "https://www.ampparit.com/*"
+        "https://www.ampparit.com/*",
+        "https://www.hs.fi/*",
+        "https://www.iltalehti.fi/*",
+        "https://www.mtvuutiset.fi/*",
+        "https://yle.fi/*"
       ]
     },
     {
@@ -112,11 +112,11 @@
   },
   "host_permissions": [
     "https://raw.githubusercontent.com/Klikkikuri/rahti/*",
-    "https://www.iltalehti.fi/*",
+    "https://aksa.fi/*",
     "https://www.hs.fi/*",
-    "https://yle.fi/*",
+    "https://www.iltalehti.fi/*",
     "https://www.mtvuutiset.fi/*",
-    "https://aksa.fi/*"
+    "https://yle.fi/*"
   ],
   "optional_host_permissions": [
     "*://*/*",

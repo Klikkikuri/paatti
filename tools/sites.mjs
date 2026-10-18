@@ -3,41 +3,43 @@
 
 /**
  * @file sites.mjs
- * Records the default sites from a provider manifest, and writes the manifest origins they need.
+ * Writes the origins of the default sites into `manifest.json`, and pins the Rahti commit they come from.
  *
  * The default sites are the sites of the default provider: Rahti's `sites.json`, linked from its provider manifest.
- * The extension downloads them at runtime, like the sites of any other provider, and does not read the record. A
- * store build can request only the origins that `manifest.json` declares, so this script writes them there. It
- * resolves the manifest with `src/provider.js`, so the sites pass the same validation as at runtime, and writes the
- * record to `src/generated/sites.js`. The record is committed, so that the checks run offline and a Paatti commit
- * always names the same sites.
+ * The extension downloads them at runtime, like the sites of any other provider. A store build can request only the
+ * origins that `manifest.json` declares, so this script writes them there. It resolves the manifest with
+ * `src/provider.js`, so the sites pass the same validation as at runtime.
  *
- * The module records the Rahti commit it comes from, so that a check against Rahti gives the same result for a
- * given Paatti commit. A sync keeps the recorded commit while the sites stay the same, because Rahti `main` moves
- * many times each hour. A `site-configs` href must resolve under the directory of the manifest, so that the pinned
- * URL pins the sites too. This is stricter than the runtime resolver. A loopback sync records no commit, and the
- * checks refuse it.
+ * `sites.lock.json` is committed, so that the checks run offline and a Paatti commit always gives the same result.
+ * It holds:
+ * - `source`: the provider manifest URL, so that a check refuses a lock made from another URL.
+ * - `commit`: the Rahti commit, because Rahti `main` moves many times each hour. A sync keeps it while the origins
+ *   stay the same. A `site-configs` href must resolve under the directory of the manifest, so that the pinned URL
+ *   pins the sites too. This is stricter than the runtime resolver. A loopback sync records no commit, and the
+ *   checks refuse it.
+ * - `origins`: the `enabled` and `disabled` site origins, sorted. `manifest.json` cannot tell an enabled origin that
+ *   stays optional (see below) from a disabled one.
+ * Only origins and `enabled` are compared: a change to the rules of a site does not change `manifest.json`.
  *
- * It also writes the site origins into `manifest.json`: an enabled site into `host_permissions`, a disabled site
- * into `optional_host_permissions`, and every site into the `matches` of the named `web_accessible_resources`
- * group. A store build cannot request any other origin, so these lists are never edited by hand. An entry of the
- * form `https://<host>/*` belongs to this script; every other entry is kept.
+ * In `manifest.json`, an enabled origin goes into `host_permissions`, a disabled one into
+ * `optional_host_permissions`, and every origin into the `matches` of the named `web_accessible_resources` group.
+ * An entry of the form `https://<host>/*` belongs to this script; every other entry is kept, first.
  *
  * An origin that is optional in the previous release stays optional, also when its site becomes enabled. A new
  * required host permission makes Chrome disable the extension at update until the user accepts it. The previous
- * release is the last `v*` tag before HEAD, so that `--check` gives the same result on the tagged commit. A source
- * archive has no git history: then the committed `manifest.json` takes the place of the previous release.
+ * release is the last `v*` tag before HEAD, so that `--check` gives the same result on the tagged commit. Without
+ * git history or tags, the committed `manifest.json` takes the place of the previous release.
  *
  * Usage:
- *   node tools/sites.mjs <manifest-url>                   write the module and the manifest origins
- *   node tools/sites.mjs --check <manifest-url>           offline: fail if the module is not pinned to the manifest,
- *                                                         or if manifest.json does not agree with the module
- *   node tools/sites.mjs --check-published <manifest-url> fail if the module differs from its pinned Rahti commit,
- *                                                         or if that commit is not on the branch
- *   node tools/sites.mjs --check-latest <manifest-url>    fail if the module differs from the branch now
+ *   node tools/sites.mjs <manifest-url>                   write sites.lock.json and the manifest origins
+ *   node tools/sites.mjs --check <manifest-url>           offline: fail if the lock is not pinned to the manifest URL,
+ *                                                         or if manifest.json does not agree with the lock
+ *   node tools/sites.mjs --check-published <manifest-url> fail if the origins at the pinned commit differ from the
+ *                                                         lock, or if that commit is not on the branch
+ *   node tools/sites.mjs --check-latest <manifest-url>    fail if the origins on the branch now differ from the lock
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
@@ -47,12 +49,13 @@ import { fetchManifest, resolve } from "../src/provider.js";
 import { ARBITRARY_ORIGINS } from "../src/options/origins.js";
 
 const REPO = resolvePath(dirname(fileURLToPath(import.meta.url)), "..");
-const MODULE = join("src", "generated", "sites.js");
+const LOCK = "sites.lock.json";
 const MANIFEST = "manifest.json";
 
 const SITE_ORIGIN = /^https?:\/\/(\*\.)?[^/*]+\/\*$/;
 const RAW_HOST = "raw.githubusercontent.com";
 const COMMIT = /^[0-9a-f]{40}$/;
+
 
 /**
  * Fetch and resolve the site configurations of a provider manifest. Loopback is allowed: this runs on a
@@ -166,17 +169,65 @@ export async function isOnBranch(source, commit, fetchImpl = fetch) {
     return status === "ahead" || status === "identical";
 }
 
+const sorted = (list) => [...new Set(list)].sort();
+
 /**
- * The commit a sync keeps: the committed one, while it comes from the same source and the sites did not change.
+ * @param {object} siteConfigs - Resolved sites, keyed by host.
+ * @returns {{enabled: string[], disabled: string[]}} Sorted, without duplicates. An origin that an enabled site has
+ *   is not in `disabled`.
+ */
+export function originsOf(siteConfigs) {
+    const sites = Object.values(siteConfigs);
+    const enabled = sorted(sites.filter((site) => site.enabled).flatMap((site) => site.origins));
+    const disabled = sorted(sites.filter((site) => !site.enabled).flatMap((site) => site.origins))
+        .filter((origin) => !enabled.includes(origin));
+    return { enabled, disabled };
+}
+
+/**
+ * @param {{enabled: string[], disabled: string[]}} expected
+ * @param {{enabled: string[], disabled: string[]}} actual
+ * @returns {string[]} One line for each origin that `actual` adds or removes.
+ */
+export function diffOrigins(expected, actual) {
+    return ["enabled", "disabled"].flatMap((state) => [
+        ...actual[state].filter((origin) => !expected[state].includes(origin)).map((origin) => `+ ${state} ${origin}`),
+        ...expected[state].filter((origin) => !actual[state].includes(origin)).map((origin) => `- ${state} ${origin}`),
+    ]);
+}
+
+/**
+ * The commit a sync can keep: the lock's, while it comes from the same source and the origins did not change.
  *
- * @param {object|null} committed - The exports of the committed module, or null.
+ * @param {object|null} lock - The parsed `sites.lock.json`, or null.
  * @param {string} source
- * @param {object} siteConfigs - The sites at the head of the branch.
+ * @param {{enabled: string[], disabled: string[]}} headOrigins - The origins at the head of the branch.
  * @returns {string|null}
  */
-export function keepCandidate(committed, source, siteConfigs) {
-    if (!committed || committed.SITES_SOURCE !== source || !COMMIT.test(committed.SITES_COMMIT)) return null;
-    return diffSites(committed.SITE_CONFIGS, siteConfigs).length === 0 ? committed.SITES_COMMIT : null;
+export function keepCandidate(lock, source, headOrigins) {
+    if (!lock || lock.source !== source || !COMMIT.test(lock.commit)) return null;
+    return isDeepStrictEqual(lock.origins, headOrigins) ? lock.commit : null;
+}
+
+/** @throws if the lock does not come from `source`. */
+export function requireSource(lock, source) {
+    if (!lock) throw new Error(`${LOCK} is missing or not JSON. Run \`make sites-sync\`.`);
+    if (lock.source !== source) throw new Error(`${LOCK} comes from ${lock.source}, not ${source}. Run \`make sites-sync\`.`);
+}
+
+/** @throws if the lock does not come from `source`, records no commit, or its origins are not well formed. */
+export function requirePinned(lock, source) {
+    requireSource(lock, source);
+    if (!COMMIT.test(lock.commit)) throw new Error(`${LOCK} records no Rahti commit. Run \`make sites-sync\`.`);
+
+    const { enabled, disabled } = lock.origins ?? {};
+    const wellFormed = (list) => Array.isArray(list) && list.every((origin) => typeof origin === "string"
+        && SITE_ORIGIN.test(origin)) && isDeepStrictEqual(list, sorted(list));
+    if (!wellFormed(enabled) || !wellFormed(disabled) || enabled.length === 0
+        || enabled.some((origin) => disabled.includes(origin))) {
+        throw new Error(`${LOCK}: origins.enabled and origins.disabled must be sorted lists of site origins, without `
+            + `duplicates, disjoint, and enabled must not be empty. Run \`make sites-sync\`.`);
+    }
 }
 
 /**
@@ -189,15 +240,15 @@ async function fetchLatest(source) {
     return { commit, siteConfigs: await fetchSites(commit ? pinnedManifestUrl(source, commit) : source) };
 }
 
-const diffAt = async (source, commit, siteConfigs) => diffSites(siteConfigs, await fetchSites(pinnedManifestUrl(source, commit)));
+const originsAt = async (source, commit) => originsOf(await fetchSites(pinnedManifestUrl(source, commit)));
 
 /**
  * Whether a sync can keep `commit`: it is on the branch, and this `src/provider.js` resolves its sites to
- * `siteConfigs`. A failure gives false, so the sync writes the head of the branch.
+ * `headOrigins`. A failure gives false, so the sync writes the head of the branch.
  */
-async function canKeep(source, commit, siteConfigs) {
+async function canKeep(source, commit, headOrigins) {
     try {
-        return await isOnBranch(source, commit) && (await diffAt(source, commit, siteConfigs)).length === 0;
+        return await isOnBranch(source, commit) && isDeepStrictEqual(await originsAt(source, commit), headOrigins);
     } catch {
         return false;
     }
@@ -205,55 +256,41 @@ async function canKeep(source, commit, siteConfigs) {
 
 /**
  * @param {object} manifest - `manifest.json`.
- * @param {object} siteConfigs
+ * @param {{enabled: string[], disabled: string[]}} origins
  * @param {object} released - `manifest.json` of the previous release.
- * @returns {object} A copy whose site origins are the origins of `siteConfigs`.
+ * @returns {object} A copy whose site origins are `origins`.
  */
-export function patchManifest(manifest, siteConfigs, released) {
+export function patchManifest(manifest, origins, released) {
     const shippedOptional = new Set(released.optional_host_permissions);
-    const sites = Object.values(siteConfigs);
-    const enabled = sites.filter((site) => site.enabled).flatMap((site) => site.origins);
-    const disabled = sites.filter((site) => !site.enabled).flatMap((site) => site.origins);
+    const enabled = sorted(origins.enabled);
+    const disabled = sorted(origins.disabled);
     const required = enabled.filter((origin) => !shippedOptional.has(origin));
-    const optional = [...enabled.filter((origin) => shippedOptional.has(origin)), ...disabled];
+    const optional = sorted([...enabled.filter((origin) => shippedOptional.has(origin)), ...disabled]);
     const keep = (list = []) => list.filter((origin) => !SITE_ORIGIN.test(origin));
 
     const copy = structuredClone(manifest);
     copy.host_permissions = [...keep(manifest.host_permissions), ...required];
     copy.optional_host_permissions = [...keep(manifest.optional_host_permissions), ...optional];
     const named = copy.web_accessible_resources.find((group) => !group.matches.includes(ARBITRARY_ORIGINS));
-    named.matches = [...enabled, ...disabled];
+    named.matches = sorted([...enabled, ...disabled]);
 
     return copy;
 }
 
-/**
- * @param {object} recorded
- * @param {object} published
- * @returns {string[]} One line for each site that is added, removed or changed.
- */
-export function diffSites(recorded, published) {
-    const keys = new Set([...Object.keys(recorded), ...Object.keys(published)]);
-    return [...keys].flatMap((key) => {
-        if (!(key in recorded)) return [`+ ${key}: published, not recorded`];
-        if (!(key in published)) return [`- ${key}: recorded, not published`];
-        return isDeepStrictEqual(recorded[key], published[key]) ? [] : [`~ ${key}: changed`];
-    });
+/** @returns {string} `value` as the JSON text of a committed file. */
+export const renderJson = (value) => JSON.stringify(value, null, 2) + "\n";
+
+/** @returns {object|null} The parsed `sites.lock.json`, or null when it is missing or not JSON. */
+export function readLock() {
+    try {
+        return JSON.parse(readFileSync(join(REPO, LOCK), "utf8"));
+    } catch {
+        return null;
+    }
 }
 
-export function renderModule(source, siteConfigs, commit) {
-    return [
-        `// Generated by tools/sites.mjs. Do not edit: change the sites in Rahti, then run \`make sites-sync\`.`,
-        `export const SITES_SOURCE = ${JSON.stringify(source)};`,
-        `export const SITES_COMMIT = ${JSON.stringify(commit)};`,
-        `export const SITE_CONFIGS = ${JSON.stringify(siteConfigs, null, 4)};`,
-        ``,
-    ].join("\n");
-}
-
-const importModule = () => import(join(REPO, MODULE));
 const readManifest = () => JSON.parse(readFileSync(join(REPO, MANIFEST), "utf8"));
-const writeJson = (file, value) => writeFileSync(join(REPO, file), JSON.stringify(value, null, 2) + "\n");
+const writeJson = (file, value) => writeFileSync(join(REPO, file), renderJson(value));
 
 /** @returns {object|null} `manifest.json` of the last `v*` tag before HEAD, or null without git history or tags. */
 export function readReleasedManifest() {
@@ -277,51 +314,46 @@ function releasedOrCommittedManifest() {
     return readManifest();
 }
 
-function requirePinned({ SITES_SOURCE, SITES_COMMIT }, source) {
-    if (SITES_SOURCE !== source) throw new Error(`${MODULE} comes from ${SITES_SOURCE}, not ${source}. Run \`make sites-sync\`.`);
-    if (!COMMIT.test(SITES_COMMIT)) throw new Error(`${MODULE} records no Rahti commit. Run \`make sites-sync\`.`);
-}
-
 async function sync(source) {
     const latest = await fetchLatest(source);
-    // A missing or broken module is no candidate: the sync is what repairs it.
-    const kept = keepCandidate(await importModule().catch(() => null), source, latest.siteConfigs);
-    const commit = kept && await canKeep(source, kept, latest.siteConfigs) ? kept : latest.commit;
+    const origins = originsOf(latest.siteConfigs);
+    const kept = keepCandidate(readLock(), source, origins);
+    const commit = kept && await canKeep(source, kept, origins) ? kept : latest.commit;
 
-    mkdirSync(join(REPO, dirname(MODULE)), { recursive: true });
-    writeFileSync(join(REPO, MODULE), renderModule(source, latest.siteConfigs, commit));
-    writeJson(MANIFEST, patchManifest(readManifest(), latest.siteConfigs, releasedOrCommittedManifest()));
-    console.log(`${MODULE}: ${Object.keys(latest.siteConfigs).length} sites from ${source} at ${commit ?? "no commit"}`);
+    writeJson(LOCK, { source, commit, origins });
+    writeJson(MANIFEST, patchManifest(readManifest(), origins, releasedOrCommittedManifest()));
+    console.log(`${LOCK}: ${Object.keys(latest.siteConfigs).length} sites from ${source} at ${commit ?? "no commit"}`);
 }
 
 async function check(source) {
-    const { SITE_CONFIGS, ...pin } = await importModule();
-    requirePinned(pin, source);
-    const patched = patchManifest(readManifest(), SITE_CONFIGS, releasedOrCommittedManifest());
+    const lock = readLock();
+    requirePinned(lock, source);
+    const patched = patchManifest(readManifest(), lock.origins, releasedOrCommittedManifest());
     if (!isDeepStrictEqual(patched, readManifest())) {
-        throw new Error(`${MANIFEST}: the site origins do not agree with ${MODULE}. Run \`make sites-sync\`.`);
+        throw new Error(`${MANIFEST}: the site origins do not agree with ${LOCK}. Run \`make sites-sync\`.`);
     }
 }
 
 async function checkPublished(source) {
-    const { SITE_CONFIGS, ...pin } = await importModule();
-    requirePinned(pin, source);
-    if (!await isOnBranch(source, pin.SITES_COMMIT)) {
-        throw new Error(`Rahti commit ${pin.SITES_COMMIT} is not on the branch of ${source}, or GitHub does not know `
+    const lock = readLock();
+    requirePinned(lock, source);
+    if (!await isOnBranch(source, lock.commit)) {
+        throw new Error(`Rahti commit ${lock.commit} is not on the branch of ${source}, or GitHub does not know `
             + `the repository or the branch. Run \`make sites-sync\`.`);
     }
-    const changes = await diffAt(source, pin.SITES_COMMIT, SITE_CONFIGS);
+    const changes = diffOrigins(lock.origins, await originsAt(source, lock.commit));
     if (changes.length > 0) {
-        throw new Error(`${MODULE} differs from Rahti commit ${pin.SITES_COMMIT}. Run \`make sites-sync\`.\n  ${changes.join("\n  ")}`);
+        throw new Error(`${LOCK} differs from Rahti commit ${lock.commit}. Run \`make sites-sync\`.\n  ${changes.join("\n  ")}`);
     }
 }
 
 async function checkLatest(source) {
-    const { SITE_CONFIGS, SITES_COMMIT } = await importModule();
+    const lock = readLock();
+    requireSource(lock, source);
     const latest = await fetchLatest(source);
-    const changes = diffSites(SITE_CONFIGS, latest.siteConfigs);
+    const changes = diffOrigins(lock.origins, originsOf(latest.siteConfigs));
     if (changes.length > 0) {
-        throw new Error(`The recorded default sites (Rahti ${SITES_COMMIT}) differ from ${source} (Rahti ${latest.commit}). `
+        throw new Error(`The origins in ${LOCK} (Rahti ${lock.commit}) differ from ${source} (Rahti ${latest.commit}). `
             + `Run \`make sites-sync\`.\n  ${changes.join("\n  ")}`);
     }
 }

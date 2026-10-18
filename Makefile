@@ -173,12 +173,12 @@ icons:
 check-icons:
 	@node tools/inline-icons.mjs --check
 
-# The extension downloads the default sites at runtime. sites-sync records them in src/generated/sites.js, with the
-# Rahti commit they come from, and writes their origins into manifest.json, because a store build can request only
-# the origins that manifest.json declares. Both files are committed, so that the checks run offline. check-sites is offline: the
-# store build runs it, and it reads the previous v* tag. check-sites-published compares with the recorded commit,
-# so a tag gives the same result each time; build.yml and release.yml run it. check-sites-latest compares with
-# Rahti main; sites-latest.yml runs it each day.
+# The extension downloads the default sites at runtime. sites-sync writes their origins into manifest.json, because
+# a store build can request only the origins that manifest.json declares, and records the origins and the Rahti
+# commit in sites.lock.json (tools/sites.mjs tells why). check-sites is offline: the store build runs it, and it
+# reads the previous v* tag. check-sites-published compares with the pinned commit, so a tag gives the same result
+# each time; build.yml and release.yml run it. check-sites-latest compares with Rahti main; sites-latest.yml runs it
+# each day.
 sites-sync:
 	node tools/sites.mjs $(SITES_MANIFEST)
 

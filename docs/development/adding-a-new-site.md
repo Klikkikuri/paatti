@@ -1,10 +1,10 @@
 # Adding Support for a New Site
 
 The site configurations are not in Paatti. They are in `sites.json` in the
-[Rahti repository](https://github.com/Klikkikuri/rahti), which the official provider manifest links. At build time,
-Paatti keeps a copy in [src/generated/sites.js](../../src/generated/sites.js) and takes the site origins of
-[manifest.json](../../manifest.json) from it. The extension does not read this copy when it runs: it reads the sites
-from its providers. Do not edit either file by hand.
+[Rahti repository](https://github.com/Klikkikuri/rahti), which the default provider manifest links. The extension
+reads the sites from its providers when it runs. Paatti keeps only the origins of the default sites, in
+[manifest.json](../../manifest.json) and [sites.lock.json](../../sites.lock.json), because a store build can request
+only the origins that `manifest.json` declares. `make sites-sync` writes both files. Do not edit them by hand.
 
 ---
 
@@ -90,28 +90,28 @@ make sites-sync SITES_MANIFEST=http://127.0.0.1:8000/manifest.json
 ```
 
 The sync resolves the manifest with the same validation that a provider gets at runtime, and stops if it refuses a
-site. It also stops if a `site-configs` href is not in the directory of the manifest, so that the recorded Rahti
-commit pins the sites too. It writes `src/generated/sites.js` and the site origins in `manifest.json`:
+site. It also stops if a `site-configs` href is not in the directory of the manifest, so that the pinned Rahti
+commit pins the sites too. It writes `sites.lock.json` and the site origins in `manifest.json`:
 `host_permissions` for an enabled site, `optional_host_permissions` for a disabled site or an origin that was
 optional in the previous release, and the `web_accessible_resources` matches for all sites. The previous release
 is the last `v*` tag before `HEAD`. Without git history or tags, as in a source archive, the committed
 `manifest.json` takes its place. The sync does not change which sites the extension uses.
 
 `make test` fails after a sync from a local copy. That is intentional: do not commit the result. A sync from a
-local copy records no Rahti commit, and CI stops on it too.
+local copy writes the local URL into `sites.lock.json` and records no Rahti commit, and CI stops on it too.
 
 ---
 
 ## 3. Publish, Then Sync from the Published Manifest
 
 Commit and push `sites.json` in Rahti. Then sync Paatti from the published manifest, run the tests, and commit
-`src/generated/sites.js` and `manifest.json`:
+`sites.lock.json` and `manifest.json`:
 
 ```bash
 make sites-sync
 make test
 ```
 
-`make test` includes `make check-sites`, which fails if `manifest.json` does not agree with the recorded default
-sites. CI compares the record with the Rahti commit that the sync recorded.
+`make test` includes `make check-sites`, which fails if `manifest.json` does not agree with `sites.lock.json`. CI
+compares the lock with the Rahti commit that it pins.
 [Default Site Permissions](../release.md#default-site-permissions) tells which check runs where.

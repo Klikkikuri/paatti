@@ -393,7 +393,7 @@ The suites live in `tests/` and run on the built-in [`node:test`](https://nodejs
 `tests/*.test.mjs` file is picked up automatically — nothing to register. Shared fixtures go under
 `tests/helpers/`, which the runner does not treat as suites. `make test` also runs `suola`'s Wasm smoke test when
 `build/` holds the artifacts, and skips it with a note when it does not. It also runs `make check-sites`, which
-compares the origins in `manifest.json` with the recorded default sites and does not connect to the network.
+compares the origins in `manifest.json` with `sites.lock.json` and does not connect to the network.
 
 Tests that touch the extension APIs use the in-memory fake in
 [`tests/helpers/fake-browser.mjs`](./tests/helpers/fake-browser.mjs), which really dispatches

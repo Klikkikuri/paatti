@@ -22,9 +22,9 @@ link's host (`signUrls()`). A provider with its own Suola rule set gets its own 
 sign of the built-in rules. The content script looks up those signs (`getRahtiEntries()`).
 [providers.md](providers.md#signs-and-lookups) tells the order of the sources.
 
-`tools/sites.mjs` resolves the default provider at build time, with the same `src/provider.js`. It writes
-`src/generated/sites.js` and the site origins in `manifest.json`, because a store build can request only the
-origins that `manifest.json` declares. The extension does not import the generated module at runtime.
+When a developer runs `make sites-sync`, `tools/sites.mjs` resolves the default provider with `src/provider.js`.
+It writes the site origins into `manifest.json`, because a store build can request only the origins that
+`manifest.json` declares, and pins the Rahti commit in `sites.lock.json`. The extension contains no sites.
 
 The popup and the in-page feedback card do not call the feedback server themselves. Both build the feedback
 payload and give it to the service worker. The service worker builds the request from its configuration and makes

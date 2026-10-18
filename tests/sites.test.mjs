@@ -4,13 +4,13 @@ import http from 'node:http';
 import { readFileSync } from 'node:fs';
 
 const {
-    patchManifest, diffSites, renderModule, fetchSites, readReleasedManifest,
-    parseRawGithubUrl, pinnedManifestUrl, resolveCommit, isOnBranch, keepCandidate,
+    patchManifest, originsOf, diffOrigins, renderJson, fetchSites, readReleasedManifest, readLock,
+    parseRawGithubUrl, pinnedManifestUrl, resolveCommit, isOnBranch, keepCandidate, requirePinned, requireSource,
 } = await import('../tools/sites.mjs');
-const { SITE_CONFIGS } = await import('../src/generated/sites.js');
 const { ARBITRARY_ORIGINS } = await import('../src/options/origins.js');
 
 const base = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
+const lock = readLock();
 
 const site = (key, enabled) => ({ name: key, enabled, origins: [`https://${key}/*`], rules: [], links: [] });
 
@@ -24,7 +24,7 @@ describe('patchManifest', () => {
         ],
     };
     const released = { optional_host_permissions: [ARBITRARY_ORIGINS, 'https://was-off.example/*'] };
-    const patched = patchManifest(manifest, { 'on.example': site('on.example', true), 'off.example': site('off.example', false) }, released);
+    const patched = patchManifest(manifest, { enabled: ['https://on.example/*'], disabled: ['https://off.example/*'] }, released);
 
     test('puts enabled sites in host_permissions and disabled sites in optional_host_permissions', () => {
         assert.deepEqual(patched.host_permissions, ['https://raw.githubusercontent.com/Klikkikuri/rahti/*', 'https://on.example/*']);
@@ -32,14 +32,21 @@ describe('patchManifest', () => {
     });
 
     test('keeps an enabled site optional when the previous release had it optional', () => {
-        const turnedOn = patchManifest(manifest, { 'was-off.example': site('was-off.example', true) }, released);
+        const turnedOn = patchManifest(manifest, { enabled: ['https://was-off.example/*'], disabled: [] }, released);
         assert.deepEqual(turnedOn.host_permissions, ['https://raw.githubusercontent.com/Klikkikuri/rahti/*']);
         assert.deepEqual(turnedOn.optional_host_permissions, [ARBITRARY_ORIGINS, 'https://was-off.example/*']);
     });
 
-    test('puts every site in the named web_accessible_resources group and leaves the wildcard group alone', () => {
-        assert.deepEqual(patched.web_accessible_resources[0].matches, ['https://on.example/*', 'https://off.example/*']);
+    test('puts every site in the named web_accessible_resources group, sorted, and leaves the wildcard group alone', () => {
+        assert.deepEqual(patched.web_accessible_resources[0].matches, ['https://off.example/*', 'https://on.example/*']);
         assert.deepEqual(patched.web_accessible_resources[1], manifest.web_accessible_resources[1]);
+    });
+
+    test('keeps the other entries first, in their order, and sorts the site origins after them', () => {
+        const origins = { enabled: ['https://b.example/*', 'https://a.example/*', 'https://a.example/*'], disabled: ['https://d.example/*', 'https://c.example/*'] };
+        const result = patchManifest(manifest, origins, released);
+        assert.deepEqual(result.host_permissions, ['https://raw.githubusercontent.com/Klikkikuri/rahti/*', 'https://a.example/*', 'https://b.example/*']);
+        assert.deepEqual(result.optional_host_permissions, [ARBITRARY_ORIGINS, 'https://c.example/*', 'https://d.example/*']);
     });
 
     test('does not change its argument', () => {
@@ -47,35 +54,57 @@ describe('patchManifest', () => {
     });
 });
 
-describe('the committed sites', () => {
-    test('manifest.json agrees with src/generated/sites.js (make check-sites)', () => {
-        assert.deepEqual(patchManifest(base, SITE_CONFIGS, base), base);
+describe('the committed lock and manifest', () => {
+    test('sites.lock.json is pinned and well formed', () => {
+        assert.doesNotThrow(() => requirePinned(lock, lock?.source));
+    });
+
+    test('sites.lock.json is written as the sync writes it', () => {
+        assert.equal(readFileSync(new URL('../sites.lock.json', import.meta.url), 'utf8'), renderJson(lock));
+    });
+
+    // Content scripts and dynamic imports fail on a site without these entries.
+    test('manifest.json declares each origin of the lock, and exposes the modules to it', () => {
+        const hosts = new Set(base.host_permissions);
+        const optional = new Set(base.optional_host_permissions);
+        const named = base.web_accessible_resources.find((group) => !group.matches.includes(ARBITRARY_ORIGINS));
+        for (const origin of lock.origins.enabled) assert.ok(hosts.has(origin) || optional.has(origin), origin);
+        for (const origin of lock.origins.disabled) assert.ok(optional.has(origin), origin);
+        for (const origin of [...lock.origins.enabled, ...lock.origins.disabled]) assert.ok(named.matches.includes(origin), origin);
     });
 
     const released = readReleasedManifest();
     const noRelease = !released && 'no git history or v* tag';
     test('manifest.json keeps optional the origins that the previous release has optional', { skip: noRelease }, () => {
-        assert.deepEqual(patchManifest(base, SITE_CONFIGS, released), base);
-    });
-
-    test('the module renders back to itself', async () => {
-        const { SITES_SOURCE, SITES_COMMIT } = await import('../src/generated/sites.js');
-        const committed = readFileSync(new URL('../src/generated/sites.js', import.meta.url), 'utf8');
-        assert.equal(renderModule(SITES_SOURCE, SITE_CONFIGS, SITES_COMMIT), committed);
+        assert.deepEqual(patchManifest(base, lock.origins, released), base);
     });
 });
 
-describe('diffSites', () => {
-    test('names each added, removed and changed site, and nothing else', () => {
-        const recorded = { 'same.example': site('same.example', true), 'gone.example': site('gone.example', true), 'edit.example': site('edit.example', true) };
-        const published = { 'same.example': site('same.example', true), 'new.example': site('new.example', true), 'edit.example': site('edit.example', false) };
+describe('originsOf', () => {
+    test('sorts the origins of the enabled and the disabled sites, without duplicates', () => {
+        const sites = {
+            'b.example': site('b.example', true),
+            'a.example': { ...site('a.example', true), origins: ['https://a.example/*', 'https://*.a.example/*'] },
+            'off.example': site('off.example', false),
+        };
+        assert.deepEqual(originsOf(sites), {
+            enabled: ['https://*.a.example/*', 'https://a.example/*', 'https://b.example/*'],
+            disabled: ['https://off.example/*'],
+        });
+    });
 
-        assert.deepEqual(diffSites(recorded, published).sort(), [
-            '+ new.example: published, not recorded',
-            '- gone.example: recorded, not published',
-            '~ edit.example: changed',
-        ]);
-        assert.deepEqual(diffSites(recorded, structuredClone(recorded)), []);
+    test('keeps an origin that an enabled site has out of disabled', () => {
+        const sites = { on: { ...site('on', true), origins: ['https://x.example/*'] }, off: { ...site('off', false), origins: ['https://x.example/*'] } };
+        assert.deepEqual(originsOf(sites), { enabled: ['https://x.example/*'], disabled: [] });
+    });
+});
+
+describe('diffOrigins', () => {
+    test('names each added and removed origin, and nothing else', () => {
+        const expected = { enabled: ['https://same.example/*', 'https://gone.example/*'], disabled: [] };
+        const actual = { enabled: ['https://same.example/*'], disabled: ['https://gone.example/*'] };
+        assert.deepEqual(diffOrigins(expected, actual), ['- enabled https://gone.example/*', '+ disabled https://gone.example/*']);
+        assert.deepEqual(diffOrigins(expected, structuredClone(expected)), []);
     });
 });
 
@@ -205,22 +234,47 @@ describe('isOnBranch', () => {
     });
 });
 
-describe('keepCandidate', () => {
-    const sites = { 'www.example.fi': site('www.example.fi', true) };
-    const committed = { SITES_SOURCE: SOURCE, SITES_COMMIT: SHA, SITE_CONFIGS: sites };
+const ORIGINS = { enabled: ['https://www.example.fi/*'], disabled: ['https://off.example.fi/*'] };
+const LOCK = { source: SOURCE, commit: SHA, origins: ORIGINS };
 
-    test('keeps the committed commit while the sites are the same', () => {
-        assert.equal(keepCandidate(committed, SOURCE, structuredClone(sites)), SHA);
+describe('keepCandidate', () => {
+    test('keeps the commit of the lock while the origins are the same', () => {
+        assert.equal(keepCandidate(LOCK, SOURCE, structuredClone(ORIGINS)), SHA);
     });
 
     const replaced = [
-        ['no committed module', null, sites],
-        ['changed sites', committed, { 'www.example.fi': site('www.example.fi', false) }],
-        ['another source', { ...committed, SITES_SOURCE: 'http://127.0.0.1:8000/manifest.json' }, sites],
-        ['no committed commit', { ...committed, SITES_COMMIT: null }, sites],
-        ['a module without a commit', { SITES_SOURCE: SOURCE, SITE_CONFIGS: sites }, sites],
+        ['no lock', null, ORIGINS],
+        ['changed origins', LOCK, { enabled: ORIGINS.disabled, disabled: ORIGINS.enabled }],
+        ['another source', { ...LOCK, source: 'http://127.0.0.1:8000/manifest.json' }, ORIGINS],
+        ['no commit', { ...LOCK, commit: null }, ORIGINS],
     ];
-    for (const [name, module, fetched] of replaced) {
-        test(`gives null for ${name}`, () => assert.equal(keepCandidate(module, SOURCE, fetched), null));
+    for (const [name, committed, origins] of replaced) {
+        test(`gives null for ${name}`, () => assert.equal(keepCandidate(committed, SOURCE, origins), null));
     }
+});
+
+describe('requirePinned', () => {
+    test('accepts a pinned, well-formed lock', () => {
+        assert.doesNotThrow(() => requirePinned(LOCK, SOURCE));
+    });
+
+    const refused = [
+        ['no lock', null, /missing or not JSON/],
+        ['another source', { ...LOCK, source: 'http://127.0.0.1:8000/manifest.json' }, /comes from/],
+        ['no commit', { ...LOCK, commit: null }, /records no Rahti commit/],
+        ['unsorted origins', { ...LOCK, origins: { enabled: ['https://b.example/*', 'https://a.example/*'], disabled: [] } }, /must be sorted/],
+        ['duplicates', { ...LOCK, origins: { enabled: ['https://a.example/*', 'https://a.example/*'], disabled: [] } }, /must be sorted/],
+        ['an origin in both lists', { ...LOCK, origins: { enabled: ['https://a.example/*'], disabled: ['https://a.example/*'] } }, /disjoint/],
+        ['an entry that is not a site origin', { ...LOCK, origins: { enabled: [ARBITRARY_ORIGINS], disabled: [] } }, /site origins/],
+        ['no enabled origin', { ...LOCK, origins: { enabled: [], disabled: [] } }, /must not be empty/],
+        ['no origins', { source: SOURCE, commit: SHA }, /must be sorted/],
+    ];
+    for (const [name, value, message] of refused) {
+        test(`refuses ${name}`, () => assert.throws(() => requirePinned(value, SOURCE), message));
+    }
+
+    test('requireSource checks only the source', () => {
+        assert.doesNotThrow(() => requireSource({ ...LOCK, commit: null }, SOURCE));
+        assert.throws(() => requireSource({ ...LOCK, source: 'http://127.0.0.1:8000/manifest.json' }, SOURCE), /comes from/);
+    });
 });

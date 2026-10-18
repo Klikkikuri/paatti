@@ -1,13 +1,8 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 
 import { createFakeBrowser } from './helpers/fake-browser.mjs';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'manifest.json'), 'utf8'));
 
 const fake = createFakeBrowser();
 globalThis.browser = fake.browser;
@@ -17,33 +12,6 @@ globalThis.browser = fake.browser;
 const { getConfig, onConfigValue, DEFAULT_RAHTI_MANIFEST_URL } = await import('../src/config.js');
 
 const { local, sync } = fake.browser.storage;
-
-describe('manifest agrees with the generated site configs', async () => {
-    const { SITE_CONFIGS: siteConfigs } = await import('../src/generated/sites.js');
-
-    const hostPermissions = new Set(manifest.host_permissions || []);
-    const optionalHostPermissions = new Set(manifest.optional_host_permissions || []);
-    const webAccessibleMatches = new Set(
-        (manifest.web_accessible_resources || []).flatMap((group) => group.matches || [])
-    );
-
-    for (const [domain, siteConfig] of Object.entries(siteConfigs)) {
-        const enabledByDefault = siteConfig.enabled !== false;
-        const origins = siteConfig.origins || [`https://${domain}/*`];
-
-        for (const origin of origins) {
-            test(`${domain}: "${origin}" is in ${enabledByDefault ? '' : 'optional_'}host_permissions`, () => {
-                const expected = enabledByDefault ? hostPermissions : optionalHostPermissions;
-                assert.ok(expected.has(origin),
-                    `Dynamic imports and content scripts will fail for "${domain}" without it.`);
-            });
-
-            test(`${domain}: "${origin}" is in web_accessible_resources matches`, () => {
-                assert.ok(webAccessibleMatches.has(origin), 'Dynamic imports will 404 on this site.');
-            });
-        }
-    }
-});
 
 describe('the config cache', () => {
     test('the first getConfig queries storage once per area', async () => {
@@ -437,9 +405,9 @@ describe('default providers and enabledProviderUrls', () => {
         assert.match(DEFAULT_RAHTI_MANIFEST_URL, /^https:\/\//);
     });
 
-    test('the recorded default sites are synced from DEFAULT_RAHTI_MANIFEST_URL, not from a local copy', async () => {
-        const { SITES_SOURCE } = await import('../src/generated/sites.js');
-        assert.equal(SITES_SOURCE, DEFAULT_RAHTI_MANIFEST_URL, 'Run `make sites-sync` against the published manifest.');
+    test('sites.lock.json is synced from DEFAULT_RAHTI_MANIFEST_URL, not from a local copy', () => {
+        const lock = JSON.parse(readFileSync(new URL('../sites.lock.json', import.meta.url), 'utf8'));
+        assert.equal(lock.source, DEFAULT_RAHTI_MANIFEST_URL, 'Run `make sites-sync` against the published manifest.');
     });
 });
 

@@ -20,7 +20,7 @@ carry their own copies with a store version. Publishing does not change `updates
 1. Make sure that `main` is clean and up to date.
 2. Make sure that the `suola` submodule is at a tag. The release build downloads the `suola` artifacts of
    that tag.
-3. Run `make check-sites-latest`. If it reports that the sites differ, Rahti has changed the sites: run
+3. Run `make check-sites-latest`. If it reports that the origins differ, Rahti has changed the sites: run
    `make sites-sync`, then commit and push the result. If it fails with a network or git error, run it again.
    See [Default Site Permissions](#default-site-permissions).
 4. Make sure that the repository has these secrets under **Settings → Secrets and variables → Actions**. A
@@ -77,7 +77,7 @@ carry their own copies with a store version. Publishing does not change `updates
    - It makes sure that the tag is equal to the version in `manifest.json`.
    - It makes sure that `updates.json` has an entry for the version.
    - It runs `make check-sites` and `make check-sites-published`: it compares the origins in
-     `manifest.json` with the recorded default sites, and the record with its Rahti commit. See
+     `manifest.json` with `sites.lock.json`, and the lock with its Rahti commit. See
      [Default Site Permissions](#default-site-permissions).
    - It builds the Chrome and Firefox packages with the non-OSS assets.
    - It makes sure that the `suola` artifacts carry the `suola` build attestation.
@@ -190,24 +190,29 @@ manifest) at runtime, like the sites of any other provider. But a store build ca
 `manifest.json` declares, so `manifest.json` must declare the origins of the default sites.
 
 `make sites-sync` resolves the default provider manifest and writes these origins into `manifest.json`. It also
-records the default sites and the Rahti commit (`SITES_COMMIT`) in `src/generated/sites.js`, which the checks
-below compare. The extension does not read this record. A developer runs the sync and commits the result. No
-workflow writes these files.
+writes `sites.lock.json`: the manifest URL, the Rahti commit, and the enabled and disabled origins. The checks
+below compare with this lock. The header of `tools/sites.mjs` tells why each field is necessary. The extension does
+not read the lock, and the packages do not contain it. A developer runs the sync and commits both files. No
+workflow writes them.
 
-Rahti `main` changes many times each hour. Thus the checks compare with the recorded commit, not with `main`, and
-a given Paatti commit always gets the same result. A retry, or the second store, cannot fail because Rahti
-changed. While the sites stay the same, a new sync keeps the recorded commit, so it gives no diff.
+The checks compare only the origins and the `enabled` state of the sites. A change to the rules of a site does not
+change `manifest.json`, so it needs no sync.
+
+Rahti `main` changes many times each hour. Thus the checks compare with the pinned commit, not with `main`, and a
+given Paatti commit always gets the same result. A retry, or the second store, cannot fail because Rahti changed.
+While the origins stay the same, a new sync keeps the pinned commit, so it gives no diff.
 
 | Check | Where it runs | It stops if |
 |---|---|---|
 | `make check-sites` | `make test`, every store build, `release.yml` | See the list below. |
-| `make check-sites-published` | `build.yml`, `release.yml` | The record is not from the default provider manifest, or records no commit. The recorded commit is not in the history of Rahti `main`. The sites at that commit differ from the record. The GitHub API gives an error. |
-| `make check-sites-latest` | `sites-latest.yml`, each day; by hand, before a release | The sites of Rahti `main` now differ from the record. |
+| `make check-sites-published` | `build.yml`, `release.yml` | The lock is not from the default provider manifest, or records no commit. The pinned commit is not in the history of Rahti `main`. The origins at that commit differ from the lock. The GitHub API gives an error. |
+| `make check-sites-latest` | `sites-latest.yml`, each day; by hand, before a release | The lock is not from the default provider manifest. The origins on Rahti `main` now differ from the lock. |
 
 `make check-sites` stops if:
 
-- The record is not from the default provider manifest, or records no commit.
-- A site origin in `manifest.json` does not agree with the record.
+- The lock is not from the default provider manifest, records no commit, or its origins are not sorted and
+  without duplicates.
+- A site origin in `manifest.json` does not agree with the lock.
 - A site origin that was optional in the previous release is in `host_permissions`. A new required host
   permission makes Chrome disable the extension at update. [Adding a new site](development/adding-a-new-site.md)
   tells which origins are required.
