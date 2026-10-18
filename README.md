@@ -512,6 +512,9 @@ documents. [devserver/README.md](./devserver/README.md) lists all of its setting
    make serve DEVSERVER_ARGS="--seed=42"         # a fixed page seed
    ```
 
+   `./run.sh` does steps 2 and 3 for you when the server answers: it runs a copy of the build that adds the
+   provider on install (`tools/devserver-stage.mjs`). `--devserver` and `--no-devserver` override the check.
+
 2. **Add the provider.** Make sure that the environment is `development`: an unpacked build starts in it. On the
    settings page, under **🐛 Debug Settings** → **🔌 Providers**, turn on **Allow providers on this machine**.
    Enter `http://localhost:3000/manifest/ilta-pulu/manifest.json`, select **Add**, then **Add provider**, and
