@@ -23,22 +23,15 @@ const onLoopback = (url) => {
 };
 
 /**
- * The capture endpoint for a page of the site `domain`: that of the first enabled loopback provider that supplies
- * the site and names a loopback capture endpoint, in the development environment only.
- *
- * The provider must supply the site, because Paatti looks the captured links up only in a provider that supplies
- * their site. With "Allow providers to override sites" off, only the first supplier counts, so a later local
- * provider gets no button.
+ * The first enabled loopback provider that names a loopback capture endpoint, in the development environment only.
  *
  * @param {object} config - As returned by `getConfig()`.
- * @param {string|null} domain - The site key of the page, from `getMatchingSiteDomain()`.
  * @returns {{providerUrl: string, captureUrl: string}|null}
  */
-export function captureTarget(config, domain) {
-    if (config.activeEnv !== "development" || !config.loopbackProvidersEnabled || !domain) return null;
-    const suppliers = new Set((config.siteConfigSources?.[domain] || []).map((source) => source.url));
+export function captureTarget(config) {
+    if (config.activeEnv !== "development" || !config.loopbackProvidersEnabled) return null;
     for (const providerUrl of config.enabledProviderUrls || []) {
-        if (!suppliers.has(providerUrl) || !onLoopback(providerUrl)) continue;
+        if (!onLoopback(providerUrl)) continue;
         const link = (config.providerData?.[providerUrl]?.links || []).find((candidate) => candidate.rel === CAPTURE_REL);
         if (link && onLoopback(link.href)) return { providerUrl, captureUrl: link.href };
     }

@@ -31,7 +31,7 @@ class CaptureRequest(BaseModel):
     links: list[CapturedLink] = Field(max_length=5000)
 
 
-@router.post("/capture", summary="Store the links of a page on a Rahti site that Rahti has no correction for")
+@router.post("/capture", summary="Store the links of a page that Rahti has no correction for")
 def capture(request: Request, body: CaptureRequest, content_length: int | None = Header(None)):
     if content_length is not None and content_length > MAX_CAPTURE_BYTES:
         raise HTTPException(status_code=413, detail=f"A capture can be {MAX_CAPTURE_BYTES} bytes at most")

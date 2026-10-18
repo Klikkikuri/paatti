@@ -461,8 +461,7 @@ it while developer mode is on, and the hidden controls become visible. Turning i
   that an open popup forces the outlines on, whatever the setting says.
 - **Send page** in the popup's **Developer Settings** sends the links and headlines of the page to the
   [development server](#development-server), which makes test corrections for the links that have none. The row
-  shows only on a site that a provider on your own machine supplies and names a capture address for: the
-  development server's `captured-sites` provider. It does not show on Ilta-Pulu, which has its own data.
+  shows only when a provider on your own machine names a capture address.
 
 ### Badge Icons
 

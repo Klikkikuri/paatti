@@ -16,12 +16,12 @@ def base_url(settings) -> str:
     return f"http://{netloc(settings)}"
 
 
-def links(settings, *, capture: bool = False) -> list[dict]:
-    """The manifest links. Only the captured-sites provider names the capture endpoint: Paatti shows its button on
-    the sites of that provider. The capture link has no `title`, because the options page shows a titled link of an
-    unknown rel."""
-    privacy = {"rel": "privacy-policy", "href": f"{base_url(settings)}/privacy", "title": "Ilta-Pulu privacy notice"}
-    return [privacy, {"rel": CAPTURE_REL, "href": f"{base_url(settings)}/api/capture"}] if capture else [privacy]
+def links(settings) -> list[dict]:
+    """The manifest links. The capture link has no `title`: the options page shows a titled link of an unknown rel."""
+    return [
+        {"rel": "privacy-policy", "href": f"{base_url(settings)}/privacy", "title": "Ilta-Pulu privacy notice"},
+        {"rel": CAPTURE_REL, "href": f"{base_url(settings)}/api/capture"},
+    ]
 
 
 def manifest(settings) -> dict:

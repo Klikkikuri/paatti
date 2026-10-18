@@ -64,7 +64,7 @@ When this setting is on, a provider can take over a site that Klikkikuri's files
 
 This setting is on by default in the "Development" environment, and off in the other environments. The extension saves this setting only on your device. It does not go through browser sync.
 
-When this setting is on and a provider on your own computer names a capture address, the popup's developer settings show a **Send page** button on the sites of that provider. Only when you select it, the extension sends the address of the page and the links and headlines on it to that address. The extension refuses a capture address that is not on your own computer. This is a tool for people who develop Klikkikuri Paatti or a provider.
+When this setting is on and a provider on your own computer names a capture address, the popup's developer settings show a **Send page** button. Only when you select it, the extension sends the address of the page and the links and headlines on it to that address. The extension refuses a capture address that is not on your own computer. This is a tool for people who develop Klikkikuri Paatti or a provider.
 
 ## 4. "Allow Providers on This Machine"
 
@@ -74,7 +74,7 @@ The extension refuses addresses in private networks, for example 192.168.x.x, al
 
 The extension saves this setting only on your device. It does not go through browser sync.
 
-When this setting is on and a provider on your own computer names a capture address, the popup's developer settings show a **Send page** button on the sites of that provider. Only when you select it, the extension sends the address of the page and the links and headlines on it to that address. The extension refuses a capture address that is not on your own computer. This is a tool for people who develop Klikkikuri Paatti or a provider.
+When this setting is on and a provider on your own computer names a capture address, the popup's developer settings show a **Send page** button. Only when you select it, the extension sends the address of the page and the links and headlines on it to that address. The extension refuses a capture address that is not on your own computer. This is a tool for people who develop Klikkikuri Paatti or a provider.
 
 ## 5. Legal Basis
 
