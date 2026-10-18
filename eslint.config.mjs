@@ -1,6 +1,8 @@
 const USE_WRAPPER = "Import the namespace: import browser from './browser-api.js'.";
 
 export default [
+    // The development server is a Python project of its own, with Playwright's Node driver in its virtualenv.
+    { ignores: ["devserver/**"] },
     {
         // assets/non-oss/*/src/ is overlaid onto src/ by `make dist NON_OSS=1`, so those
         // files ship at src/ paths and need the same rules.
