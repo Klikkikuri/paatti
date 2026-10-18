@@ -9,8 +9,9 @@ from .settings import Settings
 
 
 def main():
-    settings = Settings(_cli_parse_args=True)
+    settings = Settings.from_command_line()
     setup_logging(LoggingSettings(LOG_LEVEL=settings.log_level))
+    print(settings.startup_summary(), flush=True)
     uvicorn.run(create_app(settings), host=settings.host, port=settings.port, log_config=None)
 
 
