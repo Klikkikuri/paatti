@@ -100,7 +100,7 @@ logged, and is named in the response header `X-Devserver-Chaos`.
 | `chaos.no_conditional` | Never 304 | The conditional request does not save the download |
 | `chaos.rejected_sites` | Bad site entries: a port in the key, a foreign origin, `__proto__`, `*` | Rejected sites |
 | `chaos.bad_rules` | A rule whose regex does not compile | Suola refuses the provider's rules; its links get no signature |
-| `chaos.page_hostile_css` | A stylesheet that hides, resizes and resets elements | The badges must stay visible |
+| `chaos.page_hostile_css` | A stylesheet that hides, resizes and resets elements | The badges keep their size. Known gap: `:not(:defined) { visibility: hidden }` hides them, because they force only `display`; an expected failure in `tests/e2e/test_dynamic.py` tracks it |
 | `chaos.page_dom_churn` | `site.js` replaces a card every 4 seconds | New cards get their status; no replaced card keeps an old status |
 | `chaos.page_late_content` | Some blocks are inserted 1.5 seconds after the page loads | The later conversion pass handles them |
 

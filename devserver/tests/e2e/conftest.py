@@ -18,7 +18,7 @@ import uvicorn
 from playwright.sync_api import sync_playwright
 
 from paatti_devserver.app import create_app
-from paatti_devserver.settings import Settings
+from paatti_devserver.settings import ChaosSettings, Settings
 
 LOCALHOST_GRANT = "http://localhost/*"
 
@@ -41,13 +41,22 @@ class LiveServer:
     def __init__(self, **overrides):
         self.port = free_port()
         self.settings = Settings.model_validate({"port": self.port, **overrides})
-        config = uvicorn.Config(create_app(self.settings), host="127.0.0.1", port=self.port, log_level="warning")
+        self.app = create_app(self.settings)
+        config = uvicorn.Config(self.app, host="127.0.0.1", port=self.port, log_level="warning")
         self.server = uvicorn.Server(config)
         self.thread = threading.Thread(target=self.server.run, daemon=True)
 
     @property
     def base(self) -> str:
         return f"http://localhost:{self.port}"
+
+    @property
+    def manifest_url(self) -> str:
+        return f"{self.base}/manifest/ilta-pulu/manifest.json"
+
+    def set_chaos(self, **chaos):
+        """Switch the provider faults of the running server, for example between a clean refresh and a failing one."""
+        self.app.state.chaos.chaos = ChaosSettings(**chaos)
 
     def __enter__(self):
         self.thread.start()
@@ -119,12 +128,20 @@ class Browser:
             return { environment: config.environment, data: config.providerData[manifestUrl] };
         }""", manifest_url)
 
+    def refresh(self):
+        """One refresh pass over the providers, as a database update runs it. Returns its results."""
+        return self.run("""async () => {
+            const { refreshProviders } = await import("/src/providers.js");
+            return refreshProviders();
+        }""")
+
     def provider_data(self, manifest_url: str):
         return self.run("""async (manifestUrl) => {
             const { getConfig } = await import("/src/config.js");
             const data = (await getConfig()).providerData[manifestUrl];
             return data && { errors: data.errors, rejected: data.rejected, entryCount: data.entryCount,
-                             updated: data.updated, checked: data.checked, sites: Object.keys(data.siteConfigs) };
+                             updated: data.updated, checked: data.checked, sites: Object.keys(data.siteConfigs),
+                             hasRules: Boolean(data.suolaRules) };
         }""", manifest_url)
 
 
@@ -144,6 +161,27 @@ def browser(request, extension_dir, tmp_path):
             yield Browser(context, worker.url.split("/")[2])
         finally:
             context.close()
+
+
+def statuses(page) -> dict:
+    """How many containers have each data-klikkikuri-status."""
+    return page.evaluate("""() => {
+        const counts = {};
+        for (const element of document.querySelectorAll("[data-klikkikuri-status]")) {
+            counts[element.dataset.klikkikuriStatus] = (counts[element.dataset.klikkikuriStatus] || 0) + 1;
+        }
+        return counts;
+    }""")
+
+
+def wait_until(predicate, timeout_s: float = 20.0, interval_s: float = 0.25):
+    """The first true value of `predicate()`, or its last value when the time runs out."""
+    deadline = time.monotonic() + timeout_s
+    value = predicate()
+    while not value and time.monotonic() < deadline:
+        time.sleep(interval_s)
+        value = predicate()
+    return value
 
 
 def wait_for_mismatches(page, timeout_s: float = 25.0) -> list:
