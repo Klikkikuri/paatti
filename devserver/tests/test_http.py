@@ -43,8 +43,8 @@ def test_fragments_are_deterministic(client, kind):
 def test_manifest_matches_the_provider_format(client):
     manifest = client.get(url("manifest")).json()
     assert manifest["schema_version"] == "0.1.0"
-    capture = next(link for link in manifest["links"] if link["rel"] == "x-paatti-dev-capture")
-    assert "title" not in capture and capture["href"].startswith("http://localhost:3000/")
+    assert not any(link["rel"] == "x-paatti-dev-capture" for link in manifest["links"]), \
+        "only captured-sites names the capture endpoint, so Paatti offers no capture on Ilta-Pulu"
     by_type = {resource["type"]: resource for resource in manifest["resources"]}
     assert "origins" not in by_type["site-configs"]
     assert "x-paatti-dev" in by_type
