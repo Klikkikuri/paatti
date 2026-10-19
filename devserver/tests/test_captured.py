@@ -6,8 +6,10 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
+from paatti_devserver import expectations as ex
 from paatti_devserver.app import create_app
-from paatti_devserver.captured import FAKE_PREFIX
+from paatti_devserver.captured import FAKE_PREFIX, fake_entry
+from paatti_devserver.settings import FeatureSettings
 from paatti_devserver.signing import BASE_RULES, CAPTURE_RULES, Signer
 
 from .conftest import make_settings
@@ -23,11 +25,13 @@ YLE_RULE = {"domain": "yle.fi",
 PARENT_RULE = {"domain": "example.fi",
                "templates": [{"pattern": "^/(?P<Id>[0-9]+)", "template": "https://example.fi/{{ .Id }}"}]}
 BAD_RULE = {"domain": "bad.example", "templates": [{"pattern": "(?P<broken", "template": "x"}]}
+# The cases that remove a link's entry or its captured title are off, so that each link has its `[dev]` title.
+EVERY_LINK_CONVERTED = {"no_entry": False, "paywalled": False, "edge_headlines": False}
 
 
 @pytest.fixture
 def client(tmp_path):
-    return TestClient(create_app(make_settings(data_dir=str(tmp_path))))
+    return TestClient(create_app(make_settings(data_dir=str(tmp_path), features=EVERY_LINK_CONVERTED)))
 
 
 def capture(client, *hrefs, page=PAGE, rules=(SITE_RULE,)):
@@ -80,6 +84,37 @@ def test_a_new_capture_merges_the_links_and_keeps_the_edited_site(client, tmp_pa
     assert response.json()["stored"] == 2 and len(entries(client)) == 2
     assert sites(client)["www.iltalehti.fi"] == {"name": "www.iltalehti.fi", "origins": ["https://www.iltalehti.fi/*"],
                                                  "rules": [GENERIC_RULE]}, "`enabled` is not served"
+
+
+LINKS = [{"title": "Story", "captured": "2026-10-19T00:00:00+00:00", "sign": sha256(f"https://example.org/{i}")}
+         for i in range(200)]
+CASES = [
+    # (feature, whether an entry has the feature's case)
+    ("levels", lambda entry: entry and ex.LEVELS.index(entry["clickbaitiness"]) < ex.DEFAULT_THRESHOLD),
+    ("ai_slop", lambda entry: entry and ex.LABEL_AI_SLOP in entry["labels"]),
+    ("video", lambda entry: entry and ex.LABEL_VIDEO in entry["labels"]),
+    ("sponsored", lambda entry: entry and ex.LABEL_SPONSORED in entry["labels"]),
+    ("paywalled", lambda entry: entry and ex.LABEL_PAYWALLED in entry["labels"] and "title" not in entry),
+    ("no_entry", lambda entry: entry is None),
+    ("edge_headlines", lambda entry: entry and entry.get("title", FAKE_PREFIX + "Story") != FAKE_PREFIX + "Story"),
+]
+
+
+@pytest.mark.parametrize("feature, has_case", CASES)
+def test_a_feature_gives_some_captured_links_its_case_and_off_removes_only_that(feature, has_case):
+    on = [fake_entry(link, "example.org", FeatureSettings()) for link in LINKS]
+    off = [fake_entry(link, "example.org", FeatureSettings(**{feature: False})) for link in LINKS]
+    assert any(has_case(entry) for entry in on)
+    assert not any(has_case(entry) for entry in off)
+    assert [entry for entry in on if not has_case(entry)] == [b for a, b in zip(on, off) if not has_case(a)]
+
+
+def test_with_every_case_off_each_link_gets_its_title_above_the_threshold():
+    features = FeatureSettings(**{feature: False for feature, _ in CASES})
+    for link in LINKS:
+        entry = fake_entry(link, "example.org", features)
+        assert entry["title"] == FAKE_PREFIX + "Story" and entry["labels"] == []
+        assert ex.LEVELS.index(entry["clickbaitiness"]) >= ex.DEFAULT_THRESHOLD
 
 
 @pytest.mark.parametrize("page, href, key, origin", [
@@ -187,6 +222,16 @@ def test_the_check_runs_the_test_cases_of_the_folder_rules(client, tmp_path, cas
     [test] = report["tests"]
     assert test["result"] == result
     assert (reason is None and test["reasons"] == []) or test["reasons"][0].startswith(reason)
+
+
+def test_the_check_gives_the_sign_of_each_link_also_without_an_entry(tmp_path):
+    client = TestClient(create_app(make_settings(data_dir=str(tmp_path))))
+    hrefs = sorted(f"/story/{i}" for i in range(40))
+    capture(client, *hrefs, page="https://example.org/", rules=[GENERIC_RULE])
+    links = client.get("/api/captures/example.org").json()["links"]
+    assert [link["sign"] for link in links] == [SIGNER.sign(f"https://example.org{href}") for href in hrefs]
+    assert {link["sign"] for link in links if link["entry"]} == set(entries(client))
+    assert not all(link["entry"] for link in links), "no_entry is on by default"
 
 
 def test_the_check_warns_about_a_domain_without_the_port_and_a_shared_site(client, tmp_path):
