@@ -2,11 +2,13 @@
 
 /**
  * @file capture-target.js
- * Where the popup may send the links of the current page: the capture endpoint of a local provider.
+ * Where the popup may send the links of the current page: the capture endpoint of a local provider. Also how the
+ * popup reads a page where the content script does not run.
  *
- * Kept apart from popup.js and free of the DOM so that the rule can be tested on its own. The endpoint comes only
- * from a provider manifest that the user added, and it must be on the user's own machine: `safeFetch` with
- * `allowLoopback` still allows a public host, so a loopback manifest could otherwise name a remote one.
+ * Kept apart from popup.js so that it can be tested on its own; only `capturePageLinks` reads a DOM, the page's. The
+ * endpoint comes only from a provider manifest that the user added, and it must be on the user's own machine:
+ * `safeFetch` with `allowLoopback` still allows a public host, so a loopback manifest could otherwise name a remote
+ * one.
  */
 
 import { isLoopbackHost } from "../safe-fetch.js";
@@ -36,4 +38,39 @@ export function captureTarget(config) {
         if (link && onLoopback(link.href)) return { providerUrl, captureUrl: link.href };
     }
     return null;
+}
+
+/**
+ * The site rule that the popup reads a page with when no provider supplies its site: each link is its own headline.
+ * The development server serves it back as the rule of the captured site.
+ */
+export const GENERIC_CAPTURE_RULE = Object.freeze({
+    description: "Any link with text (development server capture)",
+    container: "a[href]",
+    link: "self",
+    title: "self"
+});
+
+/**
+ * The http(s) links that `rules` find on the page, with their headlines, as the content script's
+ * `devmode_capturePage` returns them. The scan follows `scanSiteRules` in `src/contentScript.js`. It runs in the
+ * page through `scripting.executeScript`, so it uses nothing from this module.
+ *
+ * @param {object[]} rules - The site's rules, or `[GENERIC_CAPTURE_RULE]`.
+ * @returns {{pageUrl: string, rules: object[], links: Array<{href: string, title: string}>}}
+ */
+export function capturePageLinks(rules) {
+    const isSelf = (selector) => selector === "self" || selector === ":scope";
+    const links = [];
+    for (const rule of rules) {
+        for (const container of document.querySelectorAll(rule.container)) {
+            const ruleLinks = !rule.link || isSelf(rule.link) ? [container] : container.querySelectorAll(rule.link);
+            for (const link of ruleLinks) {
+                const titleElem = isSelf(rule.title) ? container : (rule.title ? container.querySelector(rule.title) : link);
+                const title = titleElem?.textContent.trim();
+                if (title && /^https?:/.test(link.href)) links.push({ href: link.href, title });
+            }
+        }
+    }
+    return { pageUrl: window.location.href, rules, links };
 }

@@ -8,10 +8,9 @@ from fastapi.responses import JSONResponse
 from niitti.logging import get_logger
 
 from .. import documents
-from ..captured import CaptureError
 from ..layout import netloc
 from ..pool import updated_at
-from ..signing import ilta_pulu_rules
+from ..signing import CAPTURE_RULES, ilta_pulu_rules
 
 log = get_logger(__name__)
 router = APIRouter(prefix="/manifest", tags=["providers"])
@@ -52,19 +51,21 @@ def ilta_pulu_ignored():
     raise HTTPException(status_code=410, detail="A resource of an unknown type must not be fetched")
 
 
-def _captured(request: Request, build) -> JSONResponse:
-    try:
-        return JSONResponse(build(request.app.state.captured))
-    except CaptureError as err:
-        raise HTTPException(status_code=err.status, detail=str(err)) from err
-
-
-@router.get("/captured-sites/manifest.json", summary="Rahti's sites with fake corrections for captured links")
+@router.get("/captured-sites/manifest.json", summary="Fake corrections for the links captured on any host")
 def captured_manifest(request: Request):
-    links = documents.links(request.app.state.devserver.settings)
-    return _captured(request, lambda captured: captured.manifest(links))
+    return JSONResponse(request.app.state.captured.manifest(documents.links(request.app.state.devserver.settings)))
+
+
+@router.get("/captured-sites/rules.json", summary="The catch-all Suola rule that signs the captured links")
+def captured_rules():
+    return JSONResponse(CAPTURE_RULES)
+
+
+@router.get("/captured-sites/sites.json", summary="The captured sites, with the rules that each capture sent")
+def captured_sites(request: Request):
+    return JSONResponse(request.app.state.captured.sites())
 
 
 @router.get("/captured-sites/data.json", summary="The fake Rahti data of the captured links")
 def captured_data(request: Request):
-    return _captured(request, lambda captured: captured.data())
+    return JSONResponse(request.app.state.captured.data())

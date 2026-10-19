@@ -457,10 +457,6 @@
     "message": "Lähetä sivu",
     "description": "Button that sends the links and headlines of the page to the development server"
   },
-  "devmodeCaptureHint": {
-    "message": "Ota tämä sivusto käyttöön, niin voit lähettää sivun kehityspalvelimelle.",
-    "description": "Shown instead of the send button when the site of the page is off"
-  },
   "devmodeCaptureSending": {
     "message": "Lähetetään…",
     "description": "Shown while the page is sent to the development server and the database is updated"

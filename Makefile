@@ -249,8 +249,7 @@ DEVSERVER_ARGS ?=
 DEVSERVER := $(UV) run --directory devserver
 
 serve:
-	$(DEVSERVER) paatti-devserver --port=$(DEVSERVER_PORT) --data_dir="$(abspath test_data)" \
-		--rahti_commit="$$(jq -r .commit sites.lock.json)" $(DEVSERVER_ARGS)
+	$(DEVSERVER) paatti-devserver --port=$(DEVSERVER_PORT) --data_dir="$(abspath test_data)" $(DEVSERVER_ARGS)
 
 # The server's own tests, then the drift guard: Paatti's provider resolver, Suola module and content-script scan
 # against a live server on a free port (tools/devserver-drift.mjs).
@@ -259,8 +258,7 @@ test-devserver: $(WASM_OUTPUTS)
 	$(DEVSERVER) pytest
 	@port=$$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'); \
 	data=$$(mktemp -d); \
-	$(DEVSERVER) paatti-devserver --port=$$port --log_level=WARNING --data_dir="$$data" \
-		--rahti_commit="$$(jq -r .commit sites.lock.json)" & pid=$$!; \
+	$(DEVSERVER) paatti-devserver --port=$$port --log_level=WARNING --data_dir="$$data" & pid=$$!; \
 	trap 'kill $$pid 2>/dev/null; rm -rf "$$data"' EXIT; \
 	for _ in $$(seq 100); do curl -sf -o /dev/null "http://localhost:$$port/manifest/ilta-pulu/manifest.json" && break; sleep 0.2; done; \
 	node tools/devserver-drift.mjs "http://localhost:$$port"

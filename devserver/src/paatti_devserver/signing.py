@@ -5,6 +5,9 @@ rules over the base rules. `Suola()` plus `append_rules()` gives the same result
 domain of the base rules. The Ilta-Pulu rule names `localhost:<port>` and no base rule does. Suola compares a
 rule's domain with `host:port`, so the domain carries the port.
 
+The captured-sites rule is a catch-all (`domain: ""`), so that any host can be signed when the base rules have no
+catch-all. While the base rules have one, it has the same template, so the order of the two does not change a sign.
+
 `append_rules()` cannot be undone, so each rule set has its own instance. An instance is safe to share between
 threads, which FastAPI needs because it runs `def` endpoints in a thread pool.
 """
@@ -15,6 +18,19 @@ from suola import InvalidURLError, Suola
 
 ARTICLE_PATTERN = r"^/(?P<Section>[A-Za-z]+)/a/(?P<ArticleID>[0-9a-f]{12})"
 ARTICLE_TEMPLATE = "http://localhost/{{ .Section }}/a/{{ .ArticleID }}"
+
+CAPTURE_RULES = {
+    "sites": [{
+        "domain": "",
+        "templates": [{"pattern": r"^(?P<Path>/.*?)/*$", "template": "https://{{ .Host }}{{ .Path }}"}],
+        "tests": [
+            {"url": "https://unknown.example/news/story",
+             "signature": "8a8eda7ebdf27c81416fd9f9c75412f2407c7a588aae37bce0c7073670047876"},
+            {"url": "https://UNKNOWN.example/news/story/?utm_source=rss&fbclid=x",
+             "signature": "8a8eda7ebdf27c81416fd9f9c75412f2407c7a588aae37bce0c7073670047876"},
+        ],
+    }]
+}
 
 
 def ilta_pulu_rules(netloc: str, tests: list[dict] | None = None) -> dict:
