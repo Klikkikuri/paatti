@@ -5,19 +5,13 @@ rules over the base rules. `Suola()` plus `append_rules()` gives the same result
 domain of the base rules. The Ilta-Pulu rule names `localhost:<port>` and no base rule does. Suola compares a
 rule's domain with `host:port`, so the domain carries the port.
 
-Three workarounds for Suola's Python package, each until its issue is fixed:
-- The packaged module is named explicitly. Without it, Suola can load `cwd/../build/wasi.wasm` or a cached copy
-  first (Klikkikuri/suola#21).
-- A lock serializes each instance, because the runtime is not thread-safe (Klikkikuri/suola#22). FastAPI runs
-  `def` endpoints in a thread pool.
-- `append_rules()` cannot be undone, so each rule set has its own instance.
+`append_rules()` cannot be undone, so each rule set has its own instance. An instance is safe to share between
+threads, which FastAPI needs because it runs `def` endpoints in a thread pool.
 """
 
-import importlib.resources
 import json
-import threading
 
-from suola import Suola
+from suola import InvalidURLError, Suola
 
 ARTICLE_PATTERN = r"^/(?P<Section>[A-Za-z]+)/a/(?P<ArticleID>[0-9a-f]{12})"
 ARTICLE_TEMPLATE = "http://localhost/{{ .Section }}/a/{{ .ArticleID }}"
@@ -42,12 +36,13 @@ class Signer:
     """One Suola instance with an optional rule set over the base rules."""
 
     def __init__(self, rules: dict | None = None):
-        self._lock = threading.Lock()
-        self._suola = Suola(wasm_module=str(importlib.resources.files("suola") / "suola.wasm"))
+        self._suola = Suola()
         if rules is not None:
             self._suola.append_rules(json.dumps(rules))
 
     def sign(self, url: str) -> str | None:
-        """The signature of `url`, or None when no rule matches it."""
-        with self._lock:
+        """The signature of `url`, or None when Suola cannot sign it, for example because it has no host."""
+        try:
             return self._suola(url)
+        except InvalidURLError:
+            return None
