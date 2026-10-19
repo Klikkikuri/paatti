@@ -61,6 +61,10 @@ where they came from.
 
 The debug highlight uses the same method, for the same reason.
 
+The first-activation card (`src/components/intro-card.js`) uses it too. Its logo is inline markup, not an image with an
+extension address, so no address enters the page and no page CSP can block it. The content script asks the
+background script for the card, and the background script answers yes one time for every user.
+
 ## Requests to other servers
 
 Paatti makes three types of request. Each one obeys the same three rules:

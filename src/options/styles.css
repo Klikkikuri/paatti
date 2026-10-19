@@ -660,6 +660,43 @@ iframe {
     border: 0;
 }
 
+/* The offer of the setup wizard, at the top of the home view until the wizard is done or the offer is hidden. */
+.setup-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 0.0625rem solid var(--color-border-strong);
+    border-radius: 0.375rem;
+    background: var(--color-surface);
+    font-size: 0.875rem;
+    font-weight: bold;
+}
 
+.setup-line-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
 
+.setup-line .push-button {
+    margin: 0;
+    padding: 0.375rem 0.75rem;
+    min-height: 2rem;
+    min-width: 0;
+    font-size: 0.875rem;
+}
 
+.setup-line-hide {
+    padding: 0.25rem;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-weight: normal;
+    text-decoration: underline;
+    cursor: pointer;
+}

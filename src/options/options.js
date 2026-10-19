@@ -3,6 +3,7 @@ import browser from '../browser-api.js';
 import { displayProductInfo, getBrowserInfo, formatIsoWithTimezone, localizeDocument } from './utils.js';
 import { model } from '../model.js';
 import { controller } from '../controller.js';
+import { openWizard } from '../welcome-state.js';
 import { NON_OSS_CREDIT_HTML } from './non-oss-info.js';
 import { specialDayMessageKey } from './easter-egg.js';
 import './components/site-list-setting.js';
@@ -333,6 +334,11 @@ function setAboutHtml(id, html) {
  * Populates the About section with runtime and config info useful for issue reports.
  * Gathers data from manifest, config, model, and navigator.
  */
+document.getElementById('show-welcome')?.addEventListener('click', (event) => {
+    event.preventDefault();
+    openWizard('quick');
+});
+
 async function renderAbout() {
     const manifest = browser.runtime.getManifest();
     const config = await getConfig();

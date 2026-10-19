@@ -7,12 +7,12 @@ adoptComponentStyleSheet(new URL('./clickbait-level-horizontal.css', import.meta
 
 const template = document.createElement('template');
 template.innerHTML = `
-    <div style="margin-top: 10px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 6px; width: 100%;">
-        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 36px;">
-            <label id="level-label" style="font-weight: bold; cursor: pointer; text-align: left; flex: 1; margin-right: 15px; line-height: 1.2;"></label>
-            <input id="clickbait-slider" type="range" min="0" max="4" step="1" value="2" style="flex: 0 0 110px; width: 110px; height: auto; appearance: auto; background: none; box-shadow: none; cursor: pointer;">
+    <div style="margin-top: 0.625rem; margin-bottom: 0.9375rem; display: flex; flex-direction: column; gap: 0.375rem; width: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 2.25rem;">
+            <label id="level-label" style="font-weight: bold; cursor: pointer; text-align: left; flex: 1; margin-right: 0.9375rem; line-height: 1.2;"></label>
+            <input id="clickbait-slider" type="range" min="0" max="4" step="1" value="2" style="flex: 0 0 6.875rem; width: 6.875rem; height: auto; appearance: auto; background: none; box-shadow: none; cursor: pointer;">
         </div>
-        <span id="level-description" class="text-muted-small" style="text-align: left; min-height: 34px; line-height: 1.3;"></span>
+        <span id="level-description" class="text-muted-small" style="text-align: left; min-height: 2.125rem; line-height: 1.3;"></span>
     </div>
 `;
 

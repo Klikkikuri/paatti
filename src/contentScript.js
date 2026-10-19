@@ -184,6 +184,27 @@ let hrefSigns;
     ////////////////////////////////////////////////////////////////////////////
     // Processing subroutines.
 
+    let introCardOffered = false;
+
+    /**
+     * Ask once per page load for the first-activation card. The background script says yes one time, ever, so
+     * of several pages that activate together only one shows it. The card module is imported only on a yes.
+     */
+    const offerIntroCard = async () => {
+        if (introCardOffered) return;
+        introCardOffered = true;
+
+        try {
+            const { claimed } = await browser.runtime.sendMessage({ action: "claimIntroCard" });
+            if (!claimed) return;
+
+            const { showIntroCard } = await import(browser.runtime.getURL("src/components/intro-card.js"));
+            await showIntroCard({ browser, log });
+        } catch (err) {
+            log("Could not show the intro card (non-fatal):", err);
+        }
+    };
+
     const processSite = async () => {
         const startTime = performance.now();
 
@@ -400,6 +421,11 @@ let hrefSigns;
             },
             { converted: 0, original: 0, skipped: 0, error: errors.length }
         );
+
+        // Headlines of the page are in the data, rewritten or not: offer the setup now, before anything below can
+        // delay or fail. Waiting for a rewrite would leave a user with no card while every headline is under
+        // their level.
+        if (stats.converted + stats.original > 0) offerIntroCard();
 
         // Build live page snapshot from all reasons currently on page
         const pageSnapshot = buildPageSnapshot(reasons);

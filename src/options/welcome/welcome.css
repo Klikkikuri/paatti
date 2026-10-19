@@ -1,0 +1,589 @@
+/**
+ * The setup wizard page: one tall page of slides, a fixed bar on top and one at the bottom.
+ *
+ * Mood: retro-futuristic 1980s computing. It comes from the wireframe drawings, the numbered callouts, the
+ * figure captions and the monospace labels. Text stays plain, large and high in contrast; the controls on the
+ * left are the normal Klikkikuri components.
+ *
+ * Every size is relative (rem or em), so the page follows the user's font size and the browser zoom. The bars
+ * are measured in welcome.js into --bar-top and --bar-bottom, so a slide never hides under them, whatever the
+ * size of the text. The colours here are the wizard's own and belong to no other page; the controls inside
+ * keep the tokens of theme.css.
+ */
+
+:root {
+    --welcome-paper: #f5f0e4;
+    --welcome-ink: #1e3a6e;
+    --welcome-accent: #c2410c;
+    --welcome-hatch: color-mix(in srgb, var(--welcome-ink) 35%, transparent);
+    --bar-top: 5rem;
+    --bar-bottom: 4.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --welcome-paper: #0f1a2e;
+        --welcome-ink: #d6e4ff;
+        --welcome-accent: #ff9a5c;
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-snap-type: y proximity;
+    scroll-padding-top: var(--bar-top);
+    scroll-padding-bottom: var(--bar-bottom);
+}
+
+body {
+    margin: 0;
+    /* The bars are fixed, so the page leaves room for them. A slide fills what is between them. */
+    padding: var(--bar-top) 0 var(--bar-bottom);
+    background-color: var(--welcome-paper);
+    /* A faint dot grid, in the margins only: the slide itself is a solid card, so no text sits on it. */
+    background-image: radial-gradient(color-mix(in srgb, var(--welcome-ink) 18%, transparent) 0.0625rem, transparent 0.0625rem);
+    background-size: 1.25rem 1.25rem;
+    color: var(--welcome-ink);
+    font-family: var(--font-body);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.wf-defs {
+    position: absolute;
+}
+
+.wf-hatch-line {
+    stroke: var(--welcome-hatch);
+    stroke-width: 1.5;
+}
+
+/* --- bars --- */
+
+.bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem max(1rem, calc((100vw - 55rem) / 2));
+    background: var(--welcome-paper);
+    border-color: var(--welcome-ink);
+    border-style: solid;
+    border-width: 0;
+}
+
+.bar-top {
+    top: 0;
+    border-bottom-width: 0.125rem;
+}
+
+.bar-bottom {
+    bottom: 0;
+    justify-content: space-between;
+    border-top-width: 0.125rem;
+}
+
+.bar-logo {
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+.bar-top step-indicator {
+    flex: 1;
+}
+
+.welcome-link {
+    flex: none;
+    min-height: 2.75rem;
+    padding: 0.25rem 0.5rem;
+    border: 0;
+    background: transparent;
+    color: var(--welcome-ink);
+    font: inherit;
+    font-family: var(--font-display);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.welcome-button {
+    min-height: 2.75rem;
+    min-width: 7rem;
+    padding: 0.375rem 1.25rem;
+    border: 0.125rem solid var(--welcome-ink);
+    border-radius: 0.25rem;
+    background: transparent;
+    color: var(--welcome-ink);
+    font: inherit;
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.welcome-button.primary {
+    background: var(--welcome-ink);
+    color: var(--welcome-paper);
+}
+
+.welcome-button:hover {
+    box-shadow: 0.1875rem 0.1875rem 0 var(--welcome-accent);
+}
+
+.welcome-button:disabled {
+    visibility: hidden;
+}
+
+/* Hidden but still in the layout, so that Next stays on the right when there is no Back. */
+.welcome-button[hidden] {
+    display: inline-block;
+    visibility: hidden;
+}
+
+.welcome-button:focus-visible,
+.welcome-link:focus-visible,
+a:focus-visible,
+.slide-heading:focus-visible {
+    outline: 0.1875rem solid var(--welcome-accent);
+    outline-offset: 0.1875rem;
+}
+
+a {
+    color: var(--welcome-ink);
+}
+
+/* --- slides --- */
+
+.slide {
+    /* min-height, never height: a slide that needs more room grows, and the page scrolls through it. */
+    min-height: calc(100svh - var(--bar-top) - var(--bar-bottom));
+    padding: 1.5rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    scroll-snap-align: start;
+}
+
+.slide-inner {
+    width: min(100%, 55rem);
+    padding: 1.5rem;
+    background: var(--welcome-paper);
+    border: 0.125rem solid var(--welcome-ink);
+    border-radius: 0.5rem;
+}
+
+.slide-heading {
+    margin: 0 0 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 0.125rem solid var(--welcome-ink);
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    line-height: 1.3;
+    letter-spacing: 0.03em;
+}
+
+.slide-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2rem;
+    align-items: start;
+}
+
+.slide-control > p:first-child {
+    margin-top: 0;
+}
+
+.note {
+    font-size: 0.9375rem;
+}
+
+.panel {
+    padding: 0.75rem 1rem;
+    border: 0.125rem solid var(--welcome-ink);
+    border-radius: 0.375rem;
+    background: var(--color-surface);
+    color: var(--color-text-heading);
+}
+
+.range-ends {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+/* Presets at the two ends of the slider, small like the text above them. The one that matches the slider is
+ * filled. The button looks compact, but its touch target is not: the pseudo-element grows it to 2.75rem. */
+.range-end {
+    position: relative;
+    min-height: 1.75rem;
+    padding: 0.0625rem 0.625rem;
+    border: 0.0625rem solid var(--color-border-strong);
+    border-radius: 0.25rem;
+    background: transparent;
+    color: var(--color-text-heading);
+    font: inherit;
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    cursor: pointer;
+}
+
+.range-end::after {
+    content: "";
+    position: absolute;
+    inset: -0.5rem -0.25rem;
+}
+
+.range-end:hover {
+    background: var(--color-surface-hover);
+}
+
+.range-end[aria-pressed="true"] {
+    background: var(--welcome-ink);
+    border-color: var(--welcome-ink);
+    color: var(--welcome-paper);
+}
+
+.range-end:focus-visible {
+    outline: 0.1875rem solid var(--welcome-accent);
+    outline-offset: 0.125rem;
+}
+
+/* --- numbered lists: the same numbers as the callouts in the drawing --- */
+
+.parts,
+.numbered-controls {
+    margin: 1rem 0;
+    padding: 0;
+    list-style: none;
+}
+
+.parts li,
+.numbered-controls li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 0.0625rem solid color-mix(in srgb, var(--welcome-ink) 30%, transparent);
+}
+
+.part-number,
+.numbered-controls li::before {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 0.125rem solid var(--welcome-accent);
+    border-radius: 50%;
+    color: var(--welcome-accent);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.9375rem;
+}
+
+.numbered-controls {
+    counter-reset: control;
+}
+
+.numbered-controls li {
+    counter-increment: control;
+    align-items: flex-start;
+    padding: 0.25rem 0;
+    border-bottom: 0;
+}
+
+.numbered-controls li::before {
+    content: counter(control);
+    margin-top: 0.875rem;
+}
+
+.numbered-controls .setting-group {
+    margin-bottom: 0;
+}
+
+.numbered-controls li > * {
+    flex: 1;
+    min-width: 0;
+}
+
+.parts-text li {
+    align-items: flex-start;
+}
+
+.parts-text strong {
+    display: block;
+}
+
+/* --- sample headlines of the strictness step: a box for each level --- */
+
+.samples {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sample {
+    padding: 0.5rem 0.75rem;
+    border: 0.125rem solid var(--welcome-ink);
+    border-radius: 0.25rem;
+}
+
+.sample-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.sample-text {
+    margin: 0.125rem 0 0;
+    font-size: 0.9375rem;
+    line-height: 1.35;
+}
+
+/* Rewritten: a solid box with an accent bar on its edge, and no texture behind the text. Left alone: dashed and quiet. */
+.sample[data-state="rewritten"] {
+    border-left: 0.375rem solid var(--welcome-accent);
+}
+
+.sample[data-state="rewritten"] .sample-status {
+    color: var(--welcome-accent);
+    font-weight: 700;
+}
+
+.sample[data-state="kept"] {
+    border-style: dashed;
+    opacity: 0.7;
+}
+
+/* --- figures: line-art wireframes --- */
+
+.slide-figure {
+    margin: 0;
+}
+
+.wf {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    fill: none;
+    stroke: var(--welcome-ink);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+}
+
+.wf * {
+    vector-effect: non-scaling-stroke;
+}
+
+.wf .tl {
+    stroke-width: 4;
+    opacity: 0.4;
+}
+
+.wf .leader,
+.wf .callout circle,
+.wf .mark {
+    stroke: var(--welcome-accent);
+}
+
+.wf .callout text {
+    fill: var(--welcome-accent);
+    stroke: none;
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.wf .glyph,
+.wf .button-text {
+    fill: var(--welcome-ink);
+    stroke: none;
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.wf .glyph-shape {
+    fill: var(--welcome-ink);
+}
+
+.wf .box.on {
+    fill: url(#wf-hatch);
+}
+
+.wf .slot.off circle,
+.wf .slot.off .glyph-shape {
+    stroke-dasharray: 5 4;
+}
+
+.wf .slot.off {
+    opacity: 0.35;
+}
+
+.wf .slot.on circle {
+    fill: url(#wf-hatch);
+}
+
+.slide-figure figcaption {
+    margin-top: 0.75rem;
+    font-family: var(--font-display);
+    font-size: 0.875rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.slide-figure .fig-label,
+.slide-figure .fig-number {
+    font-weight: 700;
+}
+
+/* The flow of a fix, drawn with borders: the labels are of unequal length, so boxes that grow are safer. */
+.flow {
+    display: flex;
+    align-items: stretch;
+    gap: 1.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.flow li {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 5rem;
+    padding: 0.5rem;
+    border: 0.125rem solid var(--welcome-ink);
+    border-radius: 0.25rem;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: 0.875rem;
+}
+
+.flow li + li::before {
+    content: "→";
+    position: absolute;
+    right: 100%;
+    width: 1.75rem;
+    text-align: center;
+    color: var(--welcome-accent);
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+/* --- last slide --- */
+
+.news-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.pin-hint {
+    display: none;
+}
+
+html[data-browser="chromium"] .pin-hint[data-for="chromium"],
+html[data-browser="firefox"] .pin-hint[data-for="firefox"],
+html[data-browser="android"] .pin-hint[data-for="android"] {
+    display: block;
+}
+
+html[data-mode="tour"] .quick-only {
+    display: none;
+}
+
+.ready-footer {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 0.0625rem solid color-mix(in srgb, var(--welcome-ink) 30%, transparent);
+    font-size: 0.9375rem;
+}
+
+.footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 1rem;
+    margin-bottom: 0;
+}
+
+.footer-links .welcome-link {
+    padding: 0;
+}
+
+/* --- narrow screen: one column, the drawing above the control --- */
+
+@media (max-width: 40em) {
+    :root {
+        --bar-top: 6rem;
+    }
+
+    .bar-top {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .bar-top step-indicator {
+        order: 3;
+        flex-basis: 100%;
+    }
+
+    .bar-logo {
+        width: 2rem;
+        height: 2rem;
+        margin-right: auto;
+    }
+
+    .slide-inner {
+        padding: 1rem;
+    }
+
+    .bar-bottom {
+        gap: 0.5rem;
+    }
+
+    .bar-bottom .welcome-button {
+        flex: 1;
+        min-width: 0;
+        padding-inline: 0.5rem;
+    }
+
+    .slide-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1.25rem;
+    }
+
+    .slide-figure {
+        order: -1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    * {
+        transition: none !important;
+        animation: none !important;
+    }
+}

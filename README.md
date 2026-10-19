@@ -52,6 +52,11 @@ Sail smoothly through the clickbait-infested web using this browser extension.
 - The popup and the settings page **follow your browser's light or dark theme** by themselves. The markers
   Paatti puts on a news page instead take the colours of the site around them, so they stay legible on a dark
   site and on a light one.
+- A **short setup** helps you on the first day. The first time Paatti finds headlines of a supported page in its data, a small
+  card offers a *Quick setup* of about one minute and a *Tour* of about two. Both open a page of steps that show what
+  the strictness slider, the marks and the site switches do. The tour adds how to give feedback on a wrong rewrite.
+  The card hides itself, and *Not now* closes it at once. The popup keeps an offer until you finish or hide it, and
+  the *About* section of the settings page can start the setup again.
 - Adjustable **clickbait threshold** to set how clickbaity a headline must be before Paatti replaces it.
 - The popup shows:
   - A **clickbait density gauge** for the page you are on.

@@ -1014,5 +1014,327 @@
   "optionsErrorLoadingSettings": {
     "message": "Virhe asetusten lataamisessa",
     "description": "Notification message when options page fails to load settings"
+  },
+  "introCardLabel": {
+    "message": "Klikkikurin käyttöönotto",
+    "description": "Accessible name of the first-activation card shown on a news page."
+  },
+  "introCardText": {
+    "message": "Klikkikuri aktivoitui tällä sivulla ensimmäistä kertaa.",
+    "description": "Text of the first-activation card shown on a news page."
+  },
+  "introCardTour": {
+    "message": "Esittely",
+    "description": "Card button: opens the longer setup wizard."
+  },
+  "introCardQuick": {
+    "message": "Pika-asetukset",
+    "description": "Card button: opens the short setup wizard."
+  },
+  "introCardNotNow": {
+    "message": "Ei nyt",
+    "description": "Card link: hides the card."
+  },
+  "welcomePageTitle": {
+    "message": "Klikkikuri Paatti - Käyttöönotto",
+    "description": "Title of the setup wizard page."
+  },
+  "welcomeSkip": {
+    "message": "Ohita",
+    "description": "Wizard: leaves the setup."
+  },
+  "welcomeBack": {
+    "message": "Takaisin",
+    "description": "Wizard: goes to the previous step."
+  },
+  "welcomeNext": {
+    "message": "Seuraava",
+    "description": "Wizard: goes to the next step."
+  },
+  "welcomeFinish": {
+    "message": "Valmis",
+    "description": "Wizard: finishes the setup on the last step."
+  },
+  "welcomeStepCount": {
+    "message": "Vaihe $CURRENT$ / $TOTAL$",
+    "description": "Wizard step counter.",
+    "placeholders": {
+      "current": {
+        "content": "$1",
+        "example": "2"
+      },
+      "total": {
+        "content": "$2",
+        "example": "6"
+      }
+    }
+  },
+  "welcomeTourTag": {
+    "message": "Esittely",
+    "description": "Small tag on a step that only the tour has."
+  },
+  "welcomeFigureLabel": {
+    "message": "Kuva",
+    "description": "Label before the number of a figure caption."
+  },
+  "welcomeStep_strictness": {
+    "message": "Tiukkuus",
+    "description": "Short step title."
+  },
+  "welcomeStep_markers": {
+    "message": "Merkit",
+    "description": "Short step title."
+  },
+  "welcomeStep_sites": {
+    "message": "Sivustot",
+    "description": "Short step title."
+  },
+  "welcomeStep_wrong": {
+    "message": "Virheet",
+    "description": "Short step title."
+  },
+  "welcomeStep_corrections": {
+    "message": "Uudet korjaukset",
+    "description": "Short step title."
+  },
+  "welcomeStep_ready": {
+    "message": "Valmis",
+    "description": "Short step title."
+  },
+  "welcomeStrictnessHeading": {
+    "message": "Kuinka paljon klikkiotsikoita Klikkikurin pitää korjata?",
+    "description": "Heading of the strictness step."
+  },
+  "welcomeStrictnessText": {
+    "message": "Siirrä liukusäädintä valitaksesi, mitkä otsikot Klikkikuri kirjoittaa uudelleen.",
+    "description": "Text of the strictness step."
+  },
+  "welcomeStrictnessEndMore": {
+    "message": "Korjaa enemmän",
+    "description": "Slider end label."
+  },
+  "welcomeStrictnessEndWorst": {
+    "message": "Korjaa vain pahimmat",
+    "description": "Slider end label."
+  },
+  "welcomeStrictnessCaption": {
+    "message": "Esimerkkiotsikot valitsemallasi asetuksella",
+    "description": "Caption of the strictness figure."
+  },
+  "welcomeStatusRewritten": {
+    "message": "Kirjoitetaan uudelleen",
+    "description": "Status of a sample headline that Klikkikuri rewrites."
+  },
+  "welcomeStatusKept": {
+    "message": "Jätetään ennalleen",
+    "description": "Status of a sample headline that Klikkikuri leaves alone."
+  },
+  "welcomeMarkersHeading": {
+    "message": "Mitä merkkejä haluat nähdä?",
+    "description": "Heading of the marks step."
+  },
+  "welcomeMarkersText": {
+    "message": "Merkit näkyvät otsikon vieressä. Voit kytkeä jokaisen päälle tai pois. Klikkikuri toimii, vaikka kaikki olisivat pois päältä.",
+    "description": "Text of the marks step."
+  },
+  "welcomeMarkersDefault": {
+    "message": "Oletuksena vain tekoälymerkki on päällä.",
+    "description": "Note on the marks step."
+  },
+  "welcomeMarkersCaption": {
+    "message": "Merkit otsikon vieressä",
+    "description": "Caption of the marks figure."
+  },
+  "modifierAiSlopBrief": {
+    "message": "Artikkeli vaikuttaa tekoälyn kirjoittamalta tai kääntämältä.",
+    "description": "One short phrase for the AI mark."
+  },
+  "modifierVideoBrief": {
+    "message": "Linkki johtaa enimmäkseen videoon.",
+    "description": "One short phrase for the video mark."
+  },
+  "modifierConvertedBrief": {
+    "message": "Klikkikuri kirjoitti otsikon uudelleen. Voit antaa palautetta klikkaamalla sitä.",
+    "description": "One short phrase for the converted-headline mark."
+  },
+  "welcomeSitesHeading": {
+    "message": "Millä sivustoilla Klikkikurin pitää toimia?",
+    "description": "Heading of the sites step."
+  },
+  "welcomeSitesText": {
+    "message": "Jotkin sivustot toimivat heti. Toisille selain kysyy ensin luvan.",
+    "description": "Text of the sites step."
+  },
+  "welcomeSitesPermission": {
+    "message": "Jos selain kysyy lupaa ja kieltäydyt, sivusto pysyy pois päältä. Kaikki muu toimii edelleen, joten voit jatkaa ilman sitä.",
+    "description": "Note on the sites step about the permission prompt."
+  },
+  "welcomeSitesRequest": {
+    "message": "Puuttuuko sivustosi? Pyydä sitä GitHubissa.",
+    "description": "Link on the sites step."
+  },
+  "welcomeSitesCaption": {
+    "message": "Missä merkit ja uudelleenkirjoitukset näkyvät",
+    "description": "Caption of the sites figure."
+  },
+  "siteStatusOn": {
+    "message": "Päällä",
+    "description": "State of a site: on."
+  },
+  "siteStatusOff": {
+    "message": "Pois",
+    "description": "State of a site: off."
+  },
+  "siteStatusNeedsPermission": {
+    "message": "Vaatii luvan",
+    "description": "State of a site: the browser has not granted access yet."
+  },
+  "welcomeWrongHeading": {
+    "message": "Entä jos uudelleenkirjoitus on väärin?",
+    "description": "Heading of the mistakes step."
+  },
+  "welcomeWrongText": {
+    "message": "Jokaisella uudelleenkirjoituksella on palautekortti, jossa on kaksi vaihtoehtoa. Palaute lähetetään vain, kun painat siellä painiketta.",
+    "description": "Text of the mistakes step."
+  },
+  "welcomeWrongGoodTitle": {
+    "message": "Hyvä",
+    "description": "Name of the first feedback choice. Matches the button on the card."
+  },
+  "welcomeWrongGoodText": {
+    "message": "Yksi napsautus kertoo Klikkikurille, että uudelleenkirjoitus on hyvä. Se lähetetään heti.",
+    "description": "Explains the first feedback choice."
+  },
+  "welcomeWrongBadTitle": {
+    "message": "Ei hyvä",
+    "description": "Name of the second feedback choice. Matches the button on the card."
+  },
+  "welcomeWrongBadText": {
+    "message": "Kerro, mikä on pielessä, tai kirjoita parempi otsikko. Paina sitten Lähetä. Kortti vaatii jonkin tekstin.",
+    "description": "Explains the second feedback choice."
+  },
+  "welcomeWrongWhere": {
+    "message": "Avaa kortti klikkaamalla uudelleenkirjoitetun otsikon merkkiä, jos kytkit sen päälle. Voit käyttää myös työkalupalkin ponnahdusikkunan palautelistaa.",
+    "description": "Where to find the feedback card."
+  },
+  "welcomeWrongCaption": {
+    "message": "Palautteen antaminen uudelleenkirjoituksesta",
+    "description": "Caption of the mistakes figure."
+  },
+  "welcomeCorrectionsHeading": {
+    "message": "Miten saat uudet korjaukset?",
+    "description": "Heading of the new fixes step."
+  },
+  "welcomeCorrectionsText": {
+    "message": "Klikkikuri tuo uudet korjaukset selaimeesi itse. Voit valita, kuinka usein se tarkistaa.",
+    "description": "Text of the new fixes step."
+  },
+  "welcomeCorrectionsHelp": {
+    "message": "Ylläpitäjät käyttävät palautetta uudelleenkirjoitusten tarkkuuden tarkistamiseen, joten palautteesi voi johtaa parempiin korjauksiin myöhemmin.",
+    "description": "Note on the new fixes step."
+  },
+  "welcomeFlowFeedback": {
+    "message": "Palautteesi",
+    "description": "First box of the flow figure."
+  },
+  "welcomeFlowFixes": {
+    "message": "Uudet korjaukset",
+    "description": "Second box of the flow figure."
+  },
+  "welcomeFlowBrowser": {
+    "message": "Selaimesi",
+    "description": "Third box of the flow figure."
+  },
+  "welcomeCorrectionsCaption": {
+    "message": "Miten korjaus saapuu sinulle",
+    "description": "Caption of the flow figure."
+  },
+  "welcomeReadyHeading": {
+    "message": "Valmis kokeilemaan Klikkikuri Paattia?",
+    "description": "Heading of the last step."
+  },
+  "welcomeReadyOpen": {
+    "message": "Avaa uutissivusto:",
+    "description": "Label before the news site buttons."
+  },
+  "welcomeReadyPinChromium": {
+    "message": "Kiinnitä Klikkikuri helpompaa käyttöä varten: avaa työkalupalkin palapelivalikko ja valitse nastakuvake.",
+    "description": "Hint to pin the extension in Chromium browsers."
+  },
+  "welcomeReadyPinFirefox": {
+    "message": "Kiinnitä Klikkikuri helpompaa käyttöä varten: avaa työkalupalkin laajennuspainike ja valitse Kiinnitä työkalupalkkiin.",
+    "description": "Hint to pin the extension in Firefox."
+  },
+  "welcomeReadyPinAndroid": {
+    "message": "Löydät Klikkikurin avaamalla Firefoxin valikon ja valitsemalla Laajennukset.",
+    "description": "Hint for Firefox for Android."
+  },
+  "welcomeReadyFeedback": {
+    "message": "Voit antaa palautetta uudelleenkirjoituksesta klikkaamalla muutosmerkkiä tai avaamalla palautelistan ponnahdusikkunassa.",
+    "description": "Where to give feedback. Shown in the short setup only."
+  },
+  "welcomeReadyPrivacy": {
+    "message": "Klikkikuri vertaa otsikoita laitteellasi olevaan tietokantaan. Se lähettää palautteesi vain, kun painat lähetä.",
+    "description": "Short privacy statement on the last step."
+  },
+  "welcomeReadyPrivacyLink": {
+    "message": "Lue tietosuojaseloste",
+    "description": "Link to the privacy policy."
+  },
+  "welcomeReadyAllSettings": {
+    "message": "Kaikki asetukset",
+    "description": "Link to the options page."
+  },
+  "welcomeReadyLearnMore": {
+    "message": "Lisätietoja:",
+    "description": "Label before the learn more links."
+  },
+  "welcomeLinkHowItWorks": {
+    "message": "Miten se toimii",
+    "description": "Link on the last step."
+  },
+  "welcomeLinkProviders": {
+    "message": "Tarjoajat",
+    "description": "Link on the last step."
+  },
+  "welcomeLinkGitHub": {
+    "message": "GitHub",
+    "description": "Link on the last step."
+  },
+  "welcomeReadyCaption": {
+    "message": "Mistä Klikkikurin löytää",
+    "description": "Caption of the toolbar figure."
+  },
+  "popupSetupLine": {
+    "message": "Ota Klikkikuri käyttöön",
+    "description": "Line in the popup that offers the setup wizard."
+  },
+  "popupSetupHide": {
+    "message": "Piilota",
+    "description": "Hides the setup line in the popup."
+  },
+  "aboutShowWelcome": {
+    "message": "Näytä käyttöönotto uudelleen",
+    "description": "Link in the About section that opens the setup wizard."
+  },
+  "welcomeSample0": {
+    "message": "Työnantajien etujärjestö EK vastustaa Manna Sarin veroesitystä",
+    "description": "Illustrative sample headline for clickbait level 0, as a site would write it. It is fiction: not a claim about real statements or events."
+  },
+  "welcomeSample1": {
+    "message": "EK varoittaa Manna Saria verosuunnitelman seurauksista",
+    "description": "Illustrative sample headline for clickbait level 1, as a site would write it. It is fiction: not a claim about real statements or events."
+  },
+  "welcomeSample2": {
+    "message": "EK ärähti Manna Sarille: ”Talous ei toimi toiveajattelulla”",
+    "description": "Illustrative sample headline for clickbait level 2, as a site would write it. It is fiction: not a claim about real statements or events."
+  },
+  "welcomeSample3": {
+    "message": "EK jyrähti Manna Sarille: ”Nyt on aika oppia, miten talous oikeasti toimii”",
+    "description": "Illustrative sample headline for clickbait level 3, as a site would write it. It is fiction: not a claim about real statements or events."
+  },
+  "welcomeSample4": {
+    "message": "EK lataa Manna Sarille täystyrmäyksen: ”Kasva aikuiseksi – yritykset eivät elä satumaailmassa!”",
+    "description": "Illustrative sample headline for clickbait level 4, as a site would write it. It is fiction: not a claim about real statements or events."
   }
 }

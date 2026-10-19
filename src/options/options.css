@@ -91,48 +91,6 @@ legend {
     font-size: 1rem;
 }
 
-.setting-group {
-    margin-bottom: 20px;
-}
-
-.setting-label {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px;
-    background: var(--color-surface-muted);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.setting-label:hover {
-    background: var(--color-surface-hover);
-}
-
-.setting-label input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-}
-
-.label-text {
-    flex: 1;
-    margin-right: 15px;
-}
-
-.label-text strong {
-    display: block;
-    margin-bottom: 5px;
-    color: var(--color-text-heading);
-}
-
-.label-text span {
-    font-size: 0.95rem;
-    color: var(--color-text-secondary);
-}
-
-
 /* Site configs */
 .detail-button {
     display: inline-flex;

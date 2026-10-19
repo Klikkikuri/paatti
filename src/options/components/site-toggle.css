@@ -19,9 +19,9 @@
  */
 site-toggle-setting.site-item {
     display: flex;
-    padding: 15px;
+    padding: 0.9375rem;
     background: var(--color-surface-muted);
-    border-radius: 8px;
+    border-radius: 0.5rem;
     justify-content: space-between;
     align-items: center;
     cursor: pointer;
@@ -40,7 +40,7 @@ site-toggle-setting toggle-button {
 /* --- the favicon, in both layouts --- */
 
 site-toggle-setting .site-favicon {
-    border-radius: 4px;
+    border-radius: 0.25rem;
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
@@ -49,7 +49,7 @@ site-toggle-setting .site-favicon {
 
 site-toggle-setting .site-favicon img,
 site-toggle-setting .site-favicon .site-favicon-fallback {
-    border-radius: 4px;
+    border-radius: 0.25rem;
     display: block;
 }
 
@@ -58,10 +58,10 @@ site-toggle-setting .site-favicon .site-favicon-fallback {
 site-toggle-setting .compact-site-info {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 0.5rem;
     min-width: 0;
     flex: 1;
-    margin-right: 10px;
+    margin-right: 0.625rem;
 }
 
 site-toggle-setting .site-label {
@@ -78,14 +78,14 @@ site-toggle-setting .site-main-section {
     display: flex;
     flex-direction: column;
     flex: 1;
-    margin-right: 15px;
+    margin-right: 0.9375rem;
     min-width: 0;
 }
 
 site-toggle-setting .site-info {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 0.75rem;
     width: 100%;
     min-width: 0;
 }
@@ -93,7 +93,7 @@ site-toggle-setting .site-info {
 site-toggle-setting .site-details {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 0.375rem;
     min-width: 0;
     flex: 1;
 }
@@ -109,7 +109,7 @@ site-toggle-setting .site-name {
 site-toggle-setting .site-domain {
     font-size: 0.9rem;
     color: var(--color-text-secondary);
-    margin-top: 3px;
+    margin-top: 0.1875rem;
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
@@ -118,11 +118,17 @@ site-toggle-setting .site-domain {
 
 site-toggle-setting .site-details-container {
     line-height: 1.2;
-    margin-top: 2px;
+    margin-top: 0.125rem;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 37.5em) {
     site-toggle-setting.site-item {
-        padding: 12px 10px;
+        padding: 0.75rem 0.625rem;
     }
+}
+
+site-toggle-setting .site-status {
+    font-size: 0.875rem;
+    font-weight: bold;
+    color: var(--color-text-secondary);
 }

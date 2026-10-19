@@ -1,0 +1,95 @@
+/**
+ * <step-indicator>: the wizard's progress, a text line above a row of segments.
+ *
+ * Sizes are relative, so the bar follows the user's font size. The colour of the current segment is the
+ * wizard's accent (--welcome-accent, set in welcome.css); the rest comes from the shared tokens.
+ */
+
+step-indicator {
+    display: block;
+    min-width: 0;
+}
+
+step-indicator .step-text {
+    margin: 0 0 0.375rem;
+    font-size: 0.875rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+step-indicator .step-count-short {
+    display: none;
+}
+
+step-indicator .step-tour-tag {
+    padding: 0.0625rem 0.375rem;
+    border: 0.0625rem solid currentColor;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+}
+
+step-indicator .step-segments {
+    display: flex;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+step-indicator .step-segments li {
+    flex: 1;
+}
+
+step-indicator .step-segment {
+    display: block;
+    width: 100%;
+    height: 0.5rem;
+    padding: 0;
+    border: 0.0625rem solid var(--welcome-ink, var(--color-text-primary));
+    border-radius: 0.125rem;
+    background: transparent;
+    cursor: pointer;
+}
+
+step-indicator .step-segment[data-state="past"] {
+    background: var(--welcome-ink, var(--color-text-primary));
+}
+
+step-indicator .step-segment[data-state="current"] {
+    height: 0.75rem;
+    margin-block: -0.125rem;
+    border-color: var(--welcome-accent, var(--color-brand));
+    background: var(--welcome-accent, var(--color-brand));
+}
+
+step-indicator .step-segment:focus-visible {
+    outline: 0.1875rem solid var(--welcome-accent, var(--color-brand));
+    outline-offset: 0.125rem;
+}
+
+/* On a narrow screen the segments are a thin bar to read, not a target to touch: Back and Next are the controls. */
+@media (max-width: 40em) {
+    step-indicator .step-count-long,
+    step-indicator .step-separator,
+    step-indicator .step-title,
+    step-indicator .step-tour-tag {
+        display: none;
+    }
+
+    step-indicator .step-count-short {
+        display: inline;
+    }
+
+    step-indicator .step-segment {
+        height: 0.25rem;
+        pointer-events: none;
+    }
+
+    step-indicator .step-segment[data-state="current"] {
+        height: 0.25rem;
+        margin-block: 0;
+    }
+}

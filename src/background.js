@@ -8,6 +8,7 @@ import { model, signUrls } from "./model.js";
 import { controller } from "./controller.js";
 import { storeFavicon } from "./favicon-fetch.js";
 import { buildFeedbackRequest } from "./feedback.js";
+import { claimIntroCard, wizardModeOf, openWizard } from "./welcome-state.js";
 import "./../build/wasm_exec.js";
 
 const log = getLogger("background");
@@ -405,6 +406,28 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 sendResponse({ success: false, error: err.message || String(err) });
             });
         return true; // Keep message channel open for async response
+    }
+
+    if (message.action === "claimIntroCard") {
+        // Only a page of ours can be the sender of a content script message, but any of them may ask.
+        // The answer is yes once, so two tabs that activate together cannot both show the card.
+        claimIntroCard()
+            .then((claimed) => sendResponse({ claimed }))
+            .catch((err) => {
+                log("Failed to claim the intro card:", err);
+                sendResponse({ claimed: false });
+            });
+        return true; // Keep message channel open for async response
+    }
+
+    if (message.action === "openWizard") {
+        const mode = wizardModeOf(message, sender);
+        if (!mode) {
+            log("Ignored an openWizard message that is not acceptable.");
+            return;
+        }
+        openWizard(mode).catch((err) => log("Failed to open the wizard:", err));
+        return;
     }
 
     if (message.action === "storeFavicon") {

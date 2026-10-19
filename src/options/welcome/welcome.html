@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="welcomePageTitle">Klikkikuri Paatti - Setup</title>
+    <link rel="stylesheet" href="../theme.css">
+    <link rel="stylesheet" href="../components.css">
+    <link rel="stylesheet" href="welcome.css">
+</head>
+
+<body>
+    <!-- The hatching that the drawings use for "this part changes". One definition, referenced by id. -->
+    <svg class="wf-defs" width="0" height="0" aria-hidden="true" focusable="false">
+        <defs>
+            <pattern id="wf-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <line x1="0" y1="0" x2="0" y2="6" class="wf-hatch-line" />
+            </pattern>
+        </defs>
+    </svg>
+
+    <header class="bar bar-top">
+        <img class="bar-logo" src="../../../icons/klikkikuri-48.png" width="40" height="40" alt="Klikkikuri logo" data-i18n-alt="iconLogoAlt">
+        <step-indicator id="steps"></step-indicator>
+        <button type="button" id="skip" class="welcome-link" data-i18n="welcomeSkip">Skip</button>
+    </header>
+
+    <main id="deck">
+
+        <!-- 1. STRICTNESS -->
+        <section class="slide" id="slide-strictness" data-slide="strictness" aria-labelledby="heading-strictness">
+            <div class="slide-inner">
+                <h1 id="heading-strictness" class="slide-heading" tabindex="-1" data-i18n="welcomeStrictnessHeading">How much clickbait should Klikkikuri fix?</h1>
+                <div class="slide-grid">
+                    <div class="slide-control">
+                        <p data-i18n="welcomeStrictnessText">Move the slider to choose which headlines Klikkikuri rewrites.</p>
+                        <div class="panel">
+                            <clickbait-level-horizontal></clickbait-level-horizontal>
+                            <div class="range-ends">
+                                <button type="button" class="range-end" data-level="1" data-i18n="welcomeStrictnessEndMore">Fix more</button>
+                                <button type="button" class="range-end" data-level="4" data-i18n="welcomeStrictnessEndWorst">Fix only the worst</button>
+                            </div>
+                        </div>
+                    </div>
+                    <figure class="slide-figure">
+                        <ol class="samples" id="strictness-samples">
+                            <li class="sample" data-level="0"><div class="sample-meta"><span class="sample-level"></span><span class="sample-status"></span></div><p class="sample-text"></p></li>
+                            <li class="sample" data-level="1"><div class="sample-meta"><span class="sample-level"></span><span class="sample-status"></span></div><p class="sample-text"></p></li>
+                            <li class="sample" data-level="2"><div class="sample-meta"><span class="sample-level"></span><span class="sample-status"></span></div><p class="sample-text"></p></li>
+                            <li class="sample" data-level="3"><div class="sample-meta"><span class="sample-level"></span><span class="sample-status"></span></div><p class="sample-text"></p></li>
+                            <li class="sample" data-level="4"><div class="sample-meta"><span class="sample-level"></span><span class="sample-status"></span></div><p class="sample-text"></p></li>
+                        </ol>
+                        <figcaption id="caption-strictness"><span class="fig-label" data-i18n="welcomeFigureLabel">Fig.</span> <span class="fig-number"></span> <span data-i18n="welcomeStrictnessCaption">Sample headlines at your setting</span></figcaption>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. MARKS -->
+        <section class="slide" id="slide-markers" data-slide="markers" aria-labelledby="heading-markers">
+            <div class="slide-inner">
+                <h1 id="heading-markers" class="slide-heading" tabindex="-1" data-i18n="welcomeMarkersHeading">What marks do you want to see?</h1>
+                <div class="slide-grid">
+                    <div class="slide-control">
+                        <p data-i18n="welcomeMarkersText">Marks sit next to a headline. Switch each one on or off. Klikkikuri works with all of them off.</p>
+                        <ol class="numbered-controls">
+                            <li><title-modifier-setting modifier="aiSlop" brief></title-modifier-setting></li>
+                            <li><title-modifier-setting modifier="video" brief></title-modifier-setting></li>
+                            <li><title-modifier-setting modifier="converted" brief></title-modifier-setting></li>
+                        </ol>
+                        <p class="note" data-i18n="welcomeMarkersDefault">By default, only the AI mark is on.</p>
+                    </div>
+                    <figure class="slide-figure">
+                        <svg class="wf" viewBox="0 0 320 200" role="img" aria-labelledby="caption-markers">
+                            <rect class="box" x="8" y="10" width="304" height="110" rx="3" />
+                            <g class="slot" data-marker="aiSlop"><circle cx="46" cy="50" r="17" /><text class="glyph" x="46" y="55" text-anchor="middle">AI</text></g>
+                            <g class="slot" data-marker="video"><circle cx="96" cy="50" r="17" /><path class="glyph-shape" d="M90 42 L104 50 L90 58 Z" /></g>
+                            <g class="slot" data-marker="converted"><circle cx="146" cy="50" r="17" /><path class="glyph-line" d="M137 50 L144 57 L156 43" /></g>
+                            <line class="tl" x1="24" y1="84" x2="290" y2="84" /><line class="tl" x1="24" y1="98" x2="230" y2="98" />
+                            <line class="tl" x1="190" y1="50" x2="296" y2="50" />
+                            <line class="leader" x1="46" y1="67" x2="46" y2="150" /><g class="callout"><circle cx="46" cy="160" r="10" /><text x="46" y="164" text-anchor="middle">1</text></g>
+                            <line class="leader" x1="96" y1="67" x2="96" y2="150" /><g class="callout"><circle cx="96" cy="160" r="10" /><text x="96" y="164" text-anchor="middle">2</text></g>
+                            <line class="leader" x1="146" y1="67" x2="146" y2="150" /><g class="callout"><circle cx="146" cy="160" r="10" /><text x="146" y="164" text-anchor="middle">3</text></g>
+                        </svg>
+                        <figcaption id="caption-markers"><span class="fig-label" data-i18n="welcomeFigureLabel">Fig.</span> <span class="fig-number"></span> <span data-i18n="welcomeMarkersCaption">Marks next to a headline</span></figcaption>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. SITES -->
+        <section class="slide" id="slide-sites" data-slide="sites" aria-labelledby="heading-sites">
+            <div class="slide-inner">
+                <h1 id="heading-sites" class="slide-heading" tabindex="-1" data-i18n="welcomeSitesHeading">Where should Klikkikuri work?</h1>
+                <div class="slide-grid">
+                    <div class="slide-control">
+                        <p data-i18n="welcomeSitesText">Some sites work right away. Others ask your browser for permission first.</p>
+                        <site-list-setting></site-list-setting>
+                        <p class="note" data-i18n="welcomeSitesPermission">If your browser asks and you say no, the site stays off. Everything else keeps working, so you can continue without it.</p>
+                        <p class="note"><a href="https://github.com/Klikkikuri/paatti/issues/new" target="_blank" rel="noopener noreferrer" data-i18n="welcomeSitesRequest">Your site is not here? Request it on GitHub.</a></p>
+                    </div>
+                    <figure class="slide-figure">
+                        <svg class="wf" viewBox="0 0 320 250" role="img" aria-labelledby="caption-sites">
+                            <rect class="box" x="8" y="8" width="304" height="234" rx="4" />
+                            <rect class="box" x="8" y="8" width="304" height="26" rx="4" />
+                            <circle cx="24" cy="21" r="5" /><line class="tl" x1="40" y1="21" x2="150" y2="21" />
+                            <rect class="box on" x="22" y="48" width="130" height="80" rx="2" /><line class="tl" x1="32" y1="66" x2="140" y2="66" /><line class="tl" x1="32" y1="80" x2="120" y2="80" />
+                            <rect class="box on" x="168" y="48" width="130" height="80" rx="2" /><line class="tl" x1="178" y1="66" x2="286" y2="66" /><line class="tl" x1="178" y1="80" x2="260" y2="80" />
+                            <rect class="box on" x="22" y="142" width="130" height="80" rx="2" /><line class="tl" x1="32" y1="160" x2="140" y2="160" /><line class="tl" x1="32" y1="174" x2="110" y2="174" />
+                            <rect class="box on" x="168" y="142" width="130" height="80" rx="2" /><line class="tl" x1="178" y1="160" x2="286" y2="160" /><line class="tl" x1="178" y1="174" x2="250" y2="174" />
+                        </svg>
+                        <figcaption id="caption-sites"><span class="fig-label" data-i18n="welcomeFigureLabel">Fig.</span> <span class="fig-number"></span> <span data-i18n="welcomeSitesCaption">Where the marks and rewrites appear</span></figcaption>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. MISTAKES (tour) -->
+        <section class="slide" id="slide-wrong" data-slide="wrong" data-tour aria-labelledby="heading-wrong">
+            <div class="slide-inner">
+                <h1 id="heading-wrong" class="slide-heading" tabindex="-1" data-i18n="welcomeWrongHeading">What if a rewrite is wrong?</h1>
+                <div class="slide-grid">
+                    <div class="slide-control">
+                        <p data-i18n="welcomeWrongText">Every rewrite has a feedback card with two choices. Feedback is sent only when you press a button there.</p>
+                        <ol class="parts parts-text">
+                            <li><span class="part-number">1</span><div><strong data-i18n="welcomeWrongGoodTitle">Is good</strong><span data-i18n="welcomeWrongGoodText">One click tells Klikkikuri that the rewrite is fine. It is sent at once.</span></div></li>
+                            <li><span class="part-number">2</span><div><strong data-i18n="welcomeWrongBadTitle">Is no good</strong><span data-i18n="welcomeWrongBadText">Say what is wrong, or write a better headline. Then press Submit. The card needs some text.</span></div></li>
+                        </ol>
+                        <p class="note" data-i18n="welcomeWrongWhere">To open the card, click the mark on a rewritten headline, if you switched it on. You can also use the feedback list in the toolbar popup.</p>
+                    </div>
+                    <figure class="slide-figure">
+                        <svg class="wf" viewBox="0 0 320 240" role="img" aria-labelledby="caption-wrong">
+                            <rect class="box" x="8" y="8" width="304" height="52" rx="3" />
+                            <circle class="mark" cx="30" cy="34" r="10" />
+                            <line class="tl" x1="52" y1="26" x2="290" y2="26" /><line class="tl" x1="52" y1="42" x2="230" y2="42" />
+                            <line class="leader" x1="30" y1="44" x2="30" y2="82" />
+                            <rect class="box" x="20" y="82" width="290" height="148" rx="3" />
+                            <line class="tl" x1="36" y1="102" x2="280" y2="102" /><line class="tl" x1="36" y1="118" x2="240" y2="118" />
+                            <line class="rule" x1="20" y1="134" x2="310" y2="134" />
+                            <rect class="box button on" x="36" y="150" width="108" height="34" rx="3" /><text class="button-text" x="90" y="172" text-anchor="middle" data-i18n="welcomeWrongGoodTitle">Is good</text>
+                            <rect class="box button" x="160" y="150" width="130" height="34" rx="3" /><text class="button-text" x="225" y="172" text-anchor="middle" data-i18n="welcomeWrongBadTitle">Is no good</text>
+                            <line class="leader" x1="90" y1="184" x2="90" y2="204" /><g class="callout"><circle cx="90" cy="214" r="10" /><text x="90" y="218" text-anchor="middle">1</text></g>
+                            <line class="leader" x1="225" y1="184" x2="225" y2="204" /><g class="callout"><circle cx="225" cy="214" r="10" /><text x="225" y="218" text-anchor="middle">2</text></g>
+                        </svg>
+                        <figcaption id="caption-wrong"><span class="fig-label" data-i18n="welcomeFigureLabel">Fig.</span> <span class="fig-number"></span> <span data-i18n="welcomeWrongCaption">Giving feedback on a rewrite</span></figcaption>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. NEW FIXES (tour) -->
+        <section class="slide" id="slide-corrections" data-slide="corrections" data-tour aria-labelledby="heading-corrections">
+            <div class="slide-inner">
+                <h1 id="heading-corrections" class="slide-heading" tabindex="-1" data-i18n="welcomeCorrectionsHeading">How do you get new fixes?</h1>
+                <div class="slide-grid">
+                    <div class="slide-control">
+                        <p data-i18n="welcomeCorrectionsText">Klikkikuri brings new fixes to your browser by itself. You can choose how often it checks.</p>
+                        <div class="panel"><database-status-setting layout="interval"></database-status-setting></div>
+                        <p class="note" data-i18n="welcomeCorrectionsHelp">The maintainers use feedback to check how accurate the rewrites are, so your feedback can lead to better fixes later.</p>
+                    </div>
+                    <figure class="slide-figure">
+                        <ol class="flow">
+                            <li><span data-i18n="welcomeFlowFeedback">Your feedback</span></li>
+                            <li><span data-i18n="welcomeFlowFixes">New fixes</span></li>
+                            <li><span data-i18n="welcomeFlowBrowser">Your browser</span></li>
+                        </ol>
+                        <figcaption><span class="fig-label" data-i18n="welcomeFigureLabel">Fig.</span> <span class="fig-number"></span> <span data-i18n="welcomeCorrectionsCaption">How a fix reaches you</span></figcaption>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. READY -->
+        <section class="slide" id="slide-ready" data-slide="ready" aria-labelledby="heading-ready">
+            <div class="slide-inner">
+                <h1 id="heading-ready" class="slide-heading" tabindex="-1" data-i18n="welcomeReadyHeading">Ready to try Klikkikuri Paatti?</h1>
+                <div class="slide-grid">
+                    <div class="slide-control">
+                        <p data-i18n="welcomeReadyOpen">Open a news site:</p>
+                        <div class="news-buttons">
+                            <button type="button" class="welcome-button primary news-button" data-url="https://yle.fi/">yle.fi</button>
+                            <button type="button" class="welcome-button primary news-button" data-url="https://www.hs.fi/">hs.fi</button>
+                            <button type="button" class="welcome-button primary news-button" data-url="https://www.iltalehti.fi/">iltalehti.fi</button>
+                        </div>
+                        <p class="note pin-hint" data-for="chromium" data-i18n="welcomeReadyPinChromium">Pin Klikkikuri for easier access: open the puzzle-piece menu in the toolbar and select the pin.</p>
+                        <p class="note pin-hint" data-for="firefox" data-i18n="welcomeReadyPinFirefox">Pin Klikkikuri for easier access: open the extensions button in the toolbar and choose Pin to Toolbar.</p>
+                        <p class="note pin-hint" data-for="android" data-i18n="welcomeReadyPinAndroid">To find Klikkikuri, open the Firefox menu and choose Extensions.</p>
+                        <p class="note quick-only" data-i18n="welcomeReadyFeedback">To give feedback on a rewrite, click the changed mark or open the feedback list in the popup.</p>
+                    </div>
+                    <figure class="slide-figure">
+                        <svg class="wf" viewBox="0 0 320 150" role="img" aria-labelledby="caption-ready">
+                            <rect class="box" x="8" y="10" width="304" height="46" rx="6" />
+                            <rect class="box" x="60" y="22" width="150" height="22" rx="11" />
+                            <rect class="box" x="226" y="22" width="22" height="22" rx="3" />
+                            <circle class="mark" cx="268" cy="33" r="11" />
+                            <circle cx="296" cy="33" r="3" /><circle cx="296" cy="27" r="3" /><circle cx="296" cy="39" r="3" />
+                            <line class="leader" x1="268" y1="46" x2="268" y2="96" /><g class="callout"><circle cx="268" cy="108" r="12" /><text x="268" y="113" text-anchor="middle">K</text></g>
+                        </svg>
+                        <figcaption id="caption-ready"><span class="fig-label" data-i18n="welcomeFigureLabel">Fig.</span> <span class="fig-number"></span> <span data-i18n="welcomeReadyCaption">Where to find Klikkikuri</span></figcaption>
+                    </figure>
+                </div>
+                <div class="ready-footer">
+                    <p class="privacy"><span data-i18n="welcomeReadyPrivacy">Klikkikuri checks headlines against a database on your device. It sends your feedback only when you press send.</span>
+                        <a href="https://github.com/Klikkikuri/paatti/blob/main/docs/PRIVACY_POLICY.md" target="_blank" rel="noopener noreferrer" data-i18n="welcomeReadyPrivacyLink">Read the privacy policy</a></p>
+                    <p class="footer-links">
+                        <button type="button" id="all-settings" class="welcome-link" data-i18n="welcomeReadyAllSettings">All settings</button>
+                        <span class="footer-sep" aria-hidden="true">·</span>
+                        <span data-i18n="welcomeReadyLearnMore">Learn more:</span>
+                        <a href="https://github.com/Klikkikuri/paatti#how-it-works" target="_blank" rel="noopener noreferrer" data-i18n="welcomeLinkHowItWorks">How it works</a>
+                        <a href="https://github.com/Klikkikuri/paatti/blob/main/docs/providers.md" target="_blank" rel="noopener noreferrer" data-i18n="welcomeLinkProviders">Providers</a>
+                        <a href="https://github.com/Klikkikuri/paatti" target="_blank" rel="noopener noreferrer" data-i18n="welcomeLinkGitHub">GitHub</a>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bar bar-bottom">
+        <button type="button" id="back" class="welcome-button" data-i18n="welcomeBack">Back</button>
+        <button type="button" id="next" class="welcome-button primary" data-i18n="welcomeNext">Next</button>
+    </footer>
+
+    <script type="module" src="welcome.js"></script>
+</body>
+
+</html>

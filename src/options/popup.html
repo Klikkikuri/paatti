@@ -28,6 +28,14 @@
     <div class="content main-content">
         <page-background></page-background>
         <div id="homeview-content" style="display: flex; flex-direction: column; gap: 15px; width: 100%; text-align: center; justify-content: center; align-items: center; height: 100%;">
+            <div id="setup-line" class="setup-line hidden" role="region" aria-labelledby="setup-line-text">
+                <span id="setup-line-text" data-i18n="popupSetupLine">Set up Klikkikuri</span>
+                <span class="setup-line-actions">
+                    <button type="button" class="push-button" data-mode="tour" data-i18n="introCardTour">Tour</button>
+                    <button type="button" class="push-button" data-mode="quick" data-i18n="introCardQuick">Quick setup</button>
+                    <button type="button" class="setup-line-hide" data-hide data-i18n="popupSetupHide">Hide</button>
+                </span>
+            </div>
             <p id="homeview-status-text"></p>
             <div id="gauge-container" class="hidden">
                 <svg viewBox="0 0 100 60">
