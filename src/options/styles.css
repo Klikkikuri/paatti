@@ -116,6 +116,22 @@ body {
     box-sizing: border-box;
 }
 
+/* The home view's own column, centred in the well. `min-height`, not `height`: a fixed height would let content
+ * that is taller than the well overflow equally upwards and downwards, and the part above the top edge cannot be
+ * scrolled to. It would sit out of sight, under the header. With `min-height` and no shrinking, the column grows and the well scrolls. */
+#homeview-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9375rem;
+    width: 100%;
+    min-height: 100%;
+    /* The well is a flex column too, and would shrink this back to its own height. */
+    flex-shrink: 0;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+}
+
 /* Home view carries the sea artwork, drawn by its <page-background> child. How the
  * artwork looks travels with the component -- see
  * src/options/components/page-background.css. What is left here is what that
