@@ -63,18 +63,19 @@ setting uses `.` on the command line and `__` in the environment: `--chaos.provi
 
 ### Content features
 
-Each content case is on by default. Turning one off removes only that case: the other articles stay the same.
+Each content case is on by default. Turning one off removes only that case: the other articles stay the same. The
+features marked "captured" also give some captured links their case (see "Captured sites").
 
 | Setting | The case |
 | --- | --- |
 | `features.blocks` | The block types on the page (default: all; see "Block types"). |
-| `features.levels` | One article at each of the five clickbait levels. Levels 0 and 1 stay below the default threshold. |
-| `features.ai_slop`, `features.video`, `features.sponsored` | Articles with that label. AI and video show a badge. |
-| `features.paywalled` | Paywalled articles with no corrected title: the PAYWALLED status. |
-| `features.no_entry` | Articles that `data.json` does not contain: the SKIPPED status. |
+| `features.levels` | One article at each of the five clickbait levels. Levels 0 and 1 stay below the default threshold. Captured: a link gets any level, not only 2 to 4. |
+| `features.ai_slop`, `features.video`, `features.sponsored` | Articles with that label. AI and video show a badge. Captured. |
+| `features.paywalled` | Paywalled articles with no corrected title: the PAYWALLED status. Captured. |
+| `features.no_entry` | Articles that `data.json` does not contain: the SKIPPED status. Captured. |
 | `features.missing_href` | A card whose link has no `href`. |
 | `features.duplicate_link` | The same article twice, with the same address. |
-| `features.edge_headlines` | Very long and very short headlines, emoji, markup as text, non-ASCII letters, soft hyphens, extra spaces. |
+| `features.edge_headlines` | Very long and very short headlines, emoji, markup as text, non-ASCII letters, soft hyphens, extra spaces. Captured: one of these headlines is the corrected title. |
 | `features.href_variants` | Links as relative, absolute, with a query, with a trailing slash, with a fragment, or with an upper-case section. Each variant gets the same signature. |
 | `features.load_more` | A "Load more" button and infinite scroll. |
 | `features.ticker` | A news ticker whose items are replaced every 5 seconds. |
@@ -155,16 +156,22 @@ Each captured host has a folder `<data_dir>/captures/<host>/`, laid out as a Rah
   update in Paatti.
 - A folder whose files do not parse, or whose rules Suola refuses, is left out of the provider, and the log names
   it. The other folders stay in use. `/api/captures/<host>` shows the error.
-- Every captured link gets a fake correction, also a link that Rahti has a real correction for. Paatti uses the
+- A captured link gets a fake correction, also a link that Rahti has a real correction for. Paatti uses the
   folders only with "Allow providers to override sites" on, which is the default of the `development` environment:
   then Paatti takes the site, its rules and its corrections from this provider first.
-- A fake corrected title starts with `[dev] `. Its level and labels come from the sign, so a link always gets the
-  same ones. The same folders give the same documents, byte for byte.
+- A fake corrected title starts with `[dev] `. The content features marked "captured" give some links their case:
+  a level below the threshold, a label, no corrected title (`paywalled`), no entry (`no_entry`), or an edge headline.
+  The cases come from the sign, so a link always gets the same ones. The same folders and features give the same
+  documents, byte for byte.
+- While you write the site rules, turn off the cases that hide a `[dev]` correction, as
+  [Adding a new site](../docs/development/adding-a-new-site.md) tells.
 - The server ignores a `captures/<host>.json` file of an older server. Send the page again.
 
 `/api/captures/<host>` checks a folder against the rules that the provider serves:
 
 - `rules`: `ok`, or why the folder is left out.
+- `links`: each captured link, with its `sign` and whether it has an `entry`. A link of the `no_entry` case has no
+  entry.
 - `tests`: each test case of `rules.json`, with `pass` or `fail` and the reasons. `signature` (or `sign`) must be the
   sign of `url`. `expected` must be the URL that `url` normalizes to, which the server checks through its SHA-256.
   An `xfail` case must get the sign of the catch-all rule.
@@ -245,7 +252,7 @@ uv run pytest          # in this directory: the server's own tests only
 - The rule-match tests use a Python copy of the content script's scan, with the html5lib parser, which builds the
   same tree as a browser. The drift guard and the end-to-end tests are the final check of the selectors.
 - The drift guard also loads the captured folders in `tests/fixtures/captures/`, and checks that Paatti's Suola
-  module gives each of their links the sign that the server gave it. The folders have a rule for a domain of the base
+  module gives each of their links the sign that `/api/captures/<host>` gives. The folders have a rule for a domain of the base
   rules (`yle.fi`) and a rule for a parent domain that signs the links of another folder.
 - `tests/e2e/` takes `--extension-dir` (an unpacked build), `--chromium` (default
   `/usr/lib/chromium/chromium`) and `--e2e-seeds`. A headless browser cannot answer a permission prompt, so it loads

@@ -17,8 +17,9 @@ and the server signs with the same rules before the base rules, as Paatti does (
 when a document is served, so a rule change applies at the next refresh. A folder that does not parse, or whose
 rules Suola refuses, is left out, so that one bad folder does not make Paatti refuse the rules of all captured hosts.
 
-Every captured link gets a fake correction. With "Allow providers to override sites" on, this provider ranks before
-Rahti on equal weight, so a fake correction also replaces a real one.
+Each captured link gets a fake correction, except a link of the `no_entry` case. The content features of the settings
+give some links their cases, as on Ilta-Pulu (see `fake_entry`). With "Allow providers to override sites" on, this
+provider ranks before Rahti on equal weight, so a fake correction also replaces a real one.
 """
 
 import hashlib
@@ -34,7 +35,8 @@ from niitti.logging import get_logger
 from suola import InvalidRulesError
 
 from . import expectations as ex
-from .rng import rng
+from .headlines import EDGE_PAIRS, fill
+from .rng import faker, rng
 from .signing import CAPTURE_RULES, Signer
 
 log = get_logger(__name__)
@@ -42,6 +44,15 @@ log = get_logger(__name__)
 FAKE_PREFIX = "[dev] "
 SCHEMA_VERSION = "0.1.0"
 NO_CAPTURE_YET = "2026-01-01T00:00:00+00:00"
+
+# The chance that a captured link gets the case of a content feature, when the feature is on.
+CASE_CHANCES = {
+    "ai_slop": 0.1, "video": 0.1, "sponsored": 0.05, "paywalled": 0.1, "no_entry": 0.1, "edge_headlines": 0.05,
+}
+CASE_LABELS = {
+    "ai_slop": ex.LABEL_AI_SLOP, "video": ex.LABEL_VIDEO, "sponsored": ex.LABEL_SPONSORED,
+    "paywalled": ex.LABEL_PAYWALLED,
+}
 
 
 @dataclass
@@ -60,6 +71,7 @@ class CapturedSites:
 
     def __init__(self, settings):
         self.captures_dir = Path(settings.data_dir) / "captures"
+        self.features = settings.features
         self._lock = threading.RLock()
         self._signer: tuple[str, Signer] | None = None
         self._refusals: dict[str, str | None] = {}
@@ -127,7 +139,7 @@ class CapturedSites:
         signer = self._signs(self.rules())
         entries, seen, updated = [], set(), NO_CAPTURE_YET
         for folder in self._valid_folders():
-            folder_entries = _entries(folder, signer)
+            folder_entries = _entries(folder, signer, self.features)
             folder_updated = max((link["captured"] for link in folder.links.values()), default=NO_CAPTURE_YET)
             self._write_if_changed(self.captures_dir / folder.host / "data.json", _data(folder_entries, folder_updated))
             for entry in folder_entries:
@@ -138,7 +150,8 @@ class CapturedSites:
         return _data(entries, updated)
 
     def check(self, host: str) -> dict | None:
-        """The state of one folder: whether its rules are usable, the result of each test case, and warnings.
+        """The state of one folder: whether its rules are usable, the sign of each link, the result of each test case,
+        and warnings.
 
         None for a host without a folder.
         """
@@ -146,9 +159,12 @@ class CapturedSites:
             return None
         folder = self._read(host)
         if folder.error:
-            return {"host": host, "rules": folder.error, "tests": [], "warnings": []}
+            return {"host": host, "rules": folder.error, "links": [], "tests": [], "warnings": []}
 
         signer = self._signs(self.rules())
+        signs = {url: signer.sign(url) for url in sorted(folder.links)}
+        entries = {entry["urls"][0]["sign"] for entry in _entries(folder, signer, self.features)}
+        links = [{"url": url, "sign": sign, "entry": sign in entries} for url, sign in signs.items()]
         tests = [self._test(case, signer) for site in folder.rules for case in site.get("tests", [])]
         netlocs = {urlsplit(url).netloc.lower() for url in folder.links}
         warnings = [f"the rule domain {site['domain']} matches no captured link; a domain must name the port too"
@@ -156,7 +172,7 @@ class CapturedSites:
                     if site.get("domain") and not any(_covers(site["domain"], netloc) for netloc in netlocs)]
         others = {key for other in self._valid_folders() if other.host != host for key in other.sites}
         warnings += [f"the site {key} is also in another folder" for key in folder.sites if key in others]
-        return {"host": host, "rules": "ok", "tests": tests, "warnings": warnings}
+        return {"host": host, "rules": "ok", "links": links, "tests": tests, "warnings": warnings}
 
     def _test(self, case: dict, signer: Signer) -> dict:
         url = case["url"]
@@ -236,14 +252,14 @@ class CapturedSites:
             log.error("captured folder", host=host, problem=message)
 
 
-def _entries(folder: Folder, signer: Signer) -> list[dict]:
+def _entries(folder: Folder, signer: Signer, features) -> list[dict]:
     """The fake entries of a folder's links, one for each sign, in the sequence of the addresses."""
     entries = {}
     for url, link in sorted(folder.links.items()):
         sign = signer.sign(url)
         if sign and sign not in entries:
-            entries[sign] = fake_entry({**link, "sign": sign}, folder.host)
-    return list(entries.values())
+            entries[sign] = fake_entry({**link, "sign": sign}, folder.host, features)
+    return [entry for entry in entries.values() if entry]
 
 
 def _data(entries: list[dict], updated: str) -> dict:
@@ -265,15 +281,34 @@ def _write(path: Path, document: dict):
     os.replace(temporary, path)
 
 
-def fake_entry(link: dict, host: str) -> dict:
-    """A fake Rahti entry, seeded by the sign: the same link always gets the same level and labels."""
-    r = rng("captured", link["sign"])
-    labels = [label for label, chance in ((ex.LABEL_AI_SLOP, 0.1), (ex.LABEL_VIDEO, 0.1)) if r.random() < chance]
-    return {
+def fake_entry(link: dict, host: str, features) -> dict | None:
+    """A fake Rahti entry, or None for a link of the `no_entry` case.
+
+    Each case has its own stream, seeded by the sign. The same link thus always gets the same cases, and turning a
+    feature off removes only its case. Without `levels`, a level below the default threshold is drawn again.
+    """
+    def has_case(name: str) -> bool:
+        return getattr(features, name) and rng("captured", link["sign"], name).random() < CASE_CHANCES[name]
+
+    if has_case("no_entry"):
+        return None
+    r = rng("captured", link["sign"], "level")
+    level = r.randrange(len(ex.LEVELS))
+    if level < ex.DEFAULT_THRESHOLD and not features.levels:
+        level = r.randrange(ex.DEFAULT_THRESHOLD, len(ex.LEVELS))
+    entry = {
         "updated": link["captured"],
         "urls": [{"labels": ["com.github.klikkikuri/link-rel=canonical"], "sign": link["sign"]}],
-        "clickbaitiness": ex.LEVELS[r.choice((2, 3, 3, 4))],
-        "labels": labels,
+        "clickbaitiness": ex.LEVELS[level],
+        "labels": [label for name, label in CASE_LABELS.items() if has_case(name)],
         "outlet": host,
-        "title": FAKE_PREFIX + link["title"],
     }
+    if ex.LABEL_PAYWALLED not in entry["labels"]:
+        entry["title"] = FAKE_PREFIX + (_edge_title(link["sign"]) if has_case("edge_headlines") else link["title"])
+    return entry
+
+
+def _edge_title(sign: str) -> str:
+    """An edge headline of Ilta-Pulu, with invented names, in place of the captured title."""
+    pair = rng("captured", sign, "edge_pair").choice(EDGE_PAIRS)
+    return fill(pair, faker("captured", sign), rng("captured", sign, "names"))[0]

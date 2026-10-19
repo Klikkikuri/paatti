@@ -14,7 +14,6 @@
 
 import { createRequire } from "node:module";
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { TextDecoder, TextEncoder } from "node:util";
 
 const require = createRequire(import.meta.url);
@@ -59,16 +58,23 @@ async function loadSuola() {
 // domain in another folder (example.fi). A server that signs without Paatti's precedence fails on these.
 const LAYERED_LINKS = ["https://yle.fi/a/74-20012345", "https://uutiset.example.fi/2/otsikko"];
 
-/** Each link of each fixture folder must have an entry under the sign that Paatti makes with the provider's rules. */
-function checkCaptureFolders(rahtiData, capturedUrl) {
+/**
+ * For each link of the fixture folders and of `hosts`, the server's sign must be the sign that Paatti makes with the
+ * provider's rules, and a link that has an entry must have it under that sign.
+ *
+ * The signs come from `/api/captures/<host>`, because a link of the `no_entry` case has no entry to look up.
+ */
+async function checkCaptureFolders(rahtiData, capturedUrl, hosts) {
     const directory = process.env.DEVSERVER_CAPTURES;
     if (!directory) return fail("DEVSERVER_CAPTURES is not set");
-    for (const host of readdirSync(directory)) {
-        const links = JSON.parse(readFileSync(join(directory, host, "links.json"), "utf8"));
-        for (const link of Object.keys(links)) {
-            if (!rahtiData[globalThis.hashUrl(link, capturedUrl)]) {
-                fail(`${host}: ${link} has no entry under Paatti's sign`);
-            }
+    for (const host of [...readdirSync(directory), ...hosts]) {
+        const report = await (await fetch(new URL(`/api/captures/${host}`, base))).json();
+        if (report.rules !== "ok") fail(`${host}: ${report.rules ?? report.detail}`);
+        else if (!report.links.length) fail(`${host}: the check gives no links`);
+        for (const { url, sign, entry } of report.links ?? []) {
+            const paattiSign = globalThis.hashUrl(url, capturedUrl);
+            if (sign !== paattiSign) fail(`${host}: the server signs ${url} as ${sign}, Paatti as ${paattiSign}`);
+            else if (entry && !rahtiData[sign]) fail(`${host}: ${url} has no entry under Paatti's sign`);
         }
     }
     for (const link of LAYERED_LINKS) {
@@ -148,12 +154,7 @@ else {
     if (!captured.siteConfigs["example.org"]) fail("captured-sites has no site `example.org`");
     const capturedRefused = globalThis.defineRules(capturedUrl, JSON.stringify(captured.suolaRules));
     if (capturedRefused) fail(`Suola refused the captured-sites rules: ${capturedRefused}`);
-    else {
-        if (!captured.rahtiData[globalThis.hashUrl(capturedLink, capturedUrl)]) {
-            fail("the captured link has no entry under the sign that Paatti makes");
-        }
-        checkCaptureFolders(captured.rahtiData, capturedUrl);
-    }
+    else await checkCaptureFolders(captured.rahtiData, capturedUrl, [new URL(capturedLink).hostname]);
     console.log(`  ${Object.keys(captured.siteConfigs).length} captured sites`);
 }
 

@@ -45,6 +45,15 @@ each link a test correction, so the page shows which headlines the rules find.
 The server makes the folder `test_data/captures/<host>/`. On a site that no provider supplies, `sites.json` gets
 a rule that takes each link with text: each link on the page then shows a correction that starts with `[dev]`.
 
+The content features of the server also apply to the captured links, so by default some links show no `[dev]`
+correction: a low level, a paywall, or no entry. While you write the rules, start the server without these cases:
+
+```sh
+make serve DEVSERVER_ARGS="--features.levels=false --features.paywalled=false --features.no_entry=false"
+```
+
+Start it with the defaults again to see how the site shows each case.
+
 ### 1.3 Write the site rules
 
 1. In `sites.json`, change `rules` so that they find only the headlines. Write each rule as in
