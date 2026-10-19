@@ -3,13 +3,13 @@
 
 /**
  * @file devserver-stage.mjs
- * Stages a copy of the extension that adds a development server provider on its first install. run.sh runs it.
+ * Stages a copy of the extension that adds development server providers on its first install. run.sh runs it.
  *
  * The copy also requires `http://localhost/*`, and its background is `devserver-bootstrap.js`: that module loads
  * `src/background.js`, then does what a person does on the options page (see the module). `devserver.json` gives it
- * the manifest URL. The source directory does not change.
+ * the manifest URLs. The source directory does not change.
  *
- * Usage: node tools/devserver-stage.mjs <source-dir> <target-dir> <manifest-url>
+ * Usage: node tools/devserver-stage.mjs <source-dir> <target-dir> <manifest-url>...
  */
 
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -49,10 +49,11 @@ function copyExtension(from, to, skip) {
 /**
  * @param {string} source - An unpacked extension.
  * @param {string} target - Removed, then written again.
- * @param {string} manifestUrl - The provider manifest that the bootstrap adds.
+ * @param {string[]} manifestUrls - The provider manifests that the bootstrap adds, in this order.
  */
-export function stage(source, target, manifestUrl) {
-    new URL(manifestUrl);
+export function stage(source, target, manifestUrls) {
+    if (manifestUrls.length === 0) throw new Error("no manifest URL");
+    manifestUrls.forEach((url) => new URL(url));
     const resolvedTarget = resolve(target);
     rmSync(resolvedTarget, { recursive: true, force: true });
     copyExtension(source, resolvedTarget, resolvedTarget);
@@ -60,17 +61,17 @@ export function stage(source, target, manifestUrl) {
     const manifest = JSON.parse(readFileSync(join(source, "manifest.json"), "utf8"));
     writeFileSync(join(resolvedTarget, "manifest.json"), JSON.stringify(stagedManifest(manifest), null, 2) + "\n");
     copyFileSync(BOOTSTRAP_SOURCE, join(resolvedTarget, BOOTSTRAP));
-    writeFileSync(join(resolvedTarget, "devserver.json"), JSON.stringify({ manifestUrl }) + "\n");
+    writeFileSync(join(resolvedTarget, "devserver.json"), JSON.stringify({ manifestUrls }) + "\n");
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-    const [source, target, manifestUrl] = process.argv.slice(2);
-    if (!manifestUrl) {
-        console.error("Usage: node tools/devserver-stage.mjs <source-dir> <target-dir> <manifest-url>");
+    const [source, target, ...manifestUrls] = process.argv.slice(2);
+    if (manifestUrls.length === 0) {
+        console.error("Usage: node tools/devserver-stage.mjs <source-dir> <target-dir> <manifest-url>...");
         process.exit(2);
     }
     try {
-        stage(source, target, manifestUrl);
+        stage(source, target, manifestUrls);
     } catch (err) {
         console.error(err.message);
         process.exit(1);

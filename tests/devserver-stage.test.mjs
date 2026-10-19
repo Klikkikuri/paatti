@@ -7,7 +7,8 @@ import { join } from 'node:path';
 const { stagedManifest, stage, BOOTSTRAP, LOCALHOST_GRANT } = await import('../tools/devserver-stage.mjs');
 
 const base = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
-const MANIFEST_URL = 'http://localhost:3000/manifest/ilta-pulu/manifest.json';
+const MANIFEST_URLS = ['http://localhost:3000/manifest/ilta-pulu/manifest.json',
+    'http://localhost:3000/manifest/captured-sites/manifest.json'];
 
 describe('stagedManifest', () => {
     test('requires localhost and starts the bootstrap in both background forms, and leaves the input alone', () => {
@@ -37,13 +38,13 @@ describe('stage', () => {
         writeFileSync(join(source, 'manifest.json'), JSON.stringify(base));
         const target = join(mkdtempSync(join(tmpdir(), 'stage-target-')), 'staged');
 
-        stage(source, target, MANIFEST_URL);
-        stage(source, target, MANIFEST_URL);
+        stage(source, target, MANIFEST_URLS);
+        stage(source, target, MANIFEST_URLS);
 
         assert.ok(existsSync(join(target, 'src', 'background.js')));
         assert.ok(!existsSync(join(target, '.git')));
         assert.ok(existsSync(join(target, BOOTSTRAP)));
-        assert.deepEqual(JSON.parse(readFileSync(join(target, 'devserver.json'), 'utf8')), { manifestUrl: MANIFEST_URL });
+        assert.deepEqual(JSON.parse(readFileSync(join(target, 'devserver.json'), 'utf8')), { manifestUrls: MANIFEST_URLS });
         assert.deepEqual(JSON.parse(readFileSync(join(target, 'manifest.json'), 'utf8')), stagedManifest(base));
     });
 
@@ -52,12 +53,13 @@ describe('stage', () => {
         writeFileSync(join(source, 'manifest.json'), JSON.stringify(base));
         const target = join(source, 'build', 'staged');
 
-        stage(source, target, MANIFEST_URL);
-        stage(source, target, MANIFEST_URL);
+        stage(source, target, MANIFEST_URLS);
+        stage(source, target, MANIFEST_URLS);
         assert.ok(!existsSync(join(target, 'build', 'staged')));
     });
 
-    test('refuses a manifest URL that does not parse', () => {
-        assert.throws(() => stage('.', join(tmpdir(), 'never'), 'not a url'));
+    test('refuses a manifest URL that does not parse, and no manifest URL', () => {
+        assert.throws(() => stage('.', join(tmpdir(), 'never'), [MANIFEST_URLS[0], 'not a url']));
+        assert.throws(() => stage('.', join(tmpdir(), 'never'), []));
     });
 });
