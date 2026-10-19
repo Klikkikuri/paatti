@@ -1173,10 +1173,6 @@
     "message": "Puuttuuko sivustosi? Pyydä sitä GitHubissa.",
     "description": "Link on the sites step."
   },
-  "welcomeSitesCaption": {
-    "message": "Missä merkit ja uudelleenkirjoitukset näkyvät",
-    "description": "Caption of the sites figure."
-  },
   "siteStatusOn": {
     "message": "Päällä",
     "description": "State of a site: on."
@@ -1376,5 +1372,13 @@
   "welcomeInfoExample": {
     "message": "Työnantajien etujärjestö EK arvioi Manna Sarin yritysveron korotuksen heikentävän yritysten toimintaedellytyksiä",
     "description": "Example of a converted headline. Illustrative fiction: not a claim about real statements or events."
+  },
+  "welcomeSitesCaptionIndex": {
+    "message": "Etusivut ja listaukset: Klikkikuri kirjoittaa otsikot uudelleen",
+    "description": "Caption of the first figure of the sites step."
+  },
+  "welcomeSitesCaptionArticle": {
+    "message": "Artikkelisivu: sen oma otsikko pysyy sellaisena kuin sivusto sen kirjoitti, viereiset linkit kirjoitetaan uudelleen",
+    "description": "Caption of the second figure of the sites step."
   }
 }

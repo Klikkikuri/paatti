@@ -433,6 +433,13 @@ a {
     margin: 0;
 }
 
+/* Two figures of one step, one above the other. */
+.slide-figures {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
 .wf {
     display: block;
     width: 100%;
@@ -478,6 +485,17 @@ a {
 
 .wf .glyph-shape {
     fill: var(--welcome-ink);
+}
+
+.wf .tl.hl {
+    stroke: var(--welcome-accent);
+    stroke-width: 5;
+    opacity: 0.9;
+}
+
+/* Left as the site wrote it: the same dashed look as a headline that the strictness figure leaves alone. */
+.wf .box.left {
+    stroke-dasharray: 5 4;
 }
 
 .wf .box.on {
@@ -629,7 +647,8 @@ html[data-mode="tour"] .quick-only {
         gap: 1.25rem;
     }
 
-    .slide-figure {
+    .slide-figure,
+    .slide-figures {
         order: -1;
     }
 }

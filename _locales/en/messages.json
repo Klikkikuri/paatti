@@ -1343,10 +1343,6 @@
     "message": "Your site is not here? Request it on GitHub.",
     "description": "Link on the sites step."
   },
-  "welcomeSitesCaption": {
-    "message": "Where the marks and rewrites appear",
-    "description": "Caption of the sites figure."
-  },
   "siteStatusOn": {
     "message": "On",
     "description": "State of a site: on."
@@ -1546,5 +1542,13 @@
   "welcomeInfoExample": {
     "message": "Employers' federation EK assesses that Manna Sari's corporate tax increase would weaken companies' operating conditions",
     "description": "Example of a converted headline. Illustrative fiction: not a claim about real statements or events."
+  },
+  "welcomeSitesCaptionIndex": {
+    "message": "Index pages: Klikkikuri rewrites the headlines",
+    "description": "Caption of the first figure of the sites step."
+  },
+  "welcomeSitesCaptionArticle": {
+    "message": "Article page: its headline stays as the site wrote it, the links beside it are rewritten",
+    "description": "Caption of the second figure of the sites step."
   }
 }
