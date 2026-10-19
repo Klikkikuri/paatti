@@ -513,7 +513,8 @@ documents. [devserver/README.md](./devserver/README.md) lists all of its setting
    ```
 
    `./run.sh` does steps 2 and 3 for you when the server answers: it runs a copy of the build that adds the
-   provider on install (`tools/devserver-stage.mjs`). `--devserver` and `--no-devserver` override the check.
+   Ilta-Pulu and captured-sites providers on install (`tools/devserver-stage.mjs`). `--devserver` and
+   `--no-devserver` override the check.
 
 2. **Add the provider.** Make sure that the environment is `development`: an unpacked build starts in it. On the
    settings page, under **🐛 Debug Settings** → **🔌 Providers**, turn on **Allow providers on this machine**.
@@ -537,18 +538,20 @@ the extension:
 
 The server listens on `127.0.0.1` only.
 
-**Test data for a real site.** The server also makes test corrections for the links of a supported site, for
-example www.iltalehti.fi:
+**Test data for any page.** The server also makes test corrections for the links of any page, for example
+www.iltalehti.fi or example.org:
 
-1. Start the server with `make serve`. It passes the Rahti commit of `sites.lock.json`.
-2. Add `http://localhost:3000/manifest/captured-sites/manifest.json` as a provider, as in step 2 above. The
-   development environment lets a provider take over a site, so the supported sites go off: turn on each site
-   that you want test data for.
-3. Open a page of the site, open the popup, and select **Send page** under **Developer Settings**.
+1. Start the server with `make serve`.
+2. Add `http://localhost:3000/manifest/captured-sites/manifest.json` as a provider, as in step 2 above.
+   `./run.sh` adds it for you.
+3. Open the page, open the popup, and select **Send page** under **Developer Settings**. On a site that Paatti
+   does not support, or that is off, the browser asks for the permission of the site first. If the popup closes,
+   open it and select **Send page** again.
 
-Each link that you send gets a test correction, which starts with `[dev]`. It replaces a real correction of the
-same link, because the development environment lets a provider take over a site. The server keeps the links that
-you sent in `test_data/captures/`; delete a file there to forget the links of that site.
+The provider then supplies the site, and the popup turns the site on. Each link that you send gets a test
+correction, which starts with `[dev]`. It replaces a real correction of the same link, because the development
+environment lets a provider take over a site. The server keeps the links that you sent in `test_data/captures/`;
+delete a file there to forget that site.
 [devserver/README.md](./devserver/README.md#captured-sites) tells more.
 
 ### Architecture

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 globalThis.browser = {};
-const { captureTarget, CAPTURE_REL } = await import('../src/options/capture-target.js');
+const { captureTarget, capturePageLinks, CAPTURE_REL, GENERIC_CAPTURE_RULE } = await import('../src/options/capture-target.js');
 
 const LOCAL = 'http://localhost:3000/manifest/ilta-pulu/manifest.json';
 const CAPTURE = 'http://localhost:3000/api/capture';
@@ -33,5 +33,46 @@ const CASES = [
 for (const [name, input, expected] of CASES) {
     test(`captureTarget: ${name}`, () => {
         assert.deepEqual(captureTarget(input), expected);
+    });
+}
+
+const PAGE_URL = 'https://example.org/news/';
+const anchor = (href, textContent) => ({ href, textContent });
+const PAGE_LINKS = [
+    anchor('https://example.org/story/1', ' Story one \n'),
+    anchor('http://other.example/a', 'Other'),
+    anchor('javascript:void(0)', 'Menu'),
+    anchor('mailto:news@example.org', 'Mail'),
+    anchor('https://example.org/story/2', ' \n '),
+];
+const CARD_LINK = anchor('https://example.org/story/3', 'Image only');
+const CARD = {
+    querySelectorAll: (selector) => (selector === 'a.card-link' ? [CARD_LINK] : []),
+    querySelector: (selector) => (selector === 'h2' ? { textContent: ' Card headline ' } : null),
+};
+const PAGE = { 'a[href]': PAGE_LINKS, 'div.card': [CARD] };
+const CARD_RULE = { container: 'div.card', link: 'a.card-link', title: 'h2' };
+
+const SCAN_CASES = [
+    ['the generic rule keeps the http(s) links with text, in page order', [GENERIC_CAPTURE_RULE], [
+        { href: 'https://example.org/story/1', title: 'Story one' },
+        { href: 'http://other.example/a', title: 'Other' },
+    ]],
+    ['a site rule takes the link and the title from the container', [CARD_RULE], [
+        { href: 'https://example.org/story/3', title: 'Card headline' },
+    ]],
+    ['a container that the page does not have gives no link', [{ container: 'nav', link: 'self', title: 'self' }], []],
+];
+
+for (const [name, rules, links] of SCAN_CASES) {
+    test(`capturePageLinks: ${name}`, () => {
+        globalThis.window = { location: { href: PAGE_URL } };
+        globalThis.document = { querySelectorAll: (selector) => PAGE[selector] || [] };
+        try {
+            assert.deepEqual(capturePageLinks(rules), { pageUrl: PAGE_URL, rules, links });
+        } finally {
+            delete globalThis.window;
+            delete globalThis.document;
+        }
     });
 }

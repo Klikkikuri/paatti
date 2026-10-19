@@ -29,6 +29,7 @@ const manifestUrl = new URL("/manifest/ilta-pulu/manifest.json", base).href;
 // Same order as the AGENTS.md test rule: the namespace before the dynamic import.
 globalThis.browser = {};
 const { inspect, resolve } = await import("../src/provider.js");
+const { GENERIC_CAPTURE_RULE } = await import("../src/options/capture-target.js");
 
 const LABEL_PAYWALLED = "com.github.klikkikuri/paywalled=true";
 const LEVELS = ["Not Clickbait at all", "Slightly Clickbaity", "Moderately Clickbaity", "Very Clickbaity",
@@ -100,22 +101,34 @@ await loadSuola();
 const refused = globalThis.defineRules(manifestUrl, JSON.stringify(resolved.suolaRules));
 if (refused) fail(`Suola refused the provider rules: ${refused}`);
 
-// The captured-sites provider is served only when the server knows the Rahti commit. Its sites come from Rahti on
-// another origin, so this is the check that their declared origins still cover them.
+// The captured-sites provider, after one capture of a page that no rule names, read as the popup reads it. Paatti
+// must accept the site that the capture adds, and sign the captured link with the provider's rules as the server did.
 const capturedUrl = new URL("/manifest/captured-sites/manifest.json", base).href;
-if ((await fetch(capturedUrl)).ok) {
-    const capturedInspected = await inspect(capturedUrl, { loopbackProvidersEnabled: true });
-    const captured = capturedInspected.error
-        ? { error: capturedInspected.error }
-        : await resolve(capturedInspected.manifest, capturedUrl, { loopbackProvidersEnabled: true });
-    console.log(`Provider ${capturedUrl}`);
-    if (captured.error) fail(`captured-sites: ${captured.error}`);
-    else {
-        if (captured.rejected.length) fail(`captured-sites rejected: ${JSON.stringify(captured.rejected)}`);
-        if (captured.errors.length) fail(`captured-sites errors: ${JSON.stringify(captured.errors)}`);
-        if (Object.keys(captured.siteConfigs).length === 0) fail("captured-sites has no sites");
-        console.log(`  ${Object.keys(captured.siteConfigs).length} Rahti sites`);
+const capturedLink = "https://example.org/news/story-1";
+const posted = await fetch(new URL("/api/capture", base), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+        pageUrl: "https://example.org/", rules: [GENERIC_CAPTURE_RULE], links: [{ href: capturedLink, title: "Story" }]
+    })
+});
+console.log(`Provider ${capturedUrl}`);
+if (!posted.ok) fail(`capture: HTTP ${posted.status}`);
+const capturedInspected = await inspect(capturedUrl, { loopbackProvidersEnabled: true });
+const captured = capturedInspected.error
+    ? { error: capturedInspected.error }
+    : await resolve(capturedInspected.manifest, capturedUrl, { loopbackProvidersEnabled: true });
+if (captured.error) fail(`captured-sites: ${captured.error}`);
+else {
+    if (captured.rejected.length) fail(`captured-sites rejected: ${JSON.stringify(captured.rejected)}`);
+    if (captured.errors.length) fail(`captured-sites errors: ${JSON.stringify(captured.errors)}`);
+    if (!captured.siteConfigs["example.org"]) fail("captured-sites has no site `example.org`");
+    const capturedRefused = globalThis.defineRules(capturedUrl, JSON.stringify(captured.suolaRules));
+    if (capturedRefused) fail(`Suola refused the captured-sites rules: ${capturedRefused}`);
+    else if (!captured.rahtiData[globalThis.hashUrl(capturedLink, capturedUrl)]) {
+        fail("the captured link has no entry under the sign that Paatti makes");
     }
+    console.log(`  ${Object.keys(captured.siteConfigs).length} captured sites`);
 }
 
 const rules = resolved.siteConfigs.localhost?.rules ?? [];

@@ -2,8 +2,8 @@
 
 Chromium is the dev container's, the same one that the paatti skill drives: /usr/lib/chromium/chromium, never the
 /usr/bin/chromium wrapper, which injects an empty --load-extension=. A headless run cannot answer a permission
-prompt, so the harness loads a copy of the extension whose manifest.json also requires http://localhost/*. That is
-the only change to the extension under test. All other setup calls the extension's own modules.
+prompt, so the harness loads a copy of the extension whose manifest.json also requires http://localhost/* and
+http://127.0.0.1/*. That is the only change to the extension under test. All other setup calls the extension's own modules.
 """
 
 import json
@@ -20,7 +20,7 @@ from playwright.sync_api import sync_playwright
 from paatti_devserver.app import create_app
 from paatti_devserver.settings import ChaosSettings, Settings
 
-LOCALHOST_GRANT = "http://localhost/*"
+LOOPBACK_GRANTS = ["http://localhost/*", "http://127.0.0.1/*"]
 
 
 def pytest_addoption(parser):
@@ -54,6 +54,10 @@ class LiveServer:
     def manifest_url(self) -> str:
         return f"{self.base}/manifest/ilta-pulu/manifest.json"
 
+    @property
+    def captured_manifest_url(self) -> str:
+        return f"{self.base}/manifest/captured-sites/manifest.json"
+
     def set_chaos(self, **chaos):
         """Switch the provider faults of the running server, for example between a clean refresh and a failing one."""
         self.app.state.chaos.chaos = ChaosSettings(**chaos)
@@ -73,9 +77,9 @@ def staged_extension(source: Path, target: Path) -> Path:
     shutil.copytree(source, target)
     manifest_path = target / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
-    manifest["host_permissions"] = [*manifest.get("host_permissions", []), LOCALHOST_GRANT]
+    manifest["host_permissions"] = [*manifest.get("host_permissions", []), *LOOPBACK_GRANTS]
     manifest_path.write_text(json.dumps(manifest, indent=2))
-    print(f"\n[e2e] loaded a copy of {source} whose manifest.json also requires {LOCALHOST_GRANT}")
+    print(f"\n[e2e] loaded a copy of {source} whose manifest.json also requires {', '.join(LOOPBACK_GRANTS)}")
     return target
 
 

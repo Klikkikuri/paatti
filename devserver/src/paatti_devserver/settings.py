@@ -138,7 +138,6 @@ class Settings(NiittiSettings):
     port: int = 3000
     seed: int | None = Field(None, description="The page seed. Without it, `/` redirects to a random one.")
     pool_seed: int = Field(1, description="The seed of the article pool and of data.json.")
-    rahti_commit: str | None = Field(None, description="The Rahti commit of the captured-sites manifest.")
     data_dir: Path = Path("test_data")
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     features: FeatureSettings = FeatureSettings()
@@ -183,7 +182,6 @@ class Settings(NiittiSettings):
             f"Ilta-Pulu at http://{self.host}:{self.port}/",
             f"  page seed:     {self.seed if self.seed is not None else 'random for each visit to /'}",
             f"  pool seed:     {self.pool_seed}",
-            f"  rahti commit:  {self.rahti_commit or '(none: no captured-sites provider)'}",
             f"  features off:  {', '.join(features_off) or '(none)'}",
             f"  chaos:         seed {chaos.seed}, rate {chaos.rate}, latency {chaos.provider_latency_ms} ms",
             f"  faults on:     {', '.join(on) or '(none)'}  (a provider fault without '=' is on all documents)",
@@ -197,8 +195,6 @@ class Settings(NiittiSettings):
         The chaos settings are given as the nearest profile and the settings that differ from it.
         """
         args = ["paatti-devserver", f"--pool_seed={self.pool_seed}"]
-        if self.rahti_commit:
-            args.append(f"--rahti_commit={self.rahti_commit}")
         profiles = {name: ChaosSettings(**CHAOS_PROFILES[name]) for name in ("none", "true", "all")}
         profile = min(profiles, key=lambda name: len(_differences(self.chaos, profiles[name])))
         if profile != "none":

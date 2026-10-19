@@ -457,10 +457,6 @@
     "message": "Send page",
     "description": "Button that sends the links and headlines of the page to the development server"
   },
-  "devmodeCaptureHint": {
-    "message": "Turn on this site to send its page to the development server.",
-    "description": "Shown instead of the send button when the site of the page is off"
-  },
   "devmodeCaptureSending": {
     "message": "Sending…",
     "description": "Shown while the page is sent to the development server and the database is updated"

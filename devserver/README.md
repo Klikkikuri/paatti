@@ -39,8 +39,8 @@ that starts a server with the same settings.
 | `/<section>/a/<id>` | An article page. The section can have any letter case. |
 | `/privacy` | The privacy notice that the manifests link. |
 | `/manifest/ilta-pulu/manifest.json` | The Ilta-Pulu provider: `sites.json`, `rules.json` and `data.json` beside it. |
-| `/manifest/captured-sites/manifest.json` | Rahti's real sites with fake corrections for captured links: `data.json` beside it. Needs `rahti_commit`. |
-| `POST /api/capture` | Stores the links of a page (see "Captured sites"). Paatti's popup calls it. |
+| `/manifest/captured-sites/manifest.json` | The captured sites with fake corrections for their links: `rules.json`, `sites.json` and `data.json` beside it. |
+| `POST /api/capture` | Stores the site rules and the links of a page (see "Captured sites"). Paatti's popup calls it. |
 | `/api/fragment?seed=&kind=&n=` | HTML that `site.js` inserts: `more` (load more), `churn` (one card), `ticker` (one item). |
 | `/docs` | The OpenAPI description of the routes. |
 
@@ -57,7 +57,6 @@ setting uses `.` on the command line and `__` in the environment: `--chaos.provi
 | `port` | `3000` | The port. Suola matches a rule's domain with `host:port`, so the Ilta-Pulu rules carry the port. |
 | `seed` | none | The page seed of `/`. Without it, `/` redirects to a random seed. |
 | `pool_seed` | `1` | The seed of the article pool, and thus of `data.json`. A page seed changes only the layout. |
-| `rahti_commit` | none | The Rahti commit of the captured-sites provider. `make serve` passes the commit in `sites.lock.json`. |
 | `data_dir` | `test_data` | The directory for captured pages and the download cache. |
 | `log_level` | `INFO` | `DEBUG`, `INFO`, `WARNING` or `ERROR`. |
 
@@ -122,25 +121,29 @@ A page fault is decided from the page seed, so a reload of one seed gives the sa
 
 ## Captured sites
 
-The captured-sites provider makes test data for a real Rahti site, for example www.iltalehti.fi. In a development
-build, Paatti's popup sends the page address and the links and
-headlines of the page to `POST /api/capture`, with one click.
+The captured-sites provider makes test data for any page. In a development build, Paatti's popup sends the page
+address, the site rules that it read the page with, and the links and headlines that the rules found to
+`POST /api/capture`, with one click. The server needs no network.
 
-- The server accepts a page of any host, and signs each link with the base Suola rules, whose catch-all signs
-  any host. At the pinned commit, they equal Rahti's rules, so the provider has no `suola-rules` and its signs are
-  Paatti's official signs.
-- The corrections take effect only on the sites that the provider supplies: Rahti's sites. A capture from another
-  host, Ilta-Pulu included, is stored, but Paatti does not look it up.
+- On a site that Paatti supports and that is on, the content script reads the page with the site's own rules.
+- On any other page, the popup asks for the permission of the page's origin, and reads the page itself: with the
+  site's rules on a site that is off, and with a rule that takes each link with text (`GENERIC_CAPTURE_RULE` in
+  `src/options/capture-target.js`) on a site that no provider supplies. If the browser closes the popup at the
+  permission prompt, open the popup and send the page again.
+- When the server has stored the page, the provider supplies the site. A site that a provider supplies starts off,
+  so the popup turns it on and converts the page; on a page without the content script, it starts the script.
+- `sites.json` has one site for each captured host, with the rules of its last capture and the origin
+  `<scheme>://<host>/*`. A capture of a supported site thus keeps the site's selectors, because Paatti takes the
+  whole site from the provider that wins.
+- `rules.json` is a catch-all Suola rule, so that Paatti can sign the links of any host. The server signs with the
+  same rule over the base rules, so the signs agree.
 - Every captured link gets a fake correction, also a link that Rahti has a real correction for. With "Allow
   providers to override sites" on, Paatti looks a link up in this provider first, so the fake correction shows.
-- A capture of the same page again merges with the earlier captures of that host, by link address.
+- A capture of the same host again replaces its rules and merges its links by address.
 - A fake corrected title starts with `[dev] `. Its level and labels come from the sign, so a link always gets the
   same ones.
-- The captures are in `<data_dir>/captures/<host>.json`. Delete a file to forget the captures of that host.
-
-The provider's `site-configs` resource is Rahti's `sites.json` at `rahti_commit`, so it declares the origins of
-those sites. Adding the provider turns the Rahti sites off in Paatti until you turn them on, because a site that a
-provider supplies starts off.
+- The captures are in `<data_dir>/captures/<host>.json`. Delete a file to forget the captures of that host. A file
+  without `rules` comes from an older server: it gives no site until you send the page again.
 
 ## Ilta-Pulu
 
@@ -217,8 +220,8 @@ uv run pytest          # in this directory: the server's own tests only
   same tree as a browser. The drift guard and the end-to-end tests are the final check of the selectors.
 - `tests/e2e/` takes `--extension-dir` (an unpacked build), `--chromium` (default
   `/usr/lib/chromium/chromium`) and `--e2e-seeds`. A headless browser cannot answer a permission prompt, so it loads
-  a copy of the extension whose `manifest.json` also requires `http://localhost/*`. All other setup calls the
-  extension's own modules.
+  a copy of the extension whose `manifest.json` also requires `http://localhost/*` and `http://127.0.0.1/*`. All
+  other setup calls the extension's own modules.
 
 ## Workarounds for upstream issues
 

@@ -6,7 +6,6 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field, HttpUrl
 
-from ..captured import CaptureError
 from ..layout import fragment
 
 MAX_CAPTURE_BYTES = 4 * 1024 * 1024
@@ -26,16 +25,24 @@ class CapturedLink(BaseModel):
     title: str = Field(max_length=2000)
 
 
+class CapturedRule(BaseModel):
+    """A site rule as Paatti reads it. A field that the rule does not have stays out of `sites.json`."""
+
+    container: str = Field(max_length=2000)
+    link: str | None = Field(None, max_length=2000)
+    title: str | None = Field(None, max_length=2000)
+    description: str | None = Field(None, max_length=2000)
+
+
 class CaptureRequest(BaseModel):
     pageUrl: HttpUrl
+    rules: list[CapturedRule] = Field(max_length=200)
     links: list[CapturedLink] = Field(max_length=5000)
 
 
-@router.post("/capture", summary="Store the links of a page that Rahti has no correction for")
+@router.post("/capture", summary="Store the rules and the links of a page")
 def capture(request: Request, body: CaptureRequest, content_length: int | None = Header(None)):
     if content_length is not None and content_length > MAX_CAPTURE_BYTES:
         raise HTTPException(status_code=413, detail=f"A capture can be {MAX_CAPTURE_BYTES} bytes at most")
-    try:
-        return request.app.state.captured.capture(str(body.pageUrl), [(link.href, link.title) for link in body.links])
-    except CaptureError as err:
-        raise HTTPException(status_code=err.status, detail=str(err)) from err
+    rules = [rule.model_dump(exclude_none=True) for rule in body.rules]
+    return request.app.state.captured.capture(str(body.pageUrl), rules, [(link.href, link.title) for link in body.links])

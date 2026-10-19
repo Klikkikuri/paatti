@@ -525,10 +525,11 @@ let hrefSigns;
                     });
                 return true;
             case "devmode_capturePage": {
-                // For the development server's captured-sites provider: the links that the site rules find, with
-                // the headline that the page itself shows. The server signs them; nothing here is sent anywhere.
+                // For the development server's captured-sites provider: the site rules, and the links that they find
+                // with the headline that the page itself shows. The server signs them; nothing here is sent anywhere.
                 (async () => {
-                    const { links } = scanSiteRules(await model.read.getSiteRules(newsSite) || []);
+                    const rules = await model.read.getSiteRules(newsSite) || [];
+                    const { links } = scanSiteRules(rules);
                     const captured = [];
                     for (const { link, titleElem } of links) {
                         const raw = link.getAttribute("href");
@@ -537,7 +538,7 @@ let hrefSigns;
                         const title = titleElem.dataset.klikkikuriOriginalTitle ?? titleElem.textContent;
                         captured.push({ href, title: title.trim() });
                     }
-                    return { pageUrl: window.location.href, links: captured };
+                    return { pageUrl: window.location.href, rules, links: captured };
                 })()
                     .then((result) => sendResponse(result))
                     .catch((err) => {
