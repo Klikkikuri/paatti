@@ -46,3 +46,11 @@ def capture(request: Request, body: CaptureRequest, content_length: int | None =
         raise HTTPException(status_code=413, detail=f"A capture can be {MAX_CAPTURE_BYTES} bytes at most")
     rules = [rule.model_dump(exclude_none=True) for rule in body.rules]
     return request.app.state.captured.capture(str(body.pageUrl), rules, [(link.href, link.title) for link in body.links])
+
+
+@router.get("/captures/{host}", summary="Check the folder of a captured host: its Suola rules and their test cases")
+def check_capture(request: Request, host: str):
+    report = request.app.state.captured.check(host)
+    if report is None:
+        raise HTTPException(status_code=404, detail=f"No captured folder for {host}")
+    return report

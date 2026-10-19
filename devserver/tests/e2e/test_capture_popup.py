@@ -4,7 +4,11 @@ On a supported site, the server's capture step is recorded here, not run; tests/
 that Paatti does not support, the real server runs, because the site that it adds is what the test checks.
 """
 
+import json
+
 from .conftest import LiveServer, statuses, wait_until
+
+LEAD_RULE = {"container": "article.lead", "link": ":scope > a", "title": "h2 span:last-child"}
 
 
 def send_page(browser, base: str) -> str:
@@ -21,6 +25,15 @@ def send_page(browser, base: str) -> str:
     status = popup.locator("#devmode-capture-status")
     assert wait_until(lambda: status.text_content().strip() not in ("", "Sending…")), status.text_content()
     return status.text_content()
+
+
+def reload_until_processed(page, attempts: int = 3):
+    """Reload until the content script processes the page. After a site change, the worker registers the content
+    script again (updateDynamicContentScripts in src/background.js), and a page that loads in between gets none."""
+    for _ in range(attempts):
+        page.reload()
+        if wait_until(lambda: statuses(page), timeout_s=5):
+            return
 
 
 def test_send_page_posts_the_site_rules_and_the_original_headlines(browser):
@@ -94,3 +107,31 @@ def test_send_page_on_a_site_that_is_off_sends_the_site_rules(browser):
         assert received["rules"] == site_rules
         assert received["links"]
         assert wait_until(lambda: statuses(site).get("converted")), statuses(site)
+
+
+def test_edits_in_the_host_folder_apply_at_the_next_database_update(browser, tmp_path):
+    """The workflow of docs/development/adding-a-new-site.md: capture, edit the selectors and the Suola rule, update."""
+    with LiveServer(data_dir=str(tmp_path)) as server:
+        browser.add_provider(server.manifest_url)
+        browser.add_provider(server.captured_manifest_url)
+        base = f"http://127.0.0.1:{server.port}"
+        site = browser.context.new_page()
+        site.goto(f"{base}/?seed=5")
+        assert send_page(browser, base).startswith("Done")
+        assert wait_until(lambda: statuses(site).get("converted")), "the popup must turn the site on first"
+
+        folder = tmp_path / "captures" / "127.0.0.1"
+        sites = json.loads((folder / "sites.json").read_text())
+        sites["sites"]["127.0.0.1"]["rules"] = [LEAD_RULE]
+        (folder / "sites.json").write_text(json.dumps(sites))
+        (folder / "rules.json").write_text(json.dumps({"sites": [{"domain": f"127.0.0.1:{server.port}", "templates": [
+            {"pattern": r"^/[A-Za-z]+/a/(?P<Id>[0-9a-f]{12})", "template": "https://dev.example/{{ .Id }}"}]}]}))
+        browser.refresh()
+        reload_until_processed(site)
+
+        assert statuses(site).get("converted"), statuses(site)
+        converted = site.locator("[data-klikkikuri-converted-title^='[dev] ']")
+        assert converted.count() > 0, "the links must be signed with the folder's Suola rule, as the server signed them"
+        processed = site.locator("[data-klikkikuri-status]")
+        assert processed.evaluate_all("(elements) => elements.every((element) => element.closest('article.lead'))"), \
+            "only the edited rule applies"

@@ -1,20 +1,27 @@
 """URL signatures, made by the same Suola rules that the extension uses.
 
 The extension signs a link to a host that a provider supplies with the provider's named rule set: the provider's
-rules over the base rules. `Suola()` plus `append_rules()` gives the same result while no provider rule names a
-domain of the base rules. The Ilta-Pulu rule names `localhost:<port>` and no base rule does. Suola compares a
-rule's domain with `host:port`, so the domain carries the port.
+rules before the base rules, so that a provider rule wins against a base rule with the same domain and weight
+(`defineRules` in suola/docs/api.md). `append_rules()` puts the rules after the base rules, so `Signer` builds the
+same sequence from the submodule's `rules.yaml` instead. The wheel and the submodule have the same tag
+(pyproject.toml), so the two copies of the base rules are the same. Suola compares a rule's domain with
+`host:port`, so the Ilta-Pulu domain carries the port.
 
 The captured-sites rule is a catch-all (`domain: ""`), so that any host can be signed when the base rules have no
 catch-all. While the base rules have one, it has the same template, so the order of the two does not change a sign.
 
-`append_rules()` cannot be undone, so each rule set has its own instance. An instance is safe to share between
-threads, which FastAPI needs because it runs `def` endpoints in a thread pool.
+An instance is safe to share between threads, which FastAPI needs because it runs `def` endpoints in a thread pool.
 """
 
+import functools
 import json
+import tempfile
+from pathlib import Path
 
+import yaml
 from suola import InvalidURLError, Suola
+
+BASE_RULES = Path(__file__).resolve().parents[3] / "suola" / "rules.yaml"
 
 ARTICLE_PATTERN = r"^/(?P<Section>[A-Za-z]+)/a/(?P<ArticleID>[0-9a-f]{12})"
 ARTICLE_TEMPLATE = "http://localhost/{{ .Section }}/a/{{ .ArticleID }}"
@@ -48,13 +55,27 @@ def ilta_pulu_rules(netloc: str, tests: list[dict] | None = None) -> dict:
     }
 
 
-class Signer:
-    """One Suola instance with an optional rule set over the base rules."""
+@functools.cache
+def base_sites() -> list[dict]:
+    """The sites of the base rules, without the test cases, which Suola does not use."""
+    sites = yaml.safe_load(BASE_RULES.read_text())["sites"]
+    return [{key: value for key, value in site.items() if key != "tests"} for site in sites]
 
-    def __init__(self, rules: dict | None = None):
-        self._suola = Suola()
-        if rules is not None:
-            self._suola.append_rules(json.dumps(rules))
+
+class Signer:
+    """One Suola instance: the base rules, or a rule set before the base rules, or a rule set alone.
+
+    Raises `suola.InvalidRulesError` when Suola refuses the rule set.
+    """
+
+    def __init__(self, rules: dict | None = None, over_base: bool = True):
+        if rules is None:
+            self._suola = Suola()
+            return
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "rules.json"
+            path.write_text(json.dumps({"sites": rules["sites"] + (base_sites() if over_base else [])}))
+            self._suola = Suola(custom_rules=path)
 
     def sign(self, url: str) -> str | None:
         """The signature of `url`, or None when Suola cannot sign it, for example because it has no host."""

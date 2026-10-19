@@ -7,8 +7,8 @@ from paatti_devserver.chaos import MANIFEST_MAX_BYTES, RESOURCE_MAX_BYTES
 DOCUMENTS = ["manifest", "sites", "rules", "data"]
 
 
-def url(document: str) -> str:
-    return f"/manifest/ilta-pulu/{document}.json"
+def url(document: str, provider: str = "ilta-pulu") -> str:
+    return f"/manifest/{provider}/{document}.json"
 
 
 def test_front_page_without_a_seed_redirects_to_one(client_for):
@@ -90,15 +90,19 @@ FAULTS = [
 ]
 
 
+@pytest.mark.parametrize("provider", ["ilta-pulu", "captured-sites"])
 @pytest.mark.parametrize("chaos, document, status, check", FAULTS)
-def test_each_provider_fault(client_for, chaos, document, status, check):
-    response = client_for(chaos=chaos).get(url(document))
+def test_each_provider_fault(client_for, tmp_path, provider, chaos, document, status, check):
+    client = client_for(chaos=chaos, data_dir=str(tmp_path))
+    client.post("/api/capture", json={"pageUrl": "https://example.org/", "rules": [{"container": "a[href]"}],
+                                      "links": [{"href": "/story", "title": "Story"}]})
+    response = client.get(url(document, provider))
     assert response.status_code == status
     assert response.headers["x-devserver-chaos"].startswith(next(iter(chaos)))
     if check:
         assert check(response.content) is not False
     other = next(d for d in DOCUMENTS if d != document)
-    assert "x-devserver-chaos" not in client_for(chaos=chaos).get(url(other)).headers
+    assert "x-devserver-chaos" not in client_for(chaos=chaos).get(url(other, provider)).headers
 
 
 def test_no_conditional_never_answers_304(client_for):

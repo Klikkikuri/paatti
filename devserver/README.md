@@ -41,6 +41,7 @@ that starts a server with the same settings.
 | `/manifest/ilta-pulu/manifest.json` | The Ilta-Pulu provider: `sites.json`, `rules.json` and `data.json` beside it. |
 | `/manifest/captured-sites/manifest.json` | The captured sites with fake corrections for their links: `rules.json`, `sites.json` and `data.json` beside it. |
 | `POST /api/capture` | Stores the site rules and the links of a page (see "Captured sites"). Paatti's popup calls it. |
+| `/api/captures/<host>` | Checks the folder of a captured host: its Suola rules, their test cases and warnings. |
 | `/api/fragment?seed=&kind=&n=` | HTML that `site.js` inserts: `more` (load more), `churn` (one card), `ticker` (one item). |
 | `/docs` | The OpenAPI description of the routes. |
 
@@ -121,9 +122,10 @@ A page fault is decided from the page seed, so a reload of one seed gives the sa
 
 ## Captured sites
 
-The captured-sites provider makes test data for any page. In a development build, Paatti's popup sends the page
-address, the site rules that it read the page with, and the links and headlines that the rules found to
-`POST /api/capture`, with one click. The server needs no network.
+The captured-sites provider makes test data for any page, and is where you develop the rules of a new site.
+[Adding a new site](../docs/development/adding-a-new-site.md) gives the workflow. In a development build, Paatti's
+popup sends the page address, the site rules that it read the page with, and the links and headlines that the rules
+found to `POST /api/capture`, with one click. The server needs no network.
 
 - On a site that Paatti supports and that is on, the content script reads the page with the site's own rules.
 - On any other page, the popup asks for the permission of the page's origin, and reads the page itself: with the
@@ -132,18 +134,42 @@ address, the site rules that it read the page with, and the links and headlines 
   permission prompt, open the popup and send the page again.
 - When the server has stored the page, the provider supplies the site. A site that a provider supplies starts off,
   so the popup turns it on and converts the page; on a page without the content script, it starts the script.
-- `sites.json` has one site for each captured host, with the rules of its last capture and the origin
-  `<scheme>://<host>/*`. A capture of a supported site thus keeps the site's selectors, because Paatti takes the
-  whole site from the provider that wins.
-- `rules.json` is a catch-all Suola rule, so that Paatti can sign the links of any host. The server signs with the
-  same rule over the base rules, so the signs agree.
-- Every captured link gets a fake correction, also a link that Rahti has a real correction for. With "Allow
-  providers to override sites" on, Paatti looks a link up in this provider first, so the fake correction shows.
-- A capture of the same host again replaces its rules and merges its links by address.
+
+Each captured host has a folder `<data_dir>/captures/<host>/`, laid out as a Rahti data directory without
+`manifest.json`. Delete a folder to forget that host.
+
+| File | Content |
+| --- | --- |
+| `sites.json` | The site, with the origin `<scheme>://<host>/*` and the rules of the first capture. After that, you edit it: a capture does not change it. |
+| `rules.json` | The Suola rules of the host, in the compiled JSON form of `suola/rules.yaml`, with `tests`. `{"sites": []}` at first. |
+| `links.json` | The captured links and headlines by address. A capture merges its links into it. |
+| `data.json` | The fake corrections of the folder's links. The server writes it again when it changes. |
+
+- The provider's `sites.json` has the sites of all folders, without `enabled`, because Paatti does not offer a
+  provider's site that is off.
+- The provider's `rules.json` has the rules of all folders, then a catch-all rule, so that Paatti can sign the links
+  of any host. The server signs with the same rules before the base rules (`suola/rules.yaml`), as Paatti does. A
+  folder rule thus wins against a base rule for the same domain, and a rule for a parent domain also signs the links
+  of the other folders.
+- The signs are made when the provider serves `data.json`. A change to `rules.json` thus applies at the next database
+  update in Paatti.
+- A folder whose files do not parse, or whose rules Suola refuses, is left out of the provider, and the log names
+  it. The other folders stay in use. `/api/captures/<host>` shows the error.
+- Every captured link gets a fake correction, also a link that Rahti has a real correction for. Paatti uses the
+  folders only with "Allow providers to override sites" on, which is the default of the `development` environment:
+  then Paatti takes the site, its rules and its corrections from this provider first.
 - A fake corrected title starts with `[dev] `. Its level and labels come from the sign, so a link always gets the
-  same ones.
-- The captures are in `<data_dir>/captures/<host>.json`. Delete a file to forget the captures of that host. A file
-  without `rules` comes from an older server: it gives no site until you send the page again.
+  same ones. The same folders give the same documents, byte for byte.
+- The server ignores a `captures/<host>.json` file of an older server. Send the page again.
+
+`/api/captures/<host>` checks a folder against the rules that the provider serves:
+
+- `rules`: `ok`, or why the folder is left out.
+- `tests`: each test case of `rules.json`, with `pass` or `fail` and the reasons. `signature` (or `sign`) must be the
+  sign of `url`. `expected` must be the URL that `url` normalizes to, which the server checks through its SHA-256.
+  An `xfail` case must get the sign of the catch-all rule.
+- `warnings`: a rule domain that matches no captured link (Suola compares a domain with `host:port`), and a site
+  that another folder also has.
 
 ## Ilta-Pulu
 
@@ -218,6 +244,9 @@ uv run pytest          # in this directory: the server's own tests only
   the default `dev` profile searches at random and keeps failures in `.hypothesis/`.
 - The rule-match tests use a Python copy of the content script's scan, with the html5lib parser, which builds the
   same tree as a browser. The drift guard and the end-to-end tests are the final check of the selectors.
+- The drift guard also loads the captured folders in `tests/fixtures/captures/`, and checks that Paatti's Suola
+  module gives each of their links the sign that the server gave it. The folders have a rule for a domain of the base
+  rules (`yle.fi`) and a rule for a parent domain that signs the links of another folder.
 - `tests/e2e/` takes `--extension-dir` (an unpacked build), `--chromium` (default
   `/usr/lib/chromium/chromium`) and `--e2e-seeds`. A headless browser cannot answer a permission prompt, so it loads
   a copy of the extension whose `manifest.json` also requires `http://localhost/*` and `http://127.0.0.1/*`. All
