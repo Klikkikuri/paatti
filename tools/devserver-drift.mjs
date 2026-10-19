@@ -1,10 +1,11 @@
 // Checks a running development server against Paatti's own code: the provider resolver, the Suola module and the
 // content script's scan, so that a change on either side that breaks the other fails here.
 //
-//   node tools/devserver-drift.mjs <server base URL> [seed ...]
+//   DEVSERVER_CAPTURES=<captures directory> node tools/devserver-drift.mjs <server base URL> [seed ...]
 //
-// `make test-devserver` starts the server and runs this. It needs the Suola artifacts in build/ (`make build-suola`)
-// and jsdom through NODE_PATH, as `make test` does.
+// `make test-devserver` copies devserver/tests/fixtures/captures into the server's data directory, starts the server
+// and runs this. It needs the Suola artifacts in build/ (`make build-suola`) and jsdom through NODE_PATH, as
+// `make test` does.
 //
 // For each page seed, it scans the page with the site rules as processSite does (src/contentScript.js), signs each
 // link with the provider's named Suola set as the worker does, looks the sign up in the resolved Rahti data, and
@@ -12,7 +13,8 @@
 // the content script, not copied from the server, so the two can disagree.
 
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { TextDecoder, TextEncoder } from "node:util";
 
 const require = createRequire(import.meta.url);
@@ -51,6 +53,27 @@ async function loadSuola() {
     const wasm = readFileSync(new URL("../build/js.wasm", import.meta.url));
     const { instance } = await WebAssembly.instantiate(wasm, go.importObject);
     go.run(instance);
+}
+
+// Fixture links that a folder rule must sign: one for a base domain (yle.fi), and one through a rule for a parent
+// domain in another folder (example.fi). A server that signs without Paatti's precedence fails on these.
+const LAYERED_LINKS = ["https://yle.fi/a/74-20012345", "https://uutiset.example.fi/2/otsikko"];
+
+/** Each link of each fixture folder must have an entry under the sign that Paatti makes with the provider's rules. */
+function checkCaptureFolders(rahtiData, capturedUrl) {
+    const directory = process.env.DEVSERVER_CAPTURES;
+    if (!directory) return fail("DEVSERVER_CAPTURES is not set");
+    for (const host of readdirSync(directory)) {
+        const links = JSON.parse(readFileSync(join(directory, host, "links.json"), "utf8"));
+        for (const link of Object.keys(links)) {
+            if (!rahtiData[globalThis.hashUrl(link, capturedUrl)]) {
+                fail(`${host}: ${link} has no entry under Paatti's sign`);
+            }
+        }
+    }
+    for (const link of LAYERED_LINKS) {
+        if (globalThis.hashUrl(link, capturedUrl) === globalThis.hashUrl(link)) fail(`no folder rule signs ${link}`);
+    }
 }
 
 /** The status that processSite writes for one scanned link, under the default development settings. */
@@ -125,8 +148,11 @@ else {
     if (!captured.siteConfigs["example.org"]) fail("captured-sites has no site `example.org`");
     const capturedRefused = globalThis.defineRules(capturedUrl, JSON.stringify(captured.suolaRules));
     if (capturedRefused) fail(`Suola refused the captured-sites rules: ${capturedRefused}`);
-    else if (!captured.rahtiData[globalThis.hashUrl(capturedLink, capturedUrl)]) {
-        fail("the captured link has no entry under the sign that Paatti makes");
+    else {
+        if (!captured.rahtiData[globalThis.hashUrl(capturedLink, capturedUrl)]) {
+            fail("the captured link has no entry under the sign that Paatti makes");
+        }
+        checkCaptureFolders(captured.rahtiData, capturedUrl);
     }
     console.log(`  ${Object.keys(captured.siteConfigs).length} captured sites`);
 }

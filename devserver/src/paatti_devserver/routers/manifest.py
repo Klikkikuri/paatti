@@ -10,7 +10,7 @@ from niitti.logging import get_logger
 from .. import documents
 from ..layout import netloc
 from ..pool import updated_at
-from ..signing import CAPTURE_RULES, ilta_pulu_rules
+from ..signing import ilta_pulu_rules
 
 log = get_logger(__name__)
 router = APIRouter(prefix="/manifest", tags=["providers"])
@@ -56,12 +56,12 @@ def captured_manifest(request: Request):
     return JSONResponse(request.app.state.captured.manifest(documents.links(request.app.state.devserver.settings)))
 
 
-@router.get("/captured-sites/rules.json", summary="The catch-all Suola rule that signs the captured links")
-def captured_rules():
-    return JSONResponse(CAPTURE_RULES)
+@router.get("/captured-sites/rules.json", summary="The Suola rules of the captured hosts, and a catch-all")
+def captured_rules(request: Request):
+    return JSONResponse(request.app.state.captured.rules())
 
 
-@router.get("/captured-sites/sites.json", summary="The captured sites, with the rules that each capture sent")
+@router.get("/captured-sites/sites.json", summary="The captured sites and their selectors")
 def captured_sites(request: Request):
     return JSONResponse(request.app.state.captured.sites())
 

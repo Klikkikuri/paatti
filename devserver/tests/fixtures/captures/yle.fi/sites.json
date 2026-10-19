@@ -1,0 +1,18 @@
+{
+ "schema_version": "0.1.0",
+ "sites": {
+  "yle.fi": {
+   "name": "yle.fi",
+   "origins": [
+    "https://yle.fi/*"
+   ],
+   "rules": [
+    {
+     "container": "a[href]",
+     "link": "self",
+     "title": "self"
+    }
+   ]
+  }
+ }
+}

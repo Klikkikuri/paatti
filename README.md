@@ -550,8 +550,9 @@ www.iltalehti.fi or example.org:
 
 The provider then supplies the site, and the popup turns the site on. Each link that you send gets a test
 correction, which starts with `[dev]`. It replaces a real correction of the same link, because the development
-environment lets a provider take over a site. The server keeps the links that you sent in `test_data/captures/`;
-delete a file there to forget that site.
+environment lets a provider take over a site. The server keeps each site in a folder in `test_data/captures/`, where
+you can edit its selectors and its Suola rules; delete the folder to forget that site.
+[Adding a new site](./docs/development/adding-a-new-site.md) gives the workflow, and
 [devserver/README.md](./devserver/README.md#captured-sites) tells more.
 
 ### Architecture

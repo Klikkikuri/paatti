@@ -1,11 +1,14 @@
+import hashlib
+import json
 from urllib.parse import urljoin
 
 import pytest
+import yaml
 from fastapi.testclient import TestClient
 
 from paatti_devserver.app import create_app
 from paatti_devserver.captured import FAKE_PREFIX
-from paatti_devserver.signing import CAPTURE_RULES, Signer
+from paatti_devserver.signing import BASE_RULES, CAPTURE_RULES, Signer
 
 from .conftest import make_settings
 
@@ -15,6 +18,11 @@ SECOND = "/urheilu/a/51495a62-a494-4474-a234-ddedae3e112b"
 SITE_RULE = {"container": "div.front div.card a", "link": "self", "title": "div.front-title"}
 GENERIC_RULE = {"container": "a[href]", "link": "self", "title": "self"}
 SIGNER = Signer(CAPTURE_RULES)
+YLE_RULE = {"domain": "yle.fi",
+            "templates": [{"pattern": "^/a/(?P<Id>[^/]+)", "template": "https://yle.fi/x/{{ .Id }}"}]}
+PARENT_RULE = {"domain": "example.fi",
+               "templates": [{"pattern": "^/(?P<Id>[0-9]+)", "template": "https://example.fi/{{ .Id }}"}]}
+BAD_RULE = {"domain": "bad.example", "templates": [{"pattern": "(?P<broken", "template": "x"}]}
 
 
 @pytest.fixture
@@ -36,6 +44,14 @@ def sites(client) -> dict[str, dict]:
     return client.get("/manifest/captured-sites/sites.json").json()["sites"]
 
 
+def write_rules(tmp_path, host: str, *rules: dict):
+    (tmp_path / "captures" / host / "rules.json").write_text(json.dumps({"sites": list(rules)}))
+
+
+def sha256(url: str) -> str:
+    return hashlib.sha256(url.encode()).hexdigest()
+
+
 def test_every_captured_link_gets_a_fake_entry(client):
     response = capture(client, FIRST, SECOND, "javascript:void(0)")
     assert response.status_code == 200
@@ -45,11 +61,25 @@ def test_every_captured_link_gets_a_fake_entry(client):
     assert SIGNER.sign(PAGE.rstrip("/") + SECOND) in entries(client)
 
 
-def test_a_new_capture_merges_the_links_and_replaces_the_rules(client):
+def test_a_capture_makes_a_folder_like_a_rahti_directory(client, tmp_path):
     capture(client, FIRST)
-    response = capture(client, FIRST, SECOND, rules=[GENERIC_RULE])
+    folder = tmp_path / "captures" / "www.iltalehti.fi"
+    assert sorted(path.name for path in folder.iterdir()) == ["data.json", "links.json", "rules.json", "sites.json"]
+    assert json.loads((folder / "rules.json").read_text()) == {"sites": []}
+    assert json.loads((folder / "data.json").read_text())["entries"] == list(entries(client).values())
+
+
+def test_a_new_capture_merges_the_links_and_keeps_the_edited_site(client, tmp_path):
+    capture(client, FIRST)
+    path = tmp_path / "captures" / "www.iltalehti.fi" / "sites.json"
+    edited = json.loads(path.read_text())
+    edited["sites"]["www.iltalehti.fi"].update(rules=[GENERIC_RULE], enabled=False)
+    path.write_text(json.dumps(edited))
+
+    response = capture(client, FIRST, SECOND, rules=[SITE_RULE])
     assert response.json()["stored"] == 2 and len(entries(client)) == 2
-    assert sites(client)["www.iltalehti.fi"]["rules"] == [GENERIC_RULE]
+    assert sites(client)["www.iltalehti.fi"] == {"name": "www.iltalehti.fi", "origins": ["https://www.iltalehti.fi/*"],
+                                                 "rules": [GENERIC_RULE]}, "`enabled` is not served"
 
 
 @pytest.mark.parametrize("page, href, key, origin", [
@@ -64,6 +94,22 @@ def test_any_captured_host_becomes_a_site_with_the_sent_rules(client, page, href
     assert SIGNER.sign(urljoin(page, href)) in entries(client)
 
 
+@pytest.mark.parametrize("captures, rules, link, expected", [
+    # A rule for a domain that the base rules name: the folder's rule wins, as in Paatti's named rule set.
+    ([("https://yle.fi/", "/a/74-20012345")], ("yle.fi", YLE_RULE), "https://yle.fi/a/74-20012345/?utm=x",
+     "https://yle.fi/x/74-20012345"),
+    # A rule in one folder for a parent domain also signs the links of another folder.
+    ([("https://www.example.fi/", "/1"), ("https://uutiset.example.fi/", "/2/otsikko")],
+     ("www.example.fi", PARENT_RULE), "https://uutiset.example.fi/2/otsikko", "https://example.fi/2"),
+])
+def test_a_folder_rule_changes_the_signs_at_the_next_refresh(client, tmp_path, captures, rules, link, expected):
+    for page, href in captures:
+        capture(client, href, page=page, rules=[GENERIC_RULE])
+    assert sha256(expected) not in entries(client)
+    write_rules(tmp_path, *rules)
+    assert sha256(expected) in entries(client)
+
+
 def test_a_rule_keeps_only_the_fields_that_it_has(client):
     capture(client, FIRST, rules=[{"container": "article", "description": None}])
     assert sites(client)["www.iltalehti.fi"]["rules"] == [{"container": "article"}]
@@ -74,10 +120,91 @@ def test_without_captures_the_provider_has_no_sites_and_no_entries(client):
     assert entries(client) == {}
 
 
-def test_a_capture_file_without_rules_gives_no_site(client, tmp_path):
+@pytest.mark.parametrize("file, content, problem", [
+    ("rules.json", json.dumps({"sites": [BAD_RULE]}), "Suola refuses the rules"),
+    ("rules.json", "{", "JSONDecodeError"),
+    ("sites.json", json.dumps({"no": "sites"}), "KeyError"),
+])
+def test_a_bad_folder_leaves_out_only_its_own_host(client, tmp_path, file, content, problem):
     capture(client, FIRST)
-    (tmp_path / "captures" / "old.example.json").write_text('{"host": "old.example", "links": {}}')
+    capture(client, "/story", page="https://bad.example/", rules=[GENERIC_RULE])
+    (tmp_path / "captures" / "bad.example" / file).write_text(content)
+
     assert list(sites(client)) == ["www.iltalehti.fi"]
+    assert client.get("/manifest/captured-sites/rules.json").json() == CAPTURE_RULES
+    assert len(entries(client)) == 1
+    assert problem in client.get("/api/captures/bad.example").json()["rules"]
+
+
+def test_old_capture_files_are_ignored(client, tmp_path):
+    (tmp_path / "captures").mkdir()
+    (tmp_path / "captures" / "old.example.json").write_text('{"host": "old.example", "links": {}}')
+    assert sites(client) == {}
+
+
+def test_the_folder_data_is_written_only_when_it_changes(client, tmp_path):
+    capture(client, "/a/74-20012345", page="https://yle.fi/", rules=[GENERIC_RULE])
+    path = tmp_path / "captures" / "yle.fi" / "data.json"
+    written = path.stat().st_mtime_ns
+    entries(client)
+    assert path.stat().st_mtime_ns == written
+    write_rules(tmp_path, "yle.fi", YLE_RULE)
+    entries(client)
+    assert path.stat().st_mtime_ns != written
+    assert json.loads(path.read_text())["entries"][0]["urls"][0]["sign"] == sha256("https://yle.fi/x/74-20012345")
+
+
+def test_the_same_folders_give_the_same_data_and_a_304(client, tmp_path):
+    capture(client, FIRST, SECOND)
+    first = client.get("/manifest/captured-sites/data.json")
+    assert client.get("/manifest/captured-sites/data.json").content == first.content
+    assert client.get("/manifest/captured-sites/data.json",
+                      headers={"If-None-Match": first.headers["etag"]}).status_code == 304
+    write_rules(tmp_path, "www.iltalehti.fi", {"domain": "www.iltalehti.fi", "templates": [
+        {"pattern": "^/(?P<Section>[^/]+)/a/(?P<Id>[^/]+)", "template": "https://il.fi/{{ .Id }}"}]})
+    assert client.get("/manifest/captured-sites/data.json").headers["etag"] != first.headers["etag"]
+
+
+YLE_ARTICLE = "https://yle.fi/a/74-20012345"
+CHECKS = [
+    # (test case in rules.json, result, start of the reason)
+    ({"url": YLE_ARTICLE, "expected": "https://yle.fi/x/74-20012345"}, "pass", None),
+    ({"url": YLE_ARTICLE, "signature": sha256("https://yle.fi/x/74-20012345")}, "pass", None),
+    ({"url": YLE_ARTICLE, "sign": sha256("https://yle.fi/x/74-20012345")}, "pass", None),
+    ({"url": "https://yle.fi/uutiset", "xfail": True}, "pass", None),
+    ({"url": YLE_ARTICLE, "expected": "https://yle.fi/a/74-20012345"}, "fail", "the URL does not normalize"),
+    ({"url": YLE_ARTICLE, "signature": "0" * 64}, "fail", "the sign is"),
+    ({"url": YLE_ARTICLE, "xfail": True}, "fail", "a named rule matches"),
+]
+
+
+@pytest.mark.parametrize("case, result, reason", CHECKS)
+def test_the_check_runs_the_test_cases_of_the_folder_rules(client, tmp_path, case, result, reason):
+    capture(client, "/a/74-20012345", page="https://yle.fi/", rules=[GENERIC_RULE])
+    write_rules(tmp_path, "yle.fi", {**YLE_RULE, "tests": [case]})
+    report = client.get("/api/captures/yle.fi").json()
+    assert report["rules"] == "ok" and report["warnings"] == []
+    [test] = report["tests"]
+    assert test["result"] == result
+    assert (reason is None and test["reasons"] == []) or test["reasons"][0].startswith(reason)
+
+
+def test_the_check_warns_about_a_domain_without_the_port_and_a_shared_site(client, tmp_path):
+    capture(client, "/news/a/0123456789ab", page="http://localhost:3000/", rules=[GENERIC_RULE])
+    capture(client, "/story", page="https://other.example/", rules=[GENERIC_RULE])
+    write_rules(tmp_path, "localhost", {"domain": "localhost", "templates": YLE_RULE["templates"]})
+    path = tmp_path / "captures" / "other.example" / "sites.json"
+    path.write_text(path.read_text().replace('"other.example": {', '"localhost": {', 1))
+
+    warnings = client.get("/api/captures/localhost").json()["warnings"]
+    assert [warning.split(";")[0] for warning in warnings] == [
+        "the rule domain localhost matches no captured link", "the site localhost is also in another folder"]
+
+
+@pytest.mark.parametrize("host", ["unknown.example", "..", "captures"])
+def test_the_check_of_a_host_without_a_folder_is_404(client, host):
+    capture(client, FIRST)
+    assert client.get(f"/api/captures/{host}").status_code == 404
 
 
 def test_a_malformed_page_address_is_refused(client):
@@ -97,6 +224,11 @@ def test_manifest_supplies_the_catch_all_rule_and_the_captured_sites(client):
     assert client.get("/manifest/captured-sites/rules.json").json() == CAPTURE_RULES
 
 
-@pytest.mark.parametrize("url", ["https://unknown.example/news/story", "https://www.iltalehti.fi" + FIRST])
-def test_the_catch_all_rule_signs_as_the_base_rules_do(url):
+BASE_TEST_URLS = [case["url"] for site in yaml.safe_load(BASE_RULES.read_text())["sites"]
+                  for case in site.get("tests", [])]
+
+
+@pytest.mark.parametrize("url", ["https://unknown.example/news/story", *BASE_TEST_URLS])
+def test_the_catch_all_over_the_submodule_rules_signs_as_the_wheel_does(url):
+    """Fails when the wheel and the submodule do not have the same rules: change both together."""
     assert SIGNER.sign(url) == Signer().sign(url)
