@@ -29,14 +29,14 @@ Options:
   --light               Force light theme
   --dark                Force dark theme
   -s, --source-dir DIR  Run this directory as-is instead of building build/dist
-  -u, --url URL         Page to open on startup (default: Ilta-Pulu when its provider is added, otherwise
+  -u, --url URL         Page to open on startup (default: Ilta-Pulu when the providers are added, otherwise
                         http://yle.fi/uutiset)
-  --devserver           Add the Ilta-Pulu provider of the development server (make serve)
-  --no-devserver        Do not add it
+  --devserver           Add the Ilta-Pulu and captured-sites providers of the development server (make serve)
+  --no-devserver        Do not add them
   -h, --help            Show this help
 
-Without -s, the provider is added when the development server answers on port DEVSERVER_PORT (default: 3000).
-When the provider is added, web-ext runs a copy in build/run-devserver (tools/devserver-stage.mjs). With -s, the
+Without -s, the providers are added when the development server answers on port DEVSERVER_PORT (default: 3000).
+When they are added, web-ext runs a copy in build/run-devserver (tools/devserver-stage.mjs). With -s, the
 directory runs as-is unless --devserver is given.
 
 Unrecognised arguments are passed through to web-ext run.
@@ -52,6 +52,7 @@ LOG_FILE="build/run.log"
 DEVSERVER="auto"
 DEVSERVER_URL="http://localhost:${DEVSERVER_PORT:-3000}"
 DEVSERVER_MANIFEST="$DEVSERVER_URL/manifest/ilta-pulu/manifest.json"
+CAPTURED_MANIFEST="$DEVSERVER_URL/manifest/captured-sites/manifest.json"
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
@@ -130,14 +131,14 @@ if [[ "$DEVSERVER" == "auto" ]]; then
         DEVSERVER="on"
     else
         DEVSERVER="off"
-        echo "run.sh: no development server at $DEVSERVER_MANIFEST, so Ilta-Pulu is not added"
+        echo "run.sh: no development server at $DEVSERVER_MANIFEST, so its providers are not added"
     fi
 fi
 if [[ "$DEVSERVER" == "on" ]]; then
-    node tools/devserver-stage.mjs "$SOURCE_DIR" build/run-devserver "$DEVSERVER_MANIFEST"
+    node tools/devserver-stage.mjs "$SOURCE_DIR" build/run-devserver "$DEVSERVER_MANIFEST" "$CAPTURED_MANIFEST"
     SOURCE_DIR="build/run-devserver"
     START_URL="${START_URL:-$DEVSERVER_URL/}"
-    echo "run.sh: added $DEVSERVER_MANIFEST to a copy in $SOURCE_DIR"
+    echo "run.sh: added $DEVSERVER_MANIFEST and $CAPTURED_MANIFEST to a copy in $SOURCE_DIR"
 fi
 START_URL="${START_URL:-http://yle.fi/uutiset}"
 

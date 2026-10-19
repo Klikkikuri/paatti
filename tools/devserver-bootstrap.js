@@ -5,7 +5,7 @@
  * The background module of a copy that tools/devserver-stage.mjs stages; the paths are relative to that copy.
  *
  * On the first install, it does what the options page asks a person to do: it turns on loopback providers, adds and
- * refreshes the provider of `devserver.json`, and turns on the provider's site.
+ * refreshes the providers of `devserver.json`, and turns on the site of their host.
  */
 
 import "./src/background.js";
@@ -18,7 +18,7 @@ const LOCALHOST_GRANT = "http://localhost/*";
 
 browser.runtime.onInstalled.addListener(async ({ reason }) => {
     if (reason !== "install") return;
-    const { manifestUrl } = await (await fetch(browser.runtime.getURL("devserver.json"))).json();
+    const { manifestUrls } = await (await fetch(browser.runtime.getURL("devserver.json"))).json();
 
     // The install listener of background.js sets the environment.
     for (let i = 0; i < 50 && (await getConfig()).activeEnv !== "development"; i++) {
@@ -29,8 +29,10 @@ browser.runtime.onInstalled.addListener(async ({ reason }) => {
     }
 
     await controller.setLoopbackProvidersEnabled(true);
-    await addProvider(manifestUrl);
+    for (const manifestUrl of manifestUrls) await addProvider(manifestUrl);
     await refreshProviders();
-    await controller.setSiteEnabled(true, new URL(manifestUrl).hostname);
-    console.log(`devserver: added the provider ${manifestUrl}`);
+    for (const hostname of new Set(manifestUrls.map((url) => new URL(url).hostname))) {
+        await controller.setSiteEnabled(true, hostname);
+    }
+    console.log(`devserver: added the providers ${manifestUrls.join(", ")}`);
 });
