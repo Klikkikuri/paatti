@@ -40,7 +40,7 @@ that starts a server with the same settings.
 | `/privacy` | The privacy notice that the manifests link. |
 | `/manifest/ilta-pulu/manifest.json` | The Ilta-Pulu provider: `sites.json`, `rules.json` and `data.json` beside it. |
 | `/manifest/captured-sites/manifest.json` | Rahti's real sites with fake corrections for captured links: `data.json` beside it. Needs `rahti_commit`. |
-| `POST /api/capture` | Stores the links of a page that Rahti has no correction for (see "Captured sites"). Paatti's popup calls it. |
+| `POST /api/capture` | Stores the links of a page (see "Captured sites"). Paatti's popup calls it. |
 | `/api/fragment?seed=&kind=&n=` | HTML that `site.js` inserts: `more` (load more), `churn` (one card), `ticker` (one item). |
 | `/docs` | The OpenAPI description of the routes. |
 
@@ -122,8 +122,8 @@ A page fault is decided from the page seed, so a reload of one seed gives the sa
 
 ## Captured sites
 
-The captured-sites provider makes test data for a real Rahti site, for example www.iltalehti.fi, where Rahti has
-no correction for a link. In a development build, Paatti's popup sends the page address and the links and
+The captured-sites provider makes test data for a real Rahti site, for example www.iltalehti.fi. In a development
+build, Paatti's popup sends the page address and the links and
 headlines of the page to `POST /api/capture`, with one click.
 
 - The server accepts a page of any host, and signs each link with the base Suola rules, whose catch-all signs
@@ -131,11 +131,9 @@ headlines of the page to `POST /api/capture`, with one click.
   Paatti's official signs.
 - The corrections take effect only on the sites that the provider supplies: Rahti's sites. A capture from another
   host, Ilta-Pulu included, is stored, but Paatti does not look it up.
-- It fetches Rahti's current `data.json` and keeps only the links whose sign Rahti does not have. The other links
-  keep their real correction: with "Allow providers to override sites" on, Paatti looks a link up in this provider
-  first, so a fake entry would hide the real one.
-- A capture of the same page again drops the links that Rahti has added since. If Rahti cannot be read, the
-  capture fails with 502 and writes nothing.
+- Every captured link gets a fake correction, also a link that Rahti has a real correction for. With "Allow
+  providers to override sites" on, Paatti looks a link up in this provider first, so the fake correction shows.
+- A capture of the same page again merges with the earlier captures of that host, by link address.
 - A fake corrected title starts with `[dev] `. Its level and labels come from the sign, so a link always gets the
   same ones.
 - The captures are in `<data_dir>/captures/<host>.json`. Delete a file to forget the captures of that host.

@@ -460,7 +460,7 @@ it while developer mode is on, and the hidden controls become visible. Turning i
   `debugVisualsEnabled` comes from the environment, and `visualHighlightEnabled` is your own override. Note
   that an open popup forces the outlines on, whatever the setting says.
 - **Send page** in the popup's **Developer Settings** sends the links and headlines of the page to the
-  [development server](#development-server), which makes test corrections for the links that have none. The row
+  [development server](#development-server), which makes a test correction for each of them. The row
   shows only when a provider on your own machine names a capture address.
 
 ### Badge Icons
@@ -538,7 +538,7 @@ the extension:
 The server listens on `127.0.0.1` only.
 
 **Test data for a real site.** The server also makes test corrections for the links of a supported site, for
-example www.iltalehti.fi, that the real database has no correction for:
+example www.iltalehti.fi:
 
 1. Start the server with `make serve`. It passes the Rahti commit of `sites.lock.json`.
 2. Add `http://localhost:3000/manifest/captured-sites/manifest.json` as a provider, as in step 2 above. The
@@ -546,10 +546,10 @@ example www.iltalehti.fi, that the real database has no correction for:
    that you want test data for.
 3. Open a page of the site, open the popup, and select **Send page** under **Developer Settings**.
 
-The server signs the links and keeps only those that the real database has no correction for, so the real
-corrections still show. A test correction starts with `[dev]`. Send the page again after a database update: links
-that the real database got since then lose their test correction. The server keeps the links that you sent in
-`test_data/captures/`. [devserver/README.md](./devserver/README.md#captured-sites) tells more.
+Each link that you send gets a test correction, which starts with `[dev]`. It replaces a real correction of the
+same link, because the development environment lets a provider take over a site. The server keeps the links that
+you sent in `test_data/captures/`; delete a file there to forget the links of that site.
+[devserver/README.md](./devserver/README.md#captured-sites) tells more.
 
 ### Architecture
 
