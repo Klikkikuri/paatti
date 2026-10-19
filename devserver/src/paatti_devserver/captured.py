@@ -1,14 +1,12 @@
-"""The captured-sites provider: Rahti's real sites, with fake corrections for the links that Rahti has no entry for.
+"""The captured-sites provider: Rahti's real sites, with a fake correction for each link that the developer captures.
 
 Paatti's popup sends the links and headlines of a page to `POST /api/capture`. The server signs each link with the
 base Suola rules, whose catch-all signs any host. They equal Rahti's rules at the pinned commit, so the provider
 needs no `suola-rules` and its signs are Paatti's official signs. The corrections take effect on the sites that the
 provider supplies: Rahti's sites. A capture from another host is stored, but Paatti does not look it up.
 
-With "Allow providers to override sites" on, this provider ranks before Rahti on equal weight, and Paatti looks a
-link up here first. Thus a fake entry for a link that Rahti covers would hide the real correction. Each capture
-fetches Rahti's current data and keeps only the links that Rahti has no entry for; a capture of the same page again
-drops the links that Rahti has added since.
+Every captured link gets a fake correction. With "Allow providers to override sites" on, this provider ranks before
+Rahti on equal weight, so a fake correction also replaces a real one.
 """
 
 import json
@@ -28,7 +26,6 @@ from .signing import Signer
 log = get_logger(__name__)
 
 RAHTI_RAW = "https://raw.githubusercontent.com/Klikkikuri/rahti"
-RAHTI_DATA_URL = f"{RAHTI_RAW}/refs/heads/main/data.json"
 FAKE_PREFIX = "[dev] "
 
 
@@ -40,13 +37,6 @@ class CaptureError(Exception):
         self.status = status
 
 
-def fetch_rahti_signs() -> set[str]:
-    """The signs in Rahti's current data. The data changes every few minutes, so this is not the pinned commit."""
-    response = httpx2.get(RAHTI_DATA_URL, timeout=20, follow_redirects=False)
-    response.raise_for_status()
-    return {url["sign"] for entry in response.json()["entries"] for url in entry.get("urls", []) if url.get("sign")}
-
-
 def origin_host(origin: str) -> str:
     return re.match(r"^https?://([^/]+)/", origin).group(1)
 
@@ -54,9 +44,8 @@ def origin_host(origin: str) -> str:
 class CapturedSites:
     """The captured pages in `<data_dir>/captures/`, and the provider documents made from them."""
 
-    def __init__(self, settings, fetch_real_signs=fetch_rahti_signs):
+    def __init__(self, settings):
         self.settings = settings
-        self.fetch_real_signs = fetch_real_signs
         self.captures_dir = Path(settings.data_dir) / "captures"
         self.cache_dir = Path(settings.data_dir) / ".cache"
         self._signer = None
@@ -90,8 +79,7 @@ class CapturedSites:
             "resources": [
                 {"type": "site-configs", "href": self.sites_url, "origins": self.origins(),
                  "description": f"Rahti's sites at commit {self.settings.rahti_commit}"},
-                {"type": "rahti-data", "href": "data.json",
-                 "description": "Fake corrections for the captured links that Rahti has no entry for"},
+                {"type": "rahti-data", "href": "data.json", "description": "Fake corrections for the captured links"},
             ],
         }
 
@@ -108,19 +96,13 @@ class CapturedSites:
         return self._signer
 
     def capture(self, page_url: str, links: list[tuple[str, str]]) -> dict:
-        """Store the links of one page that Rahti has no entry for, and drop stored ones that Rahti now has."""
+        """Store the links of one page, merged by address with the earlier captures of its host."""
         host = urlsplit(page_url).hostname
-        try:
-            real = self.fetch_real_signs()
-        except Exception as err:  # Any failure: writing fake data blind could hide a real correction.
-            raise CaptureError(502, f"Could not read Rahti's current data: {err}") from err
-
         captured_at = datetime.now(UTC).isoformat()
         received = {}
         for href, title in links:
             absolute = urljoin(page_url, href)
-            parts = urlsplit(absolute)
-            if parts.scheme not in ("http", "https"):
+            if urlsplit(absolute).scheme not in ("http", "https"):
                 continue
             sign = self._signs().sign(absolute)
             if sign:
@@ -128,14 +110,11 @@ class CapturedSites:
 
         with self._lock:
             stored = {**self._load(host), **received}
-            kept = {href: link for href, link in stored.items() if link["sign"] not in real}
             self.captures_dir.mkdir(parents=True, exist_ok=True)
-            self._file(host).write_text(json.dumps({"host": host, "links": kept}, indent=1, ensure_ascii=False))
+            self._file(host).write_text(json.dumps({"host": host, "links": stored}, indent=1, ensure_ascii=False))
 
-        fake = sum(1 for link in received.values() if link["sign"] not in real)
-        log.info("captured", host=host, links=len(received), fake=fake, dropped=len(stored) - len(kept))
-        return {"host": host, "links": len(received), "real": len(received) - fake, "fake": fake,
-                "stored": len(kept)}
+        log.info("captured", host=host, links=len(received), stored=len(stored))
+        return {"host": host, "links": len(received), "stored": len(stored)}
 
     def data(self) -> dict:
         entries, updated = [], "2026-01-01T00:00:00+00:00"

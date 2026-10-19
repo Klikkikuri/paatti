@@ -1,7 +1,6 @@
 """The popup's "Send page" button: what the content script sends, and the update and conversion that follow.
 
-The server's capture step is recorded here, not run: captured-sites covers only real Rahti hosts, and these tests
-must not depend on them. tests/test_captured.py covers that step.
+The server's capture step is recorded here, not run; tests/test_captured.py covers it.
 """
 
 from .conftest import LiveServer, statuses, wait_until
@@ -13,7 +12,7 @@ def test_send_page_posts_the_original_headlines_and_reports_the_result(browser):
 
         def record(page_url, links):
             received.update(page_url=page_url, links=links)
-            return {"host": "localhost", "links": len(links), "real": 3, "fake": len(links) - 3, "stored": len(links)}
+            return {"host": "localhost", "links": len(links), "stored": len(links)}
 
         server.app.state.captured.capture = record
         browser.add_provider(server.manifest_url)

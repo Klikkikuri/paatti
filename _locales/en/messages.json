@@ -466,16 +466,12 @@
     "description": "Shown while the page is sent to the development server and the database is updated"
   },
   "devmodeCaptureDone": {
-    "message": "Done: $FAKE$ links got test corrections, $REAL$ links have real ones.",
+    "message": "Done: $COUNT$ links got test corrections.",
     "description": "Result of sending the page to the development server",
     "placeholders": {
-      "fake": {
+      "count": {
         "content": "$1",
-        "example": "12"
-      },
-      "real": {
-        "content": "$2",
-        "example": "30"
+        "example": "42"
       }
     }
   },

@@ -1013,7 +1013,7 @@ const __devmodeCapturePage = async (event) => {
 
         const tab = await getActiveTab();
         await browser.tabs.sendMessage(tab.id, { command: "convertClickbaits" });
-        status.textContent = browser.i18n.getMessage("devmodeCaptureDone", [String(result.fake), String(result.real)]);
+        status.textContent = browser.i18n.getMessage("devmodeCaptureDone", [String(result.links)]);
     } catch (err) {
         log("Sending the page to the development server failed:", err);
         status.textContent = browser.i18n.getMessage("devmodeCaptureFailed", [err.message]);
