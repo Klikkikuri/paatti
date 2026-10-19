@@ -1336,5 +1336,45 @@
   "welcomeSample4": {
     "message": "EK lataa Manna Sarille täystyrmäyksen: ”Kasva aikuiseksi – yritykset eivät elä satumaailmassa!”",
     "description": "Illustrative sample headline for clickbait level 4, as a site would write it. It is fiction: not a claim about real statements or events."
+  },
+  "welcomeInfoTitle": {
+    "message": "Miten Klikkikuri kirjoittaa otsikon",
+    "description": "Title of the infobox on the strictness step."
+  },
+  "welcomeInfoStepRead": {
+    "message": "Se lukee koko artikkelin, ei vain otsikkoa.",
+    "description": "Infobox step 1."
+  },
+  "welcomeInfoStepCheck": {
+    "message": "Se tarkistaa, onko alkuperäinen otsikko klikkiotsikko.",
+    "description": "Infobox step 2."
+  },
+  "welcomeInfoStepWrite": {
+    "message": "Se kirjoittaa uuden otsikon näillä säännöillä:",
+    "description": "Infobox step 3, before the list of rules."
+  },
+  "welcomeInfoRuleDoer": {
+    "message": "Kertoo, kuka tekee mitä, selkein ja aktiivisin sanoin.",
+    "description": "Infobox rule."
+  },
+  "welcomeInfoRuleAttribute": {
+    "message": "Liittää arvion tai ennusteen sen esittäjälle.",
+    "description": "Infobox rule."
+  },
+  "welcomeInfoRuleRole": {
+    "message": "Kertoo puhujan roolin ja sen, jos lähteellä on asiassa oma intressi.",
+    "description": "Infobox rule."
+  },
+  "welcomeInfoRuleNeutral": {
+    "message": "Käyttää neutraaleja sanoja. Ei draamaa, ei koukkua.",
+    "description": "Infobox rule."
+  },
+  "welcomeInfoExampleLabel": {
+    "message": "Esimerkki",
+    "description": "Label before the example headline."
+  },
+  "welcomeInfoExample": {
+    "message": "Työnantajien etujärjestö EK arvioi Manna Sarin yritysveron korotuksen heikentävän yritysten toimintaedellytyksiä",
+    "description": "Example of a converted headline. Illustrative fiction: not a claim about real statements or events."
   }
 }

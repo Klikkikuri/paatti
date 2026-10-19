@@ -322,6 +322,63 @@ a {
     display: block;
 }
 
+/* --- infobox: the facts that a rewrite keeps --- */
+
+.infobox {
+    margin-top: 1.25rem;
+}
+
+.infobox-title {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-display);
+    font-size: 0.875rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.infobox-steps {
+    margin: 0;
+    padding-left: 1.75rem;
+    font-size: 0.9375rem;
+}
+
+.infobox-steps > li {
+    margin-bottom: 0.25rem;
+}
+
+.infobox-steps > li::marker {
+    color: var(--welcome-accent);
+    font-family: var(--font-display);
+    font-weight: 700;
+}
+
+.infobox-rules {
+    margin: 0.25rem 0 0;
+    padding-left: 1.125rem;
+}
+
+.infobox-rules li {
+    margin-bottom: 0.125rem;
+}
+
+/* The example headline: what the four rules above make of the sample story. */
+.infobox-example {
+    margin: 0.75rem 0 0;
+    padding: 0.5rem 0.75rem;
+    border-left: 0.375rem solid var(--welcome-accent);
+    font-weight: 600;
+}
+
+.infobox-example-label {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--welcome-accent);
+}
+
 /* --- sample headlines of the strictness step: a box for each level --- */
 
 .samples {

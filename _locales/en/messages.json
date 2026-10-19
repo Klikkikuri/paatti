@@ -1506,5 +1506,45 @@
   "welcomeSample4": {
     "message": "EK delivers a knockout to Manna Sari: “Grow up – businesses do not live in a fairy-tale world!”",
     "description": "Illustrative sample headline for clickbait level 4, as a site would write it. It is fiction: not a claim about real statements or events."
+  },
+  "welcomeInfoTitle": {
+    "message": "How Klikkikuri writes a headline",
+    "description": "Title of the infobox on the strictness step."
+  },
+  "welcomeInfoStepRead": {
+    "message": "It reads the whole article, not only the headline.",
+    "description": "Infobox step 1."
+  },
+  "welcomeInfoStepCheck": {
+    "message": "It checks if the original headline is clickbait.",
+    "description": "Infobox step 2."
+  },
+  "welcomeInfoStepWrite": {
+    "message": "It writes a new headline by these rules:",
+    "description": "Infobox step 3, before the list of rules."
+  },
+  "welcomeInfoRuleDoer": {
+    "message": "Says who does what, in plain active words.",
+    "description": "Infobox rule."
+  },
+  "welcomeInfoRuleAttribute": {
+    "message": "Gives an opinion or a forecast to the one who made it.",
+    "description": "Infobox rule."
+  },
+  "welcomeInfoRuleRole": {
+    "message": "Names the role of the speaker, and says if the source has an interest in the matter.",
+    "description": "Infobox rule."
+  },
+  "welcomeInfoRuleNeutral": {
+    "message": "Uses neutral words. No drama, no hook.",
+    "description": "Infobox rule."
+  },
+  "welcomeInfoExampleLabel": {
+    "message": "Example",
+    "description": "Label before the example headline."
+  },
+  "welcomeInfoExample": {
+    "message": "Employers' federation EK assesses that Manna Sari's corporate tax increase would weaken companies' operating conditions",
+    "description": "Example of a converted headline. Illustrative fiction: not a claim about real statements or events."
   }
 }
