@@ -226,9 +226,6 @@ uv run pytest          # in this directory: the server's own tests only
 
 | Issue | Workaround |
 | --- | --- |
-| [suola#20](https://github.com/Klikkikuri/suola/issues/20): the wheel does not declare `packaging` | `packaging` is a dependency here |
-| [suola#21](https://github.com/Klikkikuri/suola/issues/21): the WASI module is looked up in the working directory first | `signing.py` names the packaged module |
-| [suola#22](https://github.com/Klikkikuri/suola/issues/22): the runtime is not thread-safe | `signing.py` holds a lock |
 | [Niitti#3](https://github.com/Klikkikuri/Niitti/issues/3), [#4](https://github.com/Klikkikuri/Niitti/issues/4): extras do not declare their imports | `niitti[all]` and `pyyaml` |
 | [Niitti#5](https://github.com/Klikkikuri/Niitti/issues/5): settings read implicit files | `settings.py` keeps only the command line and the environment |
 
