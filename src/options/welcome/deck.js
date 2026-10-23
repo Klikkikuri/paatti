@@ -9,11 +9,14 @@
 
 /** Every slide, in order. A `tour` slide is only in the longer deck. The titles come from `_locales`. */
 export const SLIDES = Object.freeze([
+    { id: "welcome", tour: true },
+    { id: "service", tour: true },
+    { id: "browser", tour: true },
     { id: "strictness", tour: false },
     { id: "markers", tour: false },
     { id: "sites", tour: false },
+    { id: "popup", tour: true },
     { id: "wrong", tour: true },
-    { id: "corrections", tour: true },
     { id: "ready", tour: false },
 ]);
 

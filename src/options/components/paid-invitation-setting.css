@@ -1,0 +1,42 @@
+/*
+ * The waitlist sign-up of the paid version: a mail icon, an email field and a Send button in one
+ * `.input-group`, and a line of status below it. The group itself is styled in components.css.
+ */
+
+paid-invitation-setting {
+    display: block;
+}
+
+paid-invitation-setting .invitation-description {
+    margin: 0 0 1rem;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+}
+
+paid-invitation-setting .email-icon {
+    display: flex;
+    align-items: center;
+    padding-left: 0.625rem;
+    pointer-events: none;
+}
+
+paid-invitation-setting .email-icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--color-text-secondary);
+}
+
+paid-invitation-setting .email-submit-btn.success {
+    background: var(--color-success);
+    color: var(--color-on-accent);
+}
+
+paid-invitation-setting .invitation-status {
+    min-height: 1.5em;
+    margin: 0.5rem 0 0;
+    font-size: 0.875rem;
+}
+
+paid-invitation-setting .invitation-status.error {
+    color: var(--color-danger);
+}

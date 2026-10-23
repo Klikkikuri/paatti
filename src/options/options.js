@@ -11,6 +11,7 @@ import './components/visual-highlight-setting.js';
 import './components/master-switch-setting.js';
 import './components/title-modifier-setting.js';
 import './components/database-status-setting.js';
+import './components/paid-invitation-setting.js';
 import './components/clickbait-level-vertical.js';
 import './components/favicon-img.js';
 import './components/statistics-totals.js';
@@ -54,19 +55,6 @@ async function loadSettings() {
 
         // Clickbait level is managed by the clickbait-level-vertical component
         
-        // Load saved email for paid environment
-        let savedEmail = '';
-        try {
-            savedEmail = config.environmentConfigs.paid.email || '';
-            console.log('Loaded saved email:', config.environmentConfigs.paid);
-        } catch (e) {
-            savedEmail = '';
-        }
-        const emailInput = document.getElementById('invitationEmail');
-        if (emailInput && document.activeElement !== emailInput) {
-            emailInput.value = savedEmail;
-        }
-
         // Site configurations are managed by the site-list-setting component
 
         // Database status is managed by the database-status-setting component
@@ -109,62 +97,6 @@ function toggleDebugSettings(environment) {
     }
 }
 
-async function registerEmail() {
-
-    const emailInput = document.getElementById('invitationEmail');
-    const submitButton = document.getElementById('submitInvitation');
-    const email = emailInput.value.trim();
-    if (!email) {
-        showStatus(browser.i18n.getMessage('invitationEmailRequired') || 'Please enter an email address', true);
-        return;
-    }
-    
-    // Disable button during submission
-    const originalText = submitButton.textContent;
-    submitButton.disabled = true;
-    submitButton.textContent = browser.i18n.getMessage('invitationEmailSending') || 'Sending...';
-    
-    // Placeholder function to simulate email registration
-    const action = "https://docs.google.com/forms/d/e/1FAIpQLSf0m5X_EKJume6oSbz5o36CmOVofsNy8F8AjrwOLQ4Tm4B_8g/formResponse";
-    const formData = new FormData();
-    formData.append('emailAddress', email);
-    formData.append('pageHistory', '0');
-    formData.append('submissionTimestamp', Date.now().toString());
-
-    try {
-        await fetch(action, {
-            method: 'POST',
-            mode: 'no-cors',
-            referrerPolicy: 'no-referrer',
-            credentials: 'omit',
-            body: formData
-        });
-        
-        // Store email in sync settings
-        await model.write.setEmail(email, 'paid');
-        
-        // Show success state on button
-        submitButton.textContent = browser.i18n.getMessage('invitationEmailSent') || '✓ Sent';
-        submitButton.classList.add('success');
-        showStatus(browser.i18n.getMessage('invitationEmailSuccess') || 'Email registered successfully!');
-
-        // Reset button after fade completes
-        setTimeout(() => {
-            submitButton.textContent = originalText;
-            submitButton.classList.remove('success');
-            submitButton.disabled = false;
-        }, 3300);
-    } catch (error) {
-        console.error('Error registering email:', error);
-        showStatus(browser.i18n.getMessage('invitationEmailError') || 'Error registering email', true);
-
-        // Reset button on error
-        submitButton.textContent = originalText;
-        submitButton.disabled = false;
-    }
-}
-
-
 async function setupEventListeners() {
 
     // Extension enabled toggle is managed by the master-switch-setting component
@@ -195,28 +127,6 @@ async function setupEventListeners() {
         });
     });
     
-    document.getElementById('submitInvitation').addEventListener('click', registerEmail);
-    
-    // Monitor email input changes to enable/disable submit button
-    document.getElementById('invitationEmail').addEventListener('input', (e) => {
-        const submitButton = document.getElementById('submitInvitation');
-        const currentEmail = e.target.value.trim();
-        
-        // Disable button if email is empty or not valid
-        if (currentEmail === '' || e.target.validity.typeMismatch) {
-            submitButton.disabled = true;
-        } else {
-            submitButton.disabled = false;
-        }
-    });
-    
-    // Handle Enter key on email input
-    document.getElementById('invitationEmail').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            registerEmail();
-        }
-    });
     // Debug visuals toggle is handled by the visual-highlight-setting component.
     // Listen to custom setting-saved events dispatched from components.
     document.addEventListener('setting-saved', (e) => {

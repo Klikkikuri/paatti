@@ -256,29 +256,6 @@ footer a:hover {
     margin-top: 25px;
 }
 
-/* The invitation field: an .input-group with a leading mail icon. */
-.email-input-wrapper {
-    margin-top: 15px;
-}
-
-.email-input-wrapper .email-icon {
-    display: flex;
-    align-items: center;
-    padding-left: 10px;
-    pointer-events: none;
-}
-
-.email-icon svg {
-    width: 20px;
-    height: 20px;
-    color: var(--color-text-secondary);
-}
-
-.email-submit-btn.success {
-    background: var(--color-success);
-    color: var(--color-on-accent);
-}
-
 /* Mobile responsiveness */
 @media (max-width: 600px) {
     body {

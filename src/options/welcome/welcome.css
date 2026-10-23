@@ -9,13 +9,15 @@
  * are measured in welcome.js into --bar-top and --bar-bottom, so a slide never hides under them, whatever the
  * size of the text. The colours here are the wizard's own and belong to no other page; the controls inside
  * keep the tokens of theme.css.
+ *
+ * What a shape or a colour in a drawing means is written once, in the grammar comment at the top of
+ * welcome.html. The rules below only carry it out.
  */
 
 :root {
     --welcome-paper: #f5f0e4;
     --welcome-ink: #1e3a6e;
     --welcome-accent: #c2410c;
-    --welcome-hatch: color-mix(in srgb, var(--welcome-ink) 35%, transparent);
     --bar-top: 5rem;
     --bar-bottom: 4.5rem;
 }
@@ -54,11 +56,6 @@ body {
 
 .wf-defs {
     position: absolute;
-}
-
-.wf-hatch-line {
-    stroke: var(--welcome-hatch);
-    stroke-width: 1.5;
 }
 
 /* --- bars --- */
@@ -150,6 +147,7 @@ body {
 .welcome-button:focus-visible,
 .welcome-link:focus-visible,
 a:focus-visible,
+summary:focus-visible,
 .slide-heading:focus-visible {
     outline: 0.1875rem solid var(--welcome-accent);
     outline-offset: 0.1875rem;
@@ -322,18 +320,162 @@ a {
     display: block;
 }
 
-/* --- infobox: the facts that a rewrite keeps --- */
-
-.infobox {
-    margin-top: 1.25rem;
+/* A title that runs into its sentence: for a list of many short parts, where a line per title costs a screen. */
+.parts-inline strong {
+    display: inline;
 }
 
-.infobox-title {
-    margin: 0 0 0.5rem;
+.parts-inline strong::after {
+    content: " – ";
+    font-weight: 400;
+}
+
+/* The welcome step is typographic: a logo, a larger heading and a row of points, not a two-column figure. */
+.welcome-hero {
+    max-width: 44rem;
+    margin: 0 auto 2rem;
+    text-align: center;
+}
+
+.wf.welcome-mark {
+    width: 5rem;
+    height: 5rem;
+    margin: 0 auto 1.25rem;
+    stroke-width: 2;
+}
+
+#slide-welcome .slide-heading {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0;
+    border-bottom: 0;
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    line-height: 1.15;
+}
+
+.welcome-lead {
+    max-width: 38rem;
+    margin: 0 auto;
+    font-size: 1.0625rem;
+    line-height: 1.55;
+}
+
+/* The welcome points: an unnumbered row, so they do not borrow the callout numbers of the drawings. */
+.welcome-points {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.5rem;
+    margin: 0;
+    padding: 1.5rem 0 0;
+    border-top: 0.125rem solid var(--welcome-ink);
+    list-style: none;
+}
+
+.welcome-points li {
+    min-width: 0;
+}
+
+.welcome-points strong {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-family: var(--font-display);
+    font-size: 0.9375rem;
+    letter-spacing: 0.03em;
+}
+
+.welcome-points span {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+}
+
+/* --- the group names of the pipeline list, and the folded extras of the same slide --- */
+
+.parts-zone {
+    margin: 1.25rem 0 0;
     font-family: var(--font-display);
     font-size: 0.875rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+}
+
+.parts-zone + .parts {
+    margin-top: 0.25rem;
+}
+
+.more {
+    margin-top: 1rem;
+    border: 0.125rem solid var(--welcome-ink);
+    border-radius: 0.375rem;
+}
+
+/* [ i | title ]: the info dot of the other pages, a rule, and the title. welcome.js sets data-lines to the
+ * number of lines the title takes, one or two, and the dot is as tall as those lines. */
+.more > summary {
+    --dot: 1.4rem;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 0.75rem;
+    min-height: 2.75rem;
+    padding: 0.25rem 0.75rem;
+    font-family: var(--font-display);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.more > summary[data-lines="2"] {
+    --dot: 2.8rem;
+}
+
+.more > summary .info-dot {
+    width: var(--dot);
+    height: var(--dot);
+    background-color: var(--welcome-ink);
+    color: var(--welcome-paper);
+    font-family: var(--font-display);
+    font-size: calc(var(--dot) * 0.6);
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.more > summary .more-title {
+    padding-left: 0.75rem;
+    border-left: 0.125rem solid var(--welcome-ink);
+}
+
+.more > summary:hover .info-dot,
+.more[open] > summary .info-dot {
+    transform: scale(1.1);
+}
+
+.more[open] > summary {
+    border-bottom: 0.0625rem solid color-mix(in srgb, var(--welcome-ink) 30%, transparent);
+}
+
+.more > :not(summary) {
+    margin-right: 0.75rem;
+    margin-left: 0.75rem;
+}
+
+.more > :last-child {
+    margin-bottom: 0.75rem;
+}
+
+.reasons {
+    margin-top: 0.75rem;
+    padding-left: 1.25rem;
+}
+
+.reasons li {
+    margin-bottom: 0.375rem;
+}
+
+/* --- infobox: the facts that a rewrite keeps --- */
+
+.infobox {
+    margin-top: 0.75rem;
 }
 
 .infobox-steps {
@@ -361,12 +503,31 @@ a {
     margin-bottom: 0.125rem;
 }
 
-/* The example headline: what the four rules above make of the sample story. */
+/* The example: a headline as a site wrote it, and what the rules above make of it. */
 .infobox-example {
     margin: 0.75rem 0 0;
     padding: 0.5rem 0.75rem;
     border-left: 0.375rem solid var(--welcome-accent);
+}
+
+.example-row {
+    display: flex;
+    flex-direction: column;
+    margin: 0.375rem 0 0;
     font-weight: 600;
+}
+
+.example-tag {
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.example-why {
+    margin: 0.5rem 0 0;
+    font-size: 0.9375rem;
 }
 
 .infobox-example-label {
@@ -412,7 +573,9 @@ a {
     line-height: 1.35;
 }
 
-/* Rewritten: a solid box with an accent bar on its edge, and no texture behind the text. Left alone: dashed and quiet. */
+/* The one exception to the grammar in welcome.html. These samples answer "what happens to this headline at
+ * my setting?", so they show what Klikkikuri Paatti does, not how loud the headline is: rewritten is solid with
+ * an orange bar and label, left as it is is dashed and quiet. */
 .sample[data-state="rewritten"] {
     border-left: 0.375rem solid var(--welcome-accent);
 }
@@ -466,12 +629,80 @@ a {
     stroke: var(--welcome-accent);
 }
 
+/* The icon sits over the lines of the drawing in the how-it-works step: it hides what is behind it. */
+.wf .mark {
+    fill: var(--welcome-paper);
+}
+
+.wf .callout circle {
+    fill: var(--welcome-paper);
+}
+
 .wf .callout text {
     fill: var(--welcome-accent);
     stroke: none;
     font-family: var(--font-display);
     font-size: 12px;
     font-weight: 700;
+}
+
+.wf .zone-label {
+    fill: var(--welcome-ink);
+    stroke: none;
+    font-family: var(--font-display);
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.wf .boat path {
+    stroke: var(--welcome-ink);
+    stroke-linejoin: round;
+}
+
+.wf .arrow {
+    marker-end: url(#wf-arrow);
+}
+
+.wf .arrow.swap {
+    marker-start: url(#wf-arrow);
+}
+
+.wf .arrow.dashed {
+    stroke-dasharray: 5 4;
+}
+
+/* The one arrow that leaves the browser: heavier than the others, so it cannot be taken for a lookup. */
+.wf .arrow.send {
+    stroke: var(--welcome-accent);
+    stroke-width: 3;
+    marker-end: url(#wf-arrow-accent);
+}
+
+.wf .send-label {
+    fill: var(--welcome-accent);
+}
+
+/* The strictness setting in the popup drawing. */
+.wf .threshold {
+    stroke: var(--welcome-accent);
+    stroke-width: 2;
+    stroke-dasharray: 3 4;
+}
+
+.wf-arrow-head {
+    fill: var(--welcome-ink);
+    stroke: none;
+}
+
+.wf-arrow-head.accent {
+    fill: var(--welcome-accent);
+}
+
+/* The two how-it-works steps share one drawing: the zone that a step is not about steps back. */
+.how-figure[data-focus="service"] [data-zone="browser"],
+.how-figure[data-focus="browser"] [data-zone="service"] {
+    opacity: 0.35;
 }
 
 .wf .glyph,
@@ -487,19 +718,34 @@ a {
     fill: var(--welcome-ink);
 }
 
+/* A clickbait headline: heavy and orange, the loudest line of a drawing. A rewritten one is as heavy, in ink. */
+.wf .tl.calm {
+    stroke: var(--welcome-ink);
+    stroke-width: 5;
+    opacity: 0.45;
+}
+
+/* Rewritten: muted, the same as a rewritten strictness sample. */
+.wf .box.on {
+    stroke-dasharray: 5 4;
+}
+
 .wf .tl.hl {
     stroke: var(--welcome-accent);
     stroke-width: 5;
     opacity: 0.9;
 }
 
-/* Left as the site wrote it: the same dashed look as a headline that the strictness figure leaves alone. */
-.wf .box.left {
-    stroke-dasharray: 5 4;
+/* The "!!" beside a clickbait headline shouts with it. */
+.wf .glyph.shout {
+    fill: var(--welcome-accent);
 }
 
-.wf .box.on {
-    fill: url(#wf-hatch);
+/* Rewritten: the tick of the converted mark, drawn by welcome.js. */
+.wf .tick {
+    stroke: var(--welcome-ink);
+    stroke-width: 2;
+    stroke-linejoin: round;
 }
 
 .wf .slot.off circle,
@@ -512,7 +758,7 @@ a {
 }
 
 .wf .slot.on circle {
-    fill: url(#wf-hatch);
+    fill: color-mix(in srgb, var(--welcome-ink) 18%, transparent);
 }
 
 .slide-figure figcaption {
@@ -528,43 +774,11 @@ a {
     font-weight: 700;
 }
 
-/* The flow of a fix, drawn with borders: the labels are of unequal length, so boxes that grow are safer. */
-.flow {
-    display: flex;
-    align-items: stretch;
-    gap: 1.75rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.flow li {
-    position: relative;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 5rem;
-    padding: 0.5rem;
-    border: 0.125rem solid var(--welcome-ink);
-    border-radius: 0.25rem;
-    text-align: center;
-    font-family: var(--font-display);
-    font-size: 0.875rem;
-}
-
-.flow li + li::before {
-    content: "→";
-    position: absolute;
-    right: 100%;
-    width: 1.75rem;
-    text-align: center;
-    color: var(--welcome-accent);
-    font-size: 1.25rem;
-    font-weight: 700;
-}
-
 /* --- last slide --- */
+
+.news-buttons [hidden] {
+    display: none;
+}
 
 .news-buttons {
     display: flex;
@@ -582,8 +796,14 @@ html[data-browser="android"] .pin-hint[data-for="android"] {
     display: block;
 }
 
-html[data-mode="tour"] .quick-only {
+html[data-mode="tour"] .quick-only,
+html[data-mode="tour"] .pin-hint.quick-only {
     display: none;
+}
+
+/* The tour moves the toolbar drawing and the pin hint to the popup step, so the last step has one column. */
+html[data-mode="tour"] #slide-ready .slide-grid {
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .ready-footer {
@@ -591,6 +811,51 @@ html[data-mode="tour"] .quick-only {
     padding-top: 1rem;
     border-top: 0.0625rem solid color-mix(in srgb, var(--welcome-ink) 30%, transparent);
     font-size: 0.9375rem;
+}
+
+/* The waitlist: a box with its title on the top border, like the label of a panel in a schematic. */
+.waitlist-box {
+    max-width: 32rem;
+    margin: 1.5rem 0 1rem;
+    padding: 0 1rem 0.25rem;
+    border: 0.125rem solid var(--welcome-ink);
+    border-radius: 0.375rem;
+}
+
+/* The negative margin puts the middle of the line on the border; the background cuts the border behind the text. */
+.waitlist-title {
+    width: fit-content;
+    margin: calc(-0.75em - 0.0625rem) 0 0 -0.5rem;
+    padding: 0 0.5rem;
+    background: var(--welcome-paper);
+    color: var(--welcome-accent);
+    font-family: var(--font-display);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    line-height: 1.5;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.paid-note {
+    margin: 0.5rem 0 0;
+}
+
+/* No bottom margin: the status line of the component already holds a row below the field. */
+.waitlist {
+    max-width: 24rem;
+    margin: 0.5rem 0 0;
+}
+
+.waitlist .invitation-description {
+    display: none;
+}
+
+/* Low emphasis here: the Send button is outlined, like the secondary buttons of the bars. */
+.waitlist .input-group button {
+    background: transparent;
+    color: var(--welcome-ink);
+    border-left-color: var(--welcome-ink);
 }
 
 .footer-links {
@@ -650,6 +915,30 @@ html[data-mode="tour"] .quick-only {
     .slide-figure,
     .slide-figures {
         order: -1;
+    }
+
+    .welcome-hero {
+        margin-bottom: 1.5rem;
+    }
+
+    .wf.welcome-mark {
+        width: 4rem;
+        height: 4rem;
+    }
+
+    #slide-welcome .slide-heading {
+        font-size: 1.75rem;
+    }
+
+    .welcome-points {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+    }
+
+    .welcome-points li + li {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 0.0625rem solid color-mix(in srgb, var(--welcome-ink) 30%, transparent);
     }
 }
 

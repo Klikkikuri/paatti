@@ -1016,11 +1016,11 @@
     "description": "Notification message when options page fails to load settings"
   },
   "introCardLabel": {
-    "message": "Klikkikurin käyttöönotto",
+    "message": "Klikkikuri Paatin käyttöönotto",
     "description": "Accessible name of the first-activation card shown on a news page."
   },
   "introCardText": {
-    "message": "Klikkikuri aktivoitui tällä sivulla ensimmäistä kertaa.",
+    "message": "Klikkikuri Paatti aktivoitui tällä sivulla ensimmäistä kertaa.",
     "description": "Text of the first-activation card shown on a news page."
   },
   "introCardTour": {
@@ -1093,20 +1093,152 @@
     "message": "Virheet",
     "description": "Short step title."
   },
-  "welcomeStep_corrections": {
-    "message": "Uudet korjaukset",
-    "description": "Short step title."
-  },
   "welcomeStep_ready": {
     "message": "Valmis",
     "description": "Short step title."
   },
+  "welcomeStep_welcome": {
+    "message": "Tervetuloa",
+    "description": "Short step title in the step indicator. The first step of the tour."
+  },
+  "welcomeStep_service": {
+    "message": "Palvelu",
+    "description": "Short step title in the step indicator. The server side of the project."
+  },
+  "welcomeStep_browser": {
+    "message": "Selaimesi",
+    "description": "Short step title in the step indicator."
+  },
+  "welcomeStep_popup": {
+    "message": "Ponnahdusikkuna",
+    "description": "Short step title in the step indicator. The window that opens from the toolbar button."
+  },
+  "welcomeWelcomeHeading": {
+    "message": "Tervetuloa Klikkikuri Paattiin",
+    "description": "Heading of the first step of the tour."
+  },
+  "welcomeWelcomeLead": {
+    "message": "Klikkikuri Paatti on selainlaajennus, joka korvaa klikkiotsikot neutraaleilla otsikoilla tuetuilla uutissivustoilla. Et huomaa Klikkikuri Paattia, kun se toimii. Verenpaineesi huomaa, kun se lakkaa toimimasta.",
+    "description": "Opening text of the first step of the tour. The last sentence is a joke: a calmer page is good for the reader's blood pressure."
+  },
+  "welcomeWelcomeServiceTitle": {
+    "message": "Palvelu kirjoittaa otsikot",
+    "description": "Bold title of the first welcome point."
+  },
+  "welcomeWelcomeServiceText": {
+    "message": "Klikkikuri-palvelu lukee tuettujen sivustojen etusivujen uudet artikkelit. Tekoäly päättää, onko otsikko klikkiotsikko, ja kirjoittaa tarvittaessa uuden.",
+    "description": "Text of the first welcome point. \"AI\" is the generic term for the language model."
+  },
+  "welcomeWelcomePrivacyTitle": {
+    "message": "Lukemisesi pysyy laitteellasi",
+    "description": "Bold title of the second welcome point."
+  },
+  "welcomeWelcomePrivacyText": {
+    "message": "Klikkikuri Paatti -selainlaajennus vertaa jokaista otsikkoa laitteellasi olevaan listaan. Mikään lukemasi ei mene palveluun, ellet lähetä palautetta.",
+    "description": "Text of the second welcome point."
+  },
+  "welcomeWelcomeOpenTitle": {
+    "message": "Ilmainen perusversio, vapaa kuin taivaan lintu",
+    "description": "Bold title of the third welcome point. Free of charge, and free as a bird."
+  },
+  "welcomeWelcomeOpenText": {
+    "message": "Perusversio ei maksa mitään. Koodi on vapaa kuin taivaan lintu: Klikkikuri Paatti -selainlaajennus ja palvelu ovat avointa lähdekoodia EUPL-1.2-lisenssillä. Suunnitteilla oleva maksullinen versio korjaa myös maksumuurin takana olevien uutisten otsikot.",
+    "description": "Text of the third welcome point."
+  },
+  "welcomeServiceHeading": {
+    "message": "Mistä uudet otsikot tulevat?",
+    "description": "Heading of the first how-it-works step, about the server side. A question."
+  },
+  "welcomeServiceCaption": {
+    "message": "Mistä uusi otsikko tulee",
+    "description": "Caption of the drawing on the first how-it-works step."
+  },
+  "welcomeBrowserHeading": {
+    "message": "Mitä selaimessasi tapahtuu?",
+    "description": "Heading of the second how-it-works step, about the browser extension. A question."
+  },
+  "welcomeHowPart1Title": {
+    "message": "Lukee uutiset",
+    "description": "Short bold title of step 1."
+  },
+  "welcomeHowPart1Text": {
+    "message": "Se lukee tuettujen sivustojen etusivujen uudet artikkelit kokonaan.",
+    "description": "Text of step 1. \"It\" is the Klikkikuri service."
+  },
+  "welcomeHowPart2Title": {
+    "message": "Kirjoittaa paremman otsikon",
+    "description": "Short bold title of step 2."
+  },
+  "welcomeHowPart2Text": {
+    "message": "Kielimalli arvioi klikin määrän, kirjoittaa tarvittaessa uuden otsikon ja merkitsee tekoälyn hajun.",
+    "description": "Text of step 2. \"AI smell\" is a colloquial phrase for an article that reads as AI-written; use an equally colloquial phrase."
+  },
+  "welcomeHowPart3Title": {
+    "message": "Julkaisee listan",
+    "description": "Short bold title of step 3."
+  },
+  "welcomeHowPart3Text": {
+    "message": "Uudet otsikot menevät julkiseen listaan, kukin artikkelinsa sormenjäljen kanssa.",
+    "description": "Text of step 3. The fingerprint is a short code that identifies an article from its address."
+  },
+  "welcomeHowPart4Title": {
+    "message": "Hakee listan",
+    "description": "Short bold title of step 4."
+  },
+  "welcomeHowPart4Text": {
+    "message": "Klikkikuri Paatti lataa listan väliajoin ja pitää sen laitteellasi.",
+    "description": "Text of step 4."
+  },
+  "welcomeHowPart5Title": {
+    "message": "Korjaa sivun",
+    "description": "Short bold title of step 5."
+  },
+  "welcomeHowPart5Text": {
+    "message": "Laajennus vertaa jokaisen linkin sormenjälkeä laitteellasi olevaan listaan. Mikään lukemasi ei lähde selaimestasi, ellet lähetä palautetta.",
+    "description": "Text of step 5. \"The extension\" is the browser extension."
+  },
+  "welcomeHowPart6Title": {
+    "message": "Palautteesi",
+    "description": "Short bold title of step 6."
+  },
+  "welcomeHowPart6Text": {
+    "message": "Lähtee vain, kun painat lähetä. Kiistetty otsikko kirjoitetaan uudelleen, kun artikkeli on vielä etusivulla.",
+    "description": "Text of step 6. Starts with the feedback as its unspoken subject: it is sent only when the user presses send. A disputed headline is one that a reader rated as no good."
+  },
+  "welcomeHowFigNews": {
+    "message": "Uutissivusto",
+    "description": "Label inside the drawing, over the news site box. Keep it to about 14 characters."
+  },
+  "welcomeHowFigService": {
+    "message": "Klikkikuri-palvelu",
+    "description": "Label inside the drawing, over the service box. Keep it to about 18 characters."
+  },
+  "welcomeHowFigBrowser": {
+    "message": "Selaimesi",
+    "description": "Label inside the drawing, over the browser box. Keep it to about 14 characters."
+  },
+  "welcomeHowFigAsUsual": {
+    "message": "kuten ennenkin",
+    "description": "Label inside the drawing, next to an arrow: the page loads from the news site as usual. Keep it short."
+  },
+  "welcomeHowFigSendA": {
+    "message": "vain kun",
+    "description": "First line of a two-line label inside the drawing, next to the feedback arrow. Reads together with the second line."
+  },
+  "welcomeHowFigSendB": {
+    "message": "painat lähetä",
+    "description": "Second line of the two-line label inside the drawing. Reads together with the first line."
+  },
+  "welcomeHowCaption": {
+    "message": "Sama sivu ilman klikkiotsikoita",
+    "description": "Caption of the drawing on the second how-it-works step, about the browser."
+  },
   "welcomeStrictnessHeading": {
-    "message": "Kuinka paljon klikkiotsikoita Klikkikurin pitää korjata?",
+    "message": "Kuinka paljon klikkiotsikoita Klikkikuri Paatin pitää korjata?",
     "description": "Heading of the strictness step."
   },
   "welcomeStrictnessText": {
-    "message": "Siirrä liukusäädintä valitaksesi, mitkä otsikot Klikkikuri kirjoittaa uudelleen.",
+    "message": "Siirrä liukusäädintä valitaksesi, mitkä otsikot Klikkikuri Paatti kirjoittaa uudelleen.",
     "description": "Text of the strictness step."
   },
   "welcomeStrictnessEndMore": {
@@ -1134,7 +1266,7 @@
     "description": "Heading of the marks step."
   },
   "welcomeMarkersText": {
-    "message": "Merkit näkyvät otsikon vieressä. Voit kytkeä jokaisen päälle tai pois. Klikkikuri toimii, vaikka kaikki olisivat pois päältä.",
+    "message": "Merkit näkyvät otsikon vieressä. Voit kytkeä jokaisen päälle tai pois. Klikkikuri Paatti toimii, vaikka kaikki olisivat pois päältä.",
     "description": "Text of the marks step."
   },
   "welcomeMarkersDefault": {
@@ -1158,7 +1290,7 @@
     "description": "One short phrase for the converted-headline mark."
   },
   "welcomeSitesHeading": {
-    "message": "Millä sivustoilla Klikkikurin pitää toimia?",
+    "message": "Millä sivustoilla Klikkikuri Paatin pitää toimia?",
     "description": "Heading of the sites step."
   },
   "welcomeSitesText": {
@@ -1173,6 +1305,50 @@
     "message": "Puuttuuko sivustosi? Pyydä sitä GitHubissa.",
     "description": "Link on the sites step."
   },
+  "welcomePopupHeading": {
+    "message": "Mitä työkalupalkin painike näyttää?",
+    "description": "Heading of the popup step. A question."
+  },
+  "welcomePopupText": {
+    "message": "Napsauta työkalupalkin Klikkikuri Paatti -painiketta nähdäksesi, mitä laajennus teki sivulla, jolla olet.",
+    "description": "Text of the popup step. The button is the extension's icon in the browser toolbar."
+  },
+  "welcomePopupPart1Title": {
+    "message": "Sivun pisteytys",
+    "description": "Short bold title of part 1."
+  },
+  "welcomePopupPart1Text": {
+    "message": "Mittari näyttää, kuinka paljon klikkiä sivulla on yhteensä.",
+    "description": "Text of part 1."
+  },
+  "welcomePopupPart2Title": {
+    "message": "Otsikot tasoittain",
+    "description": "Short bold title of part 2."
+  },
+  "welcomePopupPart2Text": {
+    "message": "Rivit laskevat otsikot kullakin tasolla. Pisteviiva on tiukkuusasetuksesi. Voit vetää sitä.",
+    "description": "Text of part 2. The strictness setting is the one from the first settings step."
+  },
+  "welcomePopupPart3Title": {
+    "message": "Palautelista",
+    "description": "Short bold title of part 3."
+  },
+  "welcomePopupPart3Text": {
+    "message": "Jokainen sivun uudelleenkirjoitus alkuperäisineen. Arvioi se täällä.",
+    "description": "Text of part 3."
+  },
+  "welcomePopupPart4Title": {
+    "message": "Tilastot ja asetukset",
+    "description": "Short bold title of part 4."
+  },
+  "welcomePopupPart4Text": {
+    "message": "Sivuston yhteenvedot ja tärkeimmät kytkimet.",
+    "description": "Text of part 4."
+  },
+  "welcomePopupCaption": {
+    "message": "Ponnahdusikkuna",
+    "description": "Caption of the popup figure."
+  },
   "siteStatusOn": {
     "message": "Päällä",
     "description": "State of a site: on."
@@ -1186,8 +1362,8 @@
     "description": "State of a site: the browser has not granted access yet."
   },
   "welcomeWrongHeading": {
-    "message": "Entä jos uudelleenkirjoitus on väärin?",
-    "description": "Heading of the mistakes step."
+    "message": "Entä jos uudelleenkirjoitus on väärin tai klikkiotsikko pääsee läpi?",
+    "description": "Heading of the mistakes step. A question."
   },
   "welcomeWrongText": {
     "message": "Jokaisella uudelleenkirjoituksella on palautekortti, jossa on kaksi vaihtoehtoa. Palaute lähetetään vain, kun painat siellä painiketta.",
@@ -1198,7 +1374,7 @@
     "description": "Name of the first feedback choice. Matches the button on the card."
   },
   "welcomeWrongGoodText": {
-    "message": "Yksi napsautus kertoo Klikkikurille, että uudelleenkirjoitus on hyvä. Se lähetetään heti.",
+    "message": "Yksi napsautus kertoo Klikkikuri-palvelulle, että uudelleenkirjoitus on hyvä. Se lähetetään heti.",
     "description": "Explains the first feedback choice."
   },
   "welcomeWrongBadTitle": {
@@ -1213,56 +1389,60 @@
     "message": "Avaa kortti klikkaamalla uudelleenkirjoitetun otsikon merkkiä, jos kytkit sen päälle. Voit käyttää myös työkalupalkin ponnahdusikkunan palautelistaa.",
     "description": "Where to find the feedback card."
   },
+  "welcomeWrongThroughTitle": {
+    "message": "Klikkiotsikko, joka pääsee läpi",
+    "description": "Bold lead-in of the note. A noun phrase, followed by the next message."
+  },
+  "welcomeWrongThroughText": {
+    "message": "Myös otsikoilla, jotka tiukkuusasetuksesi jättää ennalleen, on uudelleenkirjoitus. Ponnahdusikkunan palautelistan lopussa oleva painike näyttää ne, ja voit arvioida ne kuten muutkin uudelleenkirjoitukset.",
+    "description": "Text of the note, after the bold lead-in. The button is the one that shows headlines below the strictness setting."
+  },
+  "welcomeWrongStillTitle": {
+    "message": "Miksi näen edelleen klikkiotsikoita?",
+    "description": "Summary of a folded block on the mistakes step. A question."
+  },
+  "welcomeWrongStill1": {
+    "message": "Lista päivittyy väliajoin, joten uusimmat otsikot odottavat seuraavaa päivitystä.",
+    "description": "One reason in the folded list on the mistakes step."
+  },
+  "welcomeWrongStill2": {
+    "message": "Uutissivustot nostavat joskus etusivuilleen vanhempia artikkeleita. Klikkikuri-palvelu lukee vain uudet artikkelit, joten niiden otsikot pysyvät ennallaan.",
+    "description": "One reason in the folded list on the mistakes step."
+  },
+  "welcomeWrongStill3": {
+    "message": "Artikkelisivu pitää oman otsikkonsa. Klikkikuri Paatti kirjoittaa uudelleen vain siihen johtavat linkit.",
+    "description": "One reason in the folded list on the mistakes step."
+  },
+  "welcomeWrongStill4": {
+    "message": "Maksumuurin takana olevien artikkelien otsikot pysyvät ennallaan ilmaisversiossa.",
+    "description": "One reason in the folded list on the mistakes step."
+  },
+  "welcomeWrongStill5": {
+    "message": "Klikkikuri Paatti toimii vain tuetuilla sivustoilla, eikä kaikissa aiheissa.",
+    "description": "One reason in the folded list on the mistakes step."
+  },
   "welcomeWrongCaption": {
     "message": "Palautteen antaminen uudelleenkirjoituksesta",
     "description": "Caption of the mistakes figure."
-  },
-  "welcomeCorrectionsHeading": {
-    "message": "Miten saat uudet korjaukset?",
-    "description": "Heading of the new fixes step."
-  },
-  "welcomeCorrectionsText": {
-    "message": "Klikkikuri tuo uudet korjaukset selaimeesi itse. Voit valita, kuinka usein se tarkistaa.",
-    "description": "Text of the new fixes step."
-  },
-  "welcomeCorrectionsHelp": {
-    "message": "Ylläpitäjät käyttävät palautetta uudelleenkirjoitusten tarkkuuden tarkistamiseen, joten palautteesi voi johtaa parempiin korjauksiin myöhemmin.",
-    "description": "Note on the new fixes step."
-  },
-  "welcomeFlowFeedback": {
-    "message": "Palautteesi",
-    "description": "First box of the flow figure."
-  },
-  "welcomeFlowFixes": {
-    "message": "Uudet korjaukset",
-    "description": "Second box of the flow figure."
-  },
-  "welcomeFlowBrowser": {
-    "message": "Selaimesi",
-    "description": "Third box of the flow figure."
-  },
-  "welcomeCorrectionsCaption": {
-    "message": "Miten korjaus saapuu sinulle",
-    "description": "Caption of the flow figure."
   },
   "welcomeReadyHeading": {
     "message": "Valmis kokeilemaan Klikkikuri Paattia?",
     "description": "Heading of the last step."
   },
   "welcomeReadyOpen": {
-    "message": "Avaa uutissivusto:",
-    "description": "Label before the news site buttons."
+    "message": "Avaa käytössä oleva uutissivusto:",
+    "description": "Label before the news site buttons. The buttons are the supported sites that the user has switched on."
   },
   "welcomeReadyPinChromium": {
-    "message": "Kiinnitä Klikkikuri helpompaa käyttöä varten: avaa työkalupalkin palapelivalikko ja valitse nastakuvake.",
+    "message": "Kiinnitä Klikkikuri Paatti helpompaa käyttöä varten: avaa työkalupalkin palapelivalikko ja valitse nastakuvake.",
     "description": "Hint to pin the extension in Chromium browsers."
   },
   "welcomeReadyPinFirefox": {
-    "message": "Kiinnitä Klikkikuri helpompaa käyttöä varten: avaa työkalupalkin laajennuspainike ja valitse Kiinnitä työkalupalkkiin.",
+    "message": "Kiinnitä Klikkikuri Paatti helpompaa käyttöä varten: avaa työkalupalkin laajennuspainike ja valitse Kiinnitä työkalupalkkiin.",
     "description": "Hint to pin the extension in Firefox."
   },
   "welcomeReadyPinAndroid": {
-    "message": "Löydät Klikkikurin avaamalla Firefoxin valikon ja valitsemalla Laajennukset.",
+    "message": "Löydät Klikkikuri Paatin avaamalla Firefoxin valikon ja valitsemalla Laajennukset.",
     "description": "Hint for Firefox for Android."
   },
   "welcomeReadyFeedback": {
@@ -1270,12 +1450,20 @@
     "description": "Where to give feedback. Shown in the short setup only."
   },
   "welcomeReadyPrivacy": {
-    "message": "Klikkikuri vertaa otsikoita laitteellasi olevaan tietokantaan. Se lähettää palautteesi vain, kun painat lähetä.",
+    "message": "Klikkikuri Paatti vertaa otsikoita laitteellasi olevaan listaan. Se lähettää palautteesi tai sähköpostiosoitteesi vain, kun painat lähetä.",
     "description": "Short privacy statement on the last step."
   },
   "welcomeReadyPrivacyLink": {
     "message": "Lue tietosuojaseloste",
     "description": "Link to the privacy policy."
+  },
+  "welcomeReadyPaid": {
+    "message": "Klikkikuri Paatti on ilmainen. Suunnitteilla on maksullinen versio, joka korjaa myös maksumuurin takana olevat otsikot. Se ei ole vielä saatavilla.",
+    "description": "Quiet note on the last step about the paid version."
+  },
+  "welcomeReadyPaidTitle": {
+    "message": "Kutsu maksulliseen versioon",
+    "description": "Title on the border of the waitlist box on the last step."
   },
   "welcomeReadyAllSettings": {
     "message": "Kaikki asetukset",
@@ -1298,11 +1486,11 @@
     "description": "Link on the last step."
   },
   "welcomeReadyCaption": {
-    "message": "Mistä Klikkikurin löytää",
+    "message": "Mistä Klikkikuri Paatin löytää",
     "description": "Caption of the toolbar figure."
   },
   "popupSetupLine": {
-    "message": "Ota Klikkikuri käyttöön",
+    "message": "Ota Klikkikuri Paatti käyttöön",
     "description": "Line in the popup that offers the setup wizard."
   },
   "popupSetupHide": {
@@ -1334,8 +1522,8 @@
     "description": "Illustrative sample headline for clickbait level 4, as a site would write it. It is fiction: not a claim about real statements or events."
   },
   "welcomeInfoTitle": {
-    "message": "Miten Klikkikuri kirjoittaa otsikon",
-    "description": "Title of the infobox on the strictness step."
+    "message": "Miten Klikkikuri-palvelu kirjoittaa otsikon",
+    "description": "Summary of the folded block on the how-it-works step. Clicking it opens the steps and rules of a rewrite."
   },
   "welcomeInfoStepRead": {
     "message": "Se lukee koko artikkelin, ei vain otsikkoa.",
@@ -1369,12 +1557,28 @@
     "message": "Esimerkki",
     "description": "Label before the example headline."
   },
+  "welcomeInfoExampleOriginal": {
+    "message": "Alkuperäinen",
+    "description": "Small label before the original headline of the example."
+  },
+  "welcomeInfoExampleRewritten": {
+    "message": "Uudelleenkirjoitettu",
+    "description": "Small label before the rewritten headline of the example."
+  },
+  "welcomeInfoExampleBefore": {
+    "message": "Elinkeinoelämä ärähtää: Tämä on Suomen tuho!",
+    "description": "Example of an original clickbait headline. Illustrative fiction: not a claim about real statements, people or organizations. It uses a collective, official-sounding name for one lobby group."
+  },
+  "welcomeInfoExampleWhy": {
+    "message": "Alkuperäinen saa lobbausjärjestön kuulostamaan koko elinkeinoelämältä.",
+    "description": "One line under the example that names the trick of the original headline."
+  },
   "welcomeInfoExample": {
-    "message": "Työnantajien etujärjestö EK arvioi Manna Sarin yritysveron korotuksen heikentävän yritysten toimintaedellytyksiä",
-    "description": "Example of a converted headline. Illustrative fiction: not a claim about real statements or events."
+    "message": "Työnantajien lobbausjärjestön mukaan työntekijät tienaavat liikaa",
+    "description": "Example headline after a rewrite. Illustrative fiction: not a claim about real statements, people or organizations."
   },
   "welcomeSitesCaptionIndex": {
-    "message": "Etusivut ja listaukset: Klikkikuri kirjoittaa otsikot uudelleen",
+    "message": "Etusivut ja listaukset: Klikkikuri Paatti kirjoittaa otsikot uudelleen",
     "description": "Caption of the first figure of the sites step."
   },
   "welcomeSitesCaptionArticle": {

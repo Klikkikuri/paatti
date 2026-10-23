@@ -10,13 +10,19 @@ describe('buildDeck', () => {
         assert.deepEqual(ids(buildDeck('quick')), ['strictness', 'markers', 'sites', 'ready']);
     });
 
-    test('tour mode has all six, in order', () => {
-        assert.deepEqual(ids(buildDeck('tour')), ids(SLIDES));
-        assert.equal(buildDeck('tour').length, 6);
+    test('the quick deck does not get the welcome step', () => {
+        assert.equal(ids(buildDeck('quick')).includes('welcome'), false);
     });
 
-    test('the tour adds the two feedback slides between the sites and the end', () => {
-        assert.deepEqual(ids(buildDeck('tour')).slice(3, 5), ['wrong', 'corrections']);
+    test('tour mode has all nine, in order', () => {
+        assert.deepEqual(ids(buildDeck('tour')), ['welcome', 'service', 'browser', 'strictness', 'markers', 'sites', 'popup', 'wrong', 'ready']);
+        assert.deepEqual(ids(buildDeck('tour')), ids(SLIDES));
+    });
+
+    test('the tour opens with the welcome step and how it works, and puts the popup and the mistakes between the sites and the end', () => {
+        assert.equal(ids(buildDeck('tour'))[0], 'welcome');
+        assert.deepEqual(ids(buildDeck('tour')).slice(1, 3), ['service', 'browser']);
+        assert.deepEqual(ids(buildDeck('tour')).slice(6, 8), ['popup', 'wrong']);
     });
 
     test('an unknown mode is the quick deck', () => {

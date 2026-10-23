@@ -47,26 +47,10 @@ detailedTemplate.innerHTML = `
     </div>
 `;
 
-// The setup wizard's layout: the interval, and when it last ran. No manual update, no database vocabulary.
-const intervalTemplate = document.createElement('template');
-intervalTemplate.innerHTML = `
-    <div class="setting-group">
-        <label class="setting-label">
-            <div class="label-text">
-                <strong data-i18n="dbRefreshIntervalTitle">Automatic update interval</strong>
-                <span data-i18n="dbRefreshIntervalDesc">Set the automatic fetch interval for new data in minutes</span>
-            </div>
-            <input type="number" id="refreshInterval" min="1" max="1440" value="20" style="width: 5rem; padding: 0.5rem; border: 0.125rem solid var(--color-border); border-radius: 0.375rem; font-size: 1em; text-align: center;">
-        </label>
-    </div>
-    <p class="text-muted-small" style="margin: 0.75rem 0 0;"><strong data-i18n="dbLastFetchedTitle">Last fetched</strong>: <span id="dbLastUpdatedText">—</span></p>
-`;
-
 /**
  * Custom element managing uutistietokanta (news database) status display and manual updates.
  * Supports layout="compact" (popup settings view, and the popup home view when the database is
- * empty), layout="detailed" (options page) and layout="interval" (setup wizard: the interval and the last
- * update only).
+ * empty) and layout="detailed" (options page).
  *
  * Its handles are classes rather than ids because the popup carries two compact instances at once.
  * `setting-saved` is dispatched from every layout; which page listens is that page's business.
@@ -81,7 +65,7 @@ class DatabaseStatusSetting extends ComponentBase {
             const btn = this.querySelector('.db-update-btn');
             if (btn) btn.textContent = btnText;
         } else {
-            this.replaceChildren((layout === 'interval' ? intervalTemplate : detailedTemplate).content.cloneNode(true));
+            this.replaceChildren(detailedTemplate.content.cloneNode(true));
             localizeDocument(this);
         }
 

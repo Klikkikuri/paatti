@@ -11,12 +11,59 @@
 </head>
 
 <body>
-    <!-- The hatching that the drawings use for "this part changes". One definition, referenced by id. -->
+    <!--
+      THE GRAMMAR OF THE FIGURES. Every drawing on these slides, and the sample boxes of the strictness step,
+      say the same thing the same way. A new drawing uses only what is listed here. Change a meaning here and in
+      welcome.css together, and then in every figure.
+
+      The idea: clickbait shouts, and Klikkikuri Paatti makes it quiet. Loudness follows clickbait, not the extension.
+
+      Shapes (state)
+        box                a headline or a part of the page. Solid, in ink.
+        loud line (.hl)    a clickbait headline as the site wrote it: thick and orange, with "!!" beside it. The
+                           loudest thing in a drawing. A headline that still shouts is one that was left alone.
+        muted box (.on)    rewritten by Klikkikuri Paatti: the box is dashed, its headline (.calm) is a faded ink
+                           line, and a small tick (the converted mark) sits at its right. welcome.js draws the tick.
+                           The new headline itself is never shown.
+
+      The one exception: the sample headlines of the strictness step. They answer "what happens to this headline at
+      my setting?", so they show the action, not the loudness: rewritten is solid with an orange bar and an orange
+      label, left as it is is dashed and faded. welcome.css carries it, beside the samples.
+        thin grey line     the rest of the text (.tl).
+        thin circle        an icon or a favicon. Klikkikuri Paatti, the extension, is an orange circle (.mark) with a
+                           boat in it. It sits beside the page, never in its path: the page loads as usual.
+        fingerprint (.fp)  two rings: the code that identifies an article. The same glyph on both sides of a match.
+        tinted circle      a mark that is switched on (the marks step).
+
+      Colour
+        ink                boxes, calm lines, text and arrows: everything quiet.
+        orange (accent)    clickbait (the loud line, "!!", the edge of a clickbait sample), and small pointers:
+                           callout circles and their leaders, the strictness line, the feedback arrow, the
+                           Klikkikuri Paatti icon. A rewritten headline is never orange.
+
+      Dimming
+        35 %               a part that is off, or not what this step is about (an off mark, the zone of the other
+                           how-it-works step). Drawings only. Real text is never dimmed below 70 %, for contrast.
+
+      Marks on the page
+        callout            numbered circle with a straight leader. The numbers match the parts list beside the figure.
+        caption            "Fig. n" in spaced capitals under the drawing; the numbers run over the whole deck.
+        label in a figure  a short word in spaced capitals (.zone-label), 10 units; callouts and glyphs are 12.
+        arrow              ink with an arrowhead: something moves. Dashed: it happens without Klikkikuri Paatti.
+                           Double-headed (.swap): Klikkikuri Paatti swaps a headline on the page, in place.
+                           The heavy orange arrow is the one that leaves the browser: feedback, sent on request.
+
+      Drawn once, stated once: the how-it-works drawing is the template below, and both steps show a copy.
+    -->
+    <!-- The arrowheads of the drawings. One definition each, referenced by id. -->
     <svg class="wf-defs" width="0" height="0" aria-hidden="true" focusable="false">
         <defs>
-            <pattern id="wf-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                <line x1="0" y1="0" x2="0" y2="6" class="wf-hatch-line" />
-            </pattern>
+            <marker id="wf-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+                <path d="M0 1 L9 5 L0 9 Z" class="wf-arrow-head" />
+            </marker>
+            <marker id="wf-arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto">
+                <path d="M0 1 L9 5 L0 9 Z" class="wf-arrow-head accent" />
+            </marker>
         </defs>
     </svg>
 
@@ -28,7 +75,138 @@
 
     <main id="deck">
 
-        <!-- 1. STRICTNESS -->
+        <!-- The drawing of both how-it-works steps. welcome.js puts a copy into each figure; the figure's
+             data-focus dims the zone that the step is not about. -->
+        <template id="how-drawing">
+            <svg class="wf" viewBox="0 0 320 304" role="img">
+                <!-- News site: the front page as the site sends it. Two headlines carry clickbait. Never dimmed: it is the "before". -->
+                <g data-zone="news">
+                    <rect class="box" x="8" y="8" width="140" height="120" rx="4" /><text class="zone-label" x="16" y="22" data-i18n="welcomeHowFigNews">News site</text>
+                    <rect class="box" x="18" y="32" width="120" height="18" rx="2" /><line class="tl" x1="26" y1="41" x2="100" y2="41" />
+                    <rect class="box" x="18" y="54" width="120" height="18" rx="2" /><line class="tl hl" x1="26" y1="63" x2="106" y2="63" /><text class="glyph shout" x="130" y="67" text-anchor="end">!!</text>
+                    <rect class="box" x="18" y="76" width="120" height="18" rx="2" /><line class="tl" x1="26" y1="85" x2="96" y2="85" />
+                    <rect class="box" x="18" y="98" width="120" height="18" rx="2" /><line class="tl hl" x1="26" y1="107" x2="106" y2="107" /><text class="glyph shout" x="130" y="111" text-anchor="end">!!</text>
+                </g>
+
+                <!-- Klikkikuri service: the articles come in, the model rewrites, the list of fingerprints and headlines. -->
+                <g data-zone="service">
+                    <rect class="box" x="172" y="8" width="140" height="120" rx="4" /><text class="zone-label" x="180" y="22" data-i18n="welcomeHowFigService">Klikkikuri service</text>
+                    <line class="arrow" x1="148" y1="60" x2="172" y2="60" />
+                    <rect class="box" x="182" y="34" width="44" height="26" rx="3" /><text class="glyph" x="204" y="51" text-anchor="middle">AI</text>
+                    <line class="arrow" x1="204" y1="60" x2="204" y2="76" />
+                    <g class="fp"><circle cx="192" cy="88" r="5" /><circle cx="192" cy="88" r="2" /></g><line class="tl" x1="204" y1="88" x2="266" y2="88" />
+                    <g class="fp"><circle cx="192" cy="108" r="5" /><circle cx="192" cy="108" r="2" /></g><line class="tl" x1="204" y1="108" x2="266" y2="108" />
+                    <g class="callout"><circle cx="160" cy="42" r="9" /><text x="160" y="46" text-anchor="middle">1</text></g>
+                    <g class="callout"><circle cx="244" cy="47" r="9" /><text x="244" y="51" text-anchor="middle">2</text></g>
+                    <g class="callout"><circle cx="294" cy="98" r="9" /><text x="294" y="102" text-anchor="middle">3</text></g>
+                </g>
+
+                <!-- Your browser: the page arrives as usual and the list comes down. Klikkikuri Paatti, the boat beside the page,
+                     swaps the clickbait headlines in place for the ones in the list. Feedback goes back from it. -->
+                <g data-zone="browser">
+                    <rect class="box" x="8" y="176" width="228" height="124" rx="4" /><text class="zone-label" x="16" y="190" data-i18n="welcomeHowFigBrowser">Your browser</text>
+                    <rect class="box" x="18" y="198" width="112" height="18" rx="2" /><line class="tl" x1="26" y1="207" x2="94" y2="207" />
+                    <rect class="box on" x="18" y="220" width="112" height="18" rx="2" /><line class="tl calm" x1="26" y1="229" x2="100" y2="229" />
+                    <rect class="box" x="18" y="242" width="112" height="18" rx="2" /><line class="tl" x1="26" y1="251" x2="90" y2="251" />
+                    <rect class="box on" x="18" y="264" width="112" height="18" rx="2" /><line class="tl calm" x1="26" y1="273" x2="100" y2="273" />
+                    <circle class="mark" cx="200" cy="246" r="20" />
+                    <g class="boat"><path d="M188 249 H212 L207 257 H193 Z" /><path d="M200 233 V248" /><path d="M200 235 L210 247 H200 Z" /></g>
+                    <line class="arrow swap" x1="181" y1="239" x2="134" y2="229" />
+                    <line class="arrow swap" x1="184" y1="258" x2="134" y2="273" />
+                    <line class="arrow dashed" x1="78" y1="128" x2="78" y2="176" /><text class="zone-label" x="88" y="156" data-i18n="welcomeHowFigAsUsual">as usual</text>
+                    <line class="arrow" x1="200" y1="128" x2="200" y2="226" />
+                    <path class="arrow send" d="M220 246 H300 V130" />
+                    <text class="zone-label send-label" x="294" y="150" text-anchor="end" data-i18n="welcomeHowFigSendA">only when you</text>
+                    <text class="zone-label send-label" x="294" y="163" text-anchor="end" data-i18n="welcomeHowFigSendB">press send</text>
+                    <g class="callout"><circle cx="186" cy="152" r="9" /><text x="186" y="156" text-anchor="middle">4</text></g>
+                    <g class="callout"><circle cx="156" cy="251" r="9" /><text x="156" y="255" text-anchor="middle">5</text></g>
+                    <g class="callout"><circle cx="300" cy="196" r="9" /><text x="300" y="200" text-anchor="middle">6</text></g>
+                </g>
+            </svg>
+        </template>
+
+        <!-- 1. WELCOME (tour) -->
+        <section class="slide" id="slide-welcome" data-slide="welcome" data-tour aria-labelledby="heading-welcome">
+            <div class="slide-inner">
+                <div class="welcome-hero">
+                    <svg class="wf welcome-mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+                        <circle class="mark" cx="20" cy="20" r="18.5" />
+                        <g class="boat"><path d="M8 27 H32 L27 33 H13 Z" /><path d="M20 10 V26" /><path d="M20 12 L30 25 H20 Z" /></g>
+                    </svg>
+                    <h1 id="heading-welcome" class="slide-heading" tabindex="-1" data-i18n="welcomeWelcomeHeading">Welcome to Klikkikuri Paatti</h1>
+                    <p class="welcome-lead" data-i18n="welcomeWelcomeLead">Klikkikuri Paatti is a browser extension that replaces clickbait headlines with neutral headlines on supported news sites. You will not notice Klikkikuri Paatti when it works. Your blood pressure will notice when it stops.</p>
+                </div>
+                <ul class="welcome-points">
+                    <li><strong data-i18n="welcomeWelcomeServiceTitle">The service writes the headlines</strong><span data-i18n="welcomeWelcomeServiceText">The Klikkikuri service reads each new article on the front pages of supported sites. AI decides if the headline is clickbait and writes a new one when needed.</span></li>
+                    <li><strong data-i18n="welcomeWelcomePrivacyTitle">Your reading stays on your device</strong><span data-i18n="welcomeWelcomePrivacyText">The Klikkikuri Paatti browser extension checks each headline against a list on your device. Nothing about what you read goes to the service unless you send feedback.</span></li>
+                    <li><strong data-i18n="welcomeWelcomeOpenTitle">Free as in beer, free as in freedom</strong><span data-i18n="welcomeWelcomeOpenText">The basic version is free as in beer: it costs nothing. The code is free as in freedom: the Klikkikuri Paatti browser extension and the service are open source under the EUPL-1.2 license. A planned paid version will also fix headlines behind a paywall.</span></li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 2. THE SERVICE (tour) -->
+        <section class="slide" id="slide-service" data-slide="service" data-tour aria-labelledby="heading-service">
+            <div class="slide-inner">
+                <h1 id="heading-service" class="slide-heading" tabindex="-1" data-i18n="welcomeServiceHeading">Where do the new headlines come from?</h1>
+                <div class="slide-grid">
+                    <div class="slide-control">
+                        <ol class="parts parts-text parts-inline">
+                            <li><span class="part-number">1</span><div><strong data-i18n="welcomeHowPart1Title">Reads the news</strong><span data-i18n="welcomeHowPart1Text">It reads each new article on the front pages of supported sites in full.</span></div></li>
+                            <li><span class="part-number">2</span><div><strong data-i18n="welcomeHowPart2Title">Writes a better headline</strong><span data-i18n="welcomeHowPart2Text">A language model rates the clickbait, writes a new headline if needed, and notes any AI smell.</span></div></li>
+                            <li><span class="part-number">3</span><div><strong data-i18n="welcomeHowPart3Title">Publishes a list</strong><span data-i18n="welcomeHowPart3Text">New headlines go into a public list, each with the fingerprint of its article.</span></div></li>
+                        </ol>
+
+                        <details class="more">
+                            <summary><span class="info-dot" aria-hidden="true">i</span><span class="more-title" data-i18n="welcomeInfoTitle">How the Klikkikuri service writes a headline</span></summary>
+                            <div class="infobox">
+                                <ol class="infobox-steps">
+                                    <li data-i18n="welcomeInfoStepRead">It reads the whole article, not only the headline.</li>
+                                    <li data-i18n="welcomeInfoStepCheck">It checks if the original headline is clickbait.</li>
+                                    <li><span data-i18n="welcomeInfoStepWrite">It writes a new headline by these rules:</span>
+                                        <ul class="infobox-rules">
+                                            <li data-i18n="welcomeInfoRuleDoer">Says who does what, in plain active words.</li>
+                                            <li data-i18n="welcomeInfoRuleAttribute">Gives an opinion or a forecast to the one who made it.</li>
+                                            <li data-i18n="welcomeInfoRuleRole">Names the role of the speaker, and says if the source has an interest in the matter.</li>
+                                            <li data-i18n="welcomeInfoRuleNeutral">Uses neutral words. No drama, no hook.</li>
+                                        </ul>
+                                    </li>
+                                </ol>
+                                <div class="infobox-example">
+                                    <span class="infobox-example-label" data-i18n="welcomeInfoExampleLabel">Example</span>
+                                    <p class="example-row"><span class="example-tag" data-i18n="welcomeInfoExampleOriginal">Original</span><span data-i18n="welcomeInfoExampleBefore">The economy snaps: This will ruin Finland!</span></p>
+                                    <p class="example-row"><span class="example-tag" data-i18n="welcomeInfoExampleRewritten">Rewritten</span><span data-i18n="welcomeInfoExample">Employers' lobby group says workers earn too much</span></p>
+                                    <p class="example-why" data-i18n="welcomeInfoExampleWhy">The original makes a lobby group sound like the whole economy.</p>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                    <figure class="slide-figure how-figure" data-focus="service">
+                        <figcaption id="caption-service"><span class="fig-label" data-i18n="welcomeFigureLabel">Fig.</span> <span class="fig-number"></span> <span data-i18n="welcomeServiceCaption">Where a new headline comes from</span></figcaption>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. YOUR BROWSER (tour) -->
+        <section class="slide" id="slide-browser" data-slide="browser" data-tour aria-labelledby="heading-browser">
+            <div class="slide-inner">
+                <h1 id="heading-browser" class="slide-heading" tabindex="-1" data-i18n="welcomeBrowserHeading">What happens in your browser?</h1>
+                <div class="slide-grid">
+                    <div class="slide-control">
+                        <ol class="parts parts-text parts-inline">
+                            <li><span class="part-number">4</span><div><strong data-i18n="welcomeHowPart4Title">Gets the list</strong><span data-i18n="welcomeHowPart4Text">Klikkikuri Paatti downloads the list at intervals and keeps it on your device.</span></div></li>
+                            <li><span class="part-number">5</span><div><strong data-i18n="welcomeHowPart5Title">Fixes the page</strong><span data-i18n="welcomeHowPart5Text">The extension matches the fingerprint of each link against the list on your device. Nothing you read leaves your browser unless you send feedback.</span></div></li>
+                            <li><span class="part-number">6</span><div><strong data-i18n="welcomeHowPart6Title">Your feedback</strong><span data-i18n="welcomeHowPart6Text">Sent only when you press send. A disputed headline is written again while the article is on a front page.</span></div></li>
+                        </ol>
+                    </div>
+                    <figure class="slide-figure how-figure" data-focus="browser">
+                        <figcaption id="caption-browser"><span class="fig-label" data-i18n="welcomeFigureLabel">Fig.</span> <span class="fig-number"></span> <span data-i18n="welcomeHowCaption">The same page, without the clickbait</span></figcaption>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. STRICTNESS -->
         <section class="slide" id="slide-strictness" data-slide="strictness" aria-labelledby="heading-strictness">
             <div class="slide-inner">
                 <h1 id="heading-strictness" class="slide-heading" tabindex="-1" data-i18n="welcomeStrictnessHeading">How much clickbait should Klikkikuri fix?</h1>
@@ -42,22 +220,6 @@
                                 <button type="button" class="range-end" data-level="4" data-i18n="welcomeStrictnessEndWorst">Fix only the worst</button>
                             </div>
                         </div>
-                        <aside class="infobox" aria-labelledby="infobox-title">
-                            <h2 id="infobox-title" class="infobox-title" data-i18n="welcomeInfoTitle">How Klikkikuri writes a headline</h2>
-                            <ol class="infobox-steps">
-                                <li data-i18n="welcomeInfoStepRead">It reads the whole article, not only the headline.</li>
-                                <li data-i18n="welcomeInfoStepCheck">It checks if the original headline is clickbait.</li>
-                                <li><span data-i18n="welcomeInfoStepWrite">It writes a new headline by these rules:</span>
-                                    <ul class="infobox-rules">
-                                        <li data-i18n="welcomeInfoRuleDoer">Says who does what, in plain active words.</li>
-                                        <li data-i18n="welcomeInfoRuleAttribute">Gives an opinion or a forecast to the one who made it.</li>
-                                        <li data-i18n="welcomeInfoRuleRole">Names the role of the speaker, and says if the source has an interest in the matter.</li>
-                                        <li data-i18n="welcomeInfoRuleNeutral">Uses neutral words. No drama, no hook.</li>
-                                    </ul>
-                                </li>
-                            </ol>
-                            <p class="infobox-example"><span class="infobox-example-label" data-i18n="welcomeInfoExampleLabel">Example</span><span data-i18n="welcomeInfoExample">Employers' federation EK assesses that Manna Sari's corporate tax increase would weaken companies' operating conditions</span></p>
-                        </aside>
                     </div>
                     <figure class="slide-figure">
                         <ol class="samples" id="strictness-samples">
@@ -73,7 +235,7 @@
             </div>
         </section>
 
-        <!-- 2. MARKS -->
+        <!-- 5. MARKS -->
         <section class="slide" id="slide-markers" data-slide="markers" aria-labelledby="heading-markers">
             <div class="slide-inner">
                 <h1 id="heading-markers" class="slide-heading" tabindex="-1" data-i18n="welcomeMarkersHeading">What marks do you want to see?</h1>
@@ -105,7 +267,7 @@
             </div>
         </section>
 
-        <!-- 3. SITES -->
+        <!-- 6. SITES -->
         <section class="slide" id="slide-sites" data-slide="sites" aria-labelledby="heading-sites">
             <div class="slide-inner">
                 <h1 id="heading-sites" class="slide-heading" tabindex="-1" data-i18n="welcomeSitesHeading">Where should Klikkikuri work?</h1>
@@ -122,23 +284,23 @@
                                 <rect class="box" x="8" y="8" width="304" height="154" rx="4" />
                                 <rect class="box" x="8" y="8" width="304" height="24" rx="4" />
                                 <circle cx="24" cy="20" r="5" /><line class="tl" x1="40" y1="20" x2="150" y2="20" />
-                                <rect class="box on" x="22" y="42" width="130" height="52" rx="2" /><line class="tl hl" x1="32" y1="56" x2="140" y2="56" /><line class="tl" x1="32" y1="70" x2="120" y2="70" /><line class="tl" x1="32" y1="82" x2="100" y2="82" />
-                                <rect class="box on" x="168" y="42" width="130" height="52" rx="2" /><line class="tl hl" x1="178" y1="56" x2="286" y2="56" /><line class="tl" x1="178" y1="70" x2="266" y2="70" /><line class="tl" x1="178" y1="82" x2="250" y2="82" />
-                                <rect class="box on" x="22" y="104" width="130" height="52" rx="2" /><line class="tl hl" x1="32" y1="118" x2="140" y2="118" /><line class="tl" x1="32" y1="132" x2="116" y2="132" /><line class="tl" x1="32" y1="144" x2="96" y2="144" />
-                                <rect class="box on" x="168" y="104" width="130" height="52" rx="2" /><line class="tl hl" x1="178" y1="118" x2="286" y2="118" /><line class="tl" x1="178" y1="132" x2="260" y2="132" /><line class="tl" x1="178" y1="144" x2="240" y2="144" />
+                                <rect class="box on" x="22" y="42" width="130" height="52" rx="2" /><line class="tl calm" x1="32" y1="56" x2="140" y2="56" /><line class="tl" x1="32" y1="70" x2="120" y2="70" /><line class="tl" x1="32" y1="82" x2="100" y2="82" />
+                                <rect class="box on" x="168" y="42" width="130" height="52" rx="2" /><line class="tl calm" x1="178" y1="56" x2="286" y2="56" /><line class="tl" x1="178" y1="70" x2="266" y2="70" /><line class="tl" x1="178" y1="82" x2="250" y2="82" />
+                                <rect class="box on" x="22" y="104" width="130" height="52" rx="2" /><line class="tl calm" x1="32" y1="118" x2="140" y2="118" /><line class="tl" x1="32" y1="132" x2="116" y2="132" /><line class="tl" x1="32" y1="144" x2="96" y2="144" />
+                                <rect class="box on" x="168" y="104" width="130" height="52" rx="2" /><line class="tl calm" x1="178" y1="118" x2="286" y2="118" /><line class="tl" x1="178" y1="132" x2="260" y2="132" /><line class="tl" x1="178" y1="144" x2="240" y2="144" />
                             </svg>
-                            <figcaption id="caption-sites-index"><span class="fig-label" data-i18n="welcomeFigureLabel">Fig.</span> <span class="fig-number"></span> <span data-i18n="welcomeSitesCaptionIndex">Index pages: Klikkikuri rewrites the headlines</span></figcaption>
+                            <figcaption id="caption-sites-index"><span class="fig-label" data-i18n="welcomeFigureLabel">Fig.</span> <span class="fig-number"></span> <span data-i18n="welcomeSitesCaptionIndex">Index pages: Klikkikuri Paatti rewrites the headlines</span></figcaption>
                         </figure>
                         <figure class="slide-figure">
                             <svg class="wf" viewBox="0 0 320 170" role="img" aria-labelledby="caption-sites-article">
                                 <rect class="box" x="8" y="8" width="304" height="154" rx="4" />
                                 <rect class="box" x="8" y="8" width="304" height="24" rx="4" />
                                 <circle cx="24" cy="20" r="5" /><line class="tl" x1="40" y1="20" x2="100" y2="20" /><line x1="109" y1="26" x2="115" y2="14" /><line class="tl" x1="124" y1="20" x2="148" y2="20" />
-                                <rect class="box left" x="22" y="44" width="188" height="34" rx="2" /><line class="tl" x1="32" y1="61" x2="190" y2="61" style="stroke-width: 6" />
+                                <rect class="box" x="22" y="44" width="188" height="34" rx="2" /><line class="tl hl" x1="32" y1="61" x2="168" y2="61" style="stroke-width: 6" /><text class="glyph shout" x="200" y="66" text-anchor="end">!!</text>
                                 <line class="tl" x1="22" y1="98" x2="210" y2="98" /><line class="tl" x1="22" y1="112" x2="204" y2="112" /><line class="tl" x1="22" y1="126" x2="210" y2="126" /><line class="tl" x1="22" y1="140" x2="150" y2="140" />
-                                <rect class="box on" x="222" y="44" width="76" height="34" rx="2" /><line class="tl hl" x1="230" y1="56" x2="290" y2="56" /><line class="tl" x1="230" y1="68" x2="272" y2="68" />
-                                <rect class="box on" x="222" y="86" width="76" height="34" rx="2" /><line class="tl hl" x1="230" y1="98" x2="290" y2="98" /><line class="tl" x1="230" y1="110" x2="272" y2="110" />
-                                <rect class="box on" x="222" y="128" width="76" height="26" rx="2" /><line class="tl hl" x1="230" y1="141" x2="290" y2="141" />
+                                <rect class="box on" x="222" y="44" width="76" height="34" rx="2" /><line class="tl calm" x1="230" y1="56" x2="290" y2="56" /><line class="tl" x1="230" y1="68" x2="272" y2="68" />
+                                <rect class="box on" x="222" y="86" width="76" height="34" rx="2" /><line class="tl calm" x1="230" y1="98" x2="290" y2="98" /><line class="tl" x1="230" y1="110" x2="272" y2="110" />
+                                <rect class="box on" x="222" y="128" width="76" height="26" rx="2" /><line class="tl calm" x1="230" y1="141" x2="290" y2="141" />
                             </svg>
                             <figcaption id="caption-sites-article"><span class="fig-label" data-i18n="welcomeFigureLabel">Fig.</span> <span class="fig-number"></span> <span data-i18n="welcomeSitesCaptionArticle">Article page: the headline stays as the site wrote it</span></figcaption>
                         </figure>
@@ -147,18 +309,75 @@
             </div>
         </section>
 
-        <!-- 4. MISTAKES (tour) -->
+        <!-- 7. POPUP (tour) -->
+        <section class="slide" id="slide-popup" data-slide="popup" data-tour aria-labelledby="heading-popup">
+            <div class="slide-inner">
+                <h1 id="heading-popup" class="slide-heading" tabindex="-1" data-i18n="welcomePopupHeading">What does the toolbar button show?</h1>
+                <div class="slide-grid">
+                    <div class="slide-control">
+                        <p data-i18n="welcomePopupText">Click the Klikkikuri Paatti button in the toolbar to see what the extension did on the page you are on.</p>
+                        <p class="note pin-hint" data-for="chromium" data-i18n="welcomeReadyPinChromium">Pin Klikkikuri Paatti for easier access: open the puzzle-piece menu in the toolbar and select the pin.</p>
+                        <p class="note pin-hint" data-for="firefox" data-i18n="welcomeReadyPinFirefox">Pin Klikkikuri Paatti for easier access: open the extensions button in the toolbar and choose Pin to Toolbar.</p>
+                        <p class="note pin-hint" data-for="android" data-i18n="welcomeReadyPinAndroid">To find Klikkikuri Paatti, open the Firefox menu and choose Extensions.</p>
+                        <ol class="parts parts-text">
+                            <li><span class="part-number">1</span><div><strong data-i18n="welcomePopupPart1Title">Page score</strong><span data-i18n="welcomePopupPart1Text">A gauge shows how much clickbait the page has in total.</span></div></li>
+                            <li><span class="part-number">2</span><div><strong data-i18n="welcomePopupPart2Title">Headlines by level</strong><span data-i18n="welcomePopupPart2Text">Rows count the headlines at each level. The dotted line is your strictness setting. You can drag it.</span></div></li>
+                            <li><span class="part-number">3</span><div><strong data-i18n="welcomePopupPart3Title">Feedback list</strong><span data-i18n="welcomePopupPart3Text">Every rewrite on the page, with its original. Rate it here.</span></div></li>
+                            <li><span class="part-number">4</span><div><strong data-i18n="welcomePopupPart4Title">Statistics and settings</strong><span data-i18n="welcomePopupPart4Text">Totals for the site, and the main switches.</span></div></li>
+                        </ol>
+                    </div>
+                    <figure class="slide-figure">
+                        <svg class="wf" viewBox="0 0 320 340" role="img" aria-labelledby="caption-popup">
+                            <rect class="box" x="8" y="8" width="304" height="40" rx="6" />
+                            <rect class="box" x="20" y="18" width="140" height="20" rx="10" />
+                            <rect class="box" x="226" y="18" width="22" height="22" rx="3" />
+                            <circle class="mark" cx="272" cy="29" r="11" />
+                            <line class="leader" x1="272" y1="40" x2="272" y2="64" />
+
+                            <rect class="box" x="110" y="64" width="200" height="236" rx="6" />
+                            <path d="M174 128 A36 36 0 0 1 246 128" /><line class="leader needle" x1="210" y1="128" x2="228" y2="104" />
+                            <line class="tl" x1="124" y1="148" x2="214" y2="148" /><line class="tl" x1="254" y1="148" x2="296" y2="148" />
+                            <line class="tl" x1="124" y1="162" x2="190" y2="162" /><line class="tl" x1="254" y1="162" x2="296" y2="162" />
+                            <line class="threshold" x1="122" y1="175" x2="298" y2="175" />
+                            <line class="tl" x1="124" y1="188" x2="204" y2="188" /><line class="tl" x1="254" y1="188" x2="296" y2="188" />
+                            <line class="tl" x1="124" y1="202" x2="176" y2="202" /><line class="tl" x1="254" y1="202" x2="296" y2="202" />
+                            <line class="rule" x1="110" y1="248" x2="310" y2="248" />
+                            <circle cx="148" cy="274" r="11" /><circle cx="186" cy="274" r="11" /><circle cx="224" cy="274" r="11" /><circle cx="262" cy="274" r="11" />
+
+                            <line class="leader" x1="174" y1="116" x2="46" y2="116" /><g class="callout"><circle cx="30" cy="116" r="10" /><text x="30" y="120" text-anchor="middle">1</text></g>
+                            <line class="leader" x1="122" y1="175" x2="46" y2="175" /><g class="callout"><circle cx="30" cy="175" r="10" /><text x="30" y="179" text-anchor="middle">2</text></g>
+                            <line class="leader" x1="186" y1="285" x2="186" y2="316" /><g class="callout"><circle cx="186" cy="326" r="10" /><text x="186" y="330" text-anchor="middle">3</text></g>
+                            <path class="leader" d="M224 289 V294 H262 V289" /><line class="leader" x1="243" y1="294" x2="243" y2="316" /><g class="callout"><circle cx="243" cy="326" r="10" /><text x="243" y="330" text-anchor="middle">4</text></g>
+                        </svg>
+                        <figcaption id="caption-popup"><span class="fig-label" data-i18n="welcomeFigureLabel">Fig.</span> <span class="fig-number"></span> <span data-i18n="welcomePopupCaption">The popup</span></figcaption>
+                    </figure>
+                </div>
+            </div>
+        </section>
+
+        <!-- 8. MISTAKES (tour) -->
         <section class="slide" id="slide-wrong" data-slide="wrong" data-tour aria-labelledby="heading-wrong">
             <div class="slide-inner">
-                <h1 id="heading-wrong" class="slide-heading" tabindex="-1" data-i18n="welcomeWrongHeading">What if a rewrite is wrong?</h1>
+                <h1 id="heading-wrong" class="slide-heading" tabindex="-1" data-i18n="welcomeWrongHeading">What if a rewrite is wrong, or clickbait gets through?</h1>
                 <div class="slide-grid">
                     <div class="slide-control">
                         <p data-i18n="welcomeWrongText">Every rewrite has a feedback card with two choices. Feedback is sent only when you press a button there.</p>
                         <ol class="parts parts-text">
-                            <li><span class="part-number">1</span><div><strong data-i18n="welcomeWrongGoodTitle">Is good</strong><span data-i18n="welcomeWrongGoodText">One click tells Klikkikuri that the rewrite is fine. It is sent at once.</span></div></li>
+                            <li><span class="part-number">1</span><div><strong data-i18n="welcomeWrongGoodTitle">Is good</strong><span data-i18n="welcomeWrongGoodText">One click tells the Klikkikuri service that the rewrite is fine. It is sent at once.</span></div></li>
                             <li><span class="part-number">2</span><div><strong data-i18n="welcomeWrongBadTitle">Is no good</strong><span data-i18n="welcomeWrongBadText">Say what is wrong, or write a better headline. Then press Submit. The card needs some text.</span></div></li>
                         </ol>
                         <p class="note" data-i18n="welcomeWrongWhere">To open the card, click the mark on a rewritten headline, if you switched it on. You can also use the feedback list in the toolbar popup.</p>
+                        <p class="note"><strong data-i18n="welcomeWrongThroughTitle">Clickbait that gets through</strong> <span data-i18n="welcomeWrongThroughText">Headlines that your strictness setting leaves alone have a rewrite too. At the bottom of the feedback list in the popup, a button shows them, and you can rate them like any other rewrite.</span></p>
+                        <details class="more">
+                            <summary><span class="info-dot" aria-hidden="true">i</span><span class="more-title" data-i18n="welcomeWrongStillTitle">Why do I still see clickbait?</span></summary>
+                            <ul class="reasons">
+                                <li data-i18n="welcomeWrongStill1">The list updates at intervals, so the newest headlines wait for the next update.</li>
+                                <li data-i18n="welcomeWrongStill2">News sites sometimes put older articles on their front pages. The Klikkikuri service reads only new articles, so these keep their headline.</li>
+                                <li data-i18n="welcomeWrongStill3">An article page keeps its own headline. Klikkikuri Paatti rewrites only the links to it.</li>
+                                <li data-i18n="welcomeWrongStill4">Articles behind a paywall keep their headline in the free version.</li>
+                                <li data-i18n="welcomeWrongStill5">Klikkikuri Paatti works only on the supported sites, and not on every topic.</li>
+                            </ul>
+                        </details>
                     </div>
                     <figure class="slide-figure">
                         <svg class="wf" viewBox="0 0 320 240" role="img" aria-labelledby="caption-wrong">
@@ -169,7 +388,7 @@
                             <rect class="box" x="20" y="82" width="290" height="148" rx="3" />
                             <line class="tl" x1="36" y1="102" x2="280" y2="102" /><line class="tl" x1="36" y1="118" x2="240" y2="118" />
                             <line class="rule" x1="20" y1="134" x2="310" y2="134" />
-                            <rect class="box button on" x="36" y="150" width="108" height="34" rx="3" /><text class="button-text" x="90" y="172" text-anchor="middle" data-i18n="welcomeWrongGoodTitle">Is good</text>
+                            <rect class="box button" x="36" y="150" width="108" height="34" rx="3" /><text class="button-text" x="90" y="172" text-anchor="middle" data-i18n="welcomeWrongGoodTitle">Is good</text>
                             <rect class="box button" x="160" y="150" width="130" height="34" rx="3" /><text class="button-text" x="225" y="172" text-anchor="middle" data-i18n="welcomeWrongBadTitle">Is no good</text>
                             <line class="leader" x1="90" y1="184" x2="90" y2="204" /><g class="callout"><circle cx="90" cy="214" r="10" /><text x="90" y="218" text-anchor="middle">1</text></g>
                             <line class="leader" x1="225" y1="184" x2="225" y2="204" /><g class="callout"><circle cx="225" cy="214" r="10" /><text x="225" y="218" text-anchor="middle">2</text></g>
@@ -180,46 +399,26 @@
             </div>
         </section>
 
-        <!-- 5. NEW FIXES (tour) -->
-        <section class="slide" id="slide-corrections" data-slide="corrections" data-tour aria-labelledby="heading-corrections">
-            <div class="slide-inner">
-                <h1 id="heading-corrections" class="slide-heading" tabindex="-1" data-i18n="welcomeCorrectionsHeading">How do you get new fixes?</h1>
-                <div class="slide-grid">
-                    <div class="slide-control">
-                        <p data-i18n="welcomeCorrectionsText">Klikkikuri brings new fixes to your browser by itself. You can choose how often it checks.</p>
-                        <div class="panel"><database-status-setting layout="interval"></database-status-setting></div>
-                        <p class="note" data-i18n="welcomeCorrectionsHelp">The maintainers use feedback to check how accurate the rewrites are, so your feedback can lead to better fixes later.</p>
-                    </div>
-                    <figure class="slide-figure">
-                        <ol class="flow">
-                            <li><span data-i18n="welcomeFlowFeedback">Your feedback</span></li>
-                            <li><span data-i18n="welcomeFlowFixes">New fixes</span></li>
-                            <li><span data-i18n="welcomeFlowBrowser">Your browser</span></li>
-                        </ol>
-                        <figcaption><span class="fig-label" data-i18n="welcomeFigureLabel">Fig.</span> <span class="fig-number"></span> <span data-i18n="welcomeCorrectionsCaption">How a fix reaches you</span></figcaption>
-                    </figure>
-                </div>
-            </div>
-        </section>
-
-        <!-- 6. READY -->
+        <!-- 9. READY -->
         <section class="slide" id="slide-ready" data-slide="ready" aria-labelledby="heading-ready">
             <div class="slide-inner">
                 <h1 id="heading-ready" class="slide-heading" tabindex="-1" data-i18n="welcomeReadyHeading">Ready to try Klikkikuri Paatti?</h1>
                 <div class="slide-grid">
                     <div class="slide-control">
-                        <p data-i18n="welcomeReadyOpen">Open a news site:</p>
+                        <div id="news-sites">
+                        <p data-i18n="welcomeReadyOpen">Open an enabled news site:</p>
                         <div class="news-buttons">
                             <button type="button" class="welcome-button primary news-button" data-url="https://yle.fi/">yle.fi</button>
                             <button type="button" class="welcome-button primary news-button" data-url="https://www.hs.fi/">hs.fi</button>
                             <button type="button" class="welcome-button primary news-button" data-url="https://www.iltalehti.fi/">iltalehti.fi</button>
                         </div>
-                        <p class="note pin-hint" data-for="chromium" data-i18n="welcomeReadyPinChromium">Pin Klikkikuri for easier access: open the puzzle-piece menu in the toolbar and select the pin.</p>
-                        <p class="note pin-hint" data-for="firefox" data-i18n="welcomeReadyPinFirefox">Pin Klikkikuri for easier access: open the extensions button in the toolbar and choose Pin to Toolbar.</p>
-                        <p class="note pin-hint" data-for="android" data-i18n="welcomeReadyPinAndroid">To find Klikkikuri, open the Firefox menu and choose Extensions.</p>
+                        </div>
+                        <p class="note pin-hint quick-only" data-for="chromium" data-i18n="welcomeReadyPinChromium">Pin Klikkikuri Paatti for easier access: open the puzzle-piece menu in the toolbar and select the pin.</p>
+                        <p class="note pin-hint quick-only" data-for="firefox" data-i18n="welcomeReadyPinFirefox">Pin Klikkikuri Paatti for easier access: open the extensions button in the toolbar and choose Pin to Toolbar.</p>
+                        <p class="note pin-hint quick-only" data-for="android" data-i18n="welcomeReadyPinAndroid">To find Klikkikuri Paatti, open the Firefox menu and choose Extensions.</p>
                         <p class="note quick-only" data-i18n="welcomeReadyFeedback">To give feedback on a rewrite, click the changed mark or open the feedback list in the popup.</p>
                     </div>
-                    <figure class="slide-figure">
+                    <figure class="slide-figure quick-only">
                         <svg class="wf" viewBox="0 0 320 150" role="img" aria-labelledby="caption-ready">
                             <rect class="box" x="8" y="10" width="304" height="46" rx="6" />
                             <rect class="box" x="60" y="22" width="150" height="22" rx="11" />
@@ -228,12 +427,17 @@
                             <circle cx="296" cy="33" r="3" /><circle cx="296" cy="27" r="3" /><circle cx="296" cy="39" r="3" />
                             <line class="leader" x1="268" y1="46" x2="268" y2="96" /><g class="callout"><circle cx="268" cy="108" r="12" /><text x="268" y="113" text-anchor="middle">K</text></g>
                         </svg>
-                        <figcaption id="caption-ready"><span class="fig-label" data-i18n="welcomeFigureLabel">Fig.</span> <span class="fig-number"></span> <span data-i18n="welcomeReadyCaption">Where to find Klikkikuri</span></figcaption>
+                        <figcaption id="caption-ready"><span class="fig-label" data-i18n="welcomeFigureLabel">Fig.</span> <span class="fig-number"></span> <span data-i18n="welcomeReadyCaption">Where to find Klikkikuri Paatti</span></figcaption>
                     </figure>
                 </div>
                 <div class="ready-footer">
-                    <p class="privacy"><span data-i18n="welcomeReadyPrivacy">Klikkikuri checks headlines against a database on your device. It sends your feedback only when you press send.</span>
+                    <p class="privacy"><span data-i18n="welcomeReadyPrivacy">Klikkikuri Paatti checks headlines against a list on your device. It sends your feedback or your email address only when you press send.</span>
                         <a href="https://github.com/Klikkikuri/paatti/blob/main/docs/PRIVACY_POLICY.md" target="_blank" rel="noopener noreferrer" data-i18n="welcomeReadyPrivacyLink">Read the privacy policy</a></p>
+                    <section class="waitlist-box" aria-labelledby="waitlist-title">
+                        <h2 id="waitlist-title" class="waitlist-title" data-i18n="welcomeReadyPaidTitle">Invitation to the paid version</h2>
+                        <p class="paid-note"><span data-i18n="welcomeReadyPaid">Klikkikuri Paatti is free. A paid version that also fixes headlines behind a paywall is planned, and it is not available yet.</span></p>
+                        <paid-invitation-setting class="waitlist"></paid-invitation-setting>
+                    </section>
                     <p class="footer-links">
                         <button type="button" id="all-settings" class="welcome-link" data-i18n="welcomeReadyAllSettings">All settings</button>
                         <span class="footer-sep" aria-hidden="true">·</span>

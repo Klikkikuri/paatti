@@ -1,6 +1,6 @@
 import browser from '../../browser-api.js';
 import { onConfigValue } from '../../config.js';
-import { Clickbaitiness } from '../../model.js';
+import { Clickbaitiness, model } from '../../model.js';
 import { controller } from '../../controller.js';
 import { localizeDocument, getClickbaitLevelInfo } from '../utils.js';
 import { markWizardDone } from '../../welcome-state.js';
@@ -8,7 +8,7 @@ import { buildDeck, modeOf, slideAtLine, createNavigator } from './deck.js';
 import '../components/clickbait-level-horizontal.js';
 import '../components/title-modifier-setting.js';
 import '../components/site-list-setting.js';
-import '../components/database-status-setting.js';
+import '../components/paid-invitation-setting.js';
 import '../components/favicon-img.js';
 import './step-indicator.js';
 
@@ -37,6 +37,52 @@ function reserveBarSpace() {
     new ResizeObserver(measure).observe(document.querySelector('.bar-top'));
     new ResizeObserver(measure).observe(document.querySelector('.bar-bottom'));
     measure();
+}
+
+/** Put a copy of the how-it-works drawing into each figure that shows it, named by the figure's own caption. */
+function drawHowFigures() {
+    const drawing = document.getElementById('how-drawing');
+    for (const figure of document.querySelectorAll('.how-figure')) {
+        const svg = drawing.content.firstElementChild.cloneNode(true);
+        svg.setAttribute('aria-labelledby', figure.querySelector('figcaption').id);
+        figure.prepend(svg);
+    }
+}
+
+/** Give every rewritten box of a drawing its tick, so the markup only says "rewritten". */
+function drawRewriteTicks() {
+    for (const box of document.querySelectorAll('.wf rect.box.on')) {
+        const right = Number(box.getAttribute('x')) + Number(box.getAttribute('width')) - 10;
+        const height = Number(box.getAttribute('height'));
+        const middle = Number(box.getAttribute('y')) + Math.min(height / 2, 12);
+        const tick = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        tick.setAttribute('class', 'tick');
+        tick.setAttribute('d', `M${right - 5} ${middle} L${right - 2} ${middle + 3} L${right + 4} ${middle - 4}`);
+        box.parentNode.append(tick);
+
+        // A line of the box that runs into the tick stops short of it.
+        const top = Number(box.getAttribute('y'));
+        for (const line of box.parentNode.querySelectorAll('line.tl')) {
+            const y = Number(line.getAttribute('y1'));
+            const inside = y >= top && y <= top + height && Number(line.getAttribute('x1')) >= Number(box.getAttribute('x'))
+                && Number(line.getAttribute('x1')) < right;
+            if (inside && Number(line.getAttribute('x2')) > right - 9) line.setAttribute('x2', right - 9);
+        }
+    }
+}
+
+/**
+ * The info dot of a folded block is as tall as its title: one line or two. Only the layout knows how many lines
+ * the title wraps to, so it is measured, and measured again when the width changes.
+ */
+function fitInfoDots() {
+    const observer = new ResizeObserver((entries) => {
+        for (const { target } of entries) {
+            const lines = Math.round(target.offsetHeight / parseFloat(getComputedStyle(target).lineHeight));
+            target.closest('summary').dataset.lines = String(Math.min(Math.max(lines, 1), 2));
+        }
+    });
+    document.querySelectorAll('.more-title').forEach((title) => observer.observe(title));
 }
 
 /** Drop the slides that the chosen mode does not have, and number the figures that are left. */
@@ -112,6 +158,23 @@ async function finish() {
     if (tab) await browser.tabs.remove(tab.id);
 }
 
+/** The news site buttons are for the sites that are on. A site that the user switched off has no button. */
+function followNewsSites() {
+    const buttons = [...document.querySelectorAll('.news-button')];
+    const group = document.getElementById('news-sites');
+    let generation = 0;
+
+    onConfigValue((config) => JSON.stringify(Object.entries(config.siteConfigs ?? {}).map(([domain, site]) => [domain, site.enabled])), async () => {
+        const current = ++generation;
+        const enabled = await model.read.getSitesEnabled();
+        const domains = await Promise.all(buttons.map((button) => model.read.getMatchingSiteDomain(new URL(button.dataset.url).hostname)));
+        if (current !== generation) return;
+
+        buttons.forEach((button, index) => { button.hidden = !(domains[index] && enabled[domains[index]]); });
+        group.hidden = buttons.every((button) => button.hidden);
+    });
+}
+
 /** Open a news site in a new tab and keep the wizard where it is. The flag is written first. */
 async function openNewsSite(url) {
     await markWizardDone();
@@ -122,6 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const mode = modeOf(location.search);
     document.documentElement.dataset.mode = mode;
     document.documentElement.dataset.browser = browserKind();
+    drawHowFigures();
+    drawRewriteTicks();
     localizeDocument();
 
     const slides = buildSlides(mode);
@@ -173,14 +238,18 @@ document.addEventListener('DOMContentLoaded', () => {
         button.addEventListener('click', () => openNewsSite(button.dataset.url));
     });
 
-    // Arrow keys move through the deck. Only when nothing has the focus, so a slider or a button keeps its own keys.
+    // Arrow keys move through the deck. A move hands the focus to a heading, so the target is not the body: only
+    // a control that uses the arrows itself (a slider, a field, a link, a folded block) keeps them.
     document.addEventListener('keydown', (event) => {
-        if (event.target !== document.body) return;
+        if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        if (event.target.closest('input, select, textarea, button, a, summary, [contenteditable]')) return;
         if (event.key === 'ArrowRight') go(deck.index + 1);
         if (event.key === 'ArrowLeft') go(deck.index - 1);
     });
 
+    followNewsSites();
     reserveBarSpace();
+    fitInfoDots();
     followStrictness();
     followMarkers();
     render(0);

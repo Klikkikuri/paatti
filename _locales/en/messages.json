@@ -1186,11 +1186,11 @@
     "description": "Notification message when saving the loopback providers setting fails"
   },
   "introCardLabel": {
-    "message": "Klikkikuri setup",
+    "message": "Klikkikuri Paatti setup",
     "description": "Accessible name of the first-activation card shown on a news page."
   },
   "introCardText": {
-    "message": "Klikkikuri activated for the first time on this page.",
+    "message": "Klikkikuri Paatti activated for the first time on this page.",
     "description": "Text of the first-activation card shown on a news page."
   },
   "introCardTour": {
@@ -1263,20 +1263,152 @@
     "message": "Mistakes",
     "description": "Short step title."
   },
-  "welcomeStep_corrections": {
-    "message": "New fixes",
-    "description": "Short step title."
-  },
   "welcomeStep_ready": {
     "message": "Ready",
     "description": "Short step title."
   },
+  "welcomeStep_welcome": {
+    "message": "Welcome",
+    "description": "Short step title in the step indicator. The first step of the tour."
+  },
+  "welcomeStep_service": {
+    "message": "The service",
+    "description": "Short step title in the step indicator. The server side of the project."
+  },
+  "welcomeStep_browser": {
+    "message": "Your browser",
+    "description": "Short step title in the step indicator."
+  },
+  "welcomeStep_popup": {
+    "message": "Popup",
+    "description": "Short step title in the step indicator. The window that opens from the toolbar button."
+  },
+  "welcomeWelcomeHeading": {
+    "message": "Welcome to Klikkikuri Paatti",
+    "description": "Heading of the first step of the tour."
+  },
+  "welcomeWelcomeLead": {
+    "message": "Klikkikuri Paatti is a browser extension that replaces clickbait headlines with neutral headlines on supported news sites. You will not notice Klikkikuri Paatti when it works. Your blood pressure will notice when it stops.",
+    "description": "Opening text of the first step of the tour. The last sentence is a joke: a calmer page is good for the reader's blood pressure."
+  },
+  "welcomeWelcomeServiceTitle": {
+    "message": "The service writes the headlines",
+    "description": "Bold title of the first welcome point."
+  },
+  "welcomeWelcomeServiceText": {
+    "message": "The Klikkikuri service reads each new article on the front pages of supported sites. AI decides if the headline is clickbait and writes a new one when needed.",
+    "description": "Text of the first welcome point. \"AI\" is the generic term for the language model."
+  },
+  "welcomeWelcomePrivacyTitle": {
+    "message": "Your reading stays on your device",
+    "description": "Bold title of the second welcome point."
+  },
+  "welcomeWelcomePrivacyText": {
+    "message": "The Klikkikuri Paatti browser extension checks each headline against a list on your device. Nothing about what you read goes to the service unless you send feedback.",
+    "description": "Text of the second welcome point."
+  },
+  "welcomeWelcomeOpenTitle": {
+    "message": "Free as in beer, free as in freedom",
+    "description": "Bold title of the third welcome point. The classical phrase separates free of charge from free by license."
+  },
+  "welcomeWelcomeOpenText": {
+    "message": "The basic version is free as in beer: it costs nothing. The code is free as in freedom: the Klikkikuri Paatti browser extension and the service are open source under the EUPL-1.2 license. A planned paid version will also fix headlines behind a paywall.",
+    "description": "Text of the third welcome point."
+  },
+  "welcomeServiceHeading": {
+    "message": "Where do the new headlines come from?",
+    "description": "Heading of the first how-it-works step, about the server side. A question."
+  },
+  "welcomeServiceCaption": {
+    "message": "Where a new headline comes from",
+    "description": "Caption of the drawing on the first how-it-works step."
+  },
+  "welcomeBrowserHeading": {
+    "message": "What happens in your browser?",
+    "description": "Heading of the second how-it-works step, about the browser extension. A question."
+  },
+  "welcomeHowPart1Title": {
+    "message": "Reads the news",
+    "description": "Short bold title of step 1."
+  },
+  "welcomeHowPart1Text": {
+    "message": "It reads each new article on the front pages of supported sites in full.",
+    "description": "Text of step 1. \"It\" is the Klikkikuri service."
+  },
+  "welcomeHowPart2Title": {
+    "message": "Writes a better headline",
+    "description": "Short bold title of step 2."
+  },
+  "welcomeHowPart2Text": {
+    "message": "A language model rates the clickbait, writes a new headline if needed, and notes any AI smell.",
+    "description": "Text of step 2. \"AI smell\" is a colloquial phrase for an article that reads as AI-written; use an equally colloquial phrase."
+  },
+  "welcomeHowPart3Title": {
+    "message": "Publishes a list",
+    "description": "Short bold title of step 3."
+  },
+  "welcomeHowPart3Text": {
+    "message": "New headlines go into a public list, each with the fingerprint of its article.",
+    "description": "Text of step 3. The fingerprint is a short code that identifies an article from its address."
+  },
+  "welcomeHowPart4Title": {
+    "message": "Gets the list",
+    "description": "Short bold title of step 4."
+  },
+  "welcomeHowPart4Text": {
+    "message": "Klikkikuri Paatti downloads the list at intervals and keeps it on your device.",
+    "description": "Text of step 4."
+  },
+  "welcomeHowPart5Title": {
+    "message": "Fixes the page",
+    "description": "Short bold title of step 5."
+  },
+  "welcomeHowPart5Text": {
+    "message": "The extension matches the fingerprint of each link against the list on your device. Nothing you read leaves your browser unless you send feedback.",
+    "description": "Text of step 5. \"The extension\" is the browser extension."
+  },
+  "welcomeHowPart6Title": {
+    "message": "Your feedback",
+    "description": "Short bold title of step 6."
+  },
+  "welcomeHowPart6Text": {
+    "message": "Sent only when you press send. A disputed headline is written again while the article is on a front page.",
+    "description": "Text of step 6. Starts with the feedback as its unspoken subject: it is sent only when the user presses send. A disputed headline is one that a reader rated as no good."
+  },
+  "welcomeHowFigNews": {
+    "message": "News site",
+    "description": "Label inside the drawing, over the news site box. Keep it to about 14 characters."
+  },
+  "welcomeHowFigService": {
+    "message": "Klikkikuri service",
+    "description": "Label inside the drawing, over the service box. Keep it to about 18 characters."
+  },
+  "welcomeHowFigBrowser": {
+    "message": "Your browser",
+    "description": "Label inside the drawing, over the browser box. Keep it to about 14 characters."
+  },
+  "welcomeHowFigAsUsual": {
+    "message": "as usual",
+    "description": "Label inside the drawing, next to an arrow: the page loads from the news site as usual. Keep it short."
+  },
+  "welcomeHowFigSendA": {
+    "message": "only when you",
+    "description": "First line of a two-line label inside the drawing, next to the feedback arrow. Reads together with the second line."
+  },
+  "welcomeHowFigSendB": {
+    "message": "press send",
+    "description": "Second line of the two-line label inside the drawing. Reads together with the first line."
+  },
+  "welcomeHowCaption": {
+    "message": "The same page, without the clickbait",
+    "description": "Caption of the drawing on the second how-it-works step, about the browser."
+  },
   "welcomeStrictnessHeading": {
-    "message": "How much clickbait should Klikkikuri fix?",
+    "message": "How much clickbait should Klikkikuri Paatti fix?",
     "description": "Heading of the strictness step."
   },
   "welcomeStrictnessText": {
-    "message": "Move the slider to choose which headlines Klikkikuri rewrites.",
+    "message": "Move the slider to choose which headlines Klikkikuri Paatti rewrites.",
     "description": "Text of the strictness step."
   },
   "welcomeStrictnessEndMore": {
@@ -1304,7 +1436,7 @@
     "description": "Heading of the marks step."
   },
   "welcomeMarkersText": {
-    "message": "Marks sit next to a headline. Switch each one on or off. Klikkikuri works with all of them off.",
+    "message": "Marks sit next to a headline. Switch each one on or off. Klikkikuri Paatti works with all of them off.",
     "description": "Text of the marks step."
   },
   "welcomeMarkersDefault": {
@@ -1328,7 +1460,7 @@
     "description": "One short phrase for the converted-headline mark."
   },
   "welcomeSitesHeading": {
-    "message": "Where should Klikkikuri work?",
+    "message": "Where should Klikkikuri Paatti work?",
     "description": "Heading of the sites step."
   },
   "welcomeSitesText": {
@@ -1343,6 +1475,50 @@
     "message": "Your site is not here? Request it on GitHub.",
     "description": "Link on the sites step."
   },
+  "welcomePopupHeading": {
+    "message": "What does the toolbar button show?",
+    "description": "Heading of the popup step. A question."
+  },
+  "welcomePopupText": {
+    "message": "Click the Klikkikuri Paatti button in the toolbar to see what the extension did on the page you are on.",
+    "description": "Text of the popup step. The button is the extension's icon in the browser toolbar."
+  },
+  "welcomePopupPart1Title": {
+    "message": "Page score",
+    "description": "Short bold title of part 1."
+  },
+  "welcomePopupPart1Text": {
+    "message": "A gauge shows how much clickbait the page has in total.",
+    "description": "Text of part 1."
+  },
+  "welcomePopupPart2Title": {
+    "message": "Headlines by level",
+    "description": "Short bold title of part 2."
+  },
+  "welcomePopupPart2Text": {
+    "message": "Rows count the headlines at each level. The dotted line is your strictness setting. You can drag it.",
+    "description": "Text of part 2. The strictness setting is the one from the first settings step."
+  },
+  "welcomePopupPart3Title": {
+    "message": "Feedback list",
+    "description": "Short bold title of part 3."
+  },
+  "welcomePopupPart3Text": {
+    "message": "Every rewrite on the page, with its original. Rate it here.",
+    "description": "Text of part 3."
+  },
+  "welcomePopupPart4Title": {
+    "message": "Statistics and settings",
+    "description": "Short bold title of part 4."
+  },
+  "welcomePopupPart4Text": {
+    "message": "Totals for the site, and the main switches.",
+    "description": "Text of part 4."
+  },
+  "welcomePopupCaption": {
+    "message": "The popup",
+    "description": "Caption of the popup figure."
+  },
   "siteStatusOn": {
     "message": "On",
     "description": "State of a site: on."
@@ -1356,8 +1532,8 @@
     "description": "State of a site: the browser has not granted access yet."
   },
   "welcomeWrongHeading": {
-    "message": "What if a rewrite is wrong?",
-    "description": "Heading of the mistakes step."
+    "message": "What if a rewrite is wrong, or clickbait gets through?",
+    "description": "Heading of the mistakes step. A question."
   },
   "welcomeWrongText": {
     "message": "Every rewrite has a feedback card with two choices. Feedback is sent only when you press a button there.",
@@ -1368,7 +1544,7 @@
     "description": "Name of the first feedback choice. Matches the button on the card."
   },
   "welcomeWrongGoodText": {
-    "message": "One click tells Klikkikuri that the rewrite is fine. It is sent at once.",
+    "message": "One click tells the Klikkikuri service that the rewrite is fine. It is sent at once.",
     "description": "Explains the first feedback choice."
   },
   "welcomeWrongBadTitle": {
@@ -1383,56 +1559,60 @@
     "message": "To open the card, click the mark on a rewritten headline, if you switched it on. You can also use the feedback list in the toolbar popup.",
     "description": "Where to find the feedback card."
   },
+  "welcomeWrongThroughTitle": {
+    "message": "Clickbait that gets through",
+    "description": "Bold lead-in of the note. A noun phrase, followed by the next message."
+  },
+  "welcomeWrongThroughText": {
+    "message": "Headlines that your strictness setting leaves alone have a rewrite too. At the bottom of the feedback list in the popup, a button shows them, and you can rate them like any other rewrite.",
+    "description": "Text of the note, after the bold lead-in. The button is the one that shows headlines below the strictness setting."
+  },
+  "welcomeWrongStillTitle": {
+    "message": "Why do I still see clickbait?",
+    "description": "Summary of a folded block on the mistakes step. A question."
+  },
+  "welcomeWrongStill1": {
+    "message": "The list updates at intervals, so the newest headlines wait for the next update.",
+    "description": "One reason in the folded list on the mistakes step."
+  },
+  "welcomeWrongStill2": {
+    "message": "News sites sometimes put older articles on their front pages. The Klikkikuri service reads only new articles, so these keep their headline.",
+    "description": "One reason in the folded list on the mistakes step."
+  },
+  "welcomeWrongStill3": {
+    "message": "An article page keeps its own headline. Klikkikuri Paatti rewrites only the links to it.",
+    "description": "One reason in the folded list on the mistakes step."
+  },
+  "welcomeWrongStill4": {
+    "message": "Articles behind a paywall keep their headline in the free version.",
+    "description": "One reason in the folded list on the mistakes step."
+  },
+  "welcomeWrongStill5": {
+    "message": "Klikkikuri Paatti works only on the supported sites, and not on every topic.",
+    "description": "One reason in the folded list on the mistakes step."
+  },
   "welcomeWrongCaption": {
     "message": "Giving feedback on a rewrite",
     "description": "Caption of the mistakes figure."
-  },
-  "welcomeCorrectionsHeading": {
-    "message": "How do you get new fixes?",
-    "description": "Heading of the new fixes step."
-  },
-  "welcomeCorrectionsText": {
-    "message": "Klikkikuri brings new fixes to your browser by itself. You can choose how often it checks.",
-    "description": "Text of the new fixes step."
-  },
-  "welcomeCorrectionsHelp": {
-    "message": "The maintainers use feedback to check how accurate the rewrites are, so your feedback can lead to better fixes later.",
-    "description": "Note on the new fixes step."
-  },
-  "welcomeFlowFeedback": {
-    "message": "Your feedback",
-    "description": "First box of the flow figure."
-  },
-  "welcomeFlowFixes": {
-    "message": "New fixes",
-    "description": "Second box of the flow figure."
-  },
-  "welcomeFlowBrowser": {
-    "message": "Your browser",
-    "description": "Third box of the flow figure."
-  },
-  "welcomeCorrectionsCaption": {
-    "message": "How a fix reaches you",
-    "description": "Caption of the flow figure."
   },
   "welcomeReadyHeading": {
     "message": "Ready to try Klikkikuri Paatti?",
     "description": "Heading of the last step."
   },
   "welcomeReadyOpen": {
-    "message": "Open a news site:",
-    "description": "Label before the news site buttons."
+    "message": "Open an enabled news site:",
+    "description": "Label before the news site buttons. The buttons are the supported sites that the user has switched on."
   },
   "welcomeReadyPinChromium": {
-    "message": "Pin Klikkikuri for easier access: open the puzzle-piece menu in the toolbar and select the pin.",
+    "message": "Pin Klikkikuri Paatti for easier access: open the puzzle-piece menu in the toolbar and select the pin.",
     "description": "Hint to pin the extension in Chromium browsers."
   },
   "welcomeReadyPinFirefox": {
-    "message": "Pin Klikkikuri for easier access: open the extensions button in the toolbar and choose Pin to Toolbar.",
+    "message": "Pin Klikkikuri Paatti for easier access: open the extensions button in the toolbar and choose Pin to Toolbar.",
     "description": "Hint to pin the extension in Firefox."
   },
   "welcomeReadyPinAndroid": {
-    "message": "To find Klikkikuri, open the Firefox menu and choose Extensions.",
+    "message": "To find Klikkikuri Paatti, open the Firefox menu and choose Extensions.",
     "description": "Hint for Firefox for Android."
   },
   "welcomeReadyFeedback": {
@@ -1440,12 +1620,20 @@
     "description": "Where to give feedback. Shown in the short setup only."
   },
   "welcomeReadyPrivacy": {
-    "message": "Klikkikuri checks headlines against a database on your device. It sends your feedback only when you press send.",
+    "message": "Klikkikuri Paatti checks headlines against a list on your device. It sends your feedback or your email address only when you press send.",
     "description": "Short privacy statement on the last step."
   },
   "welcomeReadyPrivacyLink": {
     "message": "Read the privacy policy",
     "description": "Link to the privacy policy."
+  },
+  "welcomeReadyPaid": {
+    "message": "Klikkikuri Paatti is free. A paid version that also fixes headlines behind a paywall is planned, and it is not available yet.",
+    "description": "Quiet note on the last step about the paid version."
+  },
+  "welcomeReadyPaidTitle": {
+    "message": "Invitation to the paid version",
+    "description": "Title on the border of the waitlist box on the last step."
   },
   "welcomeReadyAllSettings": {
     "message": "All settings",
@@ -1468,11 +1656,11 @@
     "description": "Link on the last step."
   },
   "welcomeReadyCaption": {
-    "message": "Where to find Klikkikuri",
+    "message": "Where to find Klikkikuri Paatti",
     "description": "Caption of the toolbar figure."
   },
   "popupSetupLine": {
-    "message": "Set up Klikkikuri",
+    "message": "Set up Klikkikuri Paatti",
     "description": "Line in the popup that offers the setup wizard."
   },
   "popupSetupHide": {
@@ -1504,8 +1692,8 @@
     "description": "Illustrative sample headline for clickbait level 4, as a site would write it. It is fiction: not a claim about real statements or events."
   },
   "welcomeInfoTitle": {
-    "message": "How Klikkikuri writes a headline",
-    "description": "Title of the infobox on the strictness step."
+    "message": "How the Klikkikuri service writes a headline",
+    "description": "Summary of the folded block on the how-it-works step. Clicking it opens the steps and rules of a rewrite."
   },
   "welcomeInfoStepRead": {
     "message": "It reads the whole article, not only the headline.",
@@ -1539,12 +1727,28 @@
     "message": "Example",
     "description": "Label before the example headline."
   },
+  "welcomeInfoExampleOriginal": {
+    "message": "Original",
+    "description": "Small label before the original headline of the example."
+  },
+  "welcomeInfoExampleRewritten": {
+    "message": "Rewritten",
+    "description": "Small label before the rewritten headline of the example."
+  },
+  "welcomeInfoExampleBefore": {
+    "message": "The economy snaps: This will ruin Finland!",
+    "description": "Example of an original clickbait headline. Illustrative fiction: not a claim about real statements, people or organizations. It uses a collective, official-sounding name for one lobby group."
+  },
+  "welcomeInfoExampleWhy": {
+    "message": "The original makes a lobby group sound like the whole economy.",
+    "description": "One line under the example that names the trick of the original headline."
+  },
   "welcomeInfoExample": {
-    "message": "Employers' federation EK assesses that Manna Sari's corporate tax increase would weaken companies' operating conditions",
-    "description": "Example of a converted headline. Illustrative fiction: not a claim about real statements or events."
+    "message": "Employers' lobby group says workers earn too much",
+    "description": "Example headline after a rewrite. Illustrative fiction: not a claim about real statements, people or organizations."
   },
   "welcomeSitesCaptionIndex": {
-    "message": "Index pages: Klikkikuri rewrites the headlines",
+    "message": "Index pages: Klikkikuri Paatti rewrites the headlines",
     "description": "Caption of the first figure of the sites step."
   },
   "welcomeSitesCaptionArticle": {
