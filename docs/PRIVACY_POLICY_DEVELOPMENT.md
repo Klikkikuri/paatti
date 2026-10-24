@@ -64,8 +64,6 @@ When this setting is on, a provider can take over a site that Klikkikuri's files
 
 This setting is on by default in the "Development" environment, and off in the other environments. The extension saves this setting only on your device. It does not go through browser sync.
 
-When this setting is on and a provider on your own computer names a capture address, the popup's developer settings show a **Send page** button. Only when you select it, the extension sends the address of the page and the links and headlines on it to that address. The extension refuses a capture address that is not on your own computer. This is a tool for people who develop Klikkikuri Paatti or a provider.
-
 ## 4. "Allow Providers on This Machine"
 
 When this setting is on, the extension can download a provider's files from a server on your own computer (localhost), also without encryption (http).
