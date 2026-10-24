@@ -91,6 +91,9 @@ export async function sendPage(browser, base) {
     }, base);
     await popup.reload();
     await popup.click("label[for=navi-settings]");
+    // refreshDevCapture runs late in the popup's load. The row is hidden until then, and
+    // clicking the button before it shows is the race this wait closes.
+    await popup.locator("#devmode-capture").waitFor({ state: "visible", timeout: 10000 });
     await popup.click("#devmode-capture-button");
     const status = popup.locator("#devmode-capture-status");
     const text = await waitUntil(async () => {

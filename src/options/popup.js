@@ -9,6 +9,7 @@ import { computeGaugeValue, computeCollectingPeriod, sharePercent, summarizeLeve
 import { isSiteEnabled, getClickbaitLevelInfo, levelToI18nKey, localizeDocument } from "./utils.js";
 import { homeStatus } from "./home-status.js";
 import { setupDevCapture, refreshDevCapture } from "./dev-capture.js";
+import { CAPTURE_REL } from "./capture-target.js";
 import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
 import "./components/master-switch-setting.js";
@@ -991,12 +992,18 @@ document.addEventListener("DOMContentLoaded", view.handleDomContentLoaded);
 ///////////////////////////////////////////////////////////////////////////////
 
 // Everything the popup renders out of the config, flat so it compares exactly.
+// The devmode capture row's visibility turns on the providers' capture links too (capture-target.js).
+// A provider's whole namespace moves on every refresh pass (checked, entryCount, errors), so the
+// selector reads only each provider's URL and its capture links, not the namespace.
 onConfigValue(
     (config) => [
         config.enabled,
         config.activeEnv,
         config.clickbaitLevel,
-        ...Object.values(config.siteConfigs).map((site) => site.enabled)
+        config.loopbackProvidersEnabled,
+        ...Object.values(config.siteConfigs).map((site) => site.enabled),
+        ...Object.entries(config.providerData).flatMap(([url, data]) =>
+            [url, (data?.links || []).filter((link) => link.rel === CAPTURE_REL)])
     ],
     view.refresh
 );
