@@ -1,1 +1,15 @@
-* text eol=lf
+# Normalise line endings for text, and let Git detect what is binary. A bare `* text eol=lf` also
+# matches images: a checkout then rewrites the CRLF bytes inside their data and leaves every tree dirty.
+* text=auto eol=lf
+
+# Name the binary types anyway, so the intent survives an edit to the rule above, and so `git diff`
+# reports these files as binary.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.wasm binary
