@@ -300,9 +300,25 @@ test-devserver: $(WASM_OUTPUTS)
 
 # The unpacked extension in Chromium against Ilta-Pulu (devserver/tests/e2e). CHROMIUM is the Debian package's
 # binary, never the /usr/bin/chromium wrapper, which injects an empty --load-extension=.
+# DIST_FROM_ARTIFACTS=1 -- the tree was staged by the wasm job of the Build workflow and downloaded
+#   into $(BUILD_DIR)/dist; here we only prove it is present, so e2e runs against exactly the
+#   staged bytes instead of a fresh `dist` of the same commit.
+# Otherwise -- stage the tree from the checkout, as a local `make test-e2e` does.
 CHROMIUM ?= /usr/lib/chromium/chromium
+ifeq ($(DIST_FROM_ARTIFACTS),1)
+test-e2e: | check-dist-artifacts
+else
 test-e2e: dist
+endif
+test-e2e:
 	$(DEVSERVER) pytest tests/e2e --extension-dir="$(DIST_DIR)" --chromium="$(CHROMIUM)"
+
+check-dist-artifacts:
+	@test -s $(DIST_DIR)/manifest.json && test -s $(DIST_DIR)/build/js.wasm || { \
+		echo "Error: no staged extension in $(DIST_DIR) (DIST_FROM_ARTIFACTS=1)."; \
+		echo "Download the extension-dist artifact into $(BUILD_DIR), or unset the flag."; \
+		exit 1; \
+	}
 
 # suola's own smoke test for the browser module, run against the artifacts
 # staged in $(BUILD_DIR). It is the only check that js.wasm loads and signs
@@ -319,4 +335,4 @@ test-wasm:
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
 	fi
 
-.PHONY: serve test-devserver test-e2e build init ensure-suola check-tinygo check-docker package source-dist icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
+.PHONY: serve test-devserver test-e2e check-dist-artifacts build init ensure-suola check-tinygo check-docker package source-dist icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
