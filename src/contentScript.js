@@ -535,8 +535,9 @@ let hrefSigns;
                         const raw = link.getAttribute("href");
                         const href = titleElem && raw && absoluteHref(raw);
                         if (!href || !/^https?:/.test(href)) continue;
-                        const title = titleElem.dataset.klikkikuriOriginalTitle ?? titleElem.textContent;
-                        captured.push({ href, title: title.trim() });
+                        const title = (titleElem.dataset.klikkikuriOriginalTitle ?? titleElem.textContent).trim();
+                        if (!title) continue;
+                        captured.push({ href, title });
                     }
                     return { pageUrl: window.location.href, rules, links: captured };
                 })()

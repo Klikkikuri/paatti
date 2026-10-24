@@ -1027,7 +1027,8 @@ const __devmodeCapturePage = async (event) => {
             throw new Error(typeof result.detail === "string" ? result.detail : `HTTP ${response.status}`);
         }
 
-        await browser.runtime.sendMessage({ action: "updateDatabase" });
+        const updated = await browser.runtime.sendMessage({ action: "updateDatabase" });
+        if (!updated?.success) throw new Error(updated?.error || "The database update gave no answer.");
         // updateDatabase reports only the default providers; the provider's own errors say whether it refreshed.
         const errors = (await getConfig()).providerData[context.target.providerUrl]?.errors || [];
         if (errors.length > 0) throw new Error(errors.map((error) => error.message).join("; "));

@@ -137,7 +137,9 @@ found to `POST /api/capture`, with one click. The server needs no network.
   so the popup turns it on and converts the page; on a page without the content script, it starts the script.
 
 Each captured host has a folder `<data_dir>/captures/<host>/`, laid out as a Rahti data directory without
-`manifest.json`. Delete a folder to forget that host.
+`manifest.json`. The host is in punycode, as the browser sends it (`www.ähti.fi` becomes `www.xn--hti-pla.fi`), and a
+page at a host that no browser can visit, so with no host or a host too long, is refused with `HTTP 422` and stores
+nothing. Delete a folder to forget that host.
 
 | File | Content |
 | --- | --- |

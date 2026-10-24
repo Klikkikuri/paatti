@@ -256,6 +256,33 @@ def test_a_malformed_page_address_is_refused(client):
     assert capture(client, FIRST, page="not a url").status_code == 422
 
 
+def test_a_page_at_host_dot_dot_is_refused_and_stores_nothing_outside_the_folders(tmp_path):
+    client = TestClient(create_app(make_settings(data_dir=str(tmp_path))))
+    response = client.post("/api/capture", json={
+        "pageUrl": "https://../x", "rules": [SITE_RULE], "links": [{"href": "/once/", "title": "A story"}]})
+    assert response.status_code == 422
+    assert not (tmp_path / "captures").exists(), "no folder came out of the host .."
+
+
+@pytest.mark.parametrize("host", ["..", "a..b", "x" * 64])
+def test_a_host_that_the_codec_rejects_is_422_with_no_folders(client, tmp_path, host):
+    response = capture(client, FIRST, page=f"https://{host}/")
+    assert response.status_code == 422
+    assert not (tmp_path / "captures").exists() or not list((tmp_path / "captures").iterdir()), \
+        "no folder came out of a refused host"
+
+
+def test_an_idn_page_gets_a_punycode_folder(client, tmp_path):
+    response = capture(client, FIRST, page="https://www.ähti.fi/")
+    assert response.status_code == 200
+    folder = tmp_path / "captures" / "www.xn--hti-pla.fi"
+    assert (folder / "links.json").exists()
+    site = json.loads((folder / "sites.json").read_text())["sites"]["www.xn--hti-pla.fi"]
+    assert site["name"] == "www.xn--hti-pla.fi" and site["origins"] == ["https://www.xn--hti-pla.fi/*"]
+    assert entries(client)[SIGNER.sign("https://www.xn--hti-pla.fi" + FIRST)]["title"].startswith(FAKE_PREFIX)
+    assert client.get("/api/captures/www.xn--hti-pla.fi").json()["host"] == "www.xn--hti-pla.fi"
+
+
 def test_a_capture_without_rules_is_refused(client):
     response = client.post("/api/capture", json={"pageUrl": PAGE, "links": []})
     assert response.status_code == 422

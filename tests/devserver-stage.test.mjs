@@ -58,8 +58,13 @@ describe('stage', () => {
         assert.ok(!existsSync(join(target, 'build', 'staged')));
     });
 
-    test('refuses a manifest URL that does not parse, and no manifest URL', () => {
+    test('refuses a manifest URL that does not parse, no manifest URL, and the source as its own target', () => {
+        const selfTarget = join(mkdtempSync(join(tmpdir(), 'stage-self-')), 'staged');
+        mkdirSync(selfTarget);
+        writeFileSync(join(selfTarget, 'manifest.json'), '{}');
         assert.throws(() => stage('.', join(tmpdir(), 'never'), [MANIFEST_URLS[0], 'not a url']));
         assert.throws(() => stage('.', join(tmpdir(), 'never'), []));
+        assert.throws(() => stage(selfTarget, selfTarget, MANIFEST_URLS));
+        assert.ok(existsSync(join(selfTarget, 'manifest.json')), 'the source must keep its files');
     });
 });
