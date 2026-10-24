@@ -122,33 +122,22 @@
 
     <!-- NAVI[GATION] -->
     <div id="navi">
-        <div>
-            <input id="navi-main" class="open-home hidden" type="radio" name="navi" checked>
-            <label for="navi-main" class="push-button compact-button">
-                <img class="icon" src="images/icon_home.svg" height="15" alt="Home icon" data-i18n-alt="iconHomeAlt">
-            </label>
-        </div>
-
-        <div>
-            <input id="navi-feedback" class="open-feedbackview hidden" type="radio" name="navi">
-            <label for="navi-feedback" class="push-button compact-button">
-                <img class="icon" src="images/icon_comment.svg" height="15" alt="Comment icon" data-i18n-alt="iconFeedbackAlt">
-            </label>
-        </div>
-
-        <div>
-            <input id="navi-stats" class="open-statsview hidden" type="radio" name="navi">
-            <label for="navi-stats" class="push-button compact-button">
-                <img class="icon" src="images/icon_chart.svg" height="15" alt="Stats icon" data-i18n-alt="iconStatsAlt">
-            </label>
-        </div>
-
-        <div>
-            <input id="navi-settings" class="open-settingsview hidden" type="radio" name="navi">
-            <label for="navi-settings" class="push-button compact-button">
-                <img class="icon" src="images/icon_slider.svg" height="15" alt="Slider icon" data-i18n-alt="iconSettingsAlt">
-            </label>
-        </div>
+        <input  id="open-home" type="radio" selected name="navi" value="open-home" checked>
+        <label for="open-home" class="navi-option" data-navi="open-home">
+            <img class="navi-icon" src="images/icon_home.svg" height="15" alt="Home icon" data-i18n-alt="iconHomeAlt">
+        </label>
+        <input  id="open-feedbackview" type="radio" name="navi" value="open-feedbackview">
+        <label for="open-feedbackview" class="navi-option" data-navi="open-feedbackview">
+            <img class="navi-icon" src="images/icon_comment.svg" height="15" alt="Comment icon" data-i18n-alt="iconFeedbackAlt">
+        </label>
+        <input  id="open-statsview" type="radio" name="navi" value="open-statsview">
+        <label for="open-statsview" class="navi-option" data-env="open-statsview">
+            <img class="navi-icon" src="images/icon_chart.svg" height="15" alt="Stats icon" data-i18n-alt="iconStatsAlt">
+        </label>
+        <input  id="open-settingsview" type="radio" name="navi" value="open-settingsview">
+        <label for="open-settingsview" class="navi-option" data-env="open-settingsview">
+            <img class="navi-icon" src="images/icon_slider.svg" height="15" alt="Slider icon" data-i18n-alt="iconSettingsAlt">
+        </label>
     </div>
 
     <!-- LOGO -->

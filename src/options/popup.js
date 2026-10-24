@@ -775,13 +775,13 @@ const _loadIntoView = async () => {
         }
     }
 
-    document.getElementById("navi-main").parentElement.title =
+    document.getElementById("open-home").parentElement.title =
         browser.i18n.getMessage("navigationMainLabel");
-    document.getElementById("navi-stats").parentElement.title =
+    document.getElementById("open-statsview").parentElement.title =
         browser.i18n.getMessage("navigationStatsLabel");
-    document.getElementById("navi-feedback").parentElement.title =
+    document.getElementById("open-feedbackview").parentElement.title =
         browser.i18n.getMessage("navigationFeedbackLabel");
-    document.getElementById("navi-settings").parentElement.title =
+    document.getElementById("open-settingsview").parentElement.title =
         browser.i18n.getMessage("navigationSettingsLabel");
     document.getElementById("open-options").title =
         browser.i18n.getMessage("navigationSettingsLabel");
@@ -897,13 +897,13 @@ const _setUpView = async (e) => {
 
     ///////////////////////////////////////////////////////////////////////////////
     // Register handlers for visual changes like moving between views.
-    document.querySelector(".open-statsview")
+    document.getElementById("open-statsview")
         .addEventListener("click", () => view.showView("stats"));
-    document.querySelector(".open-feedbackview")
+    document.getElementById("open-feedbackview")
         .addEventListener("click", () => view.showView("feedback"));
-    document.querySelector(".open-settingsview")
+    document.getElementById("open-settingsview")
         .addEventListener("click", () => view.showView("settings"));
-    document.querySelector(".open-home")
+    document.getElementById("open-home")
         .addEventListener("click", () => view.showView("main"));
 
     // settingsview-extension-enabled click listener is managed by the master-switch-setting component
