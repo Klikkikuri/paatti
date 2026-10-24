@@ -312,10 +312,13 @@ with `git clone --recursive` to get it from the start.
 #### Requirements
 
 - `make`, `bash`, `git`, `zip` and `curl`
-- Node.js. Every build runs `check-icons`, and `make test` and the release task need it too.
+- Node.js. Every build runs `check-icons`, `make test` needs it, and the e2e in `tests/e2e` runs it with
+  `playwright-core`.
 - `eslint` and `web-ext` for the lint targets. Both come from the dev container image.
-- (optional) Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2)
-- (optional, for the development server) [`uv`](https://docs.astral.sh/uv/), which installs the Python that it needs
+- (optional) Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2). Docker builds the test
+  image that the e2e and drift CI jobs run in.
+- (optional, for the development server) [`uv`](https://docs.astral.sh/uv/), which installs the Python that it
+  needs. The server is the `packages/karikko` submodule; `make serve` runs it.
 - The [`suola`](https://github.com/Klikkikuri/suola) submodule
   - TinyGo 0.41+, to compile it locally without Docker
 
@@ -498,12 +501,13 @@ A new badge needs its SVG, a module carrying the two markers above, and a `make 
 
 ### Development Server
 
-[`devserver/`](./devserver/) is a development server for Paatti. It serves **Ilta-Pulu**, a fake news site in
+[`packages/karikko`](./packages/karikko/), a git submodule of [Klikkikuri/karikko](https://github.com/Klikkikuri/karikko),
+is the development server for Paatti. It serves **Ilta-Pulu**, a fake news site in
 English, and a provider manifest that supplies Ilta-Pulu's site rules, Suola rules and corrections. Ilta-Pulu
 exercises each path of the content script: link and title selectors of the shapes that real news sites use, every
 clickbait level, the badges, paywalled and skipped links, expected failures, and content that loads later. A seed
 decides the layout, so the same seed gives the same page. The server can also inject faults into the provider
-documents. [devserver/README.md](./devserver/README.md) lists all of its settings.
+documents. [karikko/README.md](./packages/karikko/README.md) lists all of its settings.
 
 1. **Start the server.** It needs [`uv`](https://docs.astral.sh/uv/), which the dev container has:
 
@@ -553,7 +557,7 @@ correction, which starts with `[dev]`. It replaces a real correction of the same
 environment lets a provider take over a site. The server keeps each site in a folder in `test_data/captures/`, where
 you can edit its selectors and its Suola rules; delete the folder to forget that site.
 [Adding a new site](./docs/development/adding-a-new-site.md) gives the workflow, and
-[devserver/README.md](./devserver/README.md#captured-sites) tells more.
+[the karikko README](./packages/karikko/README.md#captured-sites) tells more.
 
 ### Architecture
 

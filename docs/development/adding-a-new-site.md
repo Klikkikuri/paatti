@@ -18,7 +18,7 @@ Develop both with the development server (step 1), then publish them (steps 2–
 
 ## 1. Develop the Rules with the Development Server
 
-The [captured-sites provider](../../devserver/README.md#captured-sites) of the development server keeps each site
+The [captured-sites provider](../../packages/karikko/README.md#captured-sites) of the development server keeps each site
 that you capture in a folder, `test_data/captures/<host>/`. You edit the rules in that folder, and the server gives
 each link a test correction, so the page shows which headlines the rules find.
 
@@ -120,9 +120,10 @@ of its settings at start. To report a problem, give that command and a copy of t
    branch publishes the compiled rules to Rahti, as
    [Publishing rules](../../suola/README.md#publishing-rules) tells. The rule changes the signs of the site's
    articles, so Rahti's data for the site must use the new signs.
-4. Update the `suola` submodule and the `suola` wheel in [devserver/pyproject.toml](../../devserver/pyproject.toml)
-   together to the new Suola release, so that the extension's built-in rules and the development server get the
-   rule too.
+4. Update the `suola` submodule and the `suola` wheel (and the packaged `base_rules.yaml` copy) in
+   [packages/karikko/pyproject.toml](../../packages/karikko/pyproject.toml) together to the new Suola release, so
+   that the extension's built-in rules and the development server get the rule too. Update the submodules
+   together, because the same page must have the same rules on both sides.
 
 ---
 

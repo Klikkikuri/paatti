@@ -20,7 +20,7 @@
                 },
                 "background": {
                     "activeOnStart": true,
-                    "beginsPattern": "paatti-devserver",
+                    "beginsPattern": "Ilta-Pulu at http://",
                     "endsPattern": "Uvicorn running on"
                 }
             },

@@ -54,14 +54,14 @@
 
 ## Tooling
 
-The dev container provides `git`, `make`, `curl`, `wget`, `tree`, `node`/`npm`/`npx` and `gh`, plus the tools installed by the `Dockerfile`: `rg` (ripgrep), `fd`, `bat`, `jq`, `yq` and `shellcheck`; `eslint`, `web-ext` (also used by `run.sh`), and `chromium`, which the `paatti` skill drives.
+The dev container provides `git`, `make`, `curl`, `wget`, `tree`, `node`/`npm`/`npx` and `gh`, plus the tools installed by the `Dockerfile`: `rg` (ripgrep), `fd`, `bat`, `jq`, `yq` and `shellcheck`; `eslint`, `web-ext` (also used by `run.sh`), `chromium`, which the `paatti` skill drives, and `python3`/`uv`, which run the `packages/karikko` submodule (the development server).
 
-- Run tests with `make test` (`node --test` over `tests/**/*.test.mjs`). Test through the module's exports. Put input cases in a table, and use named constants for shared fixtures.
+- Run tests with `make test` (`node --test` over `tests/*.test.mjs`; the e2e in tests/e2e has its own runner, `make test-e2e-node`). Test through the module's exports. Put input cases in a table, and use named constants for shared fixtures.
 - Lint with `make lint` (eslint) and `make lint-webext` (the AMO checks).
 - The project has no formatter. Do not change only the formatting of code that you do not otherwise change. This rule is about formatting. It does not limit a refactor (see JavaScript style).
 - Run `shellcheck` over changes to a shell script (for example `run.sh`, `assets/sources/*.sh`).
 - Prefer `rg` over `grep` and `fd` over `find`. Both respect `.gitignore`, which matters in a tree carrying
-  submodules, notebooks and `.venv`.
+  submodules, notebooks and `.venv` (which packages/karikko carries).
 - Use `jq` for JSON and `yq` for YAML config files.
 - If a tool you need is missing, add it to the final stage in the `Dockerfile` rather than installing it
   ad hoc — anything installed in a shell is lost on the next rebuild. Keep the version pins in step with

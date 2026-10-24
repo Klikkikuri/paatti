@@ -18,7 +18,7 @@ To rebuild the package from the source archive, with Docker available:
    is newer than the suola source. Without step 2 it downloads the attested release module instead.
 4. Compare build/store-firefox/ with the submitted package.
 
-The devserver/ directory of the archive is a development server and test harness, written in Python. It is not
+The archive's e2e suite (tests/e2e) runs against the karikko development server as plain Node tests. It is not
 part of the package.
 
 ## The development features

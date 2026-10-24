@@ -283,48 +283,59 @@ lint-webext: dist-firefox
 # argument. Node resolves the pattern itself, so keep it quoted.
 # jsdom is a global install (see .devcontainer/Dockerfile), and ESM resolution ignores
 # NODE_PATH -- tests/helpers/dom.mjs reaches it through the CJS resolver, which does not.
+# The single-level glob: tests/e2e has its own runner (test-e2e-node) with its own environment.
 test: export NODE_PATH = $(shell npm root -g)
 test: test-wasm check-sites
-	node --test 'tests/**/*.test.mjs'
+	node --test 'tests/*.test.mjs'
 
-# The development server in devserver/: Ilta-Pulu, its local provider manifests and fault injection. It is a uv
-# project of its own; devserver/README.md lists its settings. DEVSERVER_ARGS passes more of them, for example
+# The development server lives in packages/karikko, a git submodule (Klikkikuri/karikko) that meri's suola
+# pattern follows: its own uv project, its own committed uv.lock, developed from here with `uv run`. Its pointer
+# must sit on a released tag; a bump goes hand in hand with that karikko release. The settings are that
+# submodule's README's subject. DEVSERVER_ARGS passes more of them, for example
 # DEVSERVER_ARGS="--seed=42 --chaos.provider_5xx=data".
 UV ?= uv
 export DEVSERVER_PORT ?= 3000
 DEVSERVER_ARGS ?=
-DEVSERVER := $(UV) run --directory devserver
+KARIKKO_DIR ?= packages/karikko
+# The `abspath` and the quotes are load-bearing: the e2e's cwd is tests/e2e, the default inside
+# tools/devserver-server.mjs resolves the same `packages/karikko` against its own repo root, and a checkout
+# below a path with a space must not split the `--directory` argument.
+KARIKKO_RUN = $(UV) run --directory "$(abspath $(KARIKKO_DIR))" karikko
 
 serve:
-	$(DEVSERVER) paatti-devserver --port=$(DEVSERVER_PORT) --data_dir="$(abspath test_data)" $(DEVSERVER_ARGS)
+	$(KARIKKO_RUN) --port=$(DEVSERVER_PORT) --data_dir="$(abspath test_data)" $(DEVSERVER_ARGS)
 
-# The server's own tests, then the drift guard: Paatti's provider resolver, Suola module and content-script scan
-# against a live server on a free port (tools/devserver-drift.mjs).
+# The server's unit tests (inside the submodule), then the drift guard: Paatti's provider resolver, Suola module
+# and content-script scan against a live karikko on a free port (tools/devserver-drift.mjs).
 test-devserver: export NODE_PATH = $(shell npm root -g)
 test-devserver: $(WASM_OUTPUTS)
-	$(DEVSERVER) pytest
-	@port=$$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'); \
-	data=$$(mktemp -d); \
-	mkdir "$$data/captures" && cp -R devserver/tests/fixtures/captures/. "$$data/captures/"; \
-	$(DEVSERVER) paatti-devserver --port=$$port --log_level=WARNING --data_dir="$$data" & pid=$$!; \
+	$(KARIKKO_RUN) pytest
+	@port=$$(node -e 'import("node:net").then(({createServer}) => { const s = createServer(); s.listen(0, "127.0.0.1", () => { console.log(s.address().port); process.exit(0); }); })'); \
+	data="$(CURDIR)/build/e2e/drift-$$$$"; mkdir -p "$$data/captures" && cp -R tests/fixtures/captures/. "$$data/captures/"; \
+	$(KARIKKO_RUN) --port=$$port --log_level=WARNING --data_dir="$$data" & pid=$$!; \
 	trap 'kill $$pid 2>/dev/null; rm -rf "$$data"' EXIT; \
 	for _ in $$(seq 100); do curl -sf -o /dev/null "http://localhost:$$port/manifest/ilta-pulu/manifest.json" && break; sleep 0.2; done; \
-	DEVSERVER_CAPTURES=devserver/tests/fixtures/captures node tools/devserver-drift.mjs "http://localhost:$$port"
+	DEVSERVER_CAPTURES=tests/fixtures/captures node tools/devserver-drift.mjs "http://localhost:$$port"
 
-# The unpacked extension in Chromium against Ilta-Pulu (devserver/tests/e2e). CHROMIUM is the Debian package's
+# The unpacked extension in Chromium against Ilta-Pulu (tests/e2e). CHROMIUM is the Debian package's
 # binary, never the /usr/bin/chromium wrapper, which injects an empty --load-extension=.
 # DIST_FROM_ARTIFACTS=1 -- the tree was staged by the wasm job of the Build workflow and downloaded
 #   into $(BUILD_DIR)/dist; here we only prove it is present, so e2e runs against exactly the
 #   staged bytes instead of a fresh `dist` of the same commit.
 # Otherwise -- stage the tree from the checkout, as a local `make test-e2e` does.
 CHROMIUM ?= /usr/lib/chromium/chromium
+
+# The Node suite drives karikko (the KARIKKO command line, from the submodule pointer) as a process; the tests
+# read DIST_DIR, CHROMIUM and KARIKKO from the environment.
 ifeq ($(DIST_FROM_ARTIFACTS),1)
 test-e2e: | check-dist-artifacts
 else
 test-e2e: dist
 endif
 test-e2e:
-	$(DEVSERVER) pytest tests/e2e --extension-dir="$(DIST_DIR)" --chromium="$(CHROMIUM)"
+	cd tests/e2e && npm ci --no-audit --no-fund
+	cd tests/e2e && DIST_DIR="$(abspath $(DIST_DIR))" CHROMIUM="$(CHROMIUM)" KARIKKO="$(KARIKKO_RUN)" \
+	    node --test --test-concurrency=1 --test-timeout=120000 *.test.mjs
 
 check-dist-artifacts:
 	@test -s $(DIST_DIR)/manifest.json && test -s $(DIST_DIR)/build/js.wasm || { \
