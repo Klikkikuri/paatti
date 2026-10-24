@@ -127,6 +127,19 @@ check-docker:
 		exit 1; \
 	}
 
+# The test image: the test stage of .devcontainer/Dockerfile, whose Chromium setup
+# (the dependency shims and the /usr/lib/chromium/chromium binary) CI and the dev
+# container share. Run the test targets inside it, not on the host.
+TEST_IMAGE ?= paatti-test
+
+test-image:
+	$(DOCKER) build --target test -t $(TEST_IMAGE) .devcontainer/
+
+test-image-run:
+	$(DOCKER) run --rm -w /app -e UV_LINK_MODE=copy -e HYPOTHESIS_PROFILE='$(HYPOTHESIS_PROFILE)' \
+		--mount type=bind,src=$(shell pwd),dst=/app \
+		$(TEST_IMAGE) $(CMD)
+
 # The browser module is built with TinyGo; stock Go no longer produces js.wasm,
 # and the two toolchains' wasm_exec.js are not interchangeable.
 check-tinygo:
@@ -335,4 +348,4 @@ test-wasm:
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
 	fi
 
-.PHONY: serve test-devserver test-e2e check-dist-artifacts build init ensure-suola check-tinygo check-docker package source-dist icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
+.PHONY: serve test-devserver test-e2e check-dist-artifacts test-image test-image-run build init ensure-suola check-tinygo check-docker package source-dist icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
