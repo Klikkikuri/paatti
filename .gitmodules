@@ -1,3 +1,6 @@
 [submodule "suola"]
 	path = suola
 	url = ../suola.git
+[submodule "packages/karikko"]
+	path = packages/karikko
+	url = ../karikko.git

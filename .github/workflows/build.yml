@@ -126,6 +126,13 @@ jobs:
         run: |
           git -C suola fetch --tags
 
+      # The e2e and drift drive karikko from the submodule pointer; an untagged pointer would put unreleased
+      # code into a CI test run (plan 3.3). The pointer bump is the release report.
+      - name: "🏷️ Karikko pointer is a released tag"
+        run: |
+          git -C packages/karikko fetch --tags
+          git -C packages/karikko describe --tags --exact-match
+
       - name: "⬇️ Download WASM Artifacts"
         uses: actions/download-artifact@v8
         with:
@@ -156,6 +163,11 @@ jobs:
       - name: "🏷️ Fetch Submodule Tags"
         run: |
           git -C suola fetch --tags
+
+      - name: "🏷️ Karikko pointer is a released tag"
+        run: |
+          git -C packages/karikko fetch --tags
+          git -C packages/karikko describe --tags --exact-match
 
       # Both artifacts together: js.wasm and wasm_exec.js land in build/, the staged
       # OSS tree in build/dist, and test-e2e proves both instead of rebuilding.
