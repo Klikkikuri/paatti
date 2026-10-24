@@ -3,7 +3,7 @@
 //
 //   DEVSERVER_CAPTURES=<captures directory> node tools/devserver-drift.mjs <server base URL> [seed ...]
 //
-// `make test-devserver` copies devserver/tests/fixtures/captures into the server's data directory, starts the server
+// `make test-devserver` copies tests/fixtures/captures into the server's data directory, starts the server
 // and runs this. It needs the Suola artifacts in build/ (`make build-suola`) and jsdom through NODE_PATH, as
 // `make test` does.
 //

@@ -5,9 +5,12 @@
  * @file devserver-stage.mjs
  * Stages a copy of the extension that adds development server providers on its first install. run.sh runs it.
  *
- * The copy also requires `http://localhost/*`, and its background is `devserver-bootstrap.js`: that module loads
- * `src/background.js`, then does what a person does on the options page (see the module). `devserver.json` gives it
- * the manifest URLs. The source directory does not change.
+ * The copy also requires the loopback grants (`http://localhost/*` and `http://127.0.0.1/*`), and its background is
+ * `devserver-bootstrap.js`: that module loads `src/background.js`, then does what a person does on the options page
+ * (see the module). `devserver.json` gives it the manifest URLs. The source directory does not change.
+ *
+ * The e2e stages the same copy with `{ bootstrap: false }`: no background swap, no `devserver.json`; the harness
+ * adds and refreshes the providers itself, so the copy has no first-install work to do.
  *
  * Usage: node tools/devserver-stage.mjs <source-dir> <target-dir> <manifest-url>...
  */
@@ -16,17 +19,27 @@ import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, w
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const LOCALHOST_GRANT = "http://localhost/*";
+/** The loopback origins a development copy requires. The `127.0.0.1` one serves the popup capture test. */
+export const LOOPBACK_GRANTS = ["http://localhost/*", "http://127.0.0.1/*"];
 export const BOOTSTRAP = "devserver-bootstrap.js";
 const BOOTSTRAP_SOURCE = join(dirname(fileURLToPath(import.meta.url)), BOOTSTRAP);
 
 /**
- * @param {object} manifest - The `manifest.json` of the source directory.
- * @returns {object} A copy that requires `http://localhost/*` and starts the bootstrap module as its background.
+ * @typedef {object} StageOptions
+ * @property {boolean} [bootstrap] - Swap the background to `devserver-bootstrap.js` and write `devserver.json`.
+ *   True by default (the run.sh flow); the e2e passes false and names the providers itself.
  */
-export function stagedManifest(manifest) {
+
+/**
+ * @param {object} manifest - The `manifest.json` of the source directory.
+ * @param {boolean} [bootstrap] - See {@link StageOptions}.
+ * @returns {object} A copy that requires the loopback grants and, with `bootstrap`, starts the bootstrap module
+ *   as its background.
+ */
+export function stagedManifest(manifest, bootstrap = true) {
     const copy = structuredClone(manifest);
-    copy.host_permissions = [...new Set([...(copy.host_permissions || []), LOCALHOST_GRANT])];
+    copy.host_permissions = [...new Set([...(copy.host_permissions || []), ...LOOPBACK_GRANTS])];
+    if (!bootstrap) return copy;
     if (copy.background.service_worker) copy.background.service_worker = BOOTSTRAP;
     if (copy.background.scripts) copy.background.scripts = [BOOTSTRAP];
     return copy;
@@ -49,10 +62,12 @@ function copyExtension(from, to, skip) {
 /**
  * @param {string} source - An unpacked extension.
  * @param {string} target - Removed, then written again.
- * @param {string[]} manifestUrls - The provider manifests that the bootstrap adds, in this order.
+ * @param {string[]} [manifestUrls] - The provider manifests that the bootstrap adds, in this order. Required with
+ *   the default `bootstrap`; ignored without it.
+ * @param {StageOptions} [options]
  */
-export function stage(source, target, manifestUrls) {
-    if (manifestUrls.length === 0) throw new Error("no manifest URL");
+export function stage(source, target, manifestUrls = [], { bootstrap = true } = {}) {
+    if (bootstrap && manifestUrls.length === 0) throw new Error("no manifest URL");
     manifestUrls.forEach((url) => new URL(url));
     const resolvedSource = resolve(source);
     const resolvedTarget = resolve(target);
@@ -61,7 +76,8 @@ export function stage(source, target, manifestUrls) {
     copyExtension(source, resolvedTarget, resolvedTarget);
 
     const manifest = JSON.parse(readFileSync(join(source, "manifest.json"), "utf8"));
-    writeFileSync(join(resolvedTarget, "manifest.json"), JSON.stringify(stagedManifest(manifest), null, 2) + "\n");
+    writeFileSync(join(resolvedTarget, "manifest.json"), JSON.stringify(stagedManifest(manifest, bootstrap), null, 2) + "\n");
+    if (!bootstrap) return;
     copyFileSync(BOOTSTRAP_SOURCE, join(resolvedTarget, BOOTSTRAP));
     writeFileSync(join(resolvedTarget, "devserver.json"), JSON.stringify({ manifestUrls }) + "\n");
 }

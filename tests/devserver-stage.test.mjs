@@ -4,28 +4,34 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const { stagedManifest, stage, BOOTSTRAP, LOCALHOST_GRANT } = await import('../tools/devserver-stage.mjs');
+const { stagedManifest, stage, BOOTSTRAP, LOOPBACK_GRANTS } = await import('../tools/devserver-stage.mjs');
 
 const base = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
 const MANIFEST_URLS = ['http://localhost:3000/manifest/ilta-pulu/manifest.json',
     'http://localhost:3000/manifest/captured-sites/manifest.json'];
 
 describe('stagedManifest', () => {
-    test('requires localhost and starts the bootstrap in both background forms, and leaves the input alone', () => {
+    test('requires the loopback grants and starts the bootstrap in both background forms, and leaves the input alone', () => {
         const snapshot = structuredClone(base);
         const staged = stagedManifest(base);
 
-        assert.deepEqual(staged.host_permissions, [...base.host_permissions, LOCALHOST_GRANT]);
+        assert.deepEqual(staged.host_permissions, [...base.host_permissions, ...LOOPBACK_GRANTS]);
         assert.equal(staged.background.service_worker, BOOTSTRAP);
         assert.deepEqual(staged.background.scripts, [BOOTSTRAP]);
         assert.equal(staged.background.type, 'module');
         assert.deepEqual(base, snapshot);
     });
 
-    test('adds the localhost grant one time, and adds no background form that the manifest does not have', () => {
-        const staged = stagedManifest({ host_permissions: [LOCALHOST_GRANT], background: { service_worker: 'a.js' } });
-        assert.deepEqual(staged.host_permissions, [LOCALHOST_GRANT]);
+    test('adds each loopback grant one time, and adds no background form that the manifest does not have', () => {
+        const staged = stagedManifest({ host_permissions: LOOPBACK_GRANTS, background: { service_worker: 'a.js' } });
+        assert.deepEqual(staged.host_permissions, LOOPBACK_GRANTS);
         assert.deepEqual(staged.background, { service_worker: BOOTSTRAP });
+    });
+
+    test('without the bootstrap, keeps the manifest background and adds only the grants', () => {
+        const staged = stagedManifest(base, false);
+        assert.deepEqual(staged.host_permissions, [...base.host_permissions, ...LOOPBACK_GRANTS]);
+        assert.equal(staged.background.service_worker, base.background.service_worker);
     });
 });
 
@@ -66,5 +72,15 @@ describe('stage', () => {
         assert.throws(() => stage('.', join(tmpdir(), 'never'), []));
         assert.throws(() => stage(selfTarget, selfTarget, MANIFEST_URLS));
         assert.ok(existsSync(join(selfTarget, 'manifest.json')), 'the source must keep its files');
+    });
+
+    test('without the bootstrap, writes no devserver.json and no bootstrap file, whatever the URLs are', () => {
+        const source = mkdtempSync(join(tmpdir(), 'stage-source-'));
+        writeFileSync(join(source, 'manifest.json'), JSON.stringify(base));
+        const target = join(mkdtempSync(join(tmpdir(), 'stage-target-')), 'staged');
+
+        stage(source, target, [], { bootstrap: false });
+        assert.ok(!existsSync(join(target, BOOTSTRAP)));
+        assert.ok(!existsSync(join(target, 'devserver.json')));
     });
 });
