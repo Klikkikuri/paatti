@@ -64,8 +64,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         # Emoji glyphs, or popup screenshots render tofu boxes
         fonts-noto-color-emoji
 
-# uv runs the development server in packages/karikko (`make serve`, `make test-devserver`, `make test-e2e-node`).
-# Keep the version in step with the setup-uv step of .github/workflows/build.yml.
+# uv runs the development server in packages/karikko (`make serve`, `make test-devserver`, `make test-e2e`).
 COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /uvx /usr/local/bin/
 
 # jsdom is installed rather than imported -- the `make test` and drift targets point
