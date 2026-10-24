@@ -481,6 +481,24 @@
       }
     }
   },
+  "devmodeCaptureNoReply": {
+    "message": "The page did not answer the capture request.",
+    "description": "devmode (development-only): Shown when the content script or the injected scan returns nothing usable"
+  },
+  "devmodeCaptureNoUpdate": {
+    "message": "The database update gave no answer.",
+    "description": "devmode (development-only): Shown when the updateDatabase request comes back without a result"
+  },
+  "devmodeCaptureNoProvider": {
+    "message": "No provider supplies the site of $URL$.",
+    "description": "devmode (development-only): Shown when the captured page's host is supplied by no provider after the update",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "https://www.example.com/"
+      }
+    }
+  },
   "settingsviewDevmodeTitle": {
     "message": "Developer Settings",
     "description": "Title of the settings view developer mode section"

@@ -41,7 +41,8 @@ export async function readLinks(dataDir, host) {
 }
 
 /**
- * Waits until a host's capture folder exists and both files carry content, then reads them together.
+ * Waits until a host's capture folder exists and both files carry content, then reads them together. Throws when
+ * they never arrive: `waitUntil` reports a timeout instead of returning a falsy last value.
  *
  * @param {string} dataDir
  * @param {string} host

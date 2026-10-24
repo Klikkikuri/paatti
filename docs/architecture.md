@@ -14,6 +14,12 @@ Terms used below:
 - **Suola** is the WebAssembly module that normalizes and hashes URLs. The backend and the extension use the
   same module, so both sides agree on the **sign** (the hash) of a link. Its built-in normalization rules live in
   `suola/rules.yaml`. A provider can add its own named rule set. See [suola](https://github.com/Klikkikuri/suola).
+- **Environment** is the stored user preference (`userPreferences.environment`: `free`, `paid`, or `development`)
+  that picks the default providers and settings. It is not the **development server** (karikko, `make serve`),
+  which runs on the developer's machine. The development environment makes the server reachable as a loopback
+  provider; neither implies the other — see README.md, section "Development Server". Keep the prefixes straight:
+  `devserver` names the server, `dev-capture` names the extension feature, and the content-script command is
+  `capturePage`.
 
 `src/provider.js` reads one provider manifest. `src/providers.js` keeps the provider list, refreshes each provider
 into its own storage namespace, and installs each provider's Suola rules. `getConfig()` merges the data of the
@@ -165,7 +171,7 @@ classDiagram
         +processSite()
         +command: convertClickbaits
         +command: getConversions
-        +command: devmode_capturePage
+        +command: capturePage
     }
     class FeedbackDialog {
         +createFeedbackDialog(options)

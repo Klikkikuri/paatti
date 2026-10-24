@@ -516,9 +516,12 @@ documents. [karikko/README.md](./packages/karikko/README.md) lists all of its se
    make serve DEVSERVER_ARGS="--seed=42"         # a fixed page seed
    ```
 
-   `./run.sh` does steps 2 and 3 for you when the server answers: it runs a copy of the build that adds the
-   Ilta-Pulu and captured-sites providers on install (`tools/devserver-stage.mjs`). `--devserver` and
-   `--no-devserver` override the check.
+   `./run.sh` does steps 2 and 3 for you when the server answers, in a staged copy of the build under
+   `build/run-devserver` (`tools/devserver-stage.mjs`). The copy keeps the source tree untouched: it swaps the
+   background to `tools/devserver-bootstrap.js`, which on the first install turns on loopback providers, adds the
+   Ilta-Pulu and captured-sites providers from `devserver.json`, refreshes them, and turns on their site — the
+   steps below, done by code instead of by hand. `--devserver` and `--no-devserver` override the check; with
+   `-s DIR --devserver` the staging still happens, so the directory runs as-is only without `--devserver`.
 
 2. **Add the provider.** Make sure that the environment is `development`: an unpacked build starts in it. On the
    settings page, under **🐛 Debug Settings** → **🔌 Providers**, turn on **Allow providers on this machine**.

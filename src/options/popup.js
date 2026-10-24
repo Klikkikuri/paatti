@@ -928,8 +928,10 @@ const _setUpView = async (e) => {
 
     // Manual database update click handler is managed by the database-status-setting component
 
-    document.getElementById("enable-devmode")
-        .addEventListener("click", __devmodeEnable);
+    // The devmode toggle's listener takes no argument: a click event must not reach the options object of
+// __devmodeEnable, whose shape decides the environment.
+document.getElementById("enable-devmode")
+        .addEventListener("click", () => __devmodeEnable());
 
     // The capture button listener is bound by setupDevCapture().
     setupDevCapture();
@@ -965,10 +967,18 @@ const handleDomContentLoaded = async (e) => {
     }
 };
 
-const __devmodeEnable = async () => {
-    await controller.setEnvironment(
-        await model.read.isDevelopmentEnv() ? "free" : "development"
-    );
+/**
+ * The devmode toggle: the Development environment on, or the free one back.
+ *
+ * @param {object} options
+ * @param {boolean} [options.development] - True asks for the development environment, false for the free one.
+ *   Omitted (a click) toggles what the popup currently shows.
+ * @returns {Promise<string>} The environment after the write, so a test can wait for it deterministically.
+ */
+const __devmodeEnable = async ({ development } = {}) => {
+    const wanted = development ?? !(await model.read.isDevelopmentEnv());
+    await controller.setEnvironment(wanted ? "development" : "free");
+    return await model.read.getEnvironment();
 };
 
 /**

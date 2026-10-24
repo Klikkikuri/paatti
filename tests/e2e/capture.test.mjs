@@ -2,48 +2,37 @@
  * @file capture.test.mjs
  * Two capture flows of the popup's send: a supported site's stored rules and headlines, and the workflow of
  * docs/development/adding-a-new-site.md — capture a page, edit its folder's selectors and Suola rule, update,
- * and the page converts again. Ports test_send_page… and test_edits_in_the_host_folder… from
- * the pre-split Python suite (the deleted devserver/ tree; its history lives in Klikkikuri/karikko); the recorded-capture hook of LiveServer becomes a read of the
- * capture folder; the edited folder is a file edit in the data directory.
+ * and the page converts again. The recorded-capture hook becomes a read of the capture folder in the scenario's
+ * data directory; the edited folder is a file edit there.
  */
 
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test, { after, before, describe } from "node:test";
 import assert from "node:assert/strict";
-import { launch } from "./harness/browser.mjs";
-import { stagedExtensionDir } from "./harness/extension.mjs";
-import { e2eDataDir } from "../../tools/devserver-paths.mjs";
-import { freePort, startServer } from "../../tools/devserver-server.mjs";
+import { scenario } from "./harness/scenario.mjs";
 import { reloadUntilProcessed, sendPage, statuses, waitUntil } from "./harness/waits.mjs";
 import { waitForCaptures } from "./harness/captures.mjs";
 
-const DIST_DIR = process.env.DIST_DIR ?? "/app/build/dist";
-
-/** The rule that the folder edit installs: only the lead article stays converted (the original's LEAD_RULE). */
+/** The rule that the folder edit installs: only the lead article stays converted. */
 const LEAD_RULE = { container: "article.lead", link: ":scope > a", title: "h2 span:last-child" };
 
 describe("the popup's send of a supported site", () => {
-    /** @type {Awaited<ReturnType<typeof startServer>>} */
-    let server;
-    /** @type {Awaited<ReturnType<typeof launch>>} */
-    let browser;
+    /** @type {Awaited<ReturnType<typeof scenario>>} */
+    let env;
 
-    const dataDir = e2eDataDir("capture");
     before(async () => {
-        server = await startServer({ dataDir, port: await freePort() });
-        browser = await launch(stagedExtensionDir(DIST_DIR, "capture"));
+        env = await scenario("capture");
     });
 
     after(async () => {
-        await browser?.close();
-        await server?.stop();
+        await env?.close();
     });
 
     test("posts the site rules and the original headlines, and the server stores them", async () => {
-        await browser.addProvider(`http://localhost:${server.port}/manifest/ilta-pulu/manifest.json`);
-        const site = await browser.newPage();
-        await site.goto(`http://localhost:${server.port}/?seed=5`);
+        await env.browser.addProvider(`${env.base}/manifest/ilta-pulu/manifest.json`);
+        const site = await env.browser.newPage();
+        await site.goto(`${env.base}/?seed=5`);
         const converted = await waitUntil(async () => (await statuses(site)).converted);
         assert.ok(converted, JSON.stringify(await statuses(site)));
 
@@ -51,10 +40,9 @@ describe("the popup's send of a supported site", () => {
             [...document.querySelectorAll("[data-klikkikuri-original-title]")]
                 .map((element) => element.dataset.klikkikuriOriginalTitle.trim()));
 
-        const status = await sendPage(browser, `http://localhost:${server.port}`);
-        assert.match(status, /^Done/);
+        await sendPage(env.browser, env.base);
 
-        const { sites, links } = await waitForCaptures(dataDir, "localhost");
+        const { sites, links } = await waitForCaptures(env.dataDir, "localhost");
         const captured = sites.localhost;
         assert.ok(captured?.rules?.length > 0, "the capture must carry the site rules");
         for (const rule of captured.rules) {
@@ -73,43 +61,37 @@ describe("the popup's send of a supported site", () => {
 });
 
 describe("the adding-a-new-site workflow: capture, edit the folder, update", () => {
-    /** @type {Awaited<ReturnType<typeof startServer>>} */
-    let server;
-    /** @type {Awaited<ReturnType<typeof launch>>} */
-    let browser;
+    /** @type {Awaited<ReturnType<typeof scenario>>} */
+    let env;
 
-    const dataDir = e2eDataDir("capture-edit");
     before(async () => {
-        server = await startServer({ dataDir, port: await freePort() });
-        browser = await launch(stagedExtensionDir(DIST_DIR, "capture-edit"));
-        await browser.addProvider(`http://localhost:${server.port}/manifest/ilta-pulu/manifest.json`);
-        await browser.addProvider(`http://localhost:${server.port}/manifest/captured-sites/manifest.json`);
+        env = await scenario("capture-edit");
+        await env.browser.addProvider(`${env.base}/manifest/ilta-pulu/manifest.json`);
+        await env.browser.addProvider(`${env.base}/manifest/captured-sites/manifest.json`);
     });
 
     after(async () => {
-        await browser?.close();
-        await server?.stop();
+        await env?.close();
     });
 
     test("the edited selectors and Suola rule of a captured host apply at the next database update", async () => {
-        const base = `http://127.0.0.1:${server.port}`;
-        const site = await browser.newPage();
+        const base = `http://127.0.0.1:${env.server.port}`;
+        const site = await env.browser.newPage();
         await site.goto(`${base}/?seed=5`);
-        const status = await sendPage(browser, base);
-        assert.match(status, /^Done/);
-        await waitForCaptures(dataDir, "127.0.0.1");
+        await sendPage(env.browser, base);
+        await waitForCaptures(env.dataDir, "127.0.0.1");
         assert.ok(await waitUntil(async () => (await statuses(site)).converted),
             "the popup must turn the site on first");
 
-        const folder = join(dataDir, "captures", "127.0.0.1");
+        const folder = join(env.dataDir, "captures", "127.0.0.1");
         const sitesFile = JSON.parse(await readFile(join(folder, "sites.json"), "utf8"));
         sitesFile.sites["127.0.0.1"].rules = [LEAD_RULE];
         await writeFile(join(folder, "sites.json"), JSON.stringify(sitesFile));
         await writeFile(join(folder, "rules.json"), JSON.stringify({ sites: [{
-            domain: `127.0.0.1:${server.port}`,
+            domain: `127.0.0.1:${env.server.port}`,
             templates: [{ pattern: "^/[A-Za-z]+/a/(?P<Id>[0-9a-f]{12})", template: "https://dev.example/{{ .Id }}" }],
         }] }, null, 2));
-        await browser.refresh();
+        await env.browser.refresh();
         await reloadUntilProcessed(site);
 
         const converted = await waitUntil(async () => (await statuses(site)).converted);

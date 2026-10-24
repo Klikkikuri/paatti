@@ -164,6 +164,8 @@ jobs:
         run: |
           git -C suola fetch --tags
 
+      # The same guard as the devserver job: karikko comes from the submodule pointer, and an untagged pointer
+      # would put unreleased code into a CI test run.
       - name: "🏷️ Karikko pointer is a released tag"
         run: |
           git -C packages/karikko fetch --tags

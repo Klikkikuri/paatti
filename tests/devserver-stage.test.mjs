@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const { stagedManifest, stage, BOOTSTRAP, LOOPBACK_GRANTS } = await import('../tools/devserver-stage.mjs');
+const { repoRoot } = await import('../tools/devserver-paths.mjs');
 
 const base = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
 const MANIFEST_URLS = ['http://localhost:3000/manifest/ilta-pulu/manifest.json',
@@ -64,7 +65,7 @@ describe('stage', () => {
         assert.ok(!existsSync(join(target, 'build', 'staged')));
     });
 
-    test('refuses a manifest URL that does not parse, no manifest URL, and the source as its own target', () => {
+    test('refuses a manifest URL that does not parse, no manifest URL, the source as its own target, and a foreign target', () => {
         const selfTarget = join(mkdtempSync(join(tmpdir(), 'stage-self-')), 'staged');
         mkdirSync(selfTarget);
         writeFileSync(join(selfTarget, 'manifest.json'), '{}');
@@ -72,6 +73,18 @@ describe('stage', () => {
         assert.throws(() => stage('.', join(tmpdir(), 'never'), []));
         assert.throws(() => stage(selfTarget, selfTarget, MANIFEST_URLS));
         assert.ok(existsSync(join(selfTarget, 'manifest.json')), 'the source must keep its files');
+
+        // A target outside build/ and the temporary root is refused before anything is deleted.
+        const foreign = join(repoRoot, 'src', 'definitely-not-a-staging-dir');
+        assert.throws(() => stage('.', foreign, MANIFEST_URLS), /must be inside/);
+        assert.ok(!existsSync(foreign), 'a refused target must not be created');
+    });
+
+    test('refuses a manifest with no background section when it swaps the bootstrap', () => {
+        const source = mkdtempSync(join(tmpdir(), 'stage-source-'));
+        writeFileSync(join(source, 'manifest.json'), JSON.stringify({ manifest_version: 3 }));
+        const target = join(mkdtempSync(join(tmpdir(), 'stage-target-')), 'staged');
+        assert.throws(() => stage(source, target, MANIFEST_URLS), /no background/);
     });
 
     test('without the bootstrap, writes no devserver.json and no bootstrap file, whatever the URLs are', () => {

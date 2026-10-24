@@ -4,11 +4,12 @@
 /**
  * @file devserver-server.mjs
  * The development server (karikko) as a child process: start, stop, and restart on the same port. The e2e
- * harness imports this module; the drift tool starts its server through the Makefile.
+ * harness and the Makefile import this module; it is the only owner of the server lifecycle.
  *
- * The server command is the Makefile's `KARIKKO ?= uv run --directory packages/karikko karikko`, received as one
- * shell string through `KARIKKO`, overridable per call. This module owns no second flag catalogue: the caller
- * names the trailing arguments.
+ * The command is built here from `KARIKKO_DIR` (default: `packages/karikko`), so the repository keeps one
+ * definition of it. uv syncs the project environment on the first run, which a fresh checkout and the CI image
+ * both need; a caller may still pass a whole argv array (`command`) to drive something else. This module owns no
+ * second flag catalogue: the caller names the trailing arguments.
  */
 
 import { spawn } from "node:child_process";
@@ -16,13 +17,17 @@ import net from "node:net";
 import { isAbsolute, join, resolve } from "node:path";
 import { repoRoot } from "./devserver-paths.mjs";
 
-const DEFAULT_PROJECT_DIR = join(repoRoot, "packages", "karikko");
-/** `uv run --directory` moves the server's working directory; the path in it must be absolute (see paths). */
-const DEFAULT_COMMAND = `uv run --directory ${DEFAULT_PROJECT_DIR} karikko`;
-/** Milliseconds: the readiness poll's total budget, period, and the SIGKILL escalation's grace. */
+/** The command line of the server, built from KARIKKO_DIR so the repository keeps one definition. */
+const defaultCommand = () => {
+    const dir = join(repoRoot, process.env.KARIKKO_DIR ?? "packages/karikko");
+    return ["uv", "run", "--directory", dir, "karikko"];
+};
+/** Milliseconds: the readiness poll's total budget and period, and the SIGTERM grace before SIGKILL. */
 const READINESS_TIMEOUT = 30000;
 const READINESS_INTERVAL = 200;
 const STOP_TIMEOUT = 5000;
+/** How long the group gets to die after SIGKILL before the stop reports a failure. */
+const KILL_WAIT = 2000;
 /** What the server prints when `freePort`'s released address was taken between release and bind. */
 const ADDRESS_IN_USE = "in use";
 const PORT_ATTEMPTS = 3;
@@ -44,11 +49,11 @@ export function freePort() {
     });
 }
 
-/** @param {string} base @param {number} port @param {string} dataDir @param {string[]} flags
- * @returns {string} The one shell line this module runs: the command, then the quoted data directory, the port,
- * and the caller's flags. Single quotes around the path: a checkout below `~/My Projects/` must not split. */
-function serverSpec(base, port, dataDir, flags) {
-    return `${base} --data_dir='${dataDir}' --port=${port} ${flags.join(" ")}`.trimEnd();
+/** @param {string[]} command @param {number} port @param {string} dataDir @param {string[]} flags
+ * @returns {string[]} The full argv this module spawns: the command, then the data directory, the port, and the
+ *   caller's flags. An array, so a checkout below `~/My Projects/` needs no quoting to survive. */
+function serverArgv(command, port, dataDir, flags) {
+    return [...command, `--data_dir=${dataDir}`, `--port=${port}`, ...flags];
 }
 
 /**
@@ -59,14 +64,18 @@ function serverSpec(base, port, dataDir, flags) {
  */
 
 /**
- * @param {string} spec
+ * @param {string[]} argv
  * @param {number} port
  * @returns {ServerProcess}
  */
-function startProcess(spec, port) {
-    // Detached: the whole group behind the shell string is this handle's, and a group signal reaches uv's child.
-    const child = spawn(spec, { shell: true, detached: true, stdio: ["ignore", "pipe", "pipe"] });
+function startProcess(argv, port) {
+    // Detached: the whole process group is this handle's, and a group signal reaches uv's child. No shell:
+    // the argv array is the command, so nothing re-parses a path.
+    const child = spawn(argv[0], argv.slice(1), { detached: true, stdio: ["ignore", "pipe", "pipe"] });
     const logs = [];
+    // A failed exec (no `uv` on PATH) arrives as an error event after the pipes are set; without a listener it
+    // would crash the caller with an unhandled 'error'. The readiness poll reports the exit instead.
+    child.on("error", (error) => logs.push(`${error.message}\n`));
     const collect = (text) => {
         logs.push(text);
         if (logs.length > 200) logs.splice(0, logs.length - 100);
@@ -110,41 +119,53 @@ function onceExit(child) {
     return new Promise((resolvePromise) => child.once("exit", resolvePromise));
 }
 
-/**
- * Signals the whole group behind the shell string; ESRCH-safe, so a repeat signal is a no-op.
- */
-function signalGroup(child, signal) {
-    if (child.pid === undefined) return;
-    for (const target of [-child.pid, child.pid]) {
-        try {
-            process.kill(target, signal);
-        } catch {
-            // Gone already; that is what a poll expects.
-        }
+/** Whether the process group still exists: signal 0 answers ESRCH once every member is gone. */
+function groupAlive(pid) {
+    try {
+        process.kill(-pid, 0);
+        return true;
+    } catch (error) {
+        if (error.code === "ESRCH") return false;
+        throw error;
+    }
+}
+
+async function waitForGroupDeath(child, timeoutMs, logsOf) {
+    const deadline = Date.now() + timeoutMs;
+    while (groupAlive(child.pid)) {
+        if (Date.now() > deadline) throw new Error(`the server process group refused to die:\n${logsOf()}`);
+        await new Promise((resolvePromise) => setTimeout(resolvePromise, 50));
     }
 }
 
 /**
- * SIGTERM to the group first, then SIGKILL after the grace period. uvicorn turns SIGTERM into a graceful
- * shutdown that can outlive its shell, so the shell's exit says nothing, and neither does the child's `exitCode`:
- * the group is what a stop owns, and it stops only when killing it answers ESRCH.
+ * SIGTERM to the group, then a grace period for uvicorn's own shutdown, then one SIGKILL. Without a shell there is
+ * no wrapper between this handle and uvicorn: its exit says nothing about the children it leaves behind, so the
+ * group is what a stop owns, and it stops only when polling it answers ESRCH. No repeat SIGKILL inside the poll:
+ * the first one kills every surviving member, and a later failure would mean the pid was reused by an unrelated
+ * group.
  */
 async function stopGroup(child, logsOf) {
-    signalGroup(child, "SIGTERM");
-    await onceExit(child);
-    const deadline = Date.now() + STOP_TIMEOUT;
-    for (;;) {
-        let gone;
+    if (child.pid !== undefined) {
         try {
-            process.kill(-child.pid, "SIGKILL");
-        } catch (error) {
-            if (error.code !== "ESRCH") throw error;
-            return;
+            process.kill(-child.pid, "SIGTERM");
+        } catch {
+            // Gone already; that is what a poll expects.
         }
-        gone = Date.now() > deadline;
-        if (gone) throw new Error(`the server process group refused to die:\n${logsOf()}`);
-        await new Promise((resolve) => setTimeout(resolve, 50));
     }
+    await onceExit(child);
+    try {
+        await waitForGroupDeath(child, STOP_TIMEOUT, logsOf);
+        return;
+    } catch {
+        // Past the grace period: escalate below. The error of the poll is the answer only if the kill fails too.
+    }
+    try {
+        process.kill(-child.pid, "SIGKILL");
+    } catch {
+        return; // The group died between the last poll and the kill.
+    }
+    await waitForGroupDeath(child, KILL_WAIT, logsOf);
 }
 
 /**
@@ -152,9 +173,9 @@ async function stopGroup(child, logsOf) {
  * @property {number} port
  * @property {() => string} logs - What the current child printed (tail-bounded), for a failure report.
  * @property {() => Promise<void>} stop - Idempotent; safe to call from an unconditional `afterEach`.
- * @property {(flags?: string[]) => Promise<void>} restart - Stops the current child, then spawns again on the
- *   same port and data directory with the new flags. The handle stays this handle; the caller keeps nothing
- *   else alive and nothing stale. Also invoked by every start with the base flags once.
+ * @property {(flags: string[]) => Promise<void>} restart - Stops the current child, then spawns again on the
+ *   same port and data directory with these flags. The flags are required: one call means exactly one thing.
+ *   The handle stays this handle; the caller keeps nothing else alive and nothing stale.
  */
 
 /**
@@ -163,11 +184,11 @@ async function stopGroup(child, logsOf) {
  * @param {number} port
  * @param {string} dataDir
  * @param {ServerProcess} initial
- * @param {string} base
+ * @param {string[]} command
  * @param {string[]} startupFlags
  * @returns {ServerHandle}
  */
-function createHandle(port, dataDir, initial, base, startupFlags) {
+function createHandle(port, dataDir, initial, command, startupFlags) {
     let current = initial;
     let currentFlags = startupFlags;
 
@@ -175,8 +196,8 @@ function createHandle(port, dataDir, initial, base, startupFlags) {
         await stopGroup(current.child, current.logsOf);
     }
 
-    async function spawnProcess() {
-        const fresh = startProcess(serverSpec(base, port, dataDir, currentFlags), port);
+    async function spawnProcess(flags) {
+        const fresh = startProcess(serverArgv(command, port, dataDir, flags), port);
         try {
             await fresh.readiness();
         } catch (error) {
@@ -184,6 +205,7 @@ function createHandle(port, dataDir, initial, base, startupFlags) {
             throw error;
         }
         current = fresh;
+        currentFlags = flags;
     }
 
     /** @type {ServerHandle} */
@@ -191,10 +213,10 @@ function createHandle(port, dataDir, initial, base, startupFlags) {
         port,
         logs: () => current.logsOf(),
         stop,
-        restart: async (flags = currentFlags) => {
-            currentFlags = flags;
+        restart: async (flags) => {
+            if (!Array.isArray(flags)) throw new Error("restart: the flags array is required");
             await handle.stop();
-            await spawnProcess();
+            await spawnProcess(flags);
         },
     };
     return handle;
@@ -208,22 +230,22 @@ function createHandle(port, dataDir, initial, base, startupFlags) {
  *   absolute, because the server's cwd is the project's, not the caller's.
  * @param {string[]} [options.flags] - Trailing karikko arguments, already formed by the caller.
  * @param {number} [options.port] - Defaults to `freePort()`.
- * @param {string} [options.command] - Overrides `KARIKKO`, then the submodule default; the whole shell string.
+ * @param {string[]} [options.command] - Overrides the default `uv run --directory <KARIKKO_DIR> karikko`; the
+ *   whole argv, no shell.
  * @returns {Promise<ServerHandle>}
  */
 export async function startServer({ dataDir, flags = [], port, command } = {}) {
     if (dataDir === undefined) throw new Error("startServer: no data directory");
     if (!isAbsolute(dataDir)) dataDir = resolve(dataDir);
     port ??= await freePort();
-    const base = command ?? process.env.KARIKKO ?? DEFAULT_COMMAND;
+    const argv0 = command ?? defaultCommand();
 
     let failure;
     for (let attempt = 0; attempt < PORT_ATTEMPTS; attempt++) {
-        const spec = serverSpec(base, port, dataDir, flags);
-        const proc = startProcess(spec, port);
+        const proc = startProcess(serverArgv(argv0, port, dataDir, flags), port);
         try {
             await proc.readiness();
-            return createHandle(port, dataDir, proc, base, flags);
+            return createHandle(port, dataDir, proc, argv0, flags);
         } catch (error) {
             failure = error;
             await stopGroup(proc.child, proc.logsOf);

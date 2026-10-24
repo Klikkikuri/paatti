@@ -59,6 +59,21 @@ export function refreshDevCapture({ config, tab, matchingDomain, canScan }) {
 }
 
 /**
+ * A capture reply the popup can send: what `capturePageLinks` and the content script's `capturePage` answer.
+ * Either source can fail to produce one — the content script answers null on an internal error, and the injected
+ * function returns undefined when its frame is gone — so the shape is checked here, at the boundary.
+ *
+ * @param {unknown} page
+ * @returns {boolean}
+ */
+function isCaptureReply(page) {
+    return typeof page === "object" && page !== null
+        && typeof page.pageUrl === "string"
+        && Array.isArray(page.rules)
+        && Array.isArray(page.links);
+}
+
+/**
  * Send the site rules, links and headlines of the page to the development server, update the database, and convert
  * the page with the corrections that the server made.
  *
@@ -79,10 +94,11 @@ async function devmodeCapturePage(event) {
     try {
         if (!(await granted)) throw new Error(browser.i18n.getMessage("permissionNotGranted"));
         const page = context.canScan
-            ? await devmodeCaptureRunningPage(context.tabId)
+            ? await captureRunningPage(context.tabId)
             : (await browser.scripting.executeScript({
                 target: { tabId: context.tabId }, func: capturePageLinks, args: [context.rules]
             }))[0].result;
+        if (!isCaptureReply(page)) throw new Error(browser.i18n.getMessage("devmodeCaptureNoReply"));
         const response = await safeFetch(context.target.captureUrl, {
             allowLoopback: true,
             init: { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(page) }
@@ -93,14 +109,14 @@ async function devmodeCapturePage(event) {
         }
 
         const updated = await browser.runtime.sendMessage({ action: "updateDatabase" });
-        if (!updated?.success) throw new Error(updated?.error || "The database update gave no answer.");
+        if (!updated?.success) throw new Error(updated?.error || browser.i18n.getMessage("devmodeCaptureNoUpdate"));
         // updateDatabase reports only the default providers; the provider's own errors say whether it refreshed.
         const errors = (await getConfig()).providerData[context.target.providerUrl]?.errors || [];
         if (errors.length > 0) throw new Error(errors.map((error) => error.message).join("; "));
 
         // The provider now supplies the site, and a site that a provider supplies starts off.
         const domain = await model.read.getMatchingSiteDomain(new URL(page.pageUrl).hostname);
-        if (!domain) throw new Error(`No provider supplies the site of ${page.pageUrl}`);
+        if (!domain) throw new Error(browser.i18n.getMessage("devmodeCaptureNoProvider", [page.pageUrl]));
         await controller.setSiteEnabled(true, domain);
         if (context.canScan) {
             await browser.tabs.sendMessage(context.tabId, { command: "convertClickbaits" });
@@ -123,6 +139,6 @@ async function devmodeCapturePage(event) {
  * @param {number} tabId - The tab whose content script scanned the page.
  * @returns {Promise<{pageUrl: string, rules: object[], links: Array<{href: string, title: string}>}>}
  */
-function devmodeCaptureRunningPage(tabId) {
-    return browser.tabs.sendMessage(tabId, { command: "devmode_capturePage" });
+function captureRunningPage(tabId) {
+    return browser.tabs.sendMessage(tabId, { command: "capturePage" });
 }

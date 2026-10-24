@@ -5,8 +5,6 @@
 // Use this to access this source file in the browser debugger.
 //debugger;
 
-const LABEL_PAYWALLED = "com.github.klikkikuri/paywalled=true";
-
 let hrefSigns;
 
 // Main.
@@ -18,6 +16,8 @@ let hrefSigns;
     const { model: model, klikkikuriStatus: klikkikuriStatus } = await import(browser.runtime.getURL("src/model.js"));
     const { controller } = await import(browser.runtime.getURL("src/controller.js"));
     const { getLogger, debounce, canAppendSpan } = await import(browser.runtime.getURL("src/utils.js"));
+    const { scanSiteRules } = await import(browser.runtime.getURL("src/site-rules-scan.js"));
+    const { LABEL_PAYWALLED } = await import(browser.runtime.getURL("src/clickbait-constants.js"));
 
     const { createHighlightOverlay } = await import(browser.runtime.getURL("src/components/highlight-overlay.js"));
     const { createFeedbackDialog } = await import(browser.runtime.getURL("src/components/feedback-dialog.js"));
@@ -185,27 +185,16 @@ let hrefSigns;
     // Processing subroutines.
 
     /**
-     * Every link that the site rules find: each matched container, and each link in it with its title element, which
-     * is null when the rule's title selector finds nothing.
+     * The scan for one site: the shared link semantics plus the container set that the stale-status cleanup needs.
+     * A rule can match a container and still find no link in it; that container counts as matched, so its status
+     * is kept rather than dropped. Deriving the set from the links alone would miss it.
      */
-    const scanSiteRules = (siteRules) => {
+    const scanRules = (siteRules) => {
         const containers = new Set();
-        const links = [];
         for (const rule of siteRules) {
-            for (const container of document.querySelectorAll(rule.container)) {
-                containers.add(container);
-                const ruleLinks = (!rule.link || rule.link === "self" || rule.link === ":scope")
-                    ? [container]
-                    : container.querySelectorAll(rule.link);
-                for (const link of ruleLinks) {
-                    const titleElem = (rule.title === "self" || rule.title === ":scope")
-                        ? container
-                        : (rule.title ? container.querySelector(rule.title) : link);
-                    links.push({ container, link, rule, titleElem });
-                }
-            }
+            for (const container of document.querySelectorAll(rule.container)) containers.add(container);
         }
-        return { containers, links };
+        return { containers, links: scanSiteRules(document, siteRules) };
     };
 
     /** `href` resolved against the page, or null for an address that does not parse. */
@@ -228,7 +217,7 @@ let hrefSigns;
         }
 
         // Scan and collect elements to process
-        const { containers: matchedContainers, links } = scanSiteRules(siteRules);
+        const { containers: matchedContainers, links } = scanRules(siteRules);
         const linksToProcess = [];
         for (const { container, link, rule, titleElem } of links) {
             const href = titleElem && link.getAttribute('href');
@@ -237,7 +226,13 @@ let hrefSigns;
                 continue;
             }
             const absolute = absoluteHref(href);
-            if (absolute) linksToProcess.push({ container, link, rule, href: absolute, titleElem });
+            // A javascript: or other non-http(s) address parses but cannot be signed or looked up. It is skipped
+            // like a missing href: the page's own expectation says "skipped", and signing it would throw in Suola.
+            if (!absolute || !/^https?:/.test(absolute)) {
+                container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
+                continue;
+            }
+            linksToProcess.push({ container, link, rule, href: absolute, titleElem });
         }
 
         // Batch generate signatures from background service worker
@@ -524,15 +519,14 @@ let hrefSigns;
                         sendResponse({ success: false, error: err.message });
                     });
                 return true;
-            case "devmode_capturePage": {
+            case "capturePage": {
                 // devmode (development-only; see docs/PRIVACY_POLICY_DEVELOPMENT.md): the site rules, and the links
                 // that they find with the headline that the page itself shows. The server signs them; nothing here
                 // is sent anywhere. The command reaches the content script only through src/options/dev-capture.js.
                 (async () => {
                     const rules = await model.read.getSiteRules(newsSite) || [];
-                    const { links } = scanSiteRules(rules);
                     const captured = [];
-                    for (const { link, titleElem } of links) {
+                    for (const { link, titleElem } of scanRules(rules).links) {
                         const raw = link.getAttribute("href");
                         const href = titleElem && raw && absoluteHref(raw);
                         if (!href || !/^https?:/.test(href)) continue;

@@ -304,9 +304,9 @@ UV ?= uv
 export DEVSERVER_PORT ?= 3000
 DEVSERVER_ARGS ?=
 KARIKKO_DIR ?= packages/karikko
-# The `abspath` and the quotes are load-bearing: the e2e's cwd is tests/e2e, the default inside
-# tools/devserver-server.mjs resolves the same `packages/karikko` against its own repo root, and a checkout
-# below a path with a space must not split the `--directory` argument.
+# The server command has one definition: tools/devserver-server.mjs builds it from KARIKKO_DIR. `serve` is the
+# only recipe that runs karikko directly, and its abspath keeps the --directory argument whole below a path
+# with a space.
 KARIKKO_RUN = $(UV) run --directory "$(abspath $(KARIKKO_DIR))" karikko
 
 serve:
@@ -314,16 +314,14 @@ serve:
 
 # The server's unit tests (inside the submodule), then the drift guard: Paatti's provider resolver, Suola module
 # and content-script scan against a live karikko on a free port (tools/devserver-drift.mjs).
+# `env -u VIRTUAL_ENV`: an activated virtualenv above a deleted path (a stale dev-container mount) makes uv sync
+# the wrong environment and leave the project's own without pytest. The project environment under KARIKKO_DIR is
+# the one this target owns, and uv creates it on a fresh checkout, so the sync must stay on.
 test-devserver: export NODE_PATH = $(shell npm root -g)
 test-devserver: $(WASM_OUTPUTS)
 	# Karikko's own unit tests: run through uv, not through the karikko CLI (KARIKKO_RUN ends in the tool).
-	$(UV) run --directory "$(abspath $(KARIKKO_DIR))" pytest
-	@port=$$(node -e 'import("node:net").then(({createServer}) => { const s = createServer(); s.listen(0, "127.0.0.1", () => { console.log(s.address().port); process.exit(0); }); })'); \
-	data="$(CURDIR)/build/e2e/drift-$$$$"; mkdir -p "$$data/captures" && cp -R tests/fixtures/captures/. "$$data/captures/"; \
-	$(KARIKKO_RUN) --port=$$port --log_level=WARNING --data_dir="$$data" & pid=$$!; \
-	trap 'kill $$pid 2>/dev/null; rm -rf "$$data"' EXIT; \
-	for _ in $$(seq 100); do curl -sf -o /dev/null "http://localhost:$$port/manifest/ilta-pulu/manifest.json" && break; sleep 0.2; done; \
-	DEVSERVER_CAPTURES=tests/fixtures/captures node tools/devserver-drift.mjs "http://localhost:$$port"
+	env -u VIRTUAL_ENV $(UV) run --directory "$(abspath $(KARIKKO_DIR))" pytest
+	node tools/devserver-drift.mjs
 
 # The unpacked extension in Chromium against Ilta-Pulu (tests/e2e). CHROMIUM is the Debian package's
 # binary, never the /usr/bin/chromium wrapper, which injects an empty --load-extension=.
@@ -333,8 +331,8 @@ test-devserver: $(WASM_OUTPUTS)
 # Otherwise -- stage the tree from the checkout, as a local `make test-e2e` does.
 CHROMIUM ?= /usr/lib/chromium/chromium
 
-# The Node suite drives karikko (the KARIKKO command line, from the submodule pointer) as a process; the tests
-# read DIST_DIR, CHROMIUM and KARIKKO from the environment.
+# The Node suite drives karikko (the tool's default command, from the submodule pointer) as a process; the tests
+# read DIST_DIR and CHROMIUM from the environment.
 ifeq ($(DIST_FROM_ARTIFACTS),1)
 test-e2e: | check-dist-artifacts
 else
@@ -342,7 +340,7 @@ test-e2e: dist
 endif
 test-e2e:
 	cd tests/e2e && npm ci --no-audit --no-fund
-	cd tests/e2e && DIST_DIR="$(abspath $(DIST_DIR))" CHROMIUM="$(CHROMIUM)" KARIKKO="$(KARIKKO_RUN)" \
+	cd tests/e2e && DIST_DIR="$(abspath $(DIST_DIR))" CHROMIUM="$(CHROMIUM)" \
 	    node --test --test-concurrency=1 --test-timeout=120000 *.test.mjs
 
 check-dist-artifacts:

@@ -52,9 +52,10 @@ export const GENERIC_CAPTURE_RULE = Object.freeze({
 });
 
 /**
- * The http(s) links that `rules` find on the page, with their headlines, as the content script's
- * `devmode_capturePage` returns them. The scan follows `scanSiteRules` in `src/contentScript.js`. It runs in the
- * page through `scripting.executeScript`, so it uses nothing from this module.
+ * The http(s) links that `rules` find on the page, with their headlines, as the content script's `capturePage`
+ * returns them. The scan follows `scanSiteRules` in `src/site-rules-scan.js`; this copy stays self-contained
+ * because the popup injects the function into a page, where no import is available. It runs in the page through
+ * `scripting.executeScript`, so it uses nothing from this module.
  *
  * @param {object[]} rules - The site's rules, or `[GENERIC_CAPTURE_RULE]`.
  * @returns {{pageUrl: string, rules: object[], links: Array<{href: string, title: string}>}}

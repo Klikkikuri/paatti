@@ -20,23 +20,23 @@ export function statuses(page) {
 }
 
 /**
- * The first truthy value of `predicate()`, or its falsy last one at the deadline.
+ * The first truthy value of `predicate()`, or a timeout error at the deadline. A falsy result is retried until
+ * then, so a count of 0 never looks like a timeout.
  *
  * @template T
  * @param {() => T | Promise<T>} predicate
  * @param {number} [timeoutMs]
  * @param {number} [intervalMs]
- * @returns {Promise<T>}
+ * @returns {Promise<T>} - The first truthy value. Rejects when the deadline passes without one.
  */
-export function waitUntil(predicate, timeoutMs = 20000, intervalMs = 250) {
-    return (async () => {
-        const started = Date.now();
-        for (;;) {
-            const value = await predicate();
-            if (value || Date.now() - started > timeoutMs) return value;
-            await new Promise((resolve) => setTimeout(resolve, intervalMs));
-        }
-    })();
+export async function waitUntil(predicate, timeoutMs = 20000, intervalMs = 250) {
+    const started = Date.now();
+    for (;;) {
+        const value = await predicate();
+        if (value) return value;
+        if (Date.now() - started > timeoutMs) throw new Error(`waitUntil: no truthy value within ${timeoutMs} ms`);
+        await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
 }
 
 /**
@@ -70,13 +70,19 @@ export async function waitForMismatches(page, timeoutMs = 25000) {
 export async function reloadUntilProcessed(page, attempts = 3) {
     for (let i = 0; i < attempts; i++) {
         await page.reload();
-        const found = await waitUntil(() => statuses(page), 5000);
-        if (Object.keys(found).length > 0) return;
+        try {
+            await waitUntil(async () => Object.keys(await statuses(page)).length > 0, 5000);
+            return;
+        } catch {
+            // This reload got no content script either; try once more.
+        }
     }
 }
 
 /**
- * Clicks "Send page" in a popup whose active tab is the page at `base`. Returns the status text.
+ * Clicks "Send page" in a popup whose active tab is the page at `base`, and waits for the send to finish. The
+ * button is disabled while the capture runs and enabled again when it ends, whatever status text the locale shows
+ * (finding 16). Returns the final status text for tests that check the count.
  *
  * @param {import("./browser.mjs").PaattiBrowser} browser
  * @param {string} base
@@ -86,19 +92,17 @@ export async function sendPage(browser, base) {
     const popup = await browser.newPage();
     await popup.goto(`chrome-extension://${browser.extensionId}/src/options/popup.html`);
     await popup.evaluate(async (base) => {
-        const [tab] = await chrome.tabs.query({ url: `${base}/*` });
-        await chrome.tabs.update(tab.id, { active: true });
+        const { default: browserApi } = await import("/src/browser-api.js");
+        const [tab] = await browserApi.tabs.query({ url: `${base}/*` });
+        await browserApi.tabs.update(tab.id, { active: true });
     }, base);
     await popup.reload();
     await popup.click("label[for=navi-settings]");
     // refreshDevCapture runs late in the popup's load. The row is hidden until then, and
     // clicking the button before it shows is the race this wait closes.
     await popup.locator("#devmode-capture").waitFor({ state: "visible", timeout: 10000 });
-    await popup.click("#devmode-capture-button");
-    const status = popup.locator("#devmode-capture-status");
-    const text = await waitUntil(async () => {
-        const value = (await status.textContent()) ?? "";
-        return ["", "Sending…"].includes(value.trim()) ? null : value;
-    });
-    return text ?? "";
+    const button = popup.locator("#devmode-capture-button");
+    await button.click();
+    await waitUntil(() => button.isEnabled(), 60000, 200);
+    return (await popup.locator("#devmode-capture-status").textContent()) ?? "";
 }

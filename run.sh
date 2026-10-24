@@ -30,14 +30,15 @@ Options:
   --dark                Force dark theme
   -s, --source-dir DIR  Run this directory as-is instead of building build/dist
   -u, --url URL         Page to open on startup (default: Ilta-Pulu when the providers are added, otherwise
-                        http://yle.fi/uutiset)
+                        http://yle.fi/uutiset). --start-url is accepted as a web-ext alias.
   --devserver           Add the Ilta-Pulu and captured-sites providers of the development server (make serve)
   --no-devserver        Do not add them
   -h, --help            Show this help
 
 Without -s, the providers are added when the development server answers on port DEVSERVER_PORT (default: 3000).
-When they are added, web-ext runs a copy in build/run-devserver (tools/devserver-stage.mjs). With -s, the
-directory runs as-is unless --devserver is given.
+When they are added, web-ext runs a staged copy in build/run-devserver that installs them on first run
+(tools/devserver-stage.mjs; README.md, section "Development Server"). With -s, the directory runs as-is unless
+--devserver is given, which stages it the same way.
 
 Unrecognised arguments are passed through to web-ext run.
 USAGE

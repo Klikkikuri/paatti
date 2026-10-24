@@ -26,7 +26,12 @@ async function convertedArticleOfSeed(browser, base, seed) {
     try {
         await page.goto(`${base}/?seed=${seed}`);
         // The conversion pass is asynchronous; the read waits until the page's blocks have their statuses.
-        if (!await waitUntil(async () => (await statuses(page)).converted)) return null;
+        // A seed whose front page converts nothing is a miss, not a failure: waitUntil now throws on its deadline.
+        try {
+            await waitUntil(async () => (await statuses(page)).converted, 10000);
+        } catch {
+            return null;
+        }
         return await page.evaluate(() => {
             const articlePattern = /^\/[A-Za-z]+\/a\/[0-9a-f]{12}$/;
             for (const a of document.querySelectorAll("a[href]")) {

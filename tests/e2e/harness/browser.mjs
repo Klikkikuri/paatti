@@ -2,6 +2,10 @@
  * @file browser.mjs
  * A persistent Chromium context with the staged extension, and the helpers that run the extension's own modules:
  * the options page does the adds and the refreshes; everything here drives code loaded from the extension URL.
+ *
+ * The tests drive a real Chromium. A `page.evaluate` callback reaches the extension API through the repository's
+ * own import — `const { default: browser } = await import("/src/browser-api.js")` — as src/ does, so the suite
+ * carries no second definition of the namespace.
  */
 
 import { chromium } from "playwright-core";
@@ -10,8 +14,20 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const ADD_PROVIDER = async (manifestUrl) => {
-    const { getConfig } = await import("/src/config.js");
-    for (let i = 0; i < 50 && (await getConfig()).activeEnv !== "development"; i++) {
+    // The install handler writes the environment. Wait for the stored value, not for a promise from a module:
+    // a page import of background.js makes a second instance whose onInstalled listener never fires, and a
+    // restarted MV3 worker does not fire one either. Storage is the one signal that survives both.
+    //
+    // This function is serialized into the page, so it can use nothing from this module: the namespace and the
+    // wait are both inline. The repository's browser-api resolves Chromium's namespace for every version.
+    const { default: browser } = await import("/src/browser-api.js");
+    const deadline = Date.now() + 15000;
+    for (;;) {
+        const { userPreferences } = await browser.storage.local.get("userPreferences");
+        if (userPreferences?.environment === "development") break;
+        if (Date.now() > deadline) {
+            throw new Error(`the environment is '${userPreferences?.environment ?? "nothing"}', expected 'development'`);
+        }
         await new Promise((resolve) => setTimeout(resolve, 100));
     }
     const { controller } = await import("/src/controller.js");
@@ -20,6 +36,7 @@ const ADD_PROVIDER = async (manifestUrl) => {
     await addProvider(manifestUrl);
     await refreshProviders();
     await controller.setSiteEnabled(true, "localhost");
+    const { getConfig } = await import("/src/config.js");
     const config = await getConfig();
     return { activeEnv: config.activeEnv, data: config.providerData[manifestUrl] };
 };
@@ -32,8 +49,9 @@ const REFRESH = async () => {
 const PROVIDER_DATA = async (manifestUrl) => {
     const { getConfig } = await import("/src/config.js");
     const data = (await getConfig()).providerData[manifestUrl];
+    // A provider that has not finished its first refresh has no siteConfigs yet: the record starts empty.
     return data && { errors: data.errors, rejected: data.rejected, entryCount: data.entryCount,
-                     updated: data.updated, checked: data.checked, sites: Object.keys(data.siteConfigs),
+                     updated: data.updated, checked: data.checked, sites: Object.keys(data.siteConfigs ?? {}),
                      hasRules: Boolean(data.suolaRules) };
 };
 
@@ -52,7 +70,8 @@ const PROVIDER_DATA = async (manifestUrl) => {
  */
 
 /**
- * Launches Chromium with the staged extension, and returns the helpers once the service worker is up.
+ * Launches Chromium with the staged extension, and returns the helpers once the service worker is up. One
+ * extension page stays open for the life of the browser; every `run` evaluates on it.
  *
  * @param {string} extensionDir - The staged extension's directory.
  * @returns {Promise<PaattiBrowser>}
@@ -71,19 +90,15 @@ export async function launch(extensionDir) {
     const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent("serviceworker"));
     const extensionId = worker.url().split("/")[2];
 
-    const extensionPage = async () => {
-        const page = await context.newPage();
-        await page.goto(`chrome-extension://${extensionId}/src/options/index.html`);
-        return page;
-    };
-    const run = async (script, arg) => {
-        const page = await extensionPage();
-        try {
-            return await page.evaluate(script, arg);
-        } finally {
-            await page.close();
+    let extensionPage;
+    const page = async () => {
+        if (!extensionPage || extensionPage.isClosed()) {
+            extensionPage = await context.newPage();
+            await extensionPage.goto(`chrome-extension://${extensionId}/src/options/index.html`);
         }
+        return extensionPage;
     };
+    const run = async (script, arg) => page().then((p) => p.evaluate(script, arg));
 
     return {
         context,
@@ -93,7 +108,10 @@ export async function launch(extensionDir) {
         refresh: () => run(REFRESH),
         providerData: (manifestUrl) => run(PROVIDER_DATA, manifestUrl),
         newPage: () => context.newPage(),
-        close: () => context.close(),
+        close: async () => {
+            await extensionPage?.close().catch(() => {});
+            await context.close();
+        },
     };
 }
 

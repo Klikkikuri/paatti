@@ -3,33 +3,34 @@
 /**
  * @file devserver-bootstrap.js
  * The background module of a copy that tools/devserver-stage.mjs stages; the paths are relative to that copy.
+ * Why the copy exists and what it installs: README.md, section "Development Server".
  *
- * On the first install, it does what the options page asks a person to do: it turns on loopback providers, adds and
+ * On the first install, it does what a person does on the options page: it turns on loopback providers, adds and
  * refreshes the providers of `devserver.json`, and turns on the site of their host.
  */
 
-import "./src/background.js";
+import { environmentReady } from "./src/background.js";
 import browser from "./src/browser-api.js";
-import { getConfig } from "./src/config.js";
 import { controller } from "./src/controller.js";
 import { addProvider, refreshProviders } from "./src/providers.js";
 
-const LOCALHOST_GRANT = "http://localhost/*";
+// Both grants the staged manifest requires; the check must name the same pair, or a 127.0.0.1-only grant passes.
+const LOOPBACK_GRANTS = ["http://localhost/*", "http://127.0.0.1/*"];
 
 browser.runtime.onInstalled.addListener(async ({ reason }) => {
     if (reason !== "install") return;
     const { manifestUrls } = await (await fetch(browser.runtime.getURL("devserver.json"))).json();
 
-    // The install listener of background.js sets the environment.
-    for (let i = 0; i < 50 && (await getConfig()).activeEnv !== "development"; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-    if ((await getConfig()).activeEnv !== "development") {
-        console.warn("devserver: the environment did not become development; add its providers on the options page");
+    // background.js's own install listener sets the environment; this promise settles when its write is done.
+    const environment = await environmentReady;
+    if (environment !== "development") {
+        console.warn(`devserver: the environment is '${environment}'; add the providers on the options page`);
         return;
     }
-    if (!await browser.permissions.contains({ origins: [LOCALHOST_GRANT] })) {
-        console.warn(`devserver: ${LOCALHOST_GRANT} is not granted. Grant it on the permissions page of the add-on.`);
+    for (const origin of LOOPBACK_GRANTS) {
+        if (!await browser.permissions.contains({ origins: [origin] })) {
+            console.warn(`devserver: ${origin} is not granted. Grant it on the permissions page of the add-on.`);
+        }
     }
 
     await controller.setLoopbackProvidersEnabled(true);
