@@ -59,8 +59,31 @@ rebuild-suola:
 	rm -f $(WASM_OUTPUTS)
 	$(MAKE) build-suola
 
+# Every WASM consumer builds through this rule, so it carries the whole picture:
+# WASM_FROM_ARTIFACTS=1 -- the artifacts were produced by the wasm job of a CI run and
+#   downloaded into $(BUILD_DIR) first; here we only prove they are present, so a
+#   missing download fails in one line instead of as a dangling "no wasm" later. The
+#   check runs when make must produce the targets, which is always the case for a
+#   missing file. It is skipped when the files are present and newer than suola's
+#   sources -- the normal CI position -- so it proves presence, not freshness; a
+#   truncated download is on the upload/download artifact actions to catch.
+# USE_RELEASE_ARTIFACTS=1 -- fetch the attestation-backed artifacts of a tagged suola
+#   submodule from GitHub releases (the store-dist target).
+# Otherwise -- build locally, through Docker or, with DOCKER=false, TinyGo.
+# ${error} at parse time: with both flags set the release download would silently lose
+# to the artifact branch, and an exported variable survives the recursive make that the
+# store path runs (store-dist), so it must never coexist with it.
+ifeq ($(WASM_FROM_ARTIFACTS)$(USE_RELEASE_ARTIFACTS),11)
+$(error WASM_FROM_ARTIFACTS and USE_RELEASE_ARTIFACTS are mutually exclusive)
+endif
 $(WASM_OUTPUTS) &: $(SUOLA_SOURCES) | ensure-suola
-ifneq ($(USE_RELEASE_ARTIFACTS),)
+ifeq ($(WASM_FROM_ARTIFACTS),1)
+	@test -s $(BUILD_DIR)/js.wasm && test -s $(BUILD_DIR)/wasm_exec.js || { \
+		echo "Error: no WASM artifacts in $(BUILD_DIR) (WASM_FROM_ARTIFACTS=1)."; \
+		echo "Download the suola-wasm artifact into build/, or unset the flag."; \
+		exit 1; \
+	}
+else ifneq ($(USE_RELEASE_ARTIFACTS),)
 	# Fetch pre-built artifacts from GitHub releases for tagged suola submodule
 	@if [ -d suola ] && (cd suola && git describe --tags --exact-match >/dev/null 2>&1); then \
 		SUOLA_TAG=$$(cd suola && git describe --tags --exact-match); \
@@ -84,6 +107,7 @@ ifeq ($(DOCKER),false)
 	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
 	cp suola/build/wasm_exec.js $(BUILD_DIR)/wasm_exec.js
 else
+	$(MAKE) check-docker
 	mkdir -p suola/build
 	$(DOCKER) build --target wasm-builder -t buildsuola suola/
 	# The extension only needs the browser module and its TinyGo support file.
@@ -92,6 +116,16 @@ else
 	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
 	cp suola/build/wasm_exec.js $(BUILD_DIR)/wasm_exec.js
 endif
+
+# The Docker counterpart of check-tinygo: fail in one line when the CLI is missing,
+# instead of a bare "No such file or directory" from a recipe line.
+check-docker:
+	@command -v $(firstword $(DOCKER)) >/dev/null 2>&1 || { \
+		echo "Error: $(DOCKER) not found on PATH."; \
+		echo "Install Docker, or build with DOCKER=false (TinyGo required),"; \
+		echo "or set WASM_FROM_ARTIFACTS=1 with artifacts already in $(BUILD_DIR)."; \
+		exit 1; \
+	}
 
 # The browser module is built with TinyGo; stock Go no longer produces js.wasm,
 # and the two toolchains' wasm_exec.js are not interchangeable.
@@ -285,4 +319,4 @@ test-wasm:
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
 	fi
 
-.PHONY: serve test-devserver test-e2e build init ensure-suola check-tinygo package source-dist icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
+.PHONY: serve test-devserver test-e2e build init ensure-suola check-tinygo check-docker package source-dist icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
