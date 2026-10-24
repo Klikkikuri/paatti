@@ -22,7 +22,7 @@ permissions:
 # job as artifacts: `suola-wasm` carries js.wasm + wasm_exec.js, `extension-dist` an
 # OSS extension tree (never NON_OSS bytes -- the zips below are store trees and their
 # overlay would change what e2e tests). The consumers pass WASM_FROM_ARTIFACTS=1,
-# and the e2e job adds DIST_FROM_ARTIFACTS=1, so make proves the downloads
+# and the suites job adds DIST_FROM_ARTIFACTS=1, so make proves the downloads
 # instead of rebuilding; `needs: wasm` serializes against the artifact uploads,
 # not against the flaky checks of the extension job.
 jobs:
@@ -109,8 +109,12 @@ jobs:
         run: |
           make check-sites-published
 
-  devserver:
-    name: "🧪 Development Server"
+  # The development server and the extension e2e share one job: they need the same checkout, the same karikko
+  # tag guard, the same WASM artifact and the same test image, and a second job would build that image twice.
+  # The e2e step runs even when the devserver step fails, so one run reports both suites. Neither check name is
+  # required by a branch protection rule, so a single job costs no reporting signal.
+  suites:
+    name: "🧪 Development Server and Extension E2E"
     runs-on: ubuntu-latest
     needs: wasm
 
@@ -126,46 +130,8 @@ jobs:
         run: |
           git -C suola fetch --tags
 
-      # The e2e and drift drive karikko from the submodule pointer; an untagged pointer would put unreleased
-      # code into a CI test run (plan 3.3). The pointer bump is the release report.
-      - name: "🏷️ Karikko pointer is a released tag"
-        run: |
-          git -C packages/karikko fetch --tags
-          git -C packages/karikko describe --tags --exact-match
-
-      - name: "⬇️ Download WASM Artifacts"
-        uses: actions/download-artifact@v8
-        with:
-          name: suola-wasm
-          path: build
-
-      - name: "🐳 Build the Test Image"
-        run: |
-          make test-image
-
-      - name: "🧪 Test the Development Server"
-        run: |
-          make test-image-run CMD="make test-devserver WASM_FROM_ARTIFACTS=1"
-
-  e2e:
-    name: "🧪 Extension E2E"
-    runs-on: ubuntu-latest
-    needs: wasm
-
-    steps:
-      - name: "🔄 Checkout Repository"
-        uses: actions/checkout@v7
-        with:
-          submodules: recursive
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: "🏷️ Fetch Submodule Tags"
-        run: |
-          git -C suola fetch --tags
-
-      # The same guard as the devserver job: karikko comes from the submodule pointer, and an untagged pointer
-      # would put unreleased code into a CI test run.
+      # The suites drive karikko from the submodule pointer; an untagged pointer would put unreleased code into a
+      # CI test run (plan 3.3). The pointer bump is the release report.
       - name: "🏷️ Karikko pointer is a released tag"
         run: |
           git -C packages/karikko fetch --tags
@@ -190,8 +156,14 @@ jobs:
         run: |
           make test-image
 
-      # Playwright and the Debian chromium, against Ilta-Pulu, inside the shared test
-      # image: the same environment the dev container runs the e2e with (see Dockerfile).
+      - name: "🧪 Test the Development Server"
+        run: |
+          make test-image-run CMD="make test-devserver WASM_FROM_ARTIFACTS=1"
+
+      # Playwright and the Debian chromium, against Ilta-Pulu, inside the shared test image: the same environment
+      # the dev container runs the e2e with (see Dockerfile). `always()`: a devserver failure must not hide the
+      # e2e result, which is the other half of what this job proves.
       - name: "🧪 Run the Extension E2E"
+        if: always()
         run: |
           make test-image-run CMD="make test-e2e WASM_FROM_ARTIFACTS=1 DIST_FROM_ARTIFACTS=1"
