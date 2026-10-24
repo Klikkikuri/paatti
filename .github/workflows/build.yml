@@ -20,12 +20,11 @@ permissions:
 
 # The suola WASM artifacts are built once by the wasm job and handed to every other
 # job as artifacts: `suola-wasm` carries js.wasm + wasm_exec.js, `extension-dist` an
-# OSS extension tree for the e2e workflow (never NON_OSS bytes -- the zips below are
-# store trees and their overlay would change what e2e tests). The consumers pass
-# WASM_FROM_ARTIFACTS=1 and DIST_FROM_ARTIFACTS=1 -- e2e lives in e2e.yml and runs
-# against this run's artifacts -- so make proves the downloads instead of rebuilding,
-# and `needs: wasm` serializes against the artifact uploads, not against the flaky
-# checks of the extension job.
+# OSS extension tree (never NON_OSS bytes -- the zips below are store trees and their
+# overlay would change what e2e tests). The consumers pass WASM_FROM_ARTIFACTS=1,
+# and the e2e job adds DIST_FROM_ARTIFACTS=1, so make proves the downloads
+# instead of rebuilding; `needs: wasm` serializes against the artifact uploads,
+# not against the flaky checks of the extension job.
 jobs:
   wasm:
     name: "🧩 Suola WASM"
@@ -113,11 +112,7 @@ jobs:
   devserver:
     name: "🧪 Development Server"
     runs-on: ubuntu-latest
-    # Debian, for the same chromium package as the dev container: Ubuntu ships Chromium only as a snap.
-    container: node:24-trixie
     needs: wasm
-    env:
-      HYPOTHESIS_PROFILE: ci
 
     steps:
       - name: "🔄 Checkout Repository"
@@ -129,7 +124,6 @@ jobs:
 
       - name: "🏷️ Fetch Submodule Tags"
         run: |
-          git config --global --add safe.directory '*'
           git -C suola fetch --tags
 
       - name: "⬇️ Download WASM Artifacts"
@@ -138,17 +132,45 @@ jobs:
           name: suola-wasm
           path: build
 
-      - name: "🧰 Install Tools"
+      - name: "🐳 Build the Test Image"
         run: |
-          apt-get update
-          apt-get -y install --no-install-recommends chromium jq make python3 zip
-          npm install -g jsdom@27
-
-      - name: "📦 Install uv"
-        uses: astral-sh/setup-uv@v10.3.2
-        with:
-          version: "0.13.5"
+          make test-image
 
       - name: "🧪 Test the Development Server"
         run: |
-          make test-devserver WASM_FROM_ARTIFACTS=1
+          make test-image-run CMD="make test-devserver WASM_FROM_ARTIFACTS=1"
+
+  e2e:
+    name: "🧪 Extension E2E"
+    runs-on: ubuntu-latest
+    needs: wasm
+
+    steps:
+      - name: "🔄 Checkout Repository"
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: "🏷️ Fetch Submodule Tags"
+        run: |
+          git -C suola fetch --tags
+
+      # Both artifacts together: js.wasm and wasm_exec.js land in build/, the staged
+      # OSS tree in build/dist, and test-e2e proves both instead of rebuilding.
+      - name: "⬇️ Download the Build Artifacts"
+        uses: actions/download-artifact@v8
+        with:
+          merge-multiple: true
+          path: build
+
+      - name: "🐳 Build the Test Image"
+        run: |
+          make test-image
+
+      # Playwright and the Debian chromium, against Ilta-Pulu, inside the shared test
+      # image: the same environment the dev container runs the e2e with (see Dockerfile).
+      - name: "🧪 Run the Extension E2E"
+        run: |
+          make test-image-run CMD="make test-e2e WASM_FROM_ARTIFACTS=1 DIST_FROM_ARTIFACTS=1"
