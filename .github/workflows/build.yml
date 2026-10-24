@@ -169,13 +169,20 @@ jobs:
           git -C packages/karikko fetch --tags
           git -C packages/karikko describe --tags --exact-match
 
-      # Both artifacts together: js.wasm and wasm_exec.js land in build/, the staged
-      # OSS tree in build/dist, and test-e2e proves both instead of rebuilding.
-      - name: "⬇️ Download the Build Artifacts"
+      # Two explicit, name-scoped downloads: the artifact zips carry their trees' contents at the root, so the
+      # extension tree must land *in* build/dist (the artifact root's manifest.json becomes build/dist/
+      # manifest.json), while the WASM files drop into build/ for the make consumers.
+      - name: "⬇️ Download the WASM Artifacts"
         uses: actions/download-artifact@v8
         with:
-          merge-multiple: true
+          name: suola-wasm
           path: build
+
+      - name: "⬇️ Download the Extension Tree"
+        uses: actions/download-artifact@v8
+        with:
+          name: extension-dist
+          path: build/dist
 
       - name: "🐳 Build the Test Image"
         run: |

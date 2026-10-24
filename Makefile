@@ -136,7 +136,8 @@ test-image:
 	$(DOCKER) build --target test -t $(TEST_IMAGE) .devcontainer/
 
 test-image-run:
-	$(DOCKER) run --rm -w /app -e UV_LINK_MODE=copy -e HYPOTHESIS_PROFILE='$(HYPOTHESIS_PROFILE)' \
+	$(DOCKER) run --rm -w /app -e UV_LINK_MODE=copy \
+		$(if $(HYPOTHESIS_PROFILE),-e HYPOTHESIS_PROFILE='$(HYPOTHESIS_PROFILE)',) \
 		--mount type=bind,src=$(shell pwd),dst=/app \
 		$(TEST_IMAGE) $(CMD)
 
