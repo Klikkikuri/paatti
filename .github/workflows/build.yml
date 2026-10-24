@@ -19,10 +19,13 @@ permissions:
   actions: read
 
 # The suola WASM artifacts are built once by the wasm job and handed to every other
-# job as the `suola-wasm` artifact (only js.wasm + wasm_exec.js -- never the dist
-# tree, whose bytes differ with NON_OSS). The consumers pass WASM_FROM_ARTIFACTS=1
-# so make proves the download instead of rebuilding, and `needs: wasm` serializes
-# against the artifact upload, not against the flaky checks of the extension job.
+# job as artifacts: `suola-wasm` carries js.wasm + wasm_exec.js, `extension-dist` an
+# OSS extension tree for the e2e workflow (never NON_OSS bytes -- the zips below are
+# store trees and their overlay would change what e2e tests). The consumers pass
+# WASM_FROM_ARTIFACTS=1 and DIST_FROM_ARTIFACTS=1 -- e2e lives in e2e.yml and runs
+# against this run's artifacts -- so make proves the downloads instead of rebuilding,
+# and `needs: wasm` serializes against the artifact uploads, not against the flaky
+# checks of the extension job.
 jobs:
   wasm:
     name: "🧩 Suola WASM"
@@ -35,9 +38,9 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: "🏗️ Build the WASM Artifacts"
+      - name: "🏗️ Build the WASM Artifacts and the OSS Extension Tree"
         run: |
-          make build-suola
+          make build-suola dist
 
       - name: "⬆️ Upload WASM Artifacts"
         uses: actions/upload-artifact@v7
@@ -46,6 +49,13 @@ jobs:
           path: |
             build/js.wasm
             build/wasm_exec.js
+          if-no-files-found: error
+
+      - name: "⬆️ Upload the Extension Tree"
+        uses: actions/upload-artifact@v7
+        with:
+          name: extension-dist
+          path: build/dist
           if-no-files-found: error
 
   extension:
@@ -139,6 +149,6 @@ jobs:
         with:
           version: "0.13.5"
 
-      - name: "🧪 Test the Development Server and the Extension Against It"
+      - name: "🧪 Test the Development Server"
         run: |
-          make test-devserver test-e2e WASM_FROM_ARTIFACTS=1
+          make test-devserver WASM_FROM_ARTIFACTS=1
