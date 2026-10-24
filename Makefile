@@ -135,8 +135,14 @@ TEST_IMAGE ?= paatti-test
 test-image:
 	$(DOCKER) build --target test -t $(TEST_IMAGE) .devcontainer/
 
+# The image has no USER, so its default is root. Run as the caller instead, and keep
+# uv's and npm's caches inside the container's own filesystem: the bind mount is the
+# checkout, and files that the container writes there (.venv, node_modules) must stay
+# owned and modifiable by the caller, not grown as root-owned files.
 test-image-run:
 	$(DOCKER) run --rm -w /app -e UV_LINK_MODE=copy \
+		--user "$(shell id -u):$(shell id -g)" \
+		-e HOME=/tmp -e UV_CACHE_DIR=/tmp/uv-cache -e npm_config_cache=/tmp/npm-cache \
 		$(if $(HYPOTHESIS_PROFILE),-e HYPOTHESIS_PROFILE='$(HYPOTHESIS_PROFILE)',) \
 		--mount type=bind,src=$(shell pwd),dst=/app \
 		$(TEST_IMAGE) $(CMD)
@@ -284,7 +290,7 @@ lint-webext: dist-firefox
 # argument. Node resolves the pattern itself, so keep it quoted.
 # jsdom is a global install (see .devcontainer/Dockerfile), and ESM resolution ignores
 # NODE_PATH -- tests/helpers/dom.mjs reaches it through the CJS resolver, which does not.
-# The single-level glob: tests/e2e has its own runner (test-e2e-node) with its own environment.
+# The single-level glob: tests/e2e has its own runner (test-e2e) with its own environment.
 test: export NODE_PATH = $(shell npm root -g)
 test: test-wasm check-sites
 	node --test 'tests/*.test.mjs'
@@ -310,7 +316,7 @@ serve:
 # and content-script scan against a live karikko on a free port (tools/devserver-drift.mjs).
 test-devserver: export NODE_PATH = $(shell npm root -g)
 test-devserver: $(WASM_OUTPUTS)
-	# Karikko's own unit tests: rn through uv, not through the karikko CLI (KARIKKO_RUN ends in the tool).
+	# Karikko's own unit tests: run through uv, not through the karikko CLI (KARIKKO_RUN ends in the tool).
 	$(UV) run --directory "$(abspath $(KARIKKO_DIR))" pytest
 	@port=$$(node -e 'import("node:net").then(({createServer}) => { const s = createServer(); s.listen(0, "127.0.0.1", () => { console.log(s.address().port); process.exit(0); }); })'); \
 	data="$(CURDIR)/build/e2e/drift-$$$$"; mkdir -p "$$data/captures" && cp -R tests/fixtures/captures/. "$$data/captures/"; \
