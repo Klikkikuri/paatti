@@ -28,6 +28,7 @@ dev = [
     "soupsieve>=2.8",
     "html5lib>=1.1",
     "playwright>=1.55",
+    "httpx2>=2.16.0",
 ]
 
 [tool.uv.sources]
