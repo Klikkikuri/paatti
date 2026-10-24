@@ -113,4 +113,6 @@ RUN --mount=type=cache,target=/root/.npm,sharing=shared \
 # Disable passwordless sudo
 RUN rm -f /etc/sudoers.d/node
 
+WORKDIR /app
+
 USER node
