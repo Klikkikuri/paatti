@@ -1,7 +1,6 @@
 "use strict";
 
-import browser from "./browser-api.js";
-import { getLogger, getActiveTab } from "./utils.js";
+import { getLogger } from "./utils.js";
 import { model } from "./model.js";
 
 const log = getLogger("controller");
@@ -92,14 +91,6 @@ const controller = {
     resetStatistics: async () => {
         log("Resetting statistics");
         await model.write.resetStatistics();
-    },
-
-    devmode: {
-        /** The links and headlines that the site rules find on the active tab, for the development server. */
-        capturePage: async () => {
-            const tab = await getActiveTab();
-            return browser.tabs.sendMessage(tab.id, { command: "devmode_capturePage" });
-        },
     },
 };
 

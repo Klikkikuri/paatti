@@ -8,9 +8,7 @@ import { getConfig, onConfigValue } from "../config.js";
 import { computeGaugeValue, computeCollectingPeriod, sharePercent, summarizeLevels } from "../stats.js";
 import { isSiteEnabled, getClickbaitLevelInfo, levelToI18nKey, localizeDocument } from "./utils.js";
 import { homeStatus } from "./home-status.js";
-import { captureTarget, capturePageLinks, GENERIC_CAPTURE_RULE } from "./capture-target.js";
-import { originPatterns } from "./origins.js";
-import { safeFetch } from "../safe-fetch.js";
+import { setupDevCapture, refreshDevCapture } from "./dev-capture.js";
 import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
 import "./components/master-switch-setting.js";
@@ -563,6 +561,8 @@ const _refreshSettingsView = ({ isConversionEnabled, isDevelopmentEnv, config })
     // Visualize per site switches as "readonly" as per main switch state.
     _setSettingsviewCheckboxesReadonly(isConversionEnabled);
 
+    // devmode (development-only; see docs/PRIVACY_POLICY_DEVELOPMENT.md): the Development environment
+    // shows its section in the settings view; the capture row of it is wired by src/options/dev-capture.js.
     if (isDevelopmentEnv) {
         document.querySelectorAll(".devmode").forEach((x) => x.classList.remove("hidden"));
         document.querySelector("#logo img").classList.add("hidden");
@@ -605,30 +605,6 @@ const showView = (viewName) => {
         
         indicator.textContent = labelKey ? browser.i18n.getMessage(labelKey) : "";
     }
-};
-
-/**
- * What the capture button sends and where, from the last refresh. The click handler reads it without an `await`,
- * because a permission request needs the click's user gesture. Null when the row is hidden.
- *
- * @type {{target: {providerUrl: string, captureUrl: string}, tabId: number, origin: string, canScan: boolean,
- *   rules: object[]}|null}
- */
-let captureContext = null;
-
-/**
- * The development server's capture row: shown on an http(s) page when a local provider names a capture endpoint.
- *
- * @param {object} options
- * @param {string|null} options.matchingDomain - The site of the page, if a provider supplies it.
- * @param {boolean} options.canScan - The content script runs on the page: its site is on.
- */
-const _refreshCaptureControl = ({ config, tab, matchingDomain, canScan }) => {
-    const target = captureTarget(config);
-    const [origin] = originPatterns([tab?.url ?? ""]);
-    const rules = matchingDomain ? config.siteConfigs[matchingDomain].rules : [GENERIC_CAPTURE_RULE];
-    captureContext = target && origin ? { target, tabId: tab.id, origin, canScan, rules } : null;
-    document.getElementById("devmode-capture").classList.toggle("hidden", !captureContext);
 };
 
 let initialViewSelected = false;
@@ -675,7 +651,7 @@ const _loadIntoView = async () => {
         config,
     });
     const tab = await getActiveTab();
-    _refreshCaptureControl({ config, tab, matchingDomain, canScan: isConversionEnabled && isCurrentSiteEnabled });
+    refreshDevCapture({ config, tab, matchingDomain, canScan: isConversionEnabled && isCurrentSiteEnabled });
     _refreshHomeView({
         site: pageHostname,
         pageStats: cachedPageStats,
@@ -951,12 +927,11 @@ const _setUpView = async (e) => {
 
     // Manual database update click handler is managed by the database-status-setting component
 
-    ///////////////////////////////////////////////////////////////////////////////
-    // Register devmode controls.
     document.getElementById("enable-devmode")
         .addEventListener("click", __devmodeEnable);
 
-    document.getElementById("devmode-capture-button").addEventListener("click", __devmodeCapturePage);
+    // The capture button listener is bound by setupDevCapture().
+    setupDevCapture();
     // devmode-setDebugVisuals change listener is managed by the visual-highlight-setting component
 
 
@@ -993,62 +968,6 @@ const __devmodeEnable = async () => {
     await controller.setEnvironment(
         await model.read.isDevelopmentEnv() ? "free" : "development"
     );
-};
-
-/**
- * Send the site rules, links and headlines of the page to the development server, update the database, and convert
- * the page with the corrections that the server made.
- *
- * When the content script does not run on the page, the popup first asks for the page's origin, reads the page with
- * `capturePageLinks`, and at the end starts the content script in the tab.
- */
-const __devmodeCapturePage = async (event) => {
-    const context = captureContext;
-    if (!context) return;
-    const granted = context.canScan || browser.permissions.request({ origins: [context.origin] });
-
-    const button = event.currentTarget;
-    const status = document.getElementById("devmode-capture-status");
-    button.disabled = true;
-    status.textContent = browser.i18n.getMessage("devmodeCaptureSending");
-    try {
-        if (!(await granted)) throw new Error(browser.i18n.getMessage("permissionNotGranted"));
-        const page = context.canScan
-            ? await controller.devmode.capturePage()
-            : (await browser.scripting.executeScript({
-                target: { tabId: context.tabId }, func: capturePageLinks, args: [context.rules]
-            }))[0].result;
-        const response = await safeFetch(context.target.captureUrl, {
-            allowLoopback: true,
-            init: { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(page) }
-        });
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(typeof result.detail === "string" ? result.detail : `HTTP ${response.status}`);
-        }
-
-        const updated = await browser.runtime.sendMessage({ action: "updateDatabase" });
-        if (!updated?.success) throw new Error(updated?.error || "The database update gave no answer.");
-        // updateDatabase reports only the default providers; the provider's own errors say whether it refreshed.
-        const errors = (await getConfig()).providerData[context.target.providerUrl]?.errors || [];
-        if (errors.length > 0) throw new Error(errors.map((error) => error.message).join("; "));
-
-        // The provider now supplies the site, and a site that a provider supplies starts off.
-        const domain = await model.read.getMatchingSiteDomain(new URL(page.pageUrl).hostname);
-        if (!domain) throw new Error(`No provider supplies the site of ${page.pageUrl}`);
-        await controller.setSiteEnabled(true, domain);
-        if (context.canScan) {
-            await browser.tabs.sendMessage(context.tabId, { command: "convertClickbaits" });
-        } else {
-            await browser.scripting.executeScript({ target: { tabId: context.tabId }, files: ["src/contentScript.js"] });
-        }
-        status.textContent = browser.i18n.getMessage("devmodeCaptureDone", [String(result.links)]);
-    } catch (err) {
-        log("Sending the page to the development server failed:", err);
-        status.textContent = browser.i18n.getMessage("devmodeCaptureFailed", [err.message]);
-    } finally {
-        button.disabled = false;
-    }
 };
 
 /**

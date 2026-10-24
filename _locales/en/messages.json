@@ -451,19 +451,19 @@
   },
   "devmodeCaptureLabel": {
     "message": "Development server",
-    "description": "Label of the devmode row that sends the page to the development server"
+    "description": "devmode (development-only; wired from src/options/dev-capture.js): Label of the capture row that sends the page to the development server"
   },
   "devmodeCaptureBtn": {
     "message": "Send page",
-    "description": "Button that sends the links and headlines of the page to the development server"
+    "description": "devmode (development-only): Button that sends the links and headlines of the page to the development server"
   },
   "devmodeCaptureSending": {
     "message": "Sending…",
-    "description": "Shown while the page is sent to the development server and the database is updated"
+    "description": "devmode (development-only): Shown while the page is sent to the development server and the database is updated"
   },
   "devmodeCaptureDone": {
     "message": "Done: $COUNT$ links got test corrections.",
-    "description": "Result of sending the page to the development server",
+    "description": "devmode (development-only): Result of sending the page to the development server",
     "placeholders": {
       "count": {
         "content": "$1",
@@ -473,7 +473,7 @@
   },
   "devmodeCaptureFailed": {
     "message": "Not sent: $ERROR$",
-    "description": "Shown when sending the page to the development server fails",
+    "description": "devmode (development-only): Shown when sending the page to the development server fails",
     "placeholders": {
       "error": {
         "content": "$1",
@@ -484,6 +484,10 @@
   "settingsviewDevmodeTitle": {
     "message": "Developer Settings",
     "description": "Title of the settings view developer mode section"
+  },
+  "devmodePrivacyPolicyLink": {
+    "message": "Privacy notice for development versions ↗",
+    "description": "devmode (development-only): Link text that opens the privacy notice for the development versions"
   },
   "settingsviewDatabaseStatusTitle": {
     "message": "Database Update",

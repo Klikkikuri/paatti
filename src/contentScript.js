@@ -525,8 +525,9 @@ let hrefSigns;
                     });
                 return true;
             case "devmode_capturePage": {
-                // For the development server's captured-sites provider: the site rules, and the links that they find
-                // with the headline that the page itself shows. The server signs them; nothing here is sent anywhere.
+                // devmode (development-only; see docs/PRIVACY_POLICY_DEVELOPMENT.md): the site rules, and the links
+                // that they find with the headline that the page itself shows. The server signs them; nothing here
+                // is sent anywhere. The command reaches the content script only through src/options/dev-capture.js.
                 (async () => {
                     const rules = await model.read.getSiteRules(newsSite) || [];
                     const { links } = scanSiteRules(rules);

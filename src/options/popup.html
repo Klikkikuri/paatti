@@ -107,8 +107,12 @@
             <button id="open-options-btn" class="push-button" style="width: 100%; padding: 8px 16px; font-size: 0.9em; min-height: 36px;"></button>
         </div>
 
+        <!-- devmode (development-only; see docs/PRIVACY_POLICY_DEVELOPMENT.md): the settings of the
+             Development environment. The capture row is wired by src/options/dev-capture.js; a store
+             install has no loopback provider, so the rows stay hidden. -->
         <div class="devmode hidden" style="margin-top: 15px;">
             <h2 id="settingsview-devmode-title" class="settingsview-header"></h2>
+            <p style="margin: 6px 0 0;"><a href="https://github.com/Klikkikuri/paatti/blob/main/docs/PRIVACY_POLICY_DEVELOPMENT.md" data-doc="docs/PRIVACY_POLICY_DEVELOPMENT.md" target="_blank" rel="noopener noreferrer" class="detail-button" data-i18n="devmodePrivacyPolicyLink"></a></p>
             <hr>
             <ul style="list-style: none; padding: 0; margin-top: 10px; display: flex; flex-direction: column; gap: 12px; width: 100%;">
                 <li id="devmode-capture" class="hidden" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; width: 100%;">
