@@ -21,4 +21,16 @@ To rebuild the package from the source archive, with Docker available:
 The devserver/ directory of the archive is a development server and test harness, written in Python. It is not
 part of the package.
 
+## The development features
+
+The package ships code for development purposes (development-only; see docs/PRIVACY_POLICY_DEVELOPMENT.md).
+A store install cannot reach it, unless the user selects the environment `Development` in the settings and adds a
+provider on their own machine that names the link relation `x-paatti-dev-capture`. This requires multiple intentional
+actions from the user.
+
+The capture row of the popup then sends the links and headlines of the page to that provider's capture endpoint on the
+loopback address. The popup part lives in src/options/dev-capture.js and src/options/capture-target.js; the content
+script answers the `devmode_capturePage` message in src/contentScript.js. docs/development/adding-a-new-site.md, section
+1, describes the feature from the developer's side.
+
 docs/release.md in the archive describes the build and the release process.

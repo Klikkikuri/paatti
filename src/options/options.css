@@ -133,30 +133,6 @@ legend {
 }
 
 
-/* Site configs */
-.detail-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    font-size: 0.9rem;
-    color: var(--color-brand);
-    border: 1.2px solid var(--color-brand);
-    border-radius: 4px;
-    padding: 2px 8px;
-    text-decoration: none;
-    font-weight: bold;
-    line-height: 1.2;
-    transition: all 0.2s;
-    background: transparent;
-    cursor: pointer;
-}
-
-.detail-button:hover {
-    background: var(--color-brand);
-    color: var(--color-on-brand);
-}
-
 /* Environment selector */
 .env-selector {
     display: grid;

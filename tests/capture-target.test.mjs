@@ -1,8 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 globalThis.browser = {};
 const { captureTarget, capturePageLinks, CAPTURE_REL, GENERIC_CAPTURE_RULE } = await import('../src/options/capture-target.js');
+
+// The gate that keeps the devmode capture dormant in a store install, read from the source: the behaviour
+// tests above cover the gate only as it is, not as later edits could leave it.
+const GATE = {
+    developmentEnv: /config\.activeEnv !== "development"/,
+    loopbackProviders: /config\.loopbackProvidersEnabled/,
+};
+const CAPTURE_TARGET_SOURCE = readFileSync(new URL('../src/options/capture-target.js', import.meta.url), 'utf8');
 
 const LOCAL = 'http://localhost:3000/manifest/ilta-pulu/manifest.json';
 const CAPTURE = 'http://localhost:3000/api/capture';
@@ -13,6 +22,12 @@ const config = ({ env = 'development', loopback = true, urls = [LOCAL], links = 
     loopbackProvidersEnabled: loopback,
     enabledProviderUrls: urls,
     providerData: Object.fromEntries(urls.map((url) => [url, { links: links[url] || [] }]))
+});
+
+test('captureTarget keeps its gate in the source: the development environment and loopback providers', () => {
+    for (const [name, pattern] of Object.entries(GATE)) {
+        assert.match(CAPTURE_TARGET_SOURCE, pattern, `the ${name} condition is missing from capture-target.js`);
+    }
 });
 
 const CASES = [

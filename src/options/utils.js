@@ -21,19 +21,26 @@ const isSiteEnabled = async (domain) => {
 };
 
 /**
- * Display the product name and version in the options page header and footer, and point each `a[data-doc]` at
- * that document in the release tag of this version.
+ * Point each `a[data-doc]` at that document in the release tag of this version.
  *
  * The tag is `vX.Y.Z`, also for a version with a fourth part: a store version does not always have a tag on GitHub
  * (see docs/release.md).
  */
+const pointDocLinks = () => {
+    const tag = `v${browser.runtime.getManifest().version.split(".").slice(0, 3).join(".")}`;
+    for (const link of document.querySelectorAll("a[data-doc]")) {
+        link.href = `https://github.com/Klikkikuri/paatti/blob/${tag}/${link.dataset.doc}`;
+    }
+};
+
+/**
+ * Display the product name and version in the options page header and footer, and point each `a[data-doc]` at
+ * that document in the release tag of this version.
+ */
 const displayProductInfo = () => {
     try {
         const manifest = browser.runtime.getManifest();
-        const tag = `v${manifest.version.split(".").slice(0, 3).join(".")}`;
-        for (const link of document.querySelectorAll("a[data-doc]")) {
-            link.href = `https://github.com/Klikkikuri/paatti/blob/${tag}/${link.dataset.doc}`;
-        }
+        pointDocLinks();
 
         const productNameEl = document.getElementById("product-name");
         const productVersionEl = document.getElementById("product-version");
@@ -222,6 +229,7 @@ const localizeDocument = (root = document) => {
 export {
     isSiteEnabled,
     displayProductInfo,
+    pointDocLinks,
     getClickbaitLevelInfo,
     levelToI18nKey,
     getBrowserInfo,
