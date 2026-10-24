@@ -106,16 +106,47 @@ describe("content that arrives after the first conversion pass", () => {
             assert.deepEqual(sizeless, [], `${sizeless.length} of ${await badges.count()} badges have no size`);
         });
 
-        // `todo` keeps the body running and reports an unexpected pass — the strict xfail this suite ports.
-        test("badges stay visible -- known extension gap",
-            { todo: "known extension gap: the badges force display, not visibility" }, async () => {
+        test("badges stay visible", async () => {
+            const page = await openChecked(env.base, 17);
+            const badges = page.locator(BADGES);
+            assert.ok((await badges.count()) > 0);
+            const hidden = [];
+            for (let i = 0; i < await badges.count(); i++) {
+                if (!(await badges.nth(i).isVisible())) hidden.push(i);
+            }
+            assert.deepEqual(hidden, [], `${hidden.length} of ${await badges.count()} badges are hidden`);
+        });
+
+        test("the debug overlay stays visible", async () => {
+            // Set and reset through storage: the content script reads the setting at start, and a later case
+            // must not inherit this one. Written through the extension page, as every other harness call is.
+            const setHighlighting = (enabled) => env.browser.run(async (value) => {
+                const { default: browserApi } = await import("/src/browser-api.js");
+                await browserApi.storage.local.set({ visualHighlightEnabled: value });
+            }, enabled);
+
+            await setHighlighting(true);
+            try {
                 const page = await openChecked(env.base, 17);
-                const badges = page.locator(BADGES);
-                const hidden = [];
-                for (let i = 0; i < await badges.count(); i++) {
-                    if (!(await badges.nth(i).isVisible())) hidden.push(i);
-                }
-                assert.deepEqual(hidden, []);
-            });
+
+                // The boxes arrive from an animation frame after the setting is read, so wait for the first one.
+                const drawn = await waitUntil(() => page.evaluate(() => {
+                    const host = document.querySelector("klikkikuri-highlight-overlay");
+                    const boxes = [...(host?.shadowRoot?.querySelectorAll(".box") ?? [])];
+                    if (boxes.length === 0) return null;
+                    return {
+                        host: getComputedStyle(host).visibility,
+                        boxes: boxes.map((box) => getComputedStyle(box).visibility),
+                        widths: boxes.map((box) => box.getBoundingClientRect().width)
+                    };
+                }));
+
+                assert.equal(drawn.host, "visible");
+                assert.ok(drawn.widths.some((width) => width > 0), "every box has no size");
+                assert.deepEqual([...new Set(drawn.boxes)], ["visible"]);
+            } finally {
+                await setHighlighting(false);
+            }
+        });
     });
 });
