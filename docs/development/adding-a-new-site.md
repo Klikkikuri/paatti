@@ -42,8 +42,10 @@ each link a test correction, so the page shows which headlines the rules find.
 2. Open the popup, and select **Send page** under **Developer Settings**. If the browser asks for the permission of
    the site, accept it. If the popup closes, open it and select **Send page** again.
 
-The server makes the folder `test_data/captures/<host>/`. On a site that no provider supplies, `sites.json` gets
-a rule that takes each link with text: each link on the page then shows a correction that starts with `[dev]`.
+The server makes the folder `test_data/captures/<host>/`. The host is the punycode spelling (`www.ähti.fi` becomes
+`www.xn--hti-pla.fi`), which is also how the browser sends the page address. A page at an address that no browser can
+visit, so with no host, is refused with `HTTP 422` and stores nothing. On a site that no provider supplies, `sites.json`
+gets a rule that takes each link with text: each link on the page then shows a correction that starts with `[dev]`.
 
 The content features of the server also apply to the captured links, so by default some links show no `[dev]`
 correction: a low level, a paywall, or no entry. While you write the rules, start the server without these cases:

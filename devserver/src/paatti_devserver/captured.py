@@ -42,6 +42,28 @@ from .signing import CAPTURE_RULES, Signer
 log = get_logger(__name__)
 
 FAKE_PREFIX = "[dev] "
+
+
+class CaptureHostError(ValueError):
+    """The host of the captured page is not a host that the extension can visit."""
+
+
+def punycode_host(host: str | None) -> str | None:
+    """`host` in punycode, so that it is a safe folder name, or None when it is not a host that a browser visits.
+
+    Unicode letters (ähti.fi) become xn-- labels, a trailing dot goes, and the codec rejects what no folder
+    must carry: an empty label (`..`), a label over 63 characters. A host that is already punycode returns unchanged.
+    """
+    if not host:
+        return None
+    try:
+        encoded = host.rstrip(".").encode("idna").decode("ascii")
+    except UnicodeError as error:
+        log.info("rejected a host", host=host, reason=str(error))
+        return None
+    return encoded or None
+
+
 SCHEMA_VERSION = "0.1.0"
 NO_CAPTURE_YET = "2026-01-01T00:00:00+00:00"
 
@@ -94,9 +116,16 @@ class CapturedSites:
         }
 
     def capture(self, page_url: str, rules: list[dict], links: list[tuple[str, str]]) -> dict:
-        """Store the links of one page. The first capture of a host also stores its site with `rules`."""
+        """Store the links of one page. The first capture of a host also stores its site with `rules`.
+
+        The host arrives already in punycode: both the popup and the model (`HttpUrl`) spell a Unicode host `xn--`.
+        The codec pass here is the standing correctness check: it refuses what no folder must carry, so the page
+        address can never put the capture outside `captures/`.
+        """
         page = urlsplit(page_url)
-        host = page.hostname
+        host = punycode_host(page.hostname)
+        if host is None:
+            raise CaptureHostError(page.hostname or "")
         captured_at = datetime.now(UTC).isoformat()
         received = {}
         for href, title in links:

@@ -54,7 +54,9 @@ function copyExtension(from, to, skip) {
 export function stage(source, target, manifestUrls) {
     if (manifestUrls.length === 0) throw new Error("no manifest URL");
     manifestUrls.forEach((url) => new URL(url));
+    const resolvedSource = resolve(source);
     const resolvedTarget = resolve(target);
+    if (resolvedSource === resolvedTarget) throw new Error("the target must not be the source itself");
     rmSync(resolvedTarget, { recursive: true, force: true });
     copyExtension(source, resolvedTarget, resolvedTarget);
 

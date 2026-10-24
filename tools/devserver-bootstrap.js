@@ -24,6 +24,10 @@ browser.runtime.onInstalled.addListener(async ({ reason }) => {
     for (let i = 0; i < 50 && (await getConfig()).activeEnv !== "development"; i++) {
         await new Promise((resolve) => setTimeout(resolve, 100));
     }
+    if ((await getConfig()).activeEnv !== "development") {
+        console.warn("devserver: the environment did not become development; add its providers on the options page");
+        return;
+    }
     if (!await browser.permissions.contains({ origins: [LOCALHOST_GRANT] })) {
         console.warn(`devserver: ${LOCALHOST_GRANT} is not granted. Grant it on the permissions page of the add-on.`);
     }

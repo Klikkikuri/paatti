@@ -6,6 +6,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field, HttpUrl
 
+from ..captured import CaptureHostError
 from ..layout import fragment
 
 MAX_CAPTURE_BYTES = 4 * 1024 * 1024
@@ -45,7 +46,10 @@ def capture(request: Request, body: CaptureRequest, content_length: int | None =
     if content_length is not None and content_length > MAX_CAPTURE_BYTES:
         raise HTTPException(status_code=413, detail=f"A capture can be {MAX_CAPTURE_BYTES} bytes at most")
     rules = [rule.model_dump(exclude_none=True) for rule in body.rules]
-    return request.app.state.captured.capture(str(body.pageUrl), rules, [(link.href, link.title) for link in body.links])
+    try:
+        return request.app.state.captured.capture(str(body.pageUrl), rules, [(link.href, link.title) for link in body.links])
+    except CaptureHostError as error:
+        raise HTTPException(status_code=422, detail=f"The server stores no page at {error}") from None
 
 
 @router.get("/captures/{host}", summary="Check the folder of a captured host: its Suola rules and their test cases")

@@ -244,7 +244,7 @@ test: test-wasm check-sites
 # project of its own; devserver/README.md lists its settings. DEVSERVER_ARGS passes more of them, for example
 # DEVSERVER_ARGS="--seed=42 --chaos.provider_5xx=data".
 UV ?= uv
-DEVSERVER_PORT ?= 3000
+export DEVSERVER_PORT ?= 3000
 DEVSERVER_ARGS ?=
 DEVSERVER := $(UV) run --directory devserver
 
