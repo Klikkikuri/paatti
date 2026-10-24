@@ -309,7 +309,8 @@ serve:
 # and content-script scan against a live karikko on a free port (tools/devserver-drift.mjs).
 test-devserver: export NODE_PATH = $(shell npm root -g)
 test-devserver: $(WASM_OUTPUTS)
-	$(KARIKKO_RUN) pytest
+	# Karikko's own unit tests: rn through uv, not through the karikko CLI (KARIKKO_RUN ends in the tool).
+	$(UV) run --directory "$(abspath $(KARIKKO_DIR))" pytest
 	@port=$$(node -e 'import("node:net").then(({createServer}) => { const s = createServer(); s.listen(0, "127.0.0.1", () => { console.log(s.address().port); process.exit(0); }); })'); \
 	data="$(CURDIR)/build/e2e/drift-$$$$"; mkdir -p "$$data/captures" && cp -R tests/fixtures/captures/. "$$data/captures/"; \
 	$(KARIKKO_RUN) --port=$$port --log_level=WARNING --data_dir="$$data" & pid=$$!; \
