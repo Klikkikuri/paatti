@@ -11,7 +11,7 @@ import { join } from "node:path";
 
 const ADD_PROVIDER = async (manifestUrl) => {
     const { getConfig } = await import("/src/config.js");
-    for (let i = 0; i < 50 && (await getConfig()).environment !== "development"; i++) {
+    for (let i = 0; i < 50 && (await getConfig()).activeEnv !== "development"; i++) {
         await new Promise((resolve) => setTimeout(resolve, 100));
     }
     const { controller } = await import("/src/controller.js");
@@ -21,7 +21,7 @@ const ADD_PROVIDER = async (manifestUrl) => {
     await refreshProviders();
     await controller.setSiteEnabled(true, "localhost");
     const config = await getConfig();
-    return { environment: config.environment, data: config.providerData[manifestUrl] };
+    return { activeEnv: config.activeEnv, data: config.providerData[manifestUrl] };
 };
 
 const REFRESH = async () => {
