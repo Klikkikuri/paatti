@@ -8,7 +8,7 @@
 import test, { after, before, beforeEach, describe } from "node:test";
 import assert from "node:assert/strict";
 import { scenario } from "./harness/scenario.mjs";
-import { statuses, waitForMismatches, waitUntil } from "./harness/waits.mjs";
+import { gotoProcessed, statuses, waitForMismatches, waitUntil } from "./harness/waits.mjs";
 import { convertedArticle, firstSeedWith } from "./harness/articles.mjs";
 
 const BADGES = "klikkikuri-converted-badge, klikkikuri-ai-badge, klikkikuri-video-badge";
@@ -37,7 +37,7 @@ describe("content that arrives after the first conversion pass", () => {
      */
     async function openChecked(base, seed) {
         const page = await env.browser.newPage();
-        await page.goto(`${base}/?seed=${seed}&check=1`);
+        await gotoProcessed(page, `${base}/?seed=${seed}&check=1`);
         assert.deepEqual(await waitForMismatches(page), []);
         return page;
     }

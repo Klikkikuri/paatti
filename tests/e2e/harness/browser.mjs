@@ -9,7 +9,7 @@
  */
 
 import { chromium } from "playwright-core";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -77,7 +77,11 @@ const PROVIDER_DATA = async (manifestUrl) => {
  * @returns {Promise<PaattiBrowser>}
  */
 export async function launch(extensionDir) {
-    const context = await chromium.launchPersistentContext(profileDir(), {
+    // E2E_PROFILE_DIR keeps the profile for a debugging session; otherwise this call owns the directory and
+    // removes it on close.
+    const externalProfile = process.env.E2E_PROFILE_DIR;
+    const profile = externalProfile ?? mkdtempSync(join(tmpdir(), "paatti-e2e-profile-"));
+    const context = await chromium.launchPersistentContext(profile, {
         executablePath: process.env.CHROMIUM ?? "/usr/lib/chromium/chromium",
         headless: true,
         args: [
@@ -111,11 +115,7 @@ export async function launch(extensionDir) {
         close: async () => {
             await extensionPage?.close().catch(() => {});
             await context.close();
+            if (!externalProfile) rmSync(profile, { recursive: true, force: true });
         },
     };
-}
-
-/** A persistent context needs a profile directory that it owns. */
-function profileDir() {
-    return process.env.E2E_PROFILE_DIR ?? mkdtempSync(join(tmpdir(), "paatti-e2e-profile-"));
 }

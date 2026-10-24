@@ -11,10 +11,10 @@
 import test, { after, before, describe } from "node:test";
 import assert from "node:assert/strict";
 import { launch } from "./harness/browser.mjs";
-import { stagedExtensionDir } from "./harness/extension.mjs";
+import { stagedExtension } from "./harness/extension.mjs";
 import { e2eDataDir } from "../../tools/devserver-paths.mjs";
 import { startServer } from "../../tools/devserver-server.mjs";
-import { statuses, waitUntil } from "./harness/waits.mjs";
+import { gotoProcessed, statuses, waitUntil } from "./harness/waits.mjs";
 
 const DIST_DIR = process.env.DIST_DIR ?? "/app/build/dist";
 
@@ -23,19 +23,22 @@ describe("the first install of a staged copy", () => {
     let server;
     /** @type {Awaited<ReturnType<typeof launch>>} */
     let browser;
+    /** @type {ReturnType<typeof stagedExtension>} */
+    let staged;
 
     before(async () => {
         server = await startServer({ dataDir: e2eDataDir("bootstrap") });
         const base = `http://localhost:${server.port}`;
-        browser = await launch(stagedExtensionDir(DIST_DIR, "bootstrap", {
+        staged = stagedExtension(DIST_DIR, "bootstrap", {
             bootstrap: true,
             manifestUrls: [`${base}/manifest/ilta-pulu/manifest.json`, `${base}/manifest/captured-sites/manifest.json`],
-        }));
+        });
+        browser = await launch(staged.extensionDir);
     });
 
     after(async () => {
-        await browser?.close();
-        await server?.stop();
+        await Promise.allSettled([browser?.close(), server?.stop()]);
+        staged?.cleanup();
     });
 
     test("the bootstrap adds the providers and turns on their site", async () => {
@@ -56,7 +59,9 @@ describe("the first install of a staged copy", () => {
         assert.equal(config.loopbackProvidersEnabled, true, "the bootstrap turns on loopback providers");
 
         const page = await browser.newPage();
-        await page.goto(`http://localhost:${server.port}/?seed=5`);
+        // The provider data is visible before the bootstrap turns the site on, so the content script may still be
+        // unregistered when the first load happens; gotoProcessed reloads until it runs.
+        await gotoProcessed(page, `http://localhost:${server.port}/?seed=5`);
         assert.ok(await waitUntil(async () => (await statuses(page)).converted),
             "a bootstrapped install converts the page without any manual step");
     });

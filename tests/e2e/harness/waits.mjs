@@ -40,7 +40,8 @@ export async function waitUntil(predicate, timeoutMs = 20000, intervalMs = 250) 
 }
 
 /**
- * The self-check mismatches once `[]`, or the last list at the deadline.
+ * The self-check mismatches once `[]`; a timeout error otherwise, like `waitUntil`. A list of mismatches at the
+ * deadline is a failure with its content in the message, not a return value a caller has to remember to assert.
  *
  * @param {import("playwright-core").Page} page
  * @param {number} [timeoutMs]
@@ -57,12 +58,48 @@ export async function waitForMismatches(page, timeoutMs = 25000) {
     // `null` means `window.devserverMismatches` is not on the page at all: the check panel is missing, not clean.
     // A stale run that dropped the panel must fail loudly, or the "expectations hold" cases check nothing.
     if (found === null) throw new Error("no self-check on the page; is ?check=1 set?");
-    return found;
+    throw new Error(`the self-check still reports ${found.length} mismatch(es) after ${timeoutMs} ms: `
+        + `${JSON.stringify(found).slice(0, 500)}`);
 }
 
 /**
- * Reloads until the content script processes the page. After a site change, the worker re-registers the content
- * scripts (updateDynamicContentScripts in src/background.js), and a page that loads in between gets none.
+ * Whether the content script has run on the page: any status attribute proves that it did.
+ *
+ * @param {import("playwright-core").Page} page
+ * @param {number} timeoutMs
+ * @returns {Promise<boolean>}
+ */
+async function processed(page, timeoutMs) {
+    try {
+        await waitUntil(async () => Object.keys(await statuses(page)).length > 0, timeoutMs);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Opens `url` and waits until the content script has processed the page. After a site change, the worker
+ * re-registers the dynamic content scripts (updateDynamicContentScripts in src/background.js), and a page that
+ * loads in between gets none — for good, because the page is already loaded. A reload is therefore part of the
+ * open, not a retry of it.
+ *
+ * @param {import("playwright-core").Page} page
+ * @param {string} url
+ * @param {number} [attempts]
+ * @returns {Promise<void>} Rejects when no load gets the content script.
+ */
+export async function gotoProcessed(page, url, attempts = 3) {
+    for (let i = 0; i < attempts; i++) {
+        await page.goto(url);
+        if (await processed(page, 5000)) return;
+    }
+    throw new Error(`the content script did not run after ${attempts} loads of ${url}`);
+}
+
+/**
+ * Reloads until the content script processes the page, for a page that is already open. Same race as
+ * {@link gotoProcessed}.
  *
  * @param {import("playwright-core").Page} page
  * @param {number} [attempts]
@@ -70,12 +107,7 @@ export async function waitForMismatches(page, timeoutMs = 25000) {
 export async function reloadUntilProcessed(page, attempts = 3) {
     for (let i = 0; i < attempts; i++) {
         await page.reload();
-        try {
-            await waitUntil(async () => Object.keys(await statuses(page)).length > 0, 5000);
-            return;
-        } catch {
-            // This reload got no content script either; try once more.
-        }
+        if (await processed(page, 5000)) return;
     }
 }
 

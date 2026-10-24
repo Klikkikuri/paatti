@@ -342,6 +342,8 @@ test-e2e:
 	cd tests/e2e && npm ci --no-audit --no-fund
 	cd tests/e2e && DIST_DIR="$(abspath $(DIST_DIR))" CHROMIUM="$(CHROMIUM)" \
 	    node --test --test-concurrency=1 --test-timeout=120000 *.test.mjs
+	# Only on success: make stops at the failing line, so a failed run keeps its capture folders for inspection.
+	rm -rf $(BUILD_DIR)/e2e
 
 check-dist-artifacts:
 	@test -s $(DIST_DIR)/manifest.json && test -s $(DIST_DIR)/build/js.wasm || { \

@@ -11,7 +11,7 @@ import { join } from "node:path";
 import test, { after, before, describe } from "node:test";
 import assert from "node:assert/strict";
 import { scenario } from "./harness/scenario.mjs";
-import { reloadUntilProcessed, sendPage, statuses, waitUntil } from "./harness/waits.mjs";
+import { gotoProcessed, reloadUntilProcessed, sendPage, statuses, waitUntil } from "./harness/waits.mjs";
 import { waitForCaptures } from "./harness/captures.mjs";
 
 /** The rule that the folder edit installs: only the lead article stays converted. */
@@ -32,7 +32,7 @@ describe("the popup's send of a supported site", () => {
     test("posts the site rules and the original headlines, and the server stores them", async () => {
         await env.browser.addProvider(`${env.base}/manifest/ilta-pulu/manifest.json`);
         const site = await env.browser.newPage();
-        await site.goto(`${env.base}/?seed=5`);
+        await gotoProcessed(site, `${env.base}/?seed=5`);
         const converted = await waitUntil(async () => (await statuses(site)).converted);
         assert.ok(converted, JSON.stringify(await statuses(site)));
 

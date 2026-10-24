@@ -7,9 +7,9 @@
  * test. The drift target and the e2e harness derive their paths here, not in their callers.
  */
 
-import { mkdirSync, rmSync } from "node:fs";
+import { mkdirSync, realpathSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { join, resolve, sep } from "node:path";
+import { basename, dirname, join, resolve, sep } from "node:path";
 
 /** The root of the Paatti checkout; both the test image and the dev container mount the repo at `/app`, and a
  * plain run uses the checkout path. */
@@ -17,6 +17,28 @@ export const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 
 /** The directory the development-server tools may delete and rewrite: `build/` under the checkout. */
 const ownedRoot = resolve(join(repoRoot, "build"));
+
+/**
+ * `dir` with its symlinks resolved as far as it exists; the part that does not exist yet is appended to its real
+ * parent. A string prefix test alone would let `build/link` — a symlink to `/` — pass as owned.
+ *
+ * @param {string} dir - An absolute path.
+ * @returns {string}
+ */
+function realPath(dir) {
+    const tail = [];
+    let current = dir;
+    for (;;) {
+        try {
+            return join(realpathSync(current), ...tail.reverse());
+        } catch {
+            const parent = dirname(current);
+            if (parent === current) return resolve(dir);
+            tail.push(basename(current));
+            current = parent;
+        }
+    }
+}
 
 /**
  * Throws unless `dir` is strictly inside an allowed root: containment alone is not enough, because a target that
@@ -27,7 +49,8 @@ const ownedRoot = resolve(join(repoRoot, "build"));
  * @param {string} what - Names the argument in the error, for the caller's message.
  */
 export function assertOwnedDir(dir, allowedRoots, what) {
-    const inside = allowedRoots.some((root) => dir.startsWith(root + sep));
+    const real = realPath(dir);
+    const inside = allowedRoots.some((root) => real.startsWith(realPath(root) + sep));
     if (!inside) {
         throw new Error(`${what} must be inside one of: ${allowedRoots.join(", ")} (got ${dir})`);
     }

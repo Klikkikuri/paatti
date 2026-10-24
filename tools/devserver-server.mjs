@@ -28,8 +28,6 @@ const READINESS_INTERVAL = 200;
 const STOP_TIMEOUT = 5000;
 /** How long the group gets to die after SIGKILL before the stop reports a failure. */
 const KILL_WAIT = 2000;
-/** What the server prints when `freePort`'s released address was taken between release and bind. */
-const ADDRESS_IN_USE = "in use";
 const PORT_ATTEMPTS = 3;
 
 /** Resolves the readiness URL's answer: the server's `/` needs no provider, so it answers before its manifests. */
@@ -114,9 +112,20 @@ function startProcess(argv, port) {
     return { child, readiness, logsOf: () => logs.join("") };
 }
 
-function onceExit(child) {
-    if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
-    return new Promise((resolvePromise) => child.once("exit", resolvePromise));
+/** Whether anything accepts a TCP connection on `port`: another server took it under us. A connect says exactly
+ * that, where a fetch would also depend on what the other server answers and how fast. */
+function portTaken(port) {
+    return new Promise((resolveTaken) => {
+        const socket = net.connect({ port, host: "127.0.0.1" });
+        const done = (taken) => {
+            socket.destroy();
+            resolveTaken(taken);
+        };
+        socket.setTimeout(1000);
+        socket.once("connect", () => done(true));
+        socket.once("timeout", () => done(false));
+        socket.once("error", () => done(false));
+    });
 }
 
 /** Whether the process group still exists: signal 0 answers ESRCH once every member is gone. */
@@ -139,11 +148,11 @@ async function waitForGroupDeath(child, timeoutMs, logsOf) {
 }
 
 /**
- * SIGTERM to the group, then a grace period for uvicorn's own shutdown, then one SIGKILL. Without a shell there is
- * no wrapper between this handle and uvicorn: its exit says nothing about the children it leaves behind, so the
- * group is what a stop owns, and it stops only when polling it answers ESRCH. No repeat SIGKILL inside the poll:
- * the first one kills every surviving member, and a later failure would mean the pid was reused by an unrelated
- * group.
+ * SIGTERM to the group, then a grace period for uvicorn's own shutdown, then one SIGKILL. The group is what a stop
+ * owns: it stops only when polling it answers ESRCH, which also covers the child itself, so no separate wait for
+ * the child's exit is needed — that wait would never end for a child that ignores SIGTERM, and the escalation
+ * would never be reached. No repeat SIGKILL inside the poll: the first one kills every surviving member, and a
+ * later failure would mean the pid was reused by an unrelated group.
  */
 async function stopGroup(child, logsOf) {
     if (child.pid !== undefined) {
@@ -153,7 +162,6 @@ async function stopGroup(child, logsOf) {
             // Gone already; that is what a poll expects.
         }
     }
-    await onceExit(child);
     try {
         await waitForGroupDeath(child, STOP_TIMEOUT, logsOf);
         return;
@@ -249,7 +257,9 @@ export async function startServer({ dataDir, flags = [], port, command } = {}) {
         } catch (error) {
             failure = error;
             await stopGroup(proc.child, proc.logsOf);
-            if (!proc.logsOf().includes(ADDRESS_IN_USE)) break;
+            // A port that something else answers on was taken between freePort() and the bind: try another one.
+            // Any other failure (a broken command, a bad flag) would fail again on a new port, so stop there.
+            if (!await portTaken(port)) break;
             port = await freePort();
         }
     }

@@ -5,7 +5,7 @@
  * harness adds the providers itself; with the bootstrap it installs like `./run.sh --devserver` does.
  */
 
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { stage } from "../../../tools/devserver-stage.mjs";
@@ -14,10 +14,12 @@ import { stage } from "../../../tools/devserver-stage.mjs";
  * @param {string} distDir - The unpacked extension to copy.
  * @param {string} runId - A unique prefix for the temporary staging directory.
  * @param {{bootstrap?: boolean, manifestUrls?: string[]}} [options] - See `stage`. Default: no bootstrap.
- * @returns {string} The directory to load the staged extension's files from.
+ * @returns {{extensionDir: string, cleanup: () => void}} The directory to load, and the call that removes the
+ *   temporary copy. The caller owns both: the copy must outlive the browser that loaded it.
  */
-export function stagedExtensionDir(distDir, runId, { bootstrap = false, manifestUrls = [] } = {}) {
-    const dir = join(mkdtempSync(join(tmpdir(), `paatti-e2e-${runId}-`)), "paatti");
-    stage(distDir, dir, manifestUrls, { bootstrap });
-    return dir;
+export function stagedExtension(distDir, runId, { bootstrap = false, manifestUrls = [] } = {}) {
+    const root = mkdtempSync(join(tmpdir(), `paatti-e2e-${runId}-`));
+    const extensionDir = join(root, "paatti");
+    stage(distDir, extensionDir, manifestUrls, { bootstrap });
+    return { extensionDir, cleanup: () => rmSync(root, { recursive: true, force: true }) };
 }
