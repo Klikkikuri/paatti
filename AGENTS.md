@@ -118,9 +118,10 @@ elsewhere.
 
 **`src/components/` — shadow DOM.** The badges are placed into third-party pages listed in the manifest's
 `web_accessible_resources.matches`. Hostile CSS is a real threat there, so they attach a shadow root and take their
-styles through `adoptBadgeStyles` (`badge-style.js`), and force `display: inline-flex` with an inline `!important`
-because a host rule outranks a `:host` rule. Every module a badge imports needs its own `web_accessible_resources`
-entry — the content script imports them all — so keep their dependencies inside `src/components/`.
+styles through `adoptBadgeStyles` (`badge-style.js`), and force `display` and `visibility` with inline `!important`
+declarations because a host rule outranks a `:host` rule. Every module a badge imports needs its own
+`web_accessible_resources` entry — the content script imports them all — so keep their dependencies inside
+`src/components/`.
 
 **`src/options/components/` — light DOM.** These appear only on `index.html` and `popup.html`, where the only CSS in
 the document is ours. There is nothing to encapsulate against, and a shadow root would cost more than it buys: class

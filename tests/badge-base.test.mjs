@@ -49,9 +49,13 @@ describe('buildBadge', () => {
         assert.ok(styled, 'the badge carries no styles at all');
     });
 
-    test('forces display inline-flex inline, where a page rule cannot outrank it', () => {
-        assert.equal(build().style.getPropertyValue('display'), 'inline-flex');
-        assert.equal(build().style.getPropertyPriority('display'), 'important');
+    test('forces display and visibility inline, where a page rule cannot outrank it', () => {
+        const badge = build();
+
+        assert.equal(badge.style.getPropertyValue('display'), 'inline-flex');
+        assert.equal(badge.style.getPropertyPriority('display'), 'important');
+        // jsdom drops the priority from its `visibility` serialization, so the e2e proves the cascade.
+        assert.equal(badge.style.getPropertyValue('visibility'), 'inherit');
     });
 
     test('labels the icon from label, falling back to tooltip and then the default', () => {
@@ -216,6 +220,7 @@ describe('createBadgeClass, for the extension pages', () => {
 
         // Attribute observation is the thing only a registered element gets.
         document.body.appendChild(badge);
+        assert.equal(badge.style.getPropertyValue('visibility'), 'inherit');
         badge.setAttribute('action', 'Feedback');
         assert.equal(badge.getAttribute('role'), 'button');
         badge.removeAttribute('action');

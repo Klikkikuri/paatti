@@ -37,7 +37,10 @@ const HOST_STYLE = {
     padding: "0",
     overflow: "visible",
     background: "transparent",
-    display: "block"
+    display: "block",
+    // `inherit`, so a page's `:not(:defined)` guard cannot hide the unregistered host. The top layer changes
+    // paint order only, so without this the whole card inherits that rule's `visibility: hidden`.
+    visibility: "inherit"
 };
 
 /* Short enough that a click still feels immediate; the hide is quicker, because by then the user has decided. */

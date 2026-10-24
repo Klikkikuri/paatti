@@ -197,6 +197,13 @@ describe('the card submits only what the user does', () => {
         assert.ok(!el('.feedback-input-container').classList.contains('hidden'), '"Is no good" did not open the form');
     };
 
+    test('forces visibility inline, so a page rule that hides an undefined element cannot hide the card', () => {
+        const host = document.querySelector('klikkikuri-feedback-dialog');
+
+        // jsdom drops the priority from its `visibility` serialization, so the hostile-css e2e proves the cascade.
+        assert.equal(host.style.getPropertyValue('visibility'), 'inherit');
+    });
+
     test('a synthetic click on "Is good" sends nothing', async () => {
         el('.feedback-action-btn.good').click();
         await settle();

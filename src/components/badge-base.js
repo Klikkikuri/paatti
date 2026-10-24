@@ -158,6 +158,25 @@ function badgeKeyHandlers(element) {
 }
 
 /**
+ * Force a badge to render, whatever the page says about it.
+ *
+ * A badge stays out of the page's custom element registry on purpose, so a page's guard against unstyled
+ * custom elements -- `:not(:defined) { display: none; visibility: hidden }` -- matches it. Both values go
+ * on the element inline with `!important`, which outranks any author rule that targets it.
+ *
+ * `visibility` takes `inherit`, not `visible`. The property is inherited already, so `inherit` restores the
+ * value the badge would have had without the page's rule: the badge hides with its headline instead of
+ * staying drawn over content that the page has hidden. `display: none` on an ancestor still hides the
+ * badge; no declaration on the badge can undo that.
+ *
+ * @param {HTMLElement} element
+ */
+function forceBadgeRendering(element) {
+    element.style.setProperty("display", "inline-flex", "important");
+    element.style.setProperty("visibility", "inherit", "important");
+}
+
+/**
  * A badge built for a page the extension does not own, without the page's custom element registry.
  *
  * The registry is not available to reach for. Chromium gives a content script no `customElements` at
@@ -188,8 +207,7 @@ export function buildBadge({ tagName, svgMarkup, defaultLabel, label, tooltip, a
     }
     if (action) element.setAttribute("action", action);
 
-    // Inline !important wins over any host-page stylesheet rules targeting the element.
-    element.style.setProperty("display", "inline-flex", "important");
+    forceBadgeRendering(element);
 
     const { onKeydown, onKeyup } = badgeKeyHandlers(element);
     element.addEventListener("keydown", onKeydown);
@@ -235,8 +253,7 @@ export function createBadgeClass(svgMarkup, defaultLabel) {
         }
 
         connectedCallback() {
-            // Inline !important wins over any host-page stylesheet rules targeting the element.
-            this.style.setProperty("display", "inline-flex", "important");
+            forceBadgeRendering(this);
             this.addEventListener("keydown", this._keys.onKeydown);
             this.addEventListener("keyup", this._keys.onKeyup);
             this._updateLabels();
