@@ -337,8 +337,8 @@ make build DOCKER=podman
 ```
 
 Pass `USE_RELEASE_ARTIFACTS=1` to **download the WebAssembly binaries** from the `suola` release of the tag that
-the submodule pins, instead of compiling them. The CI build and every store build use this path, and the tag must
-have a release with both files:
+the submodule pins, instead of compiling them. A publish requires a released tag; a branch may use any commit,
+and it is built with Docker instead. See [Submodule Pointers](docs/release.md#submodule-pointers):
 
 ```sh
 make build USE_RELEASE_ARTIFACTS=1

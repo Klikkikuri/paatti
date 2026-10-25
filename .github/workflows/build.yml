@@ -18,14 +18,17 @@ permissions:
   contents: read
   actions: read
 
-# The suola WASM artifacts are downloaded once by the wasm job from the suola release of the
-# submodule's tag -- it does not compile suola, whose own CI builds, tests and attests those bytes --
-# and handed to every other job as artifacts: `suola-wasm` carries js.wasm + wasm_exec.js,
-# `extension-dist` an OSS extension tree (never NON_OSS bytes -- the zips below are store trees and
-# their overlay would change what e2e tests). The consumers pass WASM_FROM_ARTIFACTS=1, and the
-# suites job adds DIST_FROM_ARTIFACTS=1, so make proves the downloads instead of rebuilding;
-# `needs: wasm` serializes against the artifact uploads, not against the flaky checks of the
-# extension job.
+# The flexible tier: this workflow tests any commit of either submodule on any branch. A publish needs
+# more, and release-checks.yml enforces that on main. docs/release.md, "Submodule Pointers", states the
+# rule.
+#
+# The suola WASM artifacts are produced once by the wasm job and handed to every other job as
+# artifacts: a tagged pointer downloads the attested suola release, and any other commit builds with
+# the Docker wasm builder. `suola-wasm` carries js.wasm + wasm_exec.js, `extension-dist` an OSS
+# extension tree (never NON_OSS bytes -- the zips below are store trees and their overlay would
+# change what e2e tests). The consumers pass WASM_FROM_ARTIFACTS=1, and the suites job adds
+# DIST_FROM_ARTIFACTS=1, so make proves the downloads instead of rebuilding; `needs: wasm` serializes
+# against the artifact uploads, not against the flaky checks of the extension job.
 jobs:
   wasm:
     name: "🧩 Suola WASM"
@@ -37,35 +40,53 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
-          fetch-tags: true
 
-      # The checkout's fetch-tags covers the superproject, not the submodule.
-      - name: "🏷️ Fetch Submodule Tags"
+      # The checkout does not fetch submodule tags, and git describe needs them.
+      - name: "🏷️ Fetch Suola Tags"
         run: |
           git -C suola fetch --tags
 
-      # A tag alone does not prove that a release exists; without this check the failure surfaces
-      # as a 404 from curl inside make. Fail here, with the cause.
-      - name: "🏷️ The Suola Pointer is a Released Tag"
+      # A tagged pointer uses the attested release, which is what ships. Any other commit is built
+      # with the Docker wasm builder, so a branch can test suola before its release exists. Main takes
+      # only the release path, because a publish must stay possible there.
+      - name: "🏷️ Choose the Suola Source"
+        id: suola
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REQUIRE_RELEASE: ${{ (github.event_name == 'pull_request' && github.base_ref == 'main') || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
         run: |
-          tag=$(git -C suola describe --tags --exact-match) || { echo "Error: the suola pointer is not a tag."; exit 1; }
-          gh release view "$tag" --repo Klikkikuri/suola --json assets \
-            --jq '[.assets[].name] | (index("js.wasm") and index("wasm_exec.js"))' | grep -qx true \
-            || { echo "Error: suola $tag has no release with js.wasm and wasm_exec.js."; exit 1; }
+          if make check-suola-release >/dev/null 2>&1; then
+            echo "mode=release" >> "$GITHUB_OUTPUT"
+            echo "suola: released tag $(git -C suola describe --tags --exact-match)" >> "$GITHUB_STEP_SUMMARY"
+            echo "The suola pointer is a released tag; the job downloads the attested artifacts."
+          elif [ "$REQUIRE_RELEASE" = "true" ]; then
+            echo "This event targets main, so the suola pointer must be a released tag."
+            make check-suola-release
+            exit 1
+          else
+            echo "mode=build" >> "$GITHUB_OUTPUT"
+            echo "suola: built from source at $(git -C suola rev-parse --short HEAD), not a released tag" >> "$GITHUB_STEP_SUMMARY"
+            echo "The suola pointer is not a released tag; the job builds it with the Docker wasm builder."
+          fi
 
-      # The release assets of the pinned tag, not a rebuild of the same commit: CI then tests and
-      # packages the bytes that ship.
       - name: "⬇️ Download the Suola Artifacts and Stage the Extension Tree"
+        if: steps.suola.outputs.mode == 'release'
         run: |
           make dist USE_RELEASE_ARTIFACTS=1
 
       - name: "🛡️ Verify the Suola Artifact Attestation"
+        if: steps.suola.outputs.mode == 'release'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           make verify-suola USE_RELEASE_ARTIFACTS=1
+
+      # CI tests and packages the bytes that this commit produces. A publish never takes this path:
+      # check-suola-release stops it without a released tag.
+      - name: "🏗️ Build the Suola Artifacts and Stage the Extension Tree"
+        if: steps.suola.outputs.mode == 'build'
+        run: |
+          make dist
 
       - name: "⬆️ Upload WASM Artifacts"
         uses: actions/upload-artifact@v7
@@ -95,10 +116,6 @@ jobs:
           submodules: recursive
           fetch-depth: 0
           fetch-tags: true
-
-      - name: "🏷️ Fetch Submodule Tags"
-        run: |
-          git -C suola fetch --tags
 
       - name: "⬇️ Download WASM Artifacts"
         uses: actions/download-artifact@v8
@@ -135,8 +152,8 @@ jobs:
         run: |
           make check-sites-published
 
-  # The development server and the extension e2e share one job: they need the same checkout, the same karikko
-  # tag guard, the same WASM artifact and the same test image, and a second job would build that image twice.
+  # The development server and the extension e2e share one job: they need the same checkout, the same
+  # WASM artifact and the same test image, and a second job would build that image twice.
   # The e2e step runs even when the devserver step fails, so one run reports both suites. Neither check name is
   # required by a branch protection rule, so a single job costs no reporting signal.
   suites:
@@ -150,18 +167,6 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
-          fetch-tags: true
-
-      - name: "🏷️ Fetch Submodule Tags"
-        run: |
-          git -C suola fetch --tags
-
-      # The suites drive karikko from the submodule pointer; an untagged pointer would put unreleased code into a
-      # CI test run (plan 3.3). The pointer bump is the release report.
-      - name: "🏷️ Karikko pointer is a released tag"
-        run: |
-          git -C packages/karikko fetch --tags
-          git -C packages/karikko describe --tags --exact-match
 
       # Two explicit, name-scoped downloads: the artifact zips carry their trees' contents at the root, so the
       # extension tree must land *in* build/dist (the artifact root's manifest.json becomes build/dist/

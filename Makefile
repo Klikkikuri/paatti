@@ -70,8 +70,9 @@ rebuild-suola:
 #   the normal CI position -- so it proves presence, not freshness; a truncated
 #   download is on the upload/download artifact actions to catch.
 # USE_RELEASE_ARTIFACTS=1 -- fetch the attestation-backed artifacts of the suola tag
-#   that the submodule pins, from GitHub releases. CI and every store build use this
-#   path; the tag must have a release with both files.
+#   that the submodule pins, from GitHub releases. Every store build and the release use
+#   this path, and so does CI when the pointer is a released tag. check-suola-release is
+#   the publish gate; CI builds any other commit locally.
 # Otherwise -- build locally, through Docker or, with DOCKER=false, TinyGo.
 # ${error} at parse time: with both flags set the release download would silently lose
 # to the artifact branch, and an exported variable survives the recursive make that the
@@ -178,10 +179,11 @@ dist-chrome dist-firefox: dist-%: manifest.%.json dist
 
 # Store trees: the same merge, then the version AMO needs and no update_url (a listed AMO version
 # must not carry one; the self-hosted xpi from dist-firefox keeps it). A store build always carries
-# the non-OSS assets and the attested suola artifacts of the pinned tag; the recursive make is how
+# the non-OSS assets and the attested suola artifacts of the pinned tag; check-suola-release
+# proves that the tag has a release before the download runs. The recursive make is how
 # both flags reach the parse-time conditionals in dist and the Wasm rule. One shared staging step,
 # so that `make -j store-build` does not run two of them into the same $(DIST_DIR).
-store-dist: check-sites
+store-dist: check-sites check-suola-release
 	$(MAKE) dist NON_OSS=1 USE_RELEASE_ARTIFACTS=1
 
 store-chrome store-firefox: store-%: manifest.%.json store-dist
@@ -251,6 +253,28 @@ clean:
 release:
 	node release.js $(VERSION)
 
+# The release-branch gate: a release ships the suola release of the pinned tag, so a pull request into
+# main and a push to main stop here when the pointer is not one. The Build workflow may test any commit,
+# so it calls this target only to choose the download or a local build. docs/release.md, "Submodule
+# Pointers", states the rule.
+check-suola-release:
+	@tag=$$(cd suola && git describe --tags --exact-match 2>/dev/null) || { \
+		echo "Error: the suola pointer is not a tag. Release suola, then bump the pointer."; exit 1; \
+	}; \
+	gh release view "$$tag" --repo Klikkikuri/suola --json assets \
+		--jq '[.assets[].name] | (index("js.wasm") and index("wasm_exec.js"))' | grep -qx true || { \
+		echo "Error: suola $$tag has no release with js.wasm and wasm_exec.js."; exit 1; \
+	}; \
+	echo "suola $$tag is a released tag."
+
+# The full pointer gate for the release branch, run by release-checks.yml. karikko is a test dependency
+# and ships only in the source archive, so it may point to any commit; this target proves it is present.
+check-submodule-pointers: check-suola-release
+	@git -C packages/karikko rev-parse --verify HEAD >/dev/null || { \
+		echo "Error: the karikko submodule is missing."; exit 1; \
+	}
+	@echo "karikko pointer $$(git -C packages/karikko rev-parse --short HEAD): any commit is allowed."
+
 # The suola artifacts must carry suola's build attestation before anything is uploaded, and the
 # attestation must name the commit that the submodule pins, so a moved release tag fails here.
 # This needs the suola git checkout; an unpacked source archive cannot run it.
@@ -306,10 +330,9 @@ test: test-wasm check-sites
 	node --test 'tests/*.test.mjs'
 
 # The development server lives in packages/karikko, a git submodule (Klikkikuri/karikko) that meri's suola
-# pattern follows: its own uv project, its own committed uv.lock, developed from here with `uv run`. Its pointer
-# must sit on a released tag; a bump goes hand in hand with that karikko release. The settings are that
-# submodule's README's subject. DEVSERVER_ARGS passes more of them, for example
-# DEVSERVER_ARGS="--seed=42 --chaos.provider_5xx=data".
+# pattern follows: its own uv project, its own committed uv.lock, developed from here with `uv run`. The suites
+# run it from source, so its pointer may be any commit. The settings are that submodule's README's subject.
+# DEVSERVER_ARGS passes more of them, for example DEVSERVER_ARGS="--seed=42 --chaos.provider_5xx=data".
 UV ?= uv
 export DEVSERVER_PORT ?= 3000
 DEVSERVER_ARGS ?=
@@ -377,4 +400,4 @@ test-wasm:
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
 	fi
 
-.PHONY: serve test-devserver test-e2e check-dist-artifacts test-image test-image-run build init ensure-suola check-tinygo check-docker package source-dist icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
+.PHONY: serve test-devserver test-e2e check-dist-artifacts test-image test-image-run build init ensure-suola check-tinygo check-docker package source-dist icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build check-suola-release check-submodule-pointers verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext

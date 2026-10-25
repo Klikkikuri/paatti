@@ -18,9 +18,8 @@ carry their own copies with a store version. Publishing does not change `updates
 ## Before You Start
 
 1. Make sure that `main` is clean and up to date.
-2. Make sure that the `suola` submodule is at a tag, and that the tag has a GitHub Release with `js.wasm` and
-   `wasm_exec.js`. The Build workflow and the release build download these artifacts; neither compiles
-   `suola`, and CI fails when the pointer is not a released tag.
+2. Make sure that the `suola` submodule is at a released tag with a GitHub Release. See
+   [Submodule Pointers](#submodule-pointers).
 3. Run `make check-sites-latest`. If it reports that the origins differ, Rahti has changed the sites: run
    `make sites-sync`, then commit and push the result. If it fails with a network or git error, run it again.
    See [Default Site Permissions](#default-site-permissions).
@@ -44,6 +43,38 @@ carry their own copies with a store version. Publishing does not change `updates
 5. Read the current version in the Chrome Web Store developer dashboard. The store accepts only a version
    that is higher than its last upload. Use it to select `store_revision`, and the number of a hotfix tag. See
    [Versions and Channels](#versions-and-channels).
+
+## Submodule Pointers
+
+Paatti has two submodules. They serve different jobs.
+
+| Submodule | What it provides | Ships in |
+|---|---|---|
+| `suola` | `js.wasm` and `wasm_exec.js` | The extension package and the source archive |
+| `packages/karikko` | The development server that the tests start | The source archive only |
+
+A release ships the `suola` release of the pinned tag. Thus a commit that goes to `main` must point `suola`
+at a released tag, because `main` must stay releasable. A branch does not have that limit: it may point
+either submodule at any commit. `packages/karikko` has no release artifact, so any of its commits is allowed
+on every branch.
+
+| Event | `suola` | `packages/karikko` |
+|---|---|---|
+| Push to a branch other than `main` | Any commit | Any commit |
+| Pull request into `main` | Released tag with `js.wasm` and `wasm_exec.js` | Any commit |
+| Push to `main` | Released tag with `js.wasm` and `wasm_exec.js` | Any commit |
+| `v*` tag, store publish | Released tag with `js.wasm` and `wasm_exec.js` | Any commit |
+
+Two workflows apply the rule:
+
+- `build.yml` tests any commit. When the pointer is not a released tag, its job summary says that the module
+  was built from source, so the check does not claim that the commit can be released. On an event that
+  targets `main` it stops instead of building.
+- `release-checks.yml` runs on a pull request into `main` and on a push to `main`. It calls
+  `make check-submodule-pointers`. Add this check to the branch protection rule.
+
+`make check-suola-release` is the `suola` predicate. A release, a store build and the Build workflow all call
+it, so the rule has one definition.
 
 ## Make a Release
 
