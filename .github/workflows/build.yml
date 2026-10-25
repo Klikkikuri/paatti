@@ -18,13 +18,14 @@ permissions:
   contents: read
   actions: read
 
-# The suola WASM artifacts are built once by the wasm job and handed to every other
-# job as artifacts: `suola-wasm` carries js.wasm + wasm_exec.js, `extension-dist` an
-# OSS extension tree (never NON_OSS bytes -- the zips below are store trees and their
-# overlay would change what e2e tests). The consumers pass WASM_FROM_ARTIFACTS=1,
-# and the suites job adds DIST_FROM_ARTIFACTS=1, so make proves the downloads
-# instead of rebuilding; `needs: wasm` serializes against the artifact uploads,
-# not against the flaky checks of the extension job.
+# The suola WASM artifacts are downloaded once by the wasm job from the suola release of the
+# submodule's tag -- it does not compile suola, whose own CI builds, tests and attests those bytes --
+# and handed to every other job as artifacts: `suola-wasm` carries js.wasm + wasm_exec.js,
+# `extension-dist` an OSS extension tree (never NON_OSS bytes -- the zips below are store trees and
+# their overlay would change what e2e tests). The consumers pass WASM_FROM_ARTIFACTS=1, and the
+# suites job adds DIST_FROM_ARTIFACTS=1, so make proves the downloads instead of rebuilding;
+# `needs: wasm` serializes against the artifact uploads, not against the flaky checks of the
+# extension job.
 jobs:
   wasm:
     name: "🧩 Suola WASM"
@@ -36,10 +37,35 @@ jobs:
         with:
           submodules: recursive
           fetch-depth: 0
+          fetch-tags: true
 
-      - name: "🏗️ Build the WASM Artifacts and the OSS Extension Tree"
+      # The checkout's fetch-tags covers the superproject, not the submodule.
+      - name: "🏷️ Fetch Submodule Tags"
         run: |
-          make build-suola dist
+          git -C suola fetch --tags
+
+      # A tag alone does not prove that a release exists; without this check the failure surfaces
+      # as a 404 from curl inside make. Fail here, with the cause.
+      - name: "🏷️ The Suola Pointer is a Released Tag"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag=$(git -C suola describe --tags --exact-match) || { echo "Error: the suola pointer is not a tag."; exit 1; }
+          gh release view "$tag" --repo Klikkikuri/suola --json assets \
+            --jq '[.assets[].name] | (index("js.wasm") and index("wasm_exec.js"))' | grep -qx true \
+            || { echo "Error: suola $tag has no release with js.wasm and wasm_exec.js."; exit 1; }
+
+      # The release assets of the pinned tag, not a rebuild of the same commit: CI then tests and
+      # packages the bytes that ship.
+      - name: "⬇️ Download the Suola Artifacts and Stage the Extension Tree"
+        run: |
+          make dist USE_RELEASE_ARTIFACTS=1
+
+      - name: "🛡️ Verify the Suola Artifact Attestation"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          make verify-suola USE_RELEASE_ARTIFACTS=1
 
       - name: "⬆️ Upload WASM Artifacts"
         uses: actions/upload-artifact@v7

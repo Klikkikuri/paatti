@@ -336,8 +336,9 @@ Pass `DOCKER=podman` to **build with podman**:
 make build DOCKER=podman
 ```
 
-Pass `USE_RELEASE_ARTIFACTS=1` to **download the WebAssembly binaries** from GitHub instead of compiling them.
-The `suola` checkout must sit on an exact tag, which it does after a recursive clone:
+Pass `USE_RELEASE_ARTIFACTS=1` to **download the WebAssembly binaries** from the `suola` release of the tag that
+the submodule pins, instead of compiling them. The CI build and every store build use this path, and the tag must
+have a release with both files:
 
 ```sh
 make build USE_RELEASE_ARTIFACTS=1

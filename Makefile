@@ -18,6 +18,8 @@ SUOLA_SOURCES := $(patsubst %,suola/%,$(shell git -C suola ls-files 2>/dev/null)
 ifeq ($(SUOLA_SOURCES),)
 SUOLA_SOURCES := $(shell find suola -type f -not -path 'suola/build/*')
 endif
+# The commit that the submodule pins. verify-suola binds the attestation to it, so a moved tag fails.
+SUOLA_COMMIT := $(shell git -C suola rev-parse HEAD 2>/dev/null)
 
 
 build: package
@@ -60,15 +62,16 @@ rebuild-suola:
 	$(MAKE) build-suola
 
 # Every WASM consumer builds through this rule, so it carries the whole picture:
-# WASM_FROM_ARTIFACTS=1 -- the artifacts were produced by the wasm job of a CI run and
-#   downloaded into $(BUILD_DIR) first; here we only prove they are present, so a
-#   missing download fails in one line instead of as a dangling "no wasm" later. The
-#   check runs when make must produce the targets, which is always the case for a
-#   missing file. It is skipped when the files are present and newer than suola's
-#   sources -- the normal CI position -- so it proves presence, not freshness; a
-#   truncated download is on the upload/download artifact actions to catch.
-# USE_RELEASE_ARTIFACTS=1 -- fetch the attestation-backed artifacts of a tagged suola
-#   submodule from GitHub releases (the store-dist target).
+# WASM_FROM_ARTIFACTS=1 -- the artifacts came from the wasm job of a CI run and are
+#   already in $(BUILD_DIR); here we only prove they are present, so a missing
+#   download fails in one line instead of as a dangling "no wasm" later. The check
+#   runs when make must produce the targets, which is always the case for a missing
+#   file. It is skipped when the files are present and newer than suola's sources --
+#   the normal CI position -- so it proves presence, not freshness; a truncated
+#   download is on the upload/download artifact actions to catch.
+# USE_RELEASE_ARTIFACTS=1 -- fetch the attestation-backed artifacts of the suola tag
+#   that the submodule pins, from GitHub releases. CI and every store build use this
+#   path; the tag must have a release with both files.
 # Otherwise -- build locally, through Docker or, with DOCKER=false, TinyGo.
 # ${error} at parse time: with both flags set the release download would silently lose
 # to the artifact branch, and an exported variable survives the recursive make that the
@@ -90,8 +93,8 @@ else ifneq ($(USE_RELEASE_ARTIFACTS),)
 		echo "suola submodule is tagged at $$SUOLA_TAG. Fetching pre-built artifacts from GitHub releases..."; \
 		mkdir -p $(BUILD_DIR); \
 		rm -f $(BUILD_DIR)/js.wasm $(BUILD_DIR)/wasm_exec.js; \
-		curl -L -f -o $(BUILD_DIR)/js.wasm "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/js.wasm" && \
-		curl -L -f -o $(BUILD_DIR)/wasm_exec.js "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/wasm_exec.js"; \
+		curl -L -f --retry 3 --retry-delay 2 -o $(BUILD_DIR)/js.wasm "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/js.wasm" && \
+		curl -L -f --retry 3 --retry-delay 2 -o $(BUILD_DIR)/wasm_exec.js "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/wasm_exec.js"; \
 	else \
 		echo "Error: suola submodule is not tagged or found. Cannot fetch release artifacts." && exit 1; \
 	fi
@@ -248,10 +251,17 @@ clean:
 release:
 	node release.js $(VERSION)
 
-# The suola artifacts must carry suola's build attestation before anything is uploaded.
+# The suola artifacts must carry suola's build attestation before anything is uploaded, and the
+# attestation must name the commit that the submodule pins, so a moved release tag fails here.
+# This needs the suola git checkout; an unpacked source archive cannot run it.
 verify-suola: $(WASM_OUTPUTS)
-	gh attestation verify $(BUILD_DIR)/js.wasm --repo Klikkikuri/suola
-	gh attestation verify $(BUILD_DIR)/wasm_exec.js --repo Klikkikuri/suola
+	@test -n "$(SUOLA_COMMIT)" || { echo "Error: no suola git checkout; cannot enforce the source digest."; exit 1; }
+	gh attestation verify $(BUILD_DIR)/js.wasm --repo Klikkikuri/suola \
+		--signer-workflow Klikkikuri/suola/.github/workflows/release.yml \
+		--source-digest "$(SUOLA_COMMIT)"
+	gh attestation verify $(BUILD_DIR)/wasm_exec.js --repo Klikkikuri/suola \
+		--signer-workflow Klikkikuri/suola/.github/workflows/release.yml \
+		--source-digest "$(SUOLA_COMMIT)"
 
 # Store submission, run by publish-amo.yml and publish-chrome.yml, which install web-ext or
 # chrome-webstore-upload-cli on the runner and pass the credentials in env.

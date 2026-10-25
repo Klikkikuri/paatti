@@ -18,8 +18,9 @@ carry their own copies with a store version. Publishing does not change `updates
 ## Before You Start
 
 1. Make sure that `main` is clean and up to date.
-2. Make sure that the `suola` submodule is at a tag. The release build downloads the `suola` artifacts of
-   that tag.
+2. Make sure that the `suola` submodule is at a tag, and that the tag has a GitHub Release with `js.wasm` and
+   `wasm_exec.js`. The Build workflow and the release build download these artifacts; neither compiles
+   `suola`, and CI fails when the pointer is not a released tag.
 3. Run `make check-sites-latest`. If it reports that the origins differ, Rahti has changed the sites: run
    `make sites-sync`, then commit and push the result. If it fails with a network or git error, run it again.
    See [Default Site Permissions](#default-site-permissions).
@@ -143,6 +144,9 @@ them in the store dashboards:
    make store-build STORE_REVISION=1
    make verify-suola
    ```
+
+   `make verify-suola` binds the attestation to the commit that the `suola` submodule pins, so it needs that
+   git checkout. It stops with a clear error when the checkout is absent.
 
 4. Upload the files directly. Do not run another make target before the upload (see below).
 
