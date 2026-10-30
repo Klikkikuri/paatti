@@ -12,9 +12,9 @@
 #     - x11-utils, xdg-utils: script tools from chromium-common.
 #    Together: ~70 MB less download, ~300 MB smaller image.
 #  - test: everything the project's test targets need -- make, python3, chromium and
-#    its illustrated deps, uv and jsdom. The Build workflow's e2e and drift jobs run
-#    `--target test` of this image, and the dev container's final stage reuses it as
-#    its base, so the tests run against the same environment in both places.
+#    its illustrated deps, uv and jsdom. The Build workflow's `suites` job builds this
+#    stage and runs `make test-devserver` and `make test-e2e` in the image. The dev
+#    container's final stage builds on this stage, so both use one environment.
 #  - dev (final, picked up by devcontainer.json): the dev container itself -- agent
 #    tooling (rsvg, imagemagick, ripgrep, fd, jq, yq, shellcheck, gh, eslint, web-ext)
 #    on top of test, running as user node without passwordless sudo.
@@ -67,7 +67,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # uv runs the development server in packages/karikko (`make serve`, `make test-devserver`, `make test-e2e`).
 COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /uvx /usr/local/bin/
 
-# jsdom is installed rather than imported -- the `make test` and drift targets point
+# jsdom is installed rather than imported -- `make test` and `make test-devserver` point
 # NODE_PATH at the global root, and support files reach it through the CJS resolver.
 # The cache mount is keyed by its target path, so the dev stage shares it. The cache
 # stays out of the image; --no-audit and --no-fund drop unneeded registry requests.
@@ -105,9 +105,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends gh
 
-# Linters behind `make lint`: eslint enforces the browser-namespace import rule,
-# web-ext the AMO checks. run.sh uses web-ext too. This is the cache mount that the
-# test stage fills.
+# Linters: `make lint` runs eslint, which enforces the browser-namespace import rule;
+# `make lint-webext` runs web-ext on the Firefox tree. run.sh uses web-ext too. This is
+# the cache mount that the test stage fills.
 RUN --mount=type=cache,target=/root/.npm,sharing=shared \
     npm install --global --no-audit --no-fund eslint@10 web-ext@10
 # Disable passwordless sudo

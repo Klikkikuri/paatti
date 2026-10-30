@@ -4,15 +4,16 @@
 /**
  * @file devserver-paths.mjs
  * The filesystem paths the development-server tools share: the repository root and one e2e data directory per
- * test. The drift target and the e2e harness derive their paths here, not in their callers.
+ * test. The drift guard, which `make test-devserver` runs, and the e2e harness derive their paths here, not in
+ * their callers.
  */
 
 import { mkdirSync, realpathSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { basename, dirname, join, resolve, sep } from "node:path";
 
-/** The root of the Paatti checkout; both the test image and the dev container mount the repo at `/app`, and a
- * plain run uses the checkout path. */
+/** The root of the Paatti checkout; both the CI test image and the dev container mount the repo at `/app`, and
+ * a plain run uses the checkout path. */
 export const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 
 /** The directory the development-server tools may delete and rewrite: `build/` under the checkout. */

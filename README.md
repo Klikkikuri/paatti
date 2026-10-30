@@ -299,12 +299,12 @@ make build
 ```
 
 `make build` first checks that the `suola` submodule is present. It then compiles `suola` to WebAssembly
-(`js.wasm` and its support file `wasm_exec.js`) with Docker, or with a host toolchain when `DOCKER=false`. The
-two files must come from the same toolchain to work together, so run `make clean` when you change build method.
-Finally it stages the extension assets (`src/`, `icons/`, `_locales/`, `manifest.json`, `LICENSE.md`,
-`LISENSSI.md`, `docs/PRIVACY_POLICY.md` and `docs/PRIVACY_POLICY_DEVELOPMENT.md`) with the WebAssembly
-binaries into `build/dist/`, writes one tree per browser into `build/dist-chrome/` and `build/dist-firefox/`,
-and packages them into `build/klikkikuri-paatti-chrome.zip` and `build/klikkikuri-paatti-firefox.zip`.
+(`js.wasm` and its support file `wasm_exec.js`) with Docker, or with a host toolchain when `DOCKER=false`. Both
+files must come from one toolchain, or they will not work together. Run `make clean` when you change the build
+method. Finally the build stages the extension assets (`src/`, `icons/`, `_locales/`, `manifest.json`, `LICENSE.md`,
+`LISENSSI.md`, `docs/PRIVACY_POLICY.md` and `docs/PRIVACY_POLICY_DEVELOPMENT.md`) and the WebAssembly binaries
+into `build/dist/`. It writes one tree per browser into `build/dist-chrome/` and `build/dist-firefox/`, and
+packages them into `build/klikkikuri-paatti-chrome.zip` and `build/klikkikuri-paatti-firefox.zip`.
 
 If the `suola` submodule is missing, `make` fetches it with `make init`. You can also clone the repository
 with `git clone --recursive` to get it from the start.
@@ -312,11 +312,12 @@ with `git clone --recursive` to get it from the start.
 #### Requirements
 
 - `make`, `bash`, `git`, `zip` and `curl`
-- Node.js. Every build runs `check-icons`, `make test` needs it, and the e2e in `tests/e2e` runs it with
+- Node.js. Every build runs `check-icons`. `make test` needs it, and the e2e in `tests/e2e` runs it with
   `playwright-core`.
 - `eslint` and `web-ext` for the lint targets. Both come from the dev container image.
-- (optional) Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2). Docker builds the test
-  image that the e2e and drift CI jobs run in.
+- (optional) Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2). The build compiles
+  `suola` in a container by default, unless you pass `DOCKER=false`. The Build workflow builds its test image
+  from `.devcontainer/Dockerfile` with Docker, and runs `make test-devserver` and `make test-e2e` in it.
 - (optional, for the development server) [`uv`](https://docs.astral.sh/uv/), which installs the Python that it
   needs. The server is the `packages/karikko` submodule; `make serve` runs it.
 - The [`suola`](https://github.com/Klikkikuri/suola) submodule
@@ -337,8 +338,9 @@ make build DOCKER=podman
 ```
 
 Pass `USE_RELEASE_ARTIFACTS=1` to **download the WebAssembly binaries** from the `suola` release of the tag that
-the submodule pins, instead of compiling them. A publish requires a released tag; a branch may use any commit,
-and it is built with Docker instead. See [Submodule Pointers](docs/release.md#submodule-pointers):
+the submodule pins, instead of compiling them. A publish requires a released tag. A branch may point at any
+commit, and then the build compiles `suola` with Docker. See
+[Submodule Pointers](docs/release.md#submodule-pointers):
 
 ```sh
 make build USE_RELEASE_ARTIFACTS=1
@@ -410,9 +412,10 @@ beat the assignment.
 
 Tests that need a DOM use [`tests/helpers/dom.mjs`](./tests/helpers/dom.mjs), which puts a jsdom document on
 `globalThis`. Install it before the dynamic import as well: a component module builds its templates and calls
-`customElements.define` at evaluation time. jsdom comes from the dev container image rather than a
-`package.json`, so `make test` needs the container — the `test` target points `NODE_PATH` at the global npm root,
-because ESM resolution ignores it and the helper reaches jsdom through the CJS resolver.
+`customElements.define` at evaluation time. jsdom is a global npm install, not a `package.json` dependency. The
+dev container image has it, and the `extension` job installs it with `npm install -g jsdom@27`. The `test` target
+points `NODE_PATH` at the global npm root, because ESM resolution ignores it and the helper reaches jsdom through
+the CJS resolver.
 
 jsdom does no layout and does not resolve the cascade, so it covers structure, lifecycle and events but says
 nothing about styling. Check CSS in a real browser instead.

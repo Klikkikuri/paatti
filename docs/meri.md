@@ -35,7 +35,7 @@ the submodule, rewrites Sulku's pin, and relocks Sulku. It changes files only â€
 repositories yourself.
 
 Since suola v0.5.0 the module parses **compiled JSON rules only**; `packages/suola/rules.yaml` is build-time
-source that `make rules` compiles into `packages/suola/build/rules.json`. Meri reads its rules from the provider
+source that suola's `make rules` compiles into `packages/suola/build/rules.json`. Meri reads its rules from the provider
 manifest that the `manifest` setting names, by default `packages/rahti/manifest.json`: its `suola-rules` resources
 link the `rules.json` that suola's CI publishes into the `rahti` repository. A remote rules document is cached
 under the user cache directory for one day. Without a manifest, the rules built into the module are used.
