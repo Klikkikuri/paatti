@@ -1,0 +1,43 @@
+name: Lint
+
+# The static checks, apart from the Build workflow. They need no build, no image and no browser, so a
+# change to code gets an answer in seconds instead of the length of a suite.
+#
+# Both workflows skip a change that touches only documentation, and `Build` skips it with the same
+# list. Keep the two lists in step.
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE*'
+      - 'LISENSSI*'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE*'
+      - 'LISENSSI*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: "🧹 Lint"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "🔄 Checkout Repository"
+        uses: actions/checkout@v7
+
+      # eslint rejects a bare `browser` or `chrome` global, which is the one rule that keeps every
+      # module on `src/browser-api.js`. See AGENTS.md.
+      - name: "🧹 eslint"
+        run: |
+          npm install -g eslint@10
+          make lint

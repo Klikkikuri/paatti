@@ -1,14 +1,22 @@
 name: Build
 
+# A feature branch runs this workflow through its pull request only. `push` covers `main`, which has no
+# pull request to report on, and `Build` hears no tags: release.yml owns those. A change that touches
+# only documentation skips this workflow and Lint both; lint.yml carries the same list, so keep the two
+# in step.
 on:
   push:
     branches:
-      - '**'
-    tags-ignore:
-      - 'v*'
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE*'
+      - 'LISENSSI*'
   pull_request:
-    branches:
-      - '**'
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE*'
+      - 'LISENSSI*'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -18,16 +26,16 @@ permissions:
   contents: read
   actions: read
 
-# The flexible tier: this workflow tests any commit of either submodule on any branch. A publish needs
-# more, and release-checks.yml enforces that on main. docs/release.md, "Submodule Pointers", states the
-# rule.
+# The flexible tier: this workflow tests any commit of either submodule on any pull request. A publish
+# needs more, and release-checks.yml enforces that on main. docs/release.md, "Submodule Pointers",
+# states the rule.
 #
 # The suola WASM artifacts are produced once by the wasm job and handed to every other job as the
 # `suola-wasm` artifact: a tagged pointer downloads the attested suola release, and any other commit
 # builds with the Docker wasm builder. A consumer proves the download landed and makes it newer than
 # suola's sources, which is what the make rule compares, so make accepts it instead of rebuilding.
-# `needs: wasm` waits for the artifact upload only. This job does not wait for the build, lint
-# and test steps of the extension job.
+# `needs: wasm` waits for the artifact upload only. This job does not wait for the build and test
+# steps of the extension job.
 jobs:
   wasm:
     name: "🧩 Suola WASM"
@@ -130,12 +138,7 @@ jobs:
         run: |
           make build NON_OSS=1
 
-      - name: "🧹 Lint"
-        run: |
-          npm install -g eslint@10
-          make lint
-
-      - name: "🧪 Run Tests"
+      - name: " Run Tests"
         run: |
           npm install -g jsdom@27
           make test

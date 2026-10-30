@@ -423,12 +423,15 @@ nothing about styling. Check CSS in a real browser instead.
 ### Lint
 
 ```sh
-make lint          # eslint; this is what CI runs
+make lint          # eslint; the Lint workflow runs this
 make lint-webext   # web-ext lint; run this by hand
 ```
 
 `make lint` rejects a bare `browser` or `chrome` global and `globalThis.browser`. See
 [AGENTS.md](AGENTS.md) for the two exempt files and the reason for the rule.
+
+`make lint` runs in the `Lint` workflow, not in `Build`, so a code change gets an answer in seconds
+instead of the length of a suite. A change that touches only documentation runs neither workflow.
 
 `make lint-webext` is deliberately not part of `make lint`, and CI does not run it. It lints the Firefox tree
 with `--self-hosted`, which permits the gecko `update_url` that self-hosted Firefox updates need, and fails on any
