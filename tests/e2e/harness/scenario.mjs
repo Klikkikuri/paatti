@@ -6,10 +6,8 @@
 
 import { launch } from "./browser.mjs";
 import { stagedExtension } from "./extension.mjs";
-import { e2eDataDir } from "../../../tools/devserver-paths.mjs";
+import { distDir, e2eDataDir } from "../../../tools/devserver-paths.mjs";
 import { startServer } from "../../../tools/devserver-server.mjs";
-
-const DIST_DIR = process.env.DIST_DIR ?? "/app/build/dist";
 
 /**
  * Starts the server and the browser for one suite. The caller must pass the returned `close` to an
@@ -24,7 +22,7 @@ const DIST_DIR = process.env.DIST_DIR ?? "/app/build/dist";
 export async function scenario(name, { flags = [], bootstrap = false, manifestUrls = [] } = {}) {
     const dataDir = e2eDataDir(name);
     const server = await startServer({ dataDir, flags });
-    const staged = stagedExtension(DIST_DIR, name, { bootstrap, manifestUrls });
+    const staged = stagedExtension(distDir, name, { bootstrap, manifestUrls });
     const browser = await launch(staged.extensionDir);
     return {
         server,

@@ -111,7 +111,7 @@ async function devmodeCapturePage(event) {
         const errors = (await getConfig()).providerData[context.target.providerUrl]?.errors || [];
         if (errors.length > 0) throw new Error(errors.map((error) => error.message).join("; "));
 
-        // The provider now supplies the site, and a site that a provider supplies starts off.
+        // The provider now supplies the site. Turn it on so the content script runs and converts the page.
         const domain = await model.read.getMatchingSiteDomain(new URL(page.pageUrl).hostname);
         if (!domain) throw new Error(browser.i18n.getMessage("devmodeCaptureNoProvider", [page.pageUrl]));
         await controller.setSiteEnabled(true, domain);

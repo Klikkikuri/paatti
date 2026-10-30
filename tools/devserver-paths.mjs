@@ -16,6 +16,10 @@ import { basename, dirname, join, resolve, sep } from "node:path";
  * a plain run uses the checkout path. */
 export const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 
+/** The staged extension tree the e2e loads: `DIST_DIR` when the Makefile passes it, else `build/dist` under the
+ * checkout. */
+export const distDir = process.env.DIST_DIR ?? join(repoRoot, "build", "dist");
+
 /** The directory the development-server tools may delete and rewrite: `build/` under the checkout. */
 const ownedRoot = resolve(join(repoRoot, "build"));
 

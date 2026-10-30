@@ -12,11 +12,9 @@ import test, { after, before, describe } from "node:test";
 import assert from "node:assert/strict";
 import { launch } from "./harness/browser.mjs";
 import { stagedExtension } from "./harness/extension.mjs";
-import { e2eDataDir } from "../../tools/devserver-paths.mjs";
+import { distDir, e2eDataDir } from "../../tools/devserver-paths.mjs";
 import { startServer } from "../../tools/devserver-server.mjs";
 import { gotoProcessed, statuses, waitUntil } from "./harness/waits.mjs";
-
-const DIST_DIR = process.env.DIST_DIR ?? "/app/build/dist";
 
 describe("the first install of a staged copy", () => {
     /** @type {Awaited<ReturnType<typeof startServer>>} */
@@ -29,7 +27,7 @@ describe("the first install of a staged copy", () => {
     before(async () => {
         server = await startServer({ dataDir: e2eDataDir("bootstrap") });
         const base = `http://localhost:${server.port}`;
-        staged = stagedExtension(DIST_DIR, "bootstrap", {
+        staged = stagedExtension(distDir, "bootstrap", {
             bootstrap: true,
             manifestUrls: [`${base}/manifest/ilta-pulu/manifest.json`, `${base}/manifest/captured-sites/manifest.json`],
         });

@@ -907,8 +907,8 @@ const _setUpView = async (e) => {
     // Manual database update click handler is managed by the database-status-setting component
 
     // The devmode toggle's listener takes no argument: a click event must not reach the options object of
-// __devmodeEnable, whose shape decides the environment.
-document.getElementById("enable-devmode")
+    // __devmodeEnable, whose shape decides the environment.
+    document.getElementById("enable-devmode")
         .addEventListener("click", () => __devmodeEnable());
 
     // The capture button listener is bound by setupDevCapture().

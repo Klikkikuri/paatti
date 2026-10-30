@@ -138,7 +138,12 @@ jobs:
         run: |
           make build NON_OSS=1
 
-      - name: " Run Tests"
+      - name: "🧹 AMO Lint"
+        run: |
+          npm install -g web-ext@10
+          make lint-webext NON_OSS=1
+
+      - name: "🧪 Run Tests"
         run: |
           npm install -g jsdom@27
           make test

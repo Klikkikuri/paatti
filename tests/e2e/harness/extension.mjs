@@ -1,6 +1,6 @@
 /**
  * @file extension.mjs
- * The extension under test, staged from `DIST_DIR`. The staged copy is the source's own manifest with the
+ * The extension under test, staged from `distDir`. The staged copy is the source's own manifest with the
  * loopback grants added. With `{ bootstrap: false }` (the default here) it has no first-install work and the
  * harness adds the providers itself; with the bootstrap it installs like `./run.sh --devserver` does.
  */

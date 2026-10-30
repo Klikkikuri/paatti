@@ -103,12 +103,14 @@ export async function gotoProcessed(page, url, attempts = 3) {
  *
  * @param {import("playwright-core").Page} page
  * @param {number} [attempts]
+ * @returns {Promise<void>} Rejects when no reload gets the content script.
  */
 export async function reloadUntilProcessed(page, attempts = 3) {
     for (let i = 0; i < attempts; i++) {
         await page.reload();
         if (await processed(page, 5000)) return;
     }
+    throw new Error(`the content script did not run after ${attempts} reloads of ${page.url()}`);
 }
 
 /**

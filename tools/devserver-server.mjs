@@ -155,12 +155,11 @@ async function waitForGroupDeath(child, timeoutMs, logsOf) {
  * later failure would mean the pid was reused by an unrelated group.
  */
 async function stopGroup(child, logsOf) {
-    if (child.pid !== undefined) {
-        try {
-            process.kill(-child.pid, "SIGTERM");
-        } catch {
-            // Gone already; that is what a poll expects.
-        }
+    if (child.pid === undefined) return; // The exec failed, so there is no process group to stop.
+    try {
+        process.kill(-child.pid, "SIGTERM");
+    } catch {
+        // Gone already; that is what a poll expects.
     }
     try {
         await waitForGroupDeath(child, STOP_TIMEOUT, logsOf);
@@ -193,12 +192,10 @@ async function stopGroup(child, logsOf) {
  * @param {string} dataDir
  * @param {ServerProcess} initial
  * @param {string[]} command
- * @param {string[]} startupFlags
  * @returns {ServerHandle}
  */
-function createHandle(port, dataDir, initial, command, startupFlags) {
+function createHandle(port, dataDir, initial, command) {
     let current = initial;
-    let currentFlags = startupFlags;
 
     async function stop() {
         await stopGroup(current.child, current.logsOf);
@@ -213,7 +210,6 @@ function createHandle(port, dataDir, initial, command, startupFlags) {
             throw error;
         }
         current = fresh;
-        currentFlags = flags;
     }
 
     /** @type {ServerHandle} */
@@ -253,7 +249,7 @@ export async function startServer({ dataDir, flags = [], port, command } = {}) {
         const proc = startProcess(serverArgv(argv0, port, dataDir, flags), port);
         try {
             await proc.readiness();
-            return createHandle(port, dataDir, proc, argv0, flags);
+            return createHandle(port, dataDir, proc, argv0);
         } catch (error) {
             failure = error;
             await stopGroup(proc.child, proc.logsOf);
