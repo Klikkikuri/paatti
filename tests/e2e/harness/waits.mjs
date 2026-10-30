@@ -129,7 +129,7 @@ export async function sendPage(browser, base) {
         await browserApi.tabs.update(tab.id, { active: true });
     }, base);
     await popup.reload();
-    await popup.click("label[for=navi-settings]");
+    await popup.click("label[for=open-settingsview]");
     // refreshDevCapture runs late in the popup's load. The row is hidden until then, and
     // clicking the button before it shows is the race this wait closes.
     await popup.locator("#devmode-capture").waitFor({ state: "visible", timeout: 10000 });
