@@ -19,7 +19,6 @@ import { controller } from "../controller.js";
 import { getConfig } from "../config.js";
 import { safeFetch } from "../safe-fetch.js";
 import { originPatterns } from "./origins.js";
-import { pointDocLinks } from "./utils.js";
 import { captureTarget, capturePageLinks, GENERIC_CAPTURE_RULE } from "./capture-target.js";
 
 const log = getLogger("dev-capture");
@@ -33,11 +32,9 @@ const log = getLogger("dev-capture");
  */
 let captureContext = null;
 
-/** Bind the popup's capture controls and the privacy notice link. Call once when the popup loads. */
+/** Bind the popup's capture controls. Call once when the popup loads. */
 export function setupDevCapture() {
     document.getElementById("devmode-capture-button").addEventListener("click", devmodeCapturePage);
-    // The privacy notice link of the devmode section carries a data-doc, like the options page's links.
-    pointDocLinks();
 }
 
 /**
