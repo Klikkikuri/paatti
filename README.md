@@ -312,8 +312,8 @@ with `git clone --recursive` to get it from the start.
 #### Requirements
 
 - `make`, `bash`, `git`, `zip` and `curl`
-- Node.js. Every build runs `check-icons`. `make test` needs it, and the e2e in `tests/e2e` runs it with
-  `playwright-core`.
+- Node.js. Every build runs `check-icons` with it. `make test` and the e2e in `tests/e2e` use it too. The e2e
+  installs its own driver, `playwright-core`.
 - `eslint` and `web-ext` for the lint targets. Both come from the dev container image.
 - (optional) Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2). The build compiles
   `suola` in a container by default, unless you pass `DOCKER=false`. The Build workflow builds its test image
@@ -354,10 +354,10 @@ make build NON_OSS=1
 
 Other targets: `make package` zips the per-browser trees, `make dist-chrome` and `make dist-firefox` stage one
 browser's tree, `make store-build` overwrites the two zips with the store packages (always with `NON_OSS=1` and
-`USE_RELEASE_ARTIFACTS=1`) and adds the source archive for a manual store upload,
-`make source-dist` packages the source for review, `make rebuild-suola` forces a WebAssembly rebuild,
-`make test-wasm` runs suola's own smoke test, and `make sites-sync` writes the origins of the default sites into
-`manifest.json`. See [Default Site Permissions](docs/release.md#default-site-permissions).
+`USE_RELEASE_ARTIFACTS=1`, and only when the `suola` pointer is a released tag) and adds the source archive for a
+manual store upload, `make source-dist` packages the source for review, `make rebuild-suola` forces a WebAssembly
+rebuild, `make test-wasm` runs suola's own smoke test, and `make sites-sync` writes the origins of the default
+sites into `manifest.json`. See [Default Site Permissions](docs/release.md#default-site-permissions).
 
 `manifest.json` is the base for both browsers; `manifest.chrome.json` and `manifest.firefox.json` remove what the
 other browser does not accept. See [Browser Manifests](docs/release.md#browser-manifests) for the merge rules.
@@ -375,10 +375,13 @@ Use [`run.sh`](./run.sh). It builds the extension and starts a browser with a cl
 ./run.sh --dark                 # Force the dark theme
 ./run.sh -u https://yle.fi/     # Open this page on startup
 ./run.sh -s .                   # Run a directory as-is, instead of build/dist
+./run.sh --devserver            # Add the providers of the development server
 ```
 
 `run.sh` reads [`web-ext-config.cjs`](./web-ext-config.cjs) from the repository root, which carries the browser
-preferences and the watch-ignore patterns.
+preferences and the watch-ignore patterns. `--devserver` and `--no-devserver` decide whether the run adds the
+providers of the development server. Without either one, `run.sh` adds them when that server answers; see
+[Development Server](#development-server).
 
 The repository root is itself a loadable unpacked extension, so you can also load
 [`manifest.json`](./manifest.json) by hand: in Firefox through `about:debugging` → **This Firefox** → **Load
@@ -399,10 +402,12 @@ The suites live in `tests/` and run on the built-in [`node:test`](https://nodejs
 `build/` holds the artifacts, and skips it with a note when it does not. It also runs `make check-sites`, which
 compares the origins in `manifest.json` with `sites.lock.json` and does not connect to the network.
 
-`make test-devserver` runs the development server's own tests, and then checks a running server with Paatti's own
-provider resolver, Suola module and content-script scan ([`tools/devserver-drift.mjs`](./tools/devserver-drift.mjs)).
-`make test-e2e` loads the unpacked build into Chromium and checks that each block on Ilta-Pulu gets its expected
-status. Both need `uv`; see [Development Server](#development-server).
+`make test-devserver` runs the development server's own tests. It then starts a server and checks that server with
+Paatti's own provider resolver, the Suola module and the content-script scan
+([`tools/devserver-drift.mjs`](./tools/devserver-drift.mjs)). `make test-e2e` installs the e2e's own dependencies,
+loads the unpacked build into Chromium, and runs five suites: the first install of a staged copy, the capture of a
+page, content that arrives later, the popup on a site that no provider lists, and the faults of a provider. Both
+targets need `uv`; see [Development Server](#development-server).
 
 Tests that touch the extension APIs use the in-memory fake in
 [`tests/helpers/fake-browser.mjs`](./tests/helpers/fake-browser.mjs), which really dispatches
