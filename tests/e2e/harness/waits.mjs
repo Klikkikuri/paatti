@@ -129,10 +129,16 @@ export async function sendPage(browser, base) {
         await browserApi.tabs.update(tab.id, { active: true });
     }, base);
     await popup.reload();
-    await popup.click("label[for=open-settingsview]");
-    // refreshDevCapture runs late in the popup's load. The row is hidden until then, and
-    // clicking the button before it shows is the race this wait closes.
-    await popup.locator("#devmode-capture").waitFor({ state: "visible", timeout: 10000 });
+    // The popup draws asynchronously. It binds the navigation listeners after several storage reads, so a
+    // click that lands before that binding is lost: the radio lights up, but no handler shows the view. A
+    // click on a hidden settings view then hides the capture row with its ancestor. Ask for both until
+    // they report themselves, so a lost click is repaired instead of failing the case.
+    const settingsView = popup.locator('[data-view="settings"]');
+    const captureRow = popup.locator("#devmode-capture");
+    await waitUntil(async () => {
+        if (!await settingsView.isVisible()) await popup.click("label[for=open-settingsview]");
+        return await settingsView.isVisible() && await captureRow.isVisible();
+    }, 30000, 250);
     const button = popup.locator("#devmode-capture-button");
     await button.click();
     await waitUntil(() => button.isEnabled(), 60000, 200);
