@@ -338,14 +338,19 @@ test-e2e: dist
 # URLs the way the rules say it should; the tests above never touch it. Needs
 # nothing but node, so it is skipped rather than failed when the artifacts have
 # not been built yet -- or when the pinned release tag that USE_RELEASE_ARTIFACTS=1
-# selects predates the smoke test itself.
+# selects predates the smoke test itself. An artifact that is older than the
+# sources fails instead: it signs with rules that this checkout no longer has.
 test-wasm:
 	@if [ ! -f suola/test/js_smoke.cjs ]; then \
 		echo "Skipping Wasm smoke test: the suola checkout predates it."; \
-	elif [ -f "$(BUILD_DIR)/js.wasm" ] && [ -f "$(BUILD_DIR)/wasm_exec.js" ]; then \
-		node suola/test/js_smoke.cjs "$(BUILD_DIR)"; \
-	else \
+	elif [ ! -f "$(BUILD_DIR)/js.wasm" ] || [ ! -f "$(BUILD_DIR)/wasm_exec.js" ]; then \
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
+	elif [ -n "$$(find $(SUOLA_SOURCES) -newer "$(BUILD_DIR)/js.wasm" -print -quit 2>/dev/null)" ]; then \
+		echo "The Wasm artifacts in $(BUILD_DIR) are older than the suola sources."; \
+		echo "Run 'make rebuild-suola', with USE_RELEASE_ARTIFACTS=1 for a tagged suola."; \
+		exit 1; \
+	else \
+		node suola/test/js_smoke.cjs "$(BUILD_DIR)"; \
 	fi
 
 .PHONY: serve test-devserver test-e2e build init ensure-suola check-tinygo check-docker package source-dist icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build check-suola-release check-submodule-pointers verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
