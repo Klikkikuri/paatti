@@ -10,6 +10,7 @@ import { isSiteEnabled, getClickbaitLevelInfo, levelToI18nKey, localizeDocument 
 import { homeStatus } from "./home-status.js";
 import { setupDevCapture, refreshDevCapture } from "./dev-capture.js";
 import { CAPTURE_REL } from "./capture-target.js";
+import { VIEW_SELECTORS, VIEW_LABELS } from "./views.js";
 import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
 import "./components/master-switch-setting.js";
@@ -40,21 +41,6 @@ expandoTemplate.innerHTML = `
 // Helper procedures and definitions.
 ///////////////////////////////////////////////////////////////////////////////
 
-/**
- * Store the different views' IDs here in order to make making changes a bit
- * flexibler.
- */
-const _viewSelectors = {
-    "main":
-        { "content": ".main-content", "naviItem": "#navi-main" },
-    "stats":
-        { "content": ".statsview", "naviItem": "#navi-stats" },
-    "feedback":
-        { "content": ".feedbackview", "naviItem": "#navi-feedback" },
-    "settings":
-        { "content": ".settingsview", "naviItem": "#navi-settings" },
-};
-
 const _setCheckBoxReadonly = (checkbox, makeReadonly) => {
     if (makeReadonly) {
         checkbox.classList.add("toggle-readonly");
@@ -64,7 +50,7 @@ const _setCheckBoxReadonly = (checkbox, makeReadonly) => {
 };
 
 /* Set the visual readonly state of checkboxes under settings */
-const _setSettingsviewCheckboxesReadonly = (isConversionEnabled) => {
+const _setSettingsViewCheckboxesReadonly = (isConversionEnabled) => {
     const checkboxes = document.querySelectorAll(".settingsview .conversion-switch");
     const makeReadonly = !isConversionEnabled;
     for (const cb of checkboxes) {
@@ -560,7 +546,7 @@ const _refreshSettingsView = ({ isConversionEnabled, isDevelopmentEnv, config })
 
 
     // Visualize per site switches as "readonly" as per main switch state.
-    _setSettingsviewCheckboxesReadonly(isConversionEnabled);
+    _setSettingsViewCheckboxesReadonly(isConversionEnabled);
 
     // devmode (development-only; see docs/PRIVACY_POLICY_DEVELOPMENT.md): the Development environment
     // shows its section in the settings view; the capture row of it is wired by src/options/dev-capture.js.
@@ -583,27 +569,22 @@ const _refreshSettingsView = ({ isConversionEnabled, isDevelopmentEnv, config })
 
 /**
  * Show this and hide other of the views.
- * @param {*} viewName Identifier of the view to show.
+ * @param {string} viewName Identifier of the view to show.
  */
 const showView = (viewName) => {
     log(`Showing view '${viewName}'`);
 
-    // Hide all views and reset states.
-    for (const viewObj of Object.values(_viewSelectors)) {
-        document.querySelector(viewObj["content"]).classList.add("hidden");
+    // Hide all views first.
+    for (const contentSelector of Object.values(VIEW_SELECTORS)) {
+        document.querySelector(contentSelector).classList.add("hidden");
     }
     // Show the selected view.
-    document.querySelector(_viewSelectors[viewName]["content"]).classList.remove("hidden");
+    document.querySelector(VIEW_SELECTORS[viewName]).classList.remove("hidden");
 
-    // Update active tab indicator.
+    // Update the tab indicator.
     const indicator = document.getElementById("active-tab-indicator");
     if (indicator) {
-        let labelKey = "";
-        if (viewName === "main") labelKey = "navigationMainLabel";
-        else if (viewName === "stats") labelKey = "navigationStatsLabel";
-        else if (viewName === "feedback") labelKey = "navigationFeedbackLabel";
-        else if (viewName === "settings") labelKey = "navigationSettingsLabel";
-        
+        const labelKey = VIEW_LABELS[viewName];
         indicator.textContent = labelKey ? browser.i18n.getMessage(labelKey) : "";
     }
 };
@@ -809,10 +790,7 @@ const _loadIntoView = async () => {
         initialViewSelected = true;
         if (conversions && conversions.some(item => item.isMainPage)) {
             view.showView("feedback");
-            const naviFeedback = document.getElementById("navi-feedback");
-            if (naviFeedback) {
-                naviFeedback.checked = true;
-            }
+            document.getElementById("open-feedbackview").checked = true;
         } else {
             view.showView("main");
         }
