@@ -62,32 +62,16 @@ rebuild-suola:
 	$(MAKE) build-suola
 
 # Every WASM consumer builds through this rule, so it carries the whole picture:
-# WASM_FROM_ARTIFACTS=1 -- the artifacts came from the wasm job of a CI run and are
-#   already in $(BUILD_DIR); here we only prove they are present, so a missing
-#   download fails in one line instead of as a dangling "no wasm" later. The check
-#   runs when make must produce the targets, which is always the case for a missing
-#   file. It is skipped when the files are present and newer than suola's sources --
-#   the normal CI position -- so it proves presence, not freshness; a truncated
-#   download is on the upload/download artifact actions to catch.
 # USE_RELEASE_ARTIFACTS=1 -- fetch the attestation-backed artifacts of the suola tag
 #   that the submodule pins, from GitHub releases. Every store build and the release use
 #   this path, and so does CI when the pointer is a released tag. check-suola-release is
 #   the publish gate; CI builds any other commit locally.
 # Otherwise -- build locally, through Docker or, with DOCKER=false, TinyGo.
-# ${error} at parse time: with both flags set the release download would silently lose
-# to the artifact branch, and an exported variable survives the recursive make that the
-# store path runs (store-dist), so it must never coexist with it.
-ifeq ($(WASM_FROM_ARTIFACTS)$(USE_RELEASE_ARTIFACTS),11)
-$(error WASM_FROM_ARTIFACTS and USE_RELEASE_ARTIFACTS are mutually exclusive)
-endif
+# A CI job that takes the `suola-wasm` artifact passes no flag: it puts the files in
+# $(BUILD_DIR) and makes them newer than suola's sources, which is what this rule
+# compares. That is the whole of what a "the download landed" flag used to do.
 $(WASM_OUTPUTS) &: $(SUOLA_SOURCES) | ensure-suola
-ifeq ($(WASM_FROM_ARTIFACTS),1)
-	@test -s $(BUILD_DIR)/js.wasm && test -s $(BUILD_DIR)/wasm_exec.js || { \
-		echo "Error: no WASM artifacts in $(BUILD_DIR) (WASM_FROM_ARTIFACTS=1)."; \
-		echo "Download the suola-wasm artifact into build/, or unset the flag."; \
-		exit 1; \
-	}
-else ifneq ($(USE_RELEASE_ARTIFACTS),)
+ifneq ($(USE_RELEASE_ARTIFACTS),)
 	# Fetch pre-built artifacts from GitHub releases for tagged suola submodule
 	@if [ -d suola ] && (cd suola && git describe --tags --exact-match >/dev/null 2>&1); then \
 		SUOLA_TAG=$$(cd suola && git describe --tags --exact-match); \
@@ -127,29 +111,9 @@ check-docker:
 	@command -v $(firstword $(DOCKER)) >/dev/null 2>&1 || { \
 		echo "Error: $(DOCKER) not found on PATH."; \
 		echo "Install Docker, or build with DOCKER=false (TinyGo required),"; \
-		echo "or set WASM_FROM_ARTIFACTS=1 with artifacts already in $(BUILD_DIR)."; \
+		echo "or download the release artifacts: make dist USE_RELEASE_ARTIFACTS=1."; \
 		exit 1; \
 	}
-
-# The test image: the test stage of .devcontainer/Dockerfile, whose Chromium setup
-# (the dependency shims and the /usr/lib/chromium/chromium binary) CI and the dev
-# container share. Run the test targets inside it, not on the host.
-TEST_IMAGE ?= paatti-test
-
-test-image:
-	$(DOCKER) build --target test -t $(TEST_IMAGE) .devcontainer/
-
-# The image has no USER, so its default is root. Run as the caller instead, and keep
-# uv's and npm's caches inside the container's own filesystem: the bind mount is the
-# checkout, and files that the container writes there (.venv, node_modules) must stay
-# owned and modifiable by the caller, not grown as root-owned files.
-test-image-run:
-	$(DOCKER) run --rm -w /app -e UV_LINK_MODE=copy \
-		--user "$(shell id -u):$(shell id -g)" \
-		-e HOME=/tmp -e UV_CACHE_DIR=/tmp/uv-cache -e npm_config_cache=/tmp/npm-cache \
-		$(if $(HYPOTHESIS_PROFILE),-e HYPOTHESIS_PROFILE='$(HYPOTHESIS_PROFILE)',) \
-		--mount type=bind,src=$(shell pwd),dst=/app \
-		$(TEST_IMAGE) $(CMD)
 
 # The browser module is built with TinyGo; stock Go no longer produces js.wasm,
 # and the two toolchains' wasm_exec.js are not interchangeable.
@@ -358,39 +322,23 @@ test-devserver: $(WASM_OUTPUTS)
 
 # The unpacked extension in Chromium against Ilta-Pulu (tests/e2e). CHROMIUM is the Debian package's
 # binary, never the /usr/bin/chromium wrapper, which injects an empty --load-extension=.
-# DIST_FROM_ARTIFACTS=1 -- the tree was staged by the wasm job of the Build workflow and downloaded
-#   into $(BUILD_DIR)/dist; here we only prove it is present, so e2e runs against exactly the
-#   staged bytes instead of a fresh `dist` of the same commit.
-# Otherwise -- stage the tree from the checkout, as a local `make test-e2e` does.
 CHROMIUM ?= /usr/lib/chromium/chromium
 
 # The Node suite drives karikko (the tool's default command, from the submodule pointer) as a process; the tests
 # read DIST_DIR and CHROMIUM from the environment.
-ifeq ($(DIST_FROM_ARTIFACTS),1)
-test-e2e: | check-dist-artifacts
-else
 test-e2e: dist
-endif
-test-e2e:
 	cd tests/e2e && npm ci --no-audit --no-fund
 	cd tests/e2e && DIST_DIR="$(abspath $(DIST_DIR))" CHROMIUM="$(CHROMIUM)" \
 	    node --test --test-concurrency=1 --test-timeout=120000 *.test.mjs
 	# Only on success: make stops at the failing line, so a failed run keeps its capture folders for inspection.
 	rm -rf $(BUILD_DIR)/e2e
 
-check-dist-artifacts:
-	@test -s $(DIST_DIR)/manifest.json && test -s $(DIST_DIR)/build/js.wasm || { \
-		echo "Error: no staged extension in $(DIST_DIR) (DIST_FROM_ARTIFACTS=1)."; \
-		echo "Download the extension-dist artifact into $(BUILD_DIR), or unset the flag."; \
-		exit 1; \
-	}
-
 # suola's own smoke test for the browser module, run against the artifacts
 # staged in $(BUILD_DIR). It is the only check that js.wasm loads and signs
 # URLs the way the rules say it should; the tests above never touch it. Needs
 # nothing but node, so it is skipped rather than failed when the artifacts have
-# not been built yet -- or when the submodule is pinned to a release tag older
-# than the test itself, which USE_RELEASE_ARTIFACTS=1 requires.
+# not been built yet -- or when the pinned release tag that USE_RELEASE_ARTIFACTS=1
+# selects predates the smoke test itself.
 test-wasm:
 	@if [ ! -f suola/test/js_smoke.cjs ]; then \
 		echo "Skipping Wasm smoke test: the suola checkout predates it."; \
@@ -400,4 +348,4 @@ test-wasm:
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
 	fi
 
-.PHONY: serve test-devserver test-e2e check-dist-artifacts test-image test-image-run build init ensure-suola check-tinygo check-docker package source-dist icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build check-suola-release check-submodule-pointers verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
+.PHONY: serve test-devserver test-e2e build init ensure-suola check-tinygo check-docker package source-dist icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build check-suola-release check-submodule-pointers verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext

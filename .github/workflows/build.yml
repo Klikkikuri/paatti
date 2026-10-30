@@ -22,13 +22,12 @@ permissions:
 # more, and release-checks.yml enforces that on main. docs/release.md, "Submodule Pointers", states the
 # rule.
 #
-# The suola WASM artifacts are produced once by the wasm job and handed to every other job as
-# artifacts: a tagged pointer downloads the attested suola release, and any other commit builds with
-# the Docker wasm builder. `suola-wasm` carries js.wasm + wasm_exec.js, `extension-dist` an OSS
-# extension tree (never NON_OSS bytes -- the zips below are store trees and their overlay would
-# change what e2e tests). The consumers pass WASM_FROM_ARTIFACTS=1, and the suites job adds
-# DIST_FROM_ARTIFACTS=1, so make proves the downloads instead of rebuilding; `needs: wasm` serializes
-# against the artifact uploads, not against the flaky checks of the extension job.
+# The suola WASM artifacts are produced once by the wasm job and handed to every other job as the
+# `suola-wasm` artifact: a tagged pointer downloads the attested suola release, and any other commit
+# builds with the Docker wasm builder. A consumer proves the download landed and makes it newer than
+# suola's sources, which is what the make rule compares, so make accepts it instead of rebuilding.
+# `needs: wasm` waits for the artifact upload only. This job does not wait for the build, lint
+# and test steps of the extension job.
 jobs:
   wasm:
     name: "🧩 Suola WASM"
@@ -69,10 +68,10 @@ jobs:
             echo "The suola pointer is not a released tag; the job builds it with the Docker wasm builder."
           fi
 
-      - name: "⬇️ Download the Suola Artifacts and Stage the Extension Tree"
+      - name: "⬇️ Download the Suola Artifacts"
         if: steps.suola.outputs.mode == 'release'
         run: |
-          make dist USE_RELEASE_ARTIFACTS=1
+          make build-suola USE_RELEASE_ARTIFACTS=1
 
       - name: "🛡️ Verify the Suola Artifact Attestation"
         if: steps.suola.outputs.mode == 'release'
@@ -83,10 +82,10 @@ jobs:
 
       # CI tests and packages the bytes that this commit produces. A publish never takes this path:
       # check-suola-release stops it without a released tag.
-      - name: "🏗️ Build the Suola Artifacts and Stage the Extension Tree"
+      - name: "🏗️ Build the Suola Artifacts"
         if: steps.suola.outputs.mode == 'build'
         run: |
-          make dist
+          make build-suola
 
       - name: "⬆️ Upload WASM Artifacts"
         uses: actions/upload-artifact@v7
@@ -95,13 +94,6 @@ jobs:
           path: |
             build/js.wasm
             build/wasm_exec.js
-          if-no-files-found: error
-
-      - name: "⬆️ Upload the Extension Tree"
-        uses: actions/upload-artifact@v7
-        with:
-          name: extension-dist
-          path: build/dist
           if-no-files-found: error
 
   extension:
@@ -123,9 +115,20 @@ jobs:
           name: suola-wasm
           path: build
 
+      # make accepts the artifact when it is newer than suola's sources, which is what the rule
+      # compares; `touch` states that. A truncated download then fails here, in one line, instead of
+      # starting a Wasm build that the artifact exists to prevent.
+      - name: "🔎 Prove the WASM Artifacts Are Present"
+        run: |
+          test -s build/js.wasm && test -s build/wasm_exec.js || {
+            echo "Error: the suola-wasm artifact did not land in build/."
+            exit 1
+          }
+          touch build/js.wasm build/wasm_exec.js
+
       - name: "🏗️ Build Extension Package"
         run: |
-          make build NON_OSS=1 WASM_FROM_ARTIFACTS=1
+          make build NON_OSS=1
 
       - name: "🧹 Lint"
         run: |
@@ -168,33 +171,58 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      # Two explicit, name-scoped downloads: the artifact zips carry their trees' contents at the root, so the
-      # extension tree must land *in* build/dist (the artifact root's manifest.json becomes build/dist/
-      # manifest.json), while the WASM files drop into build/ for the make consumers.
+      # The artifact zip carries its tree's contents at the root, so js.wasm and wasm_exec.js land
+      # in build/ for the make consumers.
       - name: "⬇️ Download the WASM Artifacts"
         uses: actions/download-artifact@v8
         with:
           name: suola-wasm
           path: build
 
-      - name: "⬇️ Download the Extension Tree"
-        uses: actions/download-artifact@v8
-        with:
-          name: extension-dist
-          path: build/dist
+      # make accepts the artifact when it is newer than suola's sources, which is what the rule
+      # compares; `touch` states that. A truncated download then fails here, in one line, instead of
+      # starting a Docker or TinyGo build in a container that has neither.
+      - name: "🔎 Prove the WASM Artifacts Are Present"
+        run: |
+          test -s build/js.wasm && test -s build/wasm_exec.js || {
+            echo "Error: the suola-wasm artifact did not land in build/."
+            exit 1
+          }
+          touch build/js.wasm build/wasm_exec.js
+
+      # The test stage of .devcontainer/Dockerfile: make, python3, chromium and its illustrated
+      # dependencies, uv and jsdom. The dev container's final stage builds on this stage, so the job
+      # tests the environment a developer uses. The layers come back from the GitHub Actions cache,
+      # so a run that does not change the Dockerfile pays a cache download instead of the two apt
+      # passes, the chromium and the jsdom install. `mode=max` exports the shim-build stage too,
+      # because the chromium layer takes the shim .deb from it. `type=gha` needs the buildx driver;
+      # the plain builder has no cache exporters. A cancelled run skips the upload of its cache.
+      - name: "🔧 Set Up Docker Buildx"
+        uses: docker/setup-buildx-action@v4
 
       - name: "🐳 Build the Test Image"
         run: |
-          make test-image
+          docker buildx build --load --target test -t paatti-test \
+            --cache-from type=gha --cache-to type=gha,mode=max .devcontainer/
 
+      # The image has no USER, so its default is root: run as the caller, and keep uv's and npm's
+      # caches inside the container. The bind mount is the checkout.
       - name: "🧪 Test the Development Server"
         run: |
-          make test-image-run CMD="make test-devserver WASM_FROM_ARTIFACTS=1"
+          docker run --rm -w /app -e UV_LINK_MODE=copy \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp -e UV_CACHE_DIR=/tmp/uv-cache -e npm_config_cache=/tmp/npm-cache \
+            --mount type=bind,src="$PWD",dst=/app \
+            paatti-test make test-devserver
 
-      # Playwright and the Debian chromium, against Ilta-Pulu, inside the shared test image: the same environment
-      # the dev container runs the e2e with (see Dockerfile). `always()`: a devserver failure must not hide the
-      # e2e result, which is the other half of what this job proves.
+      # Playwright and the Debian chromium, against Ilta-Pulu, inside the same image: the environment
+      # the dev container runs the e2e with (see Dockerfile). `always()`: a devserver failure must not
+      # hide the e2e result, which is the other half of what this job proves.
       - name: "🧪 Run the Extension E2E"
         if: always()
         run: |
-          make test-image-run CMD="make test-e2e WASM_FROM_ARTIFACTS=1 DIST_FROM_ARTIFACTS=1"
+          docker run --rm -w /app -e UV_LINK_MODE=copy \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp -e UV_CACHE_DIR=/tmp/uv-cache -e npm_config_cache=/tmp/npm-cache \
+            --mount type=bind,src="$PWD",dst=/app \
+            paatti-test make test-e2e
