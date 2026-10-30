@@ -4,6 +4,7 @@ import browser from "./browser-api.js";
 import { getLogger } from "./utils.js";
 import { getConfig, onConfigValue } from "./config.js";
 import { mergeStats } from "./stats.js";
+import { DEFAULT_CLICKBAIT_LEVEL, LEVELS } from "./clickbait-constants.js";
 
 const log = getLogger("model");
 
@@ -29,26 +30,21 @@ const klikkikuriStatus = Object.freeze({
 
 /**
  * Levels of clickbaitiness, from least to most clickbaity.
- * 
- * Keep thease in sync with meri clickbaitiness levels in the backend.
- * 
+ *
+ * The names themselves live in `clickbait-constants.js`, which the content script and the tools can import
+ * directly; this class wraps them for the model's callers. Keep both in sync with meri's backend levels.
+ *
  * @enum {string}
  * @readonly
  */
 class Clickbaitiness {
-    static LEVEL_NONE = "Not Clickbait at all";
-    static LEVEL_LOW = "Slightly Clickbaity";
-    static LEVEL_MODERATE = "Moderately Clickbaity";
-    static LEVEL_HIGH = "Very Clickbaity";
-    static LEVEL_EXTREME = "Extremely Clickbaity";
+    static LEVEL_NONE = LEVELS[0];
+    static LEVEL_LOW = LEVELS[1];
+    static LEVEL_MODERATE = LEVELS[2];
+    static LEVEL_HIGH = LEVELS[3];
+    static LEVEL_EXTREME = LEVELS[4];
 
-    static LEVELS = [
-        Clickbaitiness.LEVEL_NONE,
-        Clickbaitiness.LEVEL_LOW,
-        Clickbaitiness.LEVEL_MODERATE,
-        Clickbaitiness.LEVEL_HIGH,
-        Clickbaitiness.LEVEL_EXTREME
-    ];
+    static LEVELS = LEVELS;
 
     /**
      * Map a clickbaitiness level string to its corresponding numeric value (0-4).
@@ -539,12 +535,12 @@ const model = (() => {
 
             getClickbaitLevel: async () => {
                 const config = await getConfig();
-                return config.clickbaitLevel !== undefined ? config.clickbaitLevel : 2;
+                return config.clickbaitLevel !== undefined ? config.clickbaitLevel : DEFAULT_CLICKBAIT_LEVEL;
             },
 
             shouldConvert: async (clickbaitinessLevel) => {
                 const config = await getConfig();
-                const sliderVal = config.clickbaitLevel !== undefined ? config.clickbaitLevel : 2;
+                const sliderVal = config.clickbaitLevel !== undefined ? config.clickbaitLevel : DEFAULT_CLICKBAIT_LEVEL;
                 const clickbaitiness = new Clickbaitiness(clickbaitinessLevel);
                 return clickbaitiness.meetsThreshold(sliderVal);
             },

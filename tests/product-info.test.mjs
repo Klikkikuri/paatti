@@ -9,7 +9,7 @@ const fake = createFakeBrowser();
 globalThis.browser = fake.browser;
 after(() => dom.teardown());
 
-const { displayProductInfo } = await import('../src/options/utils.js');
+const { displayProductInfo, pointDocLinks } = await import('../src/options/utils.js');
 
 describe('displayProductInfo points a documentation link at the release tag', () => {
     const cases = [
@@ -26,4 +26,15 @@ describe('displayProductInfo points a documentation link at the release tag', ()
                 `https://github.com/Klikkikuri/paatti/blob/${tag}/docs/providers.md`);
         });
     }
+});
+
+describe('pointDocLinks points a documentation link at the release tag, on its own', () => {
+    test('the href names the tag, not the manifest version', () => {
+        fake.browser.runtime.getManifest = () => ({ version: '0.0.12.3' });
+
+        pointDocLinks();
+
+        assert.equal(document.querySelector('a[data-doc]').href,
+            'https://github.com/Klikkikuri/paatti/blob/v0.0.12/docs/providers.md');
+    });
 });

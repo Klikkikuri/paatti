@@ -32,7 +32,7 @@ Sail smoothly through the clickbait-infested web using this browser extension.
     - [Environments](#environments)
     - [Developer and Diagnostic Utilities](#developer-and-diagnostic-utilities)
     - [Badge Icons](#badge-icons)
-    - [Local Test Data and Hashed Signatures](#local-test-data-and-hashed-signatures)
+    - [Development Server](#development-server)
     - [Architecture](#architecture)
     - [Make a Release](#make-a-release)
 
@@ -299,12 +299,12 @@ make build
 ```
 
 `make build` first checks that the `suola` submodule is present. It then compiles `suola` to WebAssembly
-(`js.wasm` and its support file `wasm_exec.js`) with Docker, or with a host toolchain when `DOCKER=false`. The
-two files must come from the same toolchain to work together, so run `make clean` when you change build method.
-Finally it stages the extension assets (`src/`, `icons/`, `_locales/`, `manifest.json`, `LICENSE.md`,
-`LISENSSI.md`, `docs/PRIVACY_POLICY.md` and `docs/PRIVACY_POLICY_DEVELOPMENT.md`) with the WebAssembly
-binaries into `build/dist/`, writes one tree per browser into `build/dist-chrome/` and `build/dist-firefox/`,
-and packages them into `build/klikkikuri-paatti-chrome.zip` and `build/klikkikuri-paatti-firefox.zip`.
+(`js.wasm` and its support file `wasm_exec.js`) with Docker, or with a host toolchain when `DOCKER=false`. Both
+files must come from one toolchain, or they will not work together. Run `make clean` when you change the build
+method. Finally the build stages the extension assets (`src/`, `icons/`, `_locales/`, `manifest.json`, `LICENSE.md`,
+`LISENSSI.md`, `docs/PRIVACY_POLICY.md` and `docs/PRIVACY_POLICY_DEVELOPMENT.md`) and the WebAssembly binaries
+into `build/dist/`. It writes one tree per browser into `build/dist-chrome/` and `build/dist-firefox/`, and
+packages them into `build/klikkikuri-paatti-chrome.zip` and `build/klikkikuri-paatti-firefox.zip`.
 
 If the `suola` submodule is missing, `make` fetches it with `make init`. You can also clone the repository
 with `git clone --recursive` to get it from the start.
@@ -312,10 +312,14 @@ with `git clone --recursive` to get it from the start.
 #### Requirements
 
 - `make`, `bash`, `git`, `zip` and `curl`
-- Node.js. Every build runs `check-icons`, and `make test` and the release task need it too.
+- Node.js. Every build runs `check-icons` with it. `make test` and the e2e in `tests/e2e` use it too. The e2e
+  installs its own driver, `playwright-core`.
 - `eslint` and `web-ext` for the lint targets. Both come from the dev container image.
-- (optional) Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2)
-- (optional, for the test-data helpers) Python 3
+- (optional) Docker (tested on version 28.1.1) or `podman` (tested on version 5.4.2). The build compiles
+  `suola` in a container by default, unless you pass `DOCKER=false`. The Build workflow builds its test image
+  from `.devcontainer/Dockerfile` with Docker, and runs `make test-devserver` and `make test-e2e` in it.
+- (optional, for the development server) [`uv`](https://docs.astral.sh/uv/), which installs the Python that it
+  needs. The server is the `packages/karikko` submodule; `make serve` runs it.
 - The [`suola`](https://github.com/Klikkikuri/suola) submodule
   - TinyGo 0.41+, to compile it locally without Docker
 
@@ -333,8 +337,10 @@ Pass `DOCKER=podman` to **build with podman**:
 make build DOCKER=podman
 ```
 
-Pass `USE_RELEASE_ARTIFACTS=1` to **download the WebAssembly binaries** from GitHub instead of compiling them.
-The `suola` checkout must sit on an exact tag, which it does after a recursive clone:
+Pass `USE_RELEASE_ARTIFACTS=1` to **download the WebAssembly binaries** from the `suola` release of the tag that
+the submodule pins, instead of compiling them. A publish requires a released tag. A branch may point at any
+commit, and then the build compiles `suola` with Docker. See
+[Submodule Pointers](docs/release.md#submodule-pointers):
 
 ```sh
 make build USE_RELEASE_ARTIFACTS=1
@@ -348,17 +354,15 @@ make build NON_OSS=1
 
 Other targets: `make package` zips the per-browser trees, `make dist-chrome` and `make dist-firefox` stage one
 browser's tree, `make store-build` overwrites the two zips with the store packages (always with `NON_OSS=1` and
-`USE_RELEASE_ARTIFACTS=1`) and adds the source archive for a manual store upload,
-`make source-dist` packages the source for review, `make rebuild-suola` forces a WebAssembly rebuild,
-`make test-wasm` runs suola's own smoke test, and `make sites-sync` writes the origins of the default sites into
-`manifest.json`. See [Default Site Permissions](docs/release.md#default-site-permissions).
+`USE_RELEASE_ARTIFACTS=1`, and only when the `suola` pointer is a released tag) and adds the source archive for a
+manual store upload, `make source-dist` packages the source for review, `make rebuild-suola` forces a WebAssembly
+rebuild, `make test-wasm` runs suola's own smoke test, and `make sites-sync` writes the origins of the default
+sites into `manifest.json`. See [Default Site Permissions](docs/release.md#default-site-permissions).
 
 `manifest.json` is the base for both browsers; `manifest.chrome.json` and `manifest.firefox.json` remove what the
 other browser does not accept. See [Browser Manifests](docs/release.md#browser-manifests) for the merge rules.
 
-`make init` fetches the `suola` submodule. Do not use `make test-data`: it passes a signature-file path that
-[`generate_test_data.py`](./generate_test_data.py) ignores. Call the script directly instead, as described in
-[Local Test Data and Hashed Signatures](#local-test-data-and-hashed-signatures).
+`make init` fetches the `suola` submodule.
 
 ### Load a Development Build
 
@@ -371,10 +375,13 @@ Use [`run.sh`](./run.sh). It builds the extension and starts a browser with a cl
 ./run.sh --dark                 # Force the dark theme
 ./run.sh -u https://yle.fi/     # Open this page on startup
 ./run.sh -s .                   # Run a directory as-is, instead of build/dist
+./run.sh --devserver            # Add the providers of the development server
 ```
 
 `run.sh` reads [`web-ext-config.cjs`](./web-ext-config.cjs) from the repository root, which carries the browser
-preferences and the watch-ignore patterns.
+preferences and the watch-ignore patterns. `--devserver` and `--no-devserver` decide whether the run adds the
+providers of the development server. Without either one, `run.sh` adds them when that server answers; see
+[Development Server](#development-server).
 
 The repository root is itself a loadable unpacked extension, so you can also load
 [`manifest.json`](./manifest.json) by hand: in Firefox through `about:debugging` → **This Firefox** → **Load
@@ -395,6 +402,13 @@ The suites live in `tests/` and run on the built-in [`node:test`](https://nodejs
 `build/` holds the artifacts, and skips it with a note when it does not. It also runs `make check-sites`, which
 compares the origins in `manifest.json` with `sites.lock.json` and does not connect to the network.
 
+`make test-devserver` runs the development server's own tests. It then starts a server and checks that server with
+Paatti's own provider resolver, the Suola module and the content-script scan
+([`tools/devserver-drift.mjs`](./tools/devserver-drift.mjs)). `make test-e2e` installs the e2e's own dependencies,
+loads the unpacked build into Chromium, and runs five suites: the first install of a staged copy, the capture of a
+page, content that arrives later, the popup on a site that no provider lists, and the faults of a provider. Both
+targets need `uv`; see [Development Server](#development-server).
+
 Tests that touch the extension APIs use the in-memory fake in
 [`tests/helpers/fake-browser.mjs`](./tests/helpers/fake-browser.mjs), which really dispatches
 `storage.onChanged`. Assign it to `globalThis.browser` **before** a dynamic `await import(...)` of the module
@@ -403,9 +417,10 @@ beat the assignment.
 
 Tests that need a DOM use [`tests/helpers/dom.mjs`](./tests/helpers/dom.mjs), which puts a jsdom document on
 `globalThis`. Install it before the dynamic import as well: a component module builds its templates and calls
-`customElements.define` at evaluation time. jsdom comes from the dev container image rather than a
-`package.json`, so `make test` needs the container — the `test` target points `NODE_PATH` at the global npm root,
-because ESM resolution ignores it and the helper reaches jsdom through the CJS resolver.
+`customElements.define` at evaluation time. jsdom is a global npm install, not a `package.json` dependency. The
+dev container image has it, and the `extension` job installs it with `npm install -g jsdom@27`. The `test` target
+points `NODE_PATH` at the global npm root, because ESM resolution ignores it and the helper reaches jsdom through
+the CJS resolver.
 
 jsdom does no layout and does not resolve the cascade, so it covers structure, lifecycle and events but says
 nothing about styling. Check CSS in a real browser instead.
@@ -413,12 +428,15 @@ nothing about styling. Check CSS in a real browser instead.
 ### Lint
 
 ```sh
-make lint          # eslint; this is what CI runs
+make lint          # eslint; the Lint workflow runs this
 make lint-webext   # web-ext lint; run this by hand
 ```
 
 `make lint` rejects a bare `browser` or `chrome` global and `globalThis.browser`. See
 [AGENTS.md](AGENTS.md) for the two exempt files and the reason for the rule.
+
+`make lint` runs in the `Lint` workflow, not in `Build`, so a code change gets an answer in seconds
+instead of the length of a suite. A change that touches only documentation runs neither workflow.
 
 `make lint-webext` is deliberately not part of `make lint`, and CI does not run it. It lints the Firefox tree
 with `--self-hosted`, which permits the gecko `update_url` that self-hosted Firefox updates need, and fails on any
@@ -456,8 +474,9 @@ it while developer mode is on, and the hidden controls become visible. Turning i
   status Paatti gave it: converted, original, 🔒 paywalled, skipped or error. Two settings control the overlay:
   `debugVisualsEnabled` comes from the environment, and `visualHighlightEnabled` is your own override. Note
   that an open popup forces the outlines on, whatever the setting says.
-- The **signature dumper** copies the normalized SHA-256 signature of every link on the page to the
-  clipboard, navigation and footer links included. Use the 🧂 button, or the **Copy to Clipboard** button in the popup's **Salt Signatures** section.
+- **Send page** in the popup's **Developer Settings** sends the links and headlines of the page to the
+  [development server](#development-server), which makes a test correction for each of them. The row
+  shows only when a provider on your own machine names a capture address.
 
 ### Badge Icons
 
@@ -492,70 +511,68 @@ the glyph out with a `<mask>`, as [`src/components/badge-style.js`](./src/compon
 
 A new badge needs its SVG, a module carrying the two markers above, and a `make icons` run.
 
-### Local Test Data and Hashed Signatures
+### Development Server
 
-For local development and testing, you can generate and serve a mock correction database with the two Python
-helper scripts ([`generate_test_data.py`](./generate_test_data.py) and [`httpserver.py`](./httpserver.py)), and
-add it to the extension as a local provider. To add support for a new site, see
-[docs/development/adding-a-new-site.md](./docs/development/adding-a-new-site.md) instead.
+[`packages/karikko`](./packages/karikko/), a git submodule of [Klikkikuri/karikko](https://github.com/Klikkikuri/karikko),
+is the development server for Paatti. It serves **Ilta-Pulu**, a fake news site in
+English, and a provider manifest that supplies Ilta-Pulu's site rules, Suola rules and corrections. Ilta-Pulu
+exercises each path of the content script: link and title selectors of the shapes that real news sites use, every
+clickbait level, the badges, paywalled and skipped links, expected failures, and content that loads later. A seed
+decides the layout, so the same seed gives the same page. The server can also inject faults into the provider
+documents. [karikko/README.md](./packages/karikko/README.md) lists all of its settings.
 
-1. **Dump the signatures.** Turn developer mode on, open a supported news site, then open the popup and use the
-   🧂 button or the **Copy to Clipboard** button in the **Salt Signatures** section. This copies the normalized
-   SHA-256 signature of every link on the page.
-2. **Save them** to `test_data/signatures.txt`, one signature on each line. Make the `test_data/` directory if
-   it does not exist.
-3. **Generate the database.** The script reads `test_data/signatures.txt` and writes `test_data/data.json`:
+1. **Start the server.** It needs [`uv`](https://docs.astral.sh/uv/), which the dev container has:
 
    ```sh
-   python3 generate_test_data.py
+   make serve                                    # http://localhost:3000/
+   make serve DEVSERVER_ARGS="--seed=42"         # a fixed page seed
    ```
 
-4. **Serve it.** Run the server from the repository root. It serves the mock data at
-   `http://localhost:3000/data.json` with the cache headers the extension expects, and the other files of the
-   current directory below `http://localhost:3000/`:
+   `./run.sh` does steps 2 and 3 for you when the server answers, in a staged copy of the build under
+   `build/run-devserver` (`tools/devserver-stage.mjs`). The copy keeps the source tree untouched: it swaps the
+   background to `tools/devserver-bootstrap.js`, which on the first install turns on loopback providers, adds the
+   Ilta-Pulu and captured-sites providers from `devserver.json`, refreshes them, and turns on their site — the
+   steps below, done by code instead of by hand. `--devserver` and `--no-devserver` override the check; with
+   `-s DIR --devserver` the staging still happens, so the directory runs as-is only without `--devserver`.
 
-   ```sh
-   python3 httpserver.py
-   ```
+2. **Add the provider.** Make sure that the environment is `development`: an unpacked build starts in it. On the
+   settings page, under **🐛 Debug Settings** → **🔌 Providers**, turn on **Allow providers on this machine**.
+   Enter `http://localhost:3000/manifest/ilta-pulu/manifest.json`, select **Add**, then **Add provider**, and
+   accept the browser prompts.
+3. **Turn on the site.** A site that a provider supplies is off until you turn it on. Turn on **Ilta-Pulu** in the
+   site list, and open `http://localhost:3000/`.
 
-5. **Write a provider manifest** for it, and save it as `test_data/manifest.json`. The manifest takes the site
-   settings and the Suola rules from Rahti, and the corrections from your mock database:
+Each page shows its seed and the command that gives the same page again. Add `&check=1` to the address to show
+the self-check panel: it compares the status that Paatti gave each block with the status that the page expects.
+The expectations apply to the default settings of the `development` environment.
 
-   ```json
-   {
-     "schema_version": "0.1.0",
-     "name": "Local test data",
-     "resources": [
-       { "type": "suola-rules", "href": "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/rules.json" },
-       { "type": "site-configs", "href": "https://raw.githubusercontent.com/Klikkikuri/rahti/refs/heads/main/sites.json",
-         "origins": ["https://www.iltalehti.fi/*", "https://www.hs.fi/*", "https://yle.fi/*",
-                     "https://www.mtvuutiset.fi/*", "https://aksa.fi/*"] },
-       { "type": "rahti-data", "href": "/data.json" }
-     ]
-   }
-   ```
+Use `localhost`, not `127.0.0.1`: the site's origin is `http://localhost/*`. Ilta-Pulu has these side effects in
+the extension:
 
-   Use Rahti's `rules.json`: the signature dumper copies the signs that Rahti's rules make, so other rules give
-   signs that your database does not contain. `origins` must include the host of each site that you test.
-   Paatti rejects a site whose host is not in this list. `/data.json` starts at the server root, where
-   `httpserver.py` serves `test_data/data.json`.
+- Paatti refuses to download a favicon from a loopback address, but each attempt uses one of the favicon requests
+  that all sites share.
+- The statistics get an entry for `localhost`.
+- In the `development` environment, feedback goes to the production feedback form. Do not send feedback from
+  Ilta-Pulu.
 
-6. **Add the provider.** Make sure that the environment is `development`: an unpacked build starts in it, and
-   developer mode (step 1) also selects it. On the settings page, under **🐛 Debug Settings** →
-   **🔌 Providers**, turn on **Allow providers on this machine**. Enter
-   `http://localhost:3000/test_data/manifest.json`, select **Add**, then **Add provider**, and accept the browser
-   prompts.
+The server listens on `127.0.0.1` only.
 
-7. **Turn the sites on again.** The `development` environment turns **Allow providers to override sites** on,
-   so your provider takes over the sites from Rahti. A site that a provider supplies is off until you turn it
-   on, so the sites that you did not switch yourself go off. Turn on each site that you test in the site list.
-   Paatti then uses your corrections first, and Rahti's after them.
+**Test data for any page.** The server also makes test corrections for the links of any page, for example
+www.iltalehti.fi or example.org:
 
-Paatti refreshes the provider at each database update. Use **Update Database** after you generate the database
-again. See [docs/providers.md](./docs/providers.md).
+1. Start the server with `make serve`.
+2. Add `http://localhost:3000/manifest/captured-sites/manifest.json` as a provider, as in step 2 above.
+   `./run.sh` adds it for you.
+3. Open the page, open the popup, and select **Send page** under **Developer Settings**. On a site that Paatti
+   does not support, or that is off, the browser asks for the permission of the site first. If the popup closes,
+   open it and select **Send page** again.
 
-`httpserver.py` listens on all network interfaces and serves the whole current directory. Do not run it on a
-network that you do not trust.
+The provider then supplies the site, and the popup turns the site on. Each link that you send gets a test
+correction, which starts with `[dev]`. It replaces a real correction of the same link, because the development
+environment lets a provider take over a site. The server keeps each site in a folder in `test_data/captures/`, where
+you can edit its selectors and its Suola rules; delete the folder to forget that site.
+[Adding a new site](./docs/development/adding-a-new-site.md) gives the workflow, and
+[the karikko README](./packages/karikko/README.md#captured-sites) tells more.
 
 ### Architecture
 

@@ -5,8 +5,6 @@
 // Use this to access this source file in the browser debugger.
 //debugger;
 
-const LABEL_PAYWALLED = "com.github.klikkikuri/paywalled=true";
-
 let hrefSigns;
 
 // Main.
@@ -18,6 +16,8 @@ let hrefSigns;
     const { model: model, klikkikuriStatus: klikkikuriStatus } = await import(browser.runtime.getURL("src/model.js"));
     const { controller } = await import(browser.runtime.getURL("src/controller.js"));
     const { getLogger, debounce, canAppendSpan } = await import(browser.runtime.getURL("src/utils.js"));
+    const { scanSiteRules } = await import(browser.runtime.getURL("src/site-rules-scan.js"));
+    const { LABEL_PAYWALLED } = await import(browser.runtime.getURL("src/clickbait-constants.js"));
 
     const { createHighlightOverlay } = await import(browser.runtime.getURL("src/components/highlight-overlay.js"));
     const { createFeedbackDialog } = await import(browser.runtime.getURL("src/components/feedback-dialog.js"));
@@ -184,6 +184,28 @@ let hrefSigns;
     ////////////////////////////////////////////////////////////////////////////
     // Processing subroutines.
 
+    /**
+     * The scan for one site: the shared link semantics plus the container set that the stale-status cleanup needs.
+     * A rule can match a container and still find no link in it; that container counts as matched, so its status
+     * is kept rather than dropped. Deriving the set from the links alone would miss it.
+     */
+    const scanRules = (siteRules) => {
+        const containers = new Set();
+        for (const rule of siteRules) {
+            for (const container of document.querySelectorAll(rule.container)) containers.add(container);
+        }
+        return { containers, links: scanSiteRules(document, siteRules) };
+    };
+
+    /** `href` resolved against the page, or null for an address that does not parse. */
+    const absoluteHref = (href) => {
+        try {
+            return new URL(href, window.location.href).href;
+        } catch {
+            return null;
+        }
+    };
+
     const processSite = async () => {
         const startTime = performance.now();
 
@@ -195,38 +217,22 @@ let hrefSigns;
         }
 
         // Scan and collect elements to process
+        const { containers: matchedContainers, links } = scanRules(siteRules);
         const linksToProcess = [];
-        const matchedContainers = new Set();
-        for (const rule of siteRules) {
-            const containers = document.querySelectorAll(rule.container);
-            for (const container of containers) {
-                matchedContainers.add(container);
-                const links = (!rule.link || rule.link === "self" || rule.link === ":scope")
-                    ? [container]
-                    : container.querySelectorAll(rule.link);
-                for (const link of links) {
-                    const titleElem = (rule.title === "self" || rule.title === ":scope")
-                        ? container
-                        : (rule.title ? container.querySelector(rule.title) : link);
-
-                    if (!titleElem) {
-                        container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
-                        continue;
-                    }
-
-                    const href = link.getAttribute('href');
-                    if (href) {
-                        try {
-                            const urlObj = new URL(href, window.location.href);
-                            linksToProcess.push({ container, link, rule, href: urlObj.href, titleElem });
-                        } catch (e) {
-                            // ignore invalid URL
-                        }
-                    } else {
-                        container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
-                    }
-                }
+        for (const { container, link, rule, titleElem } of links) {
+            const href = titleElem && link.getAttribute('href');
+            if (!href) {
+                container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
+                continue;
             }
+            const absolute = absoluteHref(href);
+            // A javascript: or other non-http(s) address parses but cannot be signed or looked up. It is skipped
+            // like a missing href: the page's own expectation says "skipped", and signing it would throw in Suola.
+            if (!absolute || !/^https?:/.test(absolute)) {
+                container.dataset.klikkikuriStatus = klikkikuriStatus.SKIPPED;
+                continue;
+            }
+            linksToProcess.push({ container, link, rule, href: absolute, titleElem });
         }
 
         // Batch generate signatures from background service worker
@@ -513,14 +519,27 @@ let hrefSigns;
                         sendResponse({ success: false, error: err.message });
                     });
                 return true;
-            case "devmode_generateLinkSignatures": {
-                const links = Array.from(document.querySelectorAll("a"));
-                const signaturePromises = links.map(async (x) => (await hrefSigns(x.href))?.officialSign ?? null);
-                Promise.all(signaturePromises)
+            case "capturePage": {
+                // devmode (development-only; see docs/PRIVACY_POLICY_DEVELOPMENT.md): the site rules, and the links
+                // that they find with the headline that the page itself shows. The server signs them; nothing here
+                // is sent anywhere. The command reaches the content script only through src/options/dev-capture.js.
+                (async () => {
+                    const rules = await model.read.getSiteRules(newsSite) || [];
+                    const captured = [];
+                    for (const { link, titleElem } of scanRules(rules).links) {
+                        const raw = link.getAttribute("href");
+                        const href = titleElem && raw && absoluteHref(raw);
+                        if (!href || !/^https?:/.test(href)) continue;
+                        const title = (titleElem.dataset.klikkikuriOriginalTitle ?? titleElem.textContent).trim();
+                        if (!title) continue;
+                        captured.push({ href, title });
+                    }
+                    return { pageUrl: window.location.href, rules, links: captured };
+                })()
                     .then((result) => sendResponse(result))
                     .catch((err) => {
-                        log("Error generating link signatures:", err);
-                        sendResponse([]);
+                        log("Error capturing the page:", err);
+                        sendResponse(null);
                     });
                 return true;
             }

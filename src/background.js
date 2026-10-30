@@ -17,6 +17,20 @@ const PULL_ALARM_NAME = "periodic-data-pull";
 /** A retry alarm is named with this prefix and the number of the attempt that it starts. */
 const RETRY_ALARM_PREFIX = "default-provider-retry:";
 
+/**
+ * Resolves when the first-install setup has written its environment. The devserver bootstrap (and anything else
+ * that must act after `onInstalled`) awaits this instead of polling storage: both listeners fire for one install,
+ * and a module cannot know which runs first. On an update or a reinstall there is no first-install write to wait
+ * for, so it resolves with null at once.
+ *
+ * @type {Promise<string|null>} - The environment the install settled on, or null when nothing was written.
+ */
+let environmentReadyResolve;
+const environmentReady = new Promise((resolveEnvironment) => {
+    environmentReadyResolve = resolveEnvironment;
+});
+export { environmentReady };
+
 
 /**
  * Re-registers the dynamic content script based on current configuration.
@@ -243,6 +257,10 @@ browser.runtime.onInstalled.addListener(async ({ reason }) => {
         } catch (error) {
             log("Error setting default environment on install:", error);
         }
+        // The bootstrap waits for this promise, so it must settle even when the write above failed.
+        environmentReadyResolve(environment);
+    } else {
+        environmentReadyResolve(null);
     }
 
     if (reason === "update") {

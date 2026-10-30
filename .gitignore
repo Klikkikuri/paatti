@@ -1,9 +1,8 @@
 # Build artifacts.
 *.wasm
 
-# Generated test data fiels.
-test_data/signatures.txt
-test_data/data.json
+# The development server's data directory: captured pages and its download cache.
+test_data/
 
 # Packaged extension for Firefox.
 *.zip
@@ -16,6 +15,7 @@ build/
 .venv/
 __pycache__/
 .pytest_cache/
+node_modules/
 
 .codegraph/
 TODO.md

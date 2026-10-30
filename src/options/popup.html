@@ -25,7 +25,7 @@
     </div>
 
     <!-- CONTENT -->
-    <div class="content main-content">
+    <div class="content main-content" data-view="main">
         <page-background></page-background>
         <div id="homeview-content" style="display: flex; flex-direction: column; gap: 15px; width: 100%; text-align: center; justify-content: center; align-items: center; height: 100%;">
             <p id="homeview-status-text"></p>
@@ -54,7 +54,7 @@
     </div>
 
     <!-- STATS VIEW -->
-    <div class="content statsview hidden">
+    <div class="content statsview hidden" data-view="stats">
         <div id="statsview">
             <h2 class="statsview-eyebrow">
                 <span id="statsview-collecting-period" class="hidden"></span>
@@ -75,7 +75,7 @@
         </div>
     </div>
 
-    <div class="content feedbackview hidden">
+    <div class="content feedbackview hidden" data-view="feedback">
         <div id="feedbackview-conversions-container" style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
             <p id="feedbackview-no-conversions" style="text-align: center; color: var(--color-text-secondary); font-style: italic;" class="hidden"></p>
             <ul id="feedbackview-conversions-list" style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; width: 100%;"></ul>
@@ -83,7 +83,7 @@
 
     </div>
 
-    <div class="content settingsview hidden">
+    <div class="content settingsview hidden" data-view="settings">
         <h2 id="settingsview-status-title" class="settingsview-header"></h2>
         <hr>
         <master-switch-setting layout="compact"></master-switch-setting>
@@ -107,13 +107,17 @@
             <button id="open-options-btn" class="push-button" style="width: 100%; padding: 8px 16px; font-size: 0.9em; min-height: 36px;"></button>
         </div>
 
+        <!-- devmode (development-only; see docs/PRIVACY_POLICY_DEVELOPMENT.md): the settings of the
+             Development environment. The capture row is wired by src/options/dev-capture.js; a store
+             install has no loopback provider, so the rows stay hidden. -->
         <div class="devmode hidden" style="margin-top: 15px;">
             <h2 id="settingsview-devmode-title" class="settingsview-header"></h2>
             <hr>
             <ul style="list-style: none; padding: 0; margin-top: 10px; display: flex; flex-direction: column; gap: 12px; width: 100%;">
-                <li style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                    <span id="devmode-dumpLinkHash-label" style="font-weight: bold;"></span>
-                    <button id="devmode-dumpLinkHash" class="push-button" style="margin: 0; padding: 6px 12px; min-height: 32px; font-size: 0.9em;"></button>
+                <li id="devmode-capture" class="hidden" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; width: 100%;">
+                    <span style="font-weight: bold;" data-i18n="devmodeCaptureLabel"></span>
+                    <button id="devmode-capture-button" class="push-button" style="margin: 0; padding: 6px 12px; min-height: 32px; font-size: 0.9em;" data-i18n="devmodeCaptureBtn"></button>
+                    <span id="devmode-capture-status" role="status" style="width: 100%; font-size: 0.9em;"></span>
                 </li>
                 <visual-highlight-setting layout="compact"></visual-highlight-setting>
             </ul>
@@ -122,21 +126,21 @@
 
     <!-- NAVI[GATION] -->
     <div id="navi">
-        <input  id="open-home" type="radio" selected name="navi" value="open-home" checked>
-        <label for="open-home" class="navi-option" data-navi="open-home">
-            <img class="navi-icon" src="images/icon_home.svg" height="15" alt="Home icon" data-i18n-alt="iconHomeAlt">
+        <input  id="open-home" type="radio" name="navi" value="open-home" checked>
+        <label for="open-home" class="navi-option">
+            <img class="navi-icon icon" src="images/icon_home.svg" height="15" alt="Home icon" data-i18n-alt="iconHomeAlt">
         </label>
         <input  id="open-feedbackview" type="radio" name="navi" value="open-feedbackview">
-        <label for="open-feedbackview" class="navi-option" data-navi="open-feedbackview">
-            <img class="navi-icon" src="images/icon_comment.svg" height="15" alt="Comment icon" data-i18n-alt="iconFeedbackAlt">
+        <label for="open-feedbackview" class="navi-option">
+            <img class="navi-icon icon" src="images/icon_comment.svg" height="15" alt="Comment icon" data-i18n-alt="iconFeedbackAlt">
         </label>
         <input  id="open-statsview" type="radio" name="navi" value="open-statsview">
-        <label for="open-statsview" class="navi-option" data-env="open-statsview">
-            <img class="navi-icon" src="images/icon_chart.svg" height="15" alt="Stats icon" data-i18n-alt="iconStatsAlt">
+        <label for="open-statsview" class="navi-option">
+            <img class="navi-icon icon" src="images/icon_chart.svg" height="15" alt="Stats icon" data-i18n-alt="iconStatsAlt">
         </label>
         <input  id="open-settingsview" type="radio" name="navi" value="open-settingsview">
-        <label for="open-settingsview" class="navi-option" data-env="open-settingsview">
-            <img class="navi-icon" src="images/icon_slider.svg" height="15" alt="Slider icon" data-i18n-alt="iconSettingsAlt">
+        <label for="open-settingsview" class="navi-option">
+            <img class="navi-icon icon" src="images/icon_slider.svg" height="15" alt="Slider icon" data-i18n-alt="iconSettingsAlt">
         </label>
     </div>
 
@@ -149,10 +153,6 @@
                 <img src="images/klikkihAI_logo_1.png" height="15" alt="Klikkikuri logo" data-i18n-alt="iconLogoAlt">
                 <span class="devmode hidden">🤓</span>
             </label>
-            <!-- Start of hidden devmode controls list -->
-            <input class="hidden" id="copy-link-signatures">
-            <label for="copy-link-signatures" class="devmode">🧂</label>
-            <!-- End of list -->
         </span>
         <span data-i18n="logoByKlikkikuri">by Klikkikuri</span>
     </div>

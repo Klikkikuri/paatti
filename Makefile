@@ -1,9 +1,6 @@
 DOCKER ?= docker
 NON_OSS ?= 0
 BUILD_DIR := $(shell pwd)/build
-TEST_DATA_BUILD_DIR := $(BUILD_DIR)/test_data
-TEST_DATA_SIGNATURES := $(TEST_DATA_BUILD_DIR)/signatures.txt
-BUILD_TEST_DATA := $(TEST_DATA_BUILD_DIR)/data.json
 BUILD_SOURCE_DIST := $(BUILD_DIR)/source-code.zip
 STORE_REVISION ?= 1
 CHROME_EXTENSION_ID := jalegaigmgljhnaakmbbaajooffgcbgc
@@ -21,6 +18,8 @@ SUOLA_SOURCES := $(patsubst %,suola/%,$(shell git -C suola ls-files 2>/dev/null)
 ifeq ($(SUOLA_SOURCES),)
 SUOLA_SOURCES := $(shell find suola -type f -not -path 'suola/build/*')
 endif
+# The commit that the submodule pins. verify-suola binds the attestation to it, so a moved tag fails.
+SUOLA_COMMIT := $(shell git -C suola rev-parse HEAD 2>/dev/null)
 
 
 build: package
@@ -62,6 +61,15 @@ rebuild-suola:
 	rm -f $(WASM_OUTPUTS)
 	$(MAKE) build-suola
 
+# Every WASM consumer builds through this rule, so it carries the whole picture:
+# USE_RELEASE_ARTIFACTS=1 -- fetch the attestation-backed artifacts of the suola tag
+#   that the submodule pins, from GitHub releases. Every store build and the release use
+#   this path, and so does CI when the pointer is a released tag. check-suola-release is
+#   the publish gate; CI builds any other commit locally.
+# Otherwise -- build locally, through Docker or, with DOCKER=false, TinyGo.
+# A CI job that takes the `suola-wasm` artifact passes no flag: it puts the files in
+# $(BUILD_DIR) and makes them newer than suola's sources, which is what this rule
+# compares. That is the whole of what a "the download landed" flag used to do.
 $(WASM_OUTPUTS) &: $(SUOLA_SOURCES) | ensure-suola
 ifneq ($(USE_RELEASE_ARTIFACTS),)
 	# Fetch pre-built artifacts from GitHub releases for tagged suola submodule
@@ -70,8 +78,8 @@ ifneq ($(USE_RELEASE_ARTIFACTS),)
 		echo "suola submodule is tagged at $$SUOLA_TAG. Fetching pre-built artifacts from GitHub releases..."; \
 		mkdir -p $(BUILD_DIR); \
 		rm -f $(BUILD_DIR)/js.wasm $(BUILD_DIR)/wasm_exec.js; \
-		curl -L -f -o $(BUILD_DIR)/js.wasm "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/js.wasm" && \
-		curl -L -f -o $(BUILD_DIR)/wasm_exec.js "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/wasm_exec.js"; \
+		curl -L -f --retry 3 --retry-delay 2 -o $(BUILD_DIR)/js.wasm "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/js.wasm" && \
+		curl -L -f --retry 3 --retry-delay 2 -o $(BUILD_DIR)/wasm_exec.js "https://github.com/Klikkikuri/suola/releases/download/$$SUOLA_TAG/wasm_exec.js"; \
 	else \
 		echo "Error: suola submodule is not tagged or found. Cannot fetch release artifacts." && exit 1; \
 	fi
@@ -87,6 +95,7 @@ ifeq ($(DOCKER),false)
 	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
 	cp suola/build/wasm_exec.js $(BUILD_DIR)/wasm_exec.js
 else
+	$(MAKE) check-docker
 	mkdir -p suola/build
 	$(DOCKER) build --target wasm-builder -t buildsuola suola/
 	# The extension only needs the browser module and its TinyGo support file.
@@ -95,6 +104,16 @@ else
 	cp suola/build/js.wasm $(BUILD_DIR)/js.wasm
 	cp suola/build/wasm_exec.js $(BUILD_DIR)/wasm_exec.js
 endif
+
+# The Docker counterpart of check-tinygo: fail in one line when the CLI is missing,
+# instead of a bare "No such file or directory" from a recipe line.
+check-docker:
+	@command -v $(firstword $(DOCKER)) >/dev/null 2>&1 || { \
+		echo "Error: $(DOCKER) not found on PATH."; \
+		echo "Install Docker, or build with DOCKER=false (TinyGo required),"; \
+		echo "or download the release artifacts: make dist USE_RELEASE_ARTIFACTS=1."; \
+		exit 1; \
+	}
 
 # The browser module is built with TinyGo; stock Go no longer produces js.wasm,
 # and the two toolchains' wasm_exec.js are not interchangeable.
@@ -124,10 +143,11 @@ dist-chrome dist-firefox: dist-%: manifest.%.json dist
 
 # Store trees: the same merge, then the version AMO needs and no update_url (a listed AMO version
 # must not carry one; the self-hosted xpi from dist-firefox keeps it). A store build always carries
-# the non-OSS assets and the attested suola artifacts of the pinned tag; the recursive make is how
+# the non-OSS assets and the attested suola artifacts of the pinned tag; check-suola-release
+# proves that the tag has a release before the download runs. The recursive make is how
 # both flags reach the parse-time conditionals in dist and the Wasm rule. One shared staging step,
 # so that `make -j store-build` does not run two of them into the same $(DIST_DIR).
-store-dist: check-sites
+store-dist: check-sites check-suola-release
 	$(MAKE) dist NON_OSS=1 USE_RELEASE_ARTIFACTS=1
 
 store-chrome store-firefox: store-%: manifest.%.json store-dist
@@ -157,10 +177,6 @@ source-dist:
 	mkdir -p $(BUILD_DIR)
 	rm -f $(BUILD_SOURCE_DIST)
 	git ls-files --recurse-submodules | zip -@ $(BUILD_SOURCE_DIST)
-
-test-data:
-	mkdir -p "$(TEST_DATA_BUILD_DIR)"
-	./generate_test_data.py $(TEST_DATA_SIGNATURES)
 
 # Badge icons are authored as .svg under assets/icons/ and written into the module that
 # draws them. The result is committed: the repo root is itself a loadable unpacked
@@ -192,7 +208,6 @@ check-sites-latest:
 	@node tools/sites.mjs --check-latest $(SITES_MANIFEST)
 
 clean:
-	rm -f "$(BUILD_TEST_DATA)" "$(TEST_DATA_SIGNATURES)"
 	rm -f $(BUILD_DIR)/klikkikuri-*.xpi
 	rm -f $(BUILD_DIR)/klikkikuri-paatti-*.xpi
 	rm -rf "$(BUILD_DIR)"
@@ -202,10 +217,39 @@ clean:
 release:
 	node release.js $(VERSION)
 
-# The suola artifacts must carry suola's build attestation before anything is uploaded.
+# The release-branch gate: a release ships the suola release of the pinned tag, so a pull request into
+# main and a push to main stop here when the pointer is not one. The Build workflow may test any commit,
+# so it calls this target only to choose the download or a local build. docs/release.md, "Submodule
+# Pointers", states the rule.
+check-suola-release:
+	@tag=$$(cd suola && git describe --tags --exact-match 2>/dev/null) || { \
+		echo "Error: the suola pointer is not a tag. Release suola, then bump the pointer."; exit 1; \
+	}; \
+	gh release view "$$tag" --repo Klikkikuri/suola --json assets \
+		--jq '[.assets[].name] | (index("js.wasm") and index("wasm_exec.js"))' | grep -qx true || { \
+		echo "Error: suola $$tag has no release with js.wasm and wasm_exec.js."; exit 1; \
+	}; \
+	echo "suola $$tag is a released tag."
+
+# The full pointer gate for the release branch, run by release-checks.yml. karikko is a test dependency
+# and ships only in the source archive, so it may point to any commit; this target proves it is present.
+check-submodule-pointers: check-suola-release
+	@git -C packages/karikko rev-parse --verify HEAD >/dev/null || { \
+		echo "Error: the karikko submodule is missing."; exit 1; \
+	}
+	@echo "karikko pointer $$(git -C packages/karikko rev-parse --short HEAD): any commit is allowed."
+
+# The suola artifacts must carry suola's build attestation before anything is uploaded, and the
+# attestation must name the commit that the submodule pins, so a moved release tag fails here.
+# This needs the suola git checkout; an unpacked source archive cannot run it.
 verify-suola: $(WASM_OUTPUTS)
-	gh attestation verify $(BUILD_DIR)/js.wasm --repo Klikkikuri/suola
-	gh attestation verify $(BUILD_DIR)/wasm_exec.js --repo Klikkikuri/suola
+	@test -n "$(SUOLA_COMMIT)" || { echo "Error: no suola git checkout; cannot enforce the source digest."; exit 1; }
+	gh attestation verify $(BUILD_DIR)/js.wasm --repo Klikkikuri/suola \
+		--signer-workflow Klikkikuri/suola/.github/workflows/release.yml \
+		--source-digest "$(SUOLA_COMMIT)"
+	gh attestation verify $(BUILD_DIR)/wasm_exec.js --repo Klikkikuri/suola \
+		--signer-workflow Klikkikuri/suola/.github/workflows/release.yml \
+		--source-digest "$(SUOLA_COMMIT)"
 
 # Store submission, run by publish-amo.yml and publish-chrome.yml, which install web-ext or
 # chrome-webstore-upload-cli on the runner and pass the credentials in env.
@@ -244,16 +288,57 @@ lint-webext: dist-firefox
 # argument. Node resolves the pattern itself, so keep it quoted.
 # jsdom is a global install (see .devcontainer/Dockerfile), and ESM resolution ignores
 # NODE_PATH -- tests/helpers/dom.mjs reaches it through the CJS resolver, which does not.
+# The single-level glob: tests/e2e has its own runner (test-e2e) with its own environment.
 test: export NODE_PATH = $(shell npm root -g)
 test: test-wasm check-sites
-	node --test 'tests/**/*.test.mjs'
+	node --test 'tests/*.test.mjs'
+
+# The development server lives in packages/karikko, a git submodule (Klikkikuri/karikko) that meri's suola
+# pattern follows: its own uv project, its own committed uv.lock, developed from here with `uv run`. The suites
+# run it from source, so its pointer may be any commit. The settings are that submodule's README's subject.
+# DEVSERVER_ARGS passes more of them, for example DEVSERVER_ARGS="--seed=42 --chaos.provider_5xx=data".
+UV ?= uv
+export DEVSERVER_PORT ?= 3000
+DEVSERVER_ARGS ?=
+KARIKKO_DIR ?= packages/karikko
+# The server command has one definition: tools/devserver-server.mjs builds it from KARIKKO_DIR. `serve` is the
+# only recipe that runs karikko directly, and its abspath keeps the --directory argument whole below a path
+# with a space.
+KARIKKO_RUN = $(UV) run --directory "$(abspath $(KARIKKO_DIR))" karikko
+
+serve:
+	$(KARIKKO_RUN) --port=$(DEVSERVER_PORT) --data_dir="$(abspath test_data)" $(DEVSERVER_ARGS)
+
+# The server's unit tests (inside the submodule), then the drift guard: Paatti's provider resolver, Suola module
+# and content-script scan against a live karikko on a free port (tools/devserver-drift.mjs).
+# `env -u VIRTUAL_ENV`: an activated virtualenv above a deleted path (a stale dev-container mount) makes uv sync
+# the wrong environment and leave the project's own without pytest. The project environment under KARIKKO_DIR is
+# the one this target owns, and uv creates it on a fresh checkout, so the sync must stay on.
+test-devserver: export NODE_PATH = $(shell npm root -g)
+test-devserver: $(WASM_OUTPUTS)
+	# Karikko's own unit tests: run through uv, not through the karikko CLI (KARIKKO_RUN ends in the tool).
+	env -u VIRTUAL_ENV $(UV) run --directory "$(abspath $(KARIKKO_DIR))" pytest
+	node tools/devserver-drift.mjs
+
+# The unpacked extension in Chromium against Ilta-Pulu (tests/e2e). CHROMIUM is the Debian package's
+# binary, never the /usr/bin/chromium wrapper, which injects an empty --load-extension=.
+CHROMIUM ?= /usr/lib/chromium/chromium
+
+# The Node suite drives karikko (the tool's default command, from the submodule pointer) as a process; the tests
+# read DIST_DIR and CHROMIUM from the environment.
+test-e2e: dist
+	cd tests/e2e && npm ci --no-audit --no-fund
+	cd tests/e2e && DIST_DIR="$(abspath $(DIST_DIR))" CHROMIUM="$(CHROMIUM)" \
+	    node --test --test-concurrency=1 --test-timeout=120000 *.test.mjs
+	# Only on success: make stops at the failing line, so a failed run keeps its capture folders for inspection.
+	rm -rf $(BUILD_DIR)/e2e
 
 # suola's own smoke test for the browser module, run against the artifacts
 # staged in $(BUILD_DIR). It is the only check that js.wasm loads and signs
 # URLs the way the rules say it should; the tests above never touch it. Needs
 # nothing but node, so it is skipped rather than failed when the artifacts have
-# not been built yet -- or when the submodule is pinned to a release tag older
-# than the test itself, which USE_RELEASE_ARTIFACTS=1 requires.
+# not been built yet -- or when the pinned release tag that USE_RELEASE_ARTIFACTS=1
+# selects predates the smoke test itself.
 test-wasm:
 	@if [ ! -f suola/test/js_smoke.cjs ]; then \
 		echo "Skipping Wasm smoke test: the suola checkout predates it."; \
@@ -263,4 +348,4 @@ test-wasm:
 		echo "Skipping Wasm smoke test: no artifacts in $(BUILD_DIR), run 'make build-suola' first."; \
 	fi
 
-.PHONY: build init ensure-suola check-tinygo package source-dist test-data icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext
+.PHONY: serve test-devserver test-e2e build init ensure-suola check-tinygo check-docker package source-dist icons check-icons sites-sync check-sites check-sites-published check-sites-latest release-exists clean build-suola-local build-suola rebuild-suola release dist dist-chrome dist-firefox store-dist store-chrome store-firefox store-build check-suola-release check-submodule-pointers verify-suola amo-metadata publish-firefox publish-chrome publish test test-wasm lint lint-webext

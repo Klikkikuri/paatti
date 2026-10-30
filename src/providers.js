@@ -357,8 +357,9 @@ async function refreshOne(url, config, { force = false } = {}) {
  *
  * One provider after the other. Which provider wins a site is decided when the configuration is built, not here.
  *
- * Single-flight within this execution context, but a `force: true` call always gets its own pass rather
- * than joining an in-flight non-forced one (which would silently return non-bypassed, possibly-cached
+ * Single-flight within this execution context: a call during a pass gets the results of that pass, or a new pass
+ * when the pass did not include each enabled provider (see `refreshMissed()`). A `force: true` call always gets its
+ * own pass rather than joining an in-flight non-forced one (which would silently return non-bypassed, possibly-cached
  * results -- defeating the point of a forced refresh). It still never runs concurrently with another
  * pass: it waits for whatever is currently in flight to settle first, then starts fresh. The identity
  * check in the `.finally()` below matters here -- with `force` calls able to chain onto each other,
@@ -375,7 +376,7 @@ async function refreshOne(url, config, { force = false } = {}) {
  *   retryAfterMs?: number}>>}
  */
 async function refreshProviders({ force = false } = {}) {
-    if (refreshInFlight && !force) return refreshInFlight;
+    if (refreshInFlight && !force) return refreshInFlight.then(refreshMissed);
 
     // No `await` before this line: reading `refreshInFlight` and reassigning it is one synchronous
     // step, so however many calls (forced or not) arrive back-to-back, each sees the previous one's
@@ -389,6 +390,17 @@ async function refreshProviders({ force = false } = {}) {
 }
 
 let refreshInFlight = null;
+
+/**
+ * The results of a pass that a call joined, or a new pass if an enabled provider is not in them: the pass read the
+ * list before that provider was added or turned on.
+ */
+async function refreshMissed(results) {
+    const refreshed = new Set(results.map((result) => result.url));
+    const providers = await getProviders();
+    const missed = providers.some((provider) => provider.enabled && provider.url && !refreshed.has(provider.url));
+    return missed ? refreshProviders() : results;
+}
 
 async function _refreshProviders(force = false) {
     const config = await getConfig();

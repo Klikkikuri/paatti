@@ -8,6 +8,9 @@ import { getConfig, onConfigValue } from "../config.js";
 import { computeGaugeValue, computeCollectingPeriod, sharePercent, summarizeLevels } from "../stats.js";
 import { isSiteEnabled, getClickbaitLevelInfo, levelToI18nKey, localizeDocument } from "./utils.js";
 import { homeStatus } from "./home-status.js";
+import { setupDevCapture, refreshDevCapture } from "./dev-capture.js";
+import { CAPTURE_REL } from "./capture-target.js";
+import { VIEW_SELECTORS, VIEW_LABELS } from "./views.js";
 import "./components/site-toggle.js";
 import "./components/visual-highlight-setting.js";
 import "./components/master-switch-setting.js";
@@ -38,21 +41,6 @@ expandoTemplate.innerHTML = `
 // Helper procedures and definitions.
 ///////////////////////////////////////////////////////////////////////////////
 
-/**
- * Store the different views' IDs here in order to make making changes a bit
- * flexibler.
- */
-const _viewSelectors = {
-    "main":
-        { "content": ".main-content", "naviItem": "#navi-main" },
-    "stats":
-        { "content": ".statsview", "naviItem": "#navi-stats" },
-    "feedback":
-        { "content": ".feedbackview", "naviItem": "#navi-feedback" },
-    "settings":
-        { "content": ".settingsview", "naviItem": "#navi-settings" },
-};
-
 const _setCheckBoxReadonly = (checkbox, makeReadonly) => {
     if (makeReadonly) {
         checkbox.classList.add("toggle-readonly");
@@ -62,7 +50,7 @@ const _setCheckBoxReadonly = (checkbox, makeReadonly) => {
 };
 
 /* Set the visual readonly state of checkboxes under settings */
-const _setSettingsviewCheckboxesReadonly = (isConversionEnabled) => {
+const _setSettingsViewCheckboxesReadonly = (isConversionEnabled) => {
     const checkboxes = document.querySelectorAll(".settingsview .conversion-switch");
     const makeReadonly = !isConversionEnabled;
     for (const cb of checkboxes) {
@@ -558,8 +546,10 @@ const _refreshSettingsView = ({ isConversionEnabled, isDevelopmentEnv, config })
 
 
     // Visualize per site switches as "readonly" as per main switch state.
-    _setSettingsviewCheckboxesReadonly(isConversionEnabled);
+    _setSettingsViewCheckboxesReadonly(isConversionEnabled);
 
+    // devmode (development-only; see docs/PRIVACY_POLICY_DEVELOPMENT.md): the Development environment
+    // shows its section in the settings view; the capture row of it is wired by src/options/dev-capture.js.
     if (isDevelopmentEnv) {
         document.querySelectorAll(".devmode").forEach((x) => x.classList.remove("hidden"));
         document.querySelector("#logo img").classList.add("hidden");
@@ -579,27 +569,22 @@ const _refreshSettingsView = ({ isConversionEnabled, isDevelopmentEnv, config })
 
 /**
  * Show this and hide other of the views.
- * @param {*} viewName Identifier of the view to show.
+ * @param {string} viewName Identifier of the view to show.
  */
 const showView = (viewName) => {
     log(`Showing view '${viewName}'`);
 
-    // Hide all views and reset states.
-    for (const viewObj of Object.values(_viewSelectors)) {
-        document.querySelector(viewObj["content"]).classList.add("hidden");
+    // Hide all views first.
+    for (const contentSelector of Object.values(VIEW_SELECTORS)) {
+        document.querySelector(contentSelector).classList.add("hidden");
     }
     // Show the selected view.
-    document.querySelector(_viewSelectors[viewName]["content"]).classList.remove("hidden");
+    document.querySelector(VIEW_SELECTORS[viewName]).classList.remove("hidden");
 
-    // Update active tab indicator.
+    // Update the tab indicator.
     const indicator = document.getElementById("active-tab-indicator");
     if (indicator) {
-        let labelKey = "";
-        if (viewName === "main") labelKey = "navigationMainLabel";
-        else if (viewName === "stats") labelKey = "navigationStatsLabel";
-        else if (viewName === "feedback") labelKey = "navigationFeedbackLabel";
-        else if (viewName === "settings") labelKey = "navigationSettingsLabel";
-        
+        const labelKey = VIEW_LABELS[viewName];
         indicator.textContent = labelKey ? browser.i18n.getMessage(labelKey) : "";
     }
 };
@@ -647,6 +632,8 @@ const _loadIntoView = async () => {
         isDevelopmentEnv,
         config,
     });
+    const tab = await getActiveTab();
+    refreshDevCapture({ config, tab, matchingDomain, canScan: isConversionEnabled && isCurrentSiteEnabled });
     _refreshHomeView({
         site: pageHostname,
         pageStats: cachedPageStats,
@@ -666,7 +653,6 @@ const _loadIntoView = async () => {
     const conversionsListEl = document.getElementById("feedbackview-conversions-list");
 
     let conversions = [];
-    const tab = await getActiveTab();
     if (tab) {
         try {
             conversions = await browser.tabs.sendMessage(tab.id, { 
@@ -788,20 +774,10 @@ const _loadIntoView = async () => {
 
     document.querySelector("label[for=enable-devmode] span").title =
         browser.i18n.getMessage("devmodeHiddenButtonTitle");
-    document.querySelector("label[for=copy-link-signatures]").title =
-        browser.i18n.getMessage("devmodeCopyLinkSignaturesTitle");
 
     const settingsviewDevmodeTitle = document.getElementById("settingsview-devmode-title");
     if (settingsviewDevmodeTitle) {
         settingsviewDevmodeTitle.textContent = browser.i18n.getMessage("settingsviewDevmodeTitle");
-    }
-    const devmodeDumpLinkHashLabel = document.getElementById("devmode-dumpLinkHash-label");
-    if (devmodeDumpLinkHashLabel) {
-        devmodeDumpLinkHashLabel.textContent = browser.i18n.getMessage("devmodeDumpLinkHashLabel");
-    }
-    const devmodeDumpLinkHashBtn = document.getElementById("devmode-dumpLinkHash");
-    if (devmodeDumpLinkHashBtn) {
-        devmodeDumpLinkHashBtn.textContent = browser.i18n.getMessage("devmodeDumpLinkHashBtn");
     }
     const openOptionsBtn = document.getElementById("open-options-btn");
     if (openOptionsBtn) {
@@ -814,10 +790,7 @@ const _loadIntoView = async () => {
         initialViewSelected = true;
         if (conversions && conversions.some(item => item.isMainPage)) {
             view.showView("feedback");
-            const naviFeedback = document.getElementById("navi-feedback");
-            if (naviFeedback) {
-                naviFeedback.checked = true;
-            }
+            document.getElementById("open-feedbackview").checked = true;
         } else {
             view.showView("main");
         }
@@ -933,18 +906,13 @@ const _setUpView = async (e) => {
 
     // Manual database update click handler is managed by the database-status-setting component
 
-    ///////////////////////////////////////////////////////////////////////////////
-    // Register devmode controls.
+    // The devmode toggle's listener takes no argument: a click event must not reach the options object of
+    // __devmodeEnable, whose shape decides the environment.
     document.getElementById("enable-devmode")
-        .addEventListener("click", __devmodeEnable);
-    document.getElementById("copy-link-signatures")
-        .addEventListener("click", __devmodeCopyLinkSignatures);
+        .addEventListener("click", () => __devmodeEnable());
 
-    // Wire up devmode settings elements
-    const dumpLinkHashBtn = document.getElementById("devmode-dumpLinkHash");
-    if (dumpLinkHashBtn) {
-        dumpLinkHashBtn.addEventListener("click", __devmodeCopyLinkSignatures);
-    }
+    // The capture button listener is bound by setupDevCapture().
+    setupDevCapture();
     // devmode-setDebugVisuals change listener is managed by the visual-highlight-setting component
 
 
@@ -977,51 +945,18 @@ const handleDomContentLoaded = async (e) => {
     }
 };
 
-const __devmodeEnable = async () => {
-    await controller.setEnvironment(
-        await model.read.isDevelopmentEnv() ? "free" : "development"
-    );
-};
-
-const __devmodeCopyLinkSignatures = async (e) => {
-    e.target.disabled = true;
-
-    const eventTargetLabel = document.querySelector(`label[for=${e.target.id}]`) || e.target;
-    const textContentTemp = eventTargetLabel.textContent;
-
-    // Show that processing has started.
-    eventTargetLabel.textContent = "•◦◦";
-    const processingAnimationId = setInterval(() => {
-        const progress = eventTargetLabel.textContent.split("◦")[0];
-        eventTargetLabel.textContent =
-            (progress.length >= 3)
-            ? "•"
-            : "•".repeat(progress.length + 1);
-
-        eventTargetLabel.textContent = eventTargetLabel.textContent.padEnd(3, "◦");
-    }, 200);
- 
-    const pageSignatures = await controller.devmode.dumpLinkSignatures();
-    log("Received generated signatures:", pageSignatures);
-
-    const pageSignaturesDump = pageSignatures
-        .filter((x) => x !== null)
-        .map((x) => x.toString())
-        .join("\n");
-
-    await window.navigator.clipboard.write([new ClipboardItem({ "text/plain": pageSignaturesDump })]);
-
-    // Give the illusion that the processing took some time by showing a bit of
-    // the processing animation (gives expected feedback to user).
-    setTimeout(() => {
-        clearInterval(processingAnimationId);
-        // Show that processing has finished.
-        eventTargetLabel.textContent = "✅";
-        setTimeout(() => {
-            eventTargetLabel.textContent = textContentTemp;
-            e.target.disabled = false;
-        }, 1000);
-    }, 600);
+/**
+ * The devmode toggle: the Development environment on, or the free one back.
+ *
+ * @param {object} options
+ * @param {boolean} [options.development] - True asks for the development environment, false for the free one.
+ *   Omitted (a click) toggles what the popup currently shows.
+ * @returns {Promise<string>} The environment after the write, so a test can wait for it deterministically.
+ */
+const __devmodeEnable = async ({ development } = {}) => {
+    const wanted = development ?? !(await model.read.isDevelopmentEnv());
+    await controller.setEnvironment(wanted ? "development" : "free");
+    return await model.read.getEnvironment();
 };
 
 /**
@@ -1045,12 +980,18 @@ document.addEventListener("DOMContentLoaded", view.handleDomContentLoaded);
 ///////////////////////////////////////////////////////////////////////////////
 
 // Everything the popup renders out of the config, flat so it compares exactly.
+// The devmode capture row's visibility turns on the providers' capture links too (capture-target.js).
+// A provider's whole namespace moves on every refresh pass (checked, entryCount, errors), so the
+// selector reads only each provider's URL and its capture links, not the namespace.
 onConfigValue(
     (config) => [
         config.enabled,
         config.activeEnv,
         config.clickbaitLevel,
-        ...Object.values(config.siteConfigs).map((site) => site.enabled)
+        config.loopbackProvidersEnabled,
+        ...Object.values(config.siteConfigs).map((site) => site.enabled),
+        ...Object.entries(config.providerData).flatMap(([url, data]) =>
+            [url, (data?.links || []).filter((link) => link.rel === CAPTURE_REL)])
     ],
     view.refresh
 );
