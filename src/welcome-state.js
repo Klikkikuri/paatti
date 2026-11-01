@@ -17,7 +17,10 @@ import browser from "./browser-api.js";
 
 const WIZARD_PATH = "src/options/welcome/welcome.html";
 
-/** The lengths of the wizard. The deck of a mode is built in `options/welcome/deck.js`. */
+/**
+ * The lengths of the wizard. `options/welcome/deck.js` holds the slide list, the flow of a mode and the
+ * fragment code; the page builds the deck from it.
+ */
 export const WIZARD_MODES = Object.freeze(["quick", "tour"]);
 
 /** Every claim runs after the one before it, so two pages that ask together cannot both read "not claimed". */

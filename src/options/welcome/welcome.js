@@ -4,7 +4,10 @@ import { Clickbaitiness, model } from '../../model.js';
 import { controller } from '../../controller.js';
 import { localizeDocument, getClickbaitLevelInfo } from '../utils.js';
 import { markWizardDone } from '../../welcome-state.js';
-import { buildDeck, modeOf, slideAtLine, createNavigator } from './deck.js';
+import {
+    SLIDES, clampIndex, createNavigator, flowIds, fragmentOf, indexOfFragment, modeOf, nextInFlow,
+    previousInFlow, slideAtLine, slideIds,
+} from './deck.js';
 import '../components/clickbait-level-horizontal.js';
 import '../components/title-modifier-setting.js';
 import '../components/site-list-setting.js';
@@ -88,20 +91,23 @@ function fitInfoDots() {
     document.querySelectorAll('.more-title').forEach((title) => observer.observe(title));
 }
 
-/** Drop the slides that the chosen mode does not have, and number the figures that are left. */
-function buildSlides(mode) {
-    const wanted = new Set(buildDeck(mode).map((slide) => slide.id));
-    for (const section of document.querySelectorAll('.slide')) {
-        if (!wanted.has(section.dataset.slide)) section.remove();
-    }
+/**
+ * The deck: one entry for each slide of `SLIDES`, with its section and its title, and a number for each figure.
+ *
+ * The order comes from `SLIDES`, not from the document, so that the deck cannot disagree with the flow or with
+ * the fragment of a slide. The figure numbers follow the document, and are the same in both modes.
+ *
+ * @returns {Array<{id: string, tourOnly: boolean, title: string, element: Element}>}
+ */
+function buildDeck() {
+    document.querySelectorAll('.slide-figure .fig-number').forEach((el, index) => { el.textContent = String(index + 1); });
 
-    document.querySelectorAll('.slide-figure .fig-number').forEach((el, index) => { el.textContent = index + 1; });
+    return SLIDES.map((slide) => {
+        const element = document.getElementById(`slide-${slide.id}`);
+        if (!element) throw new Error(`The wizard has no section for the slide "${slide.id}".`);
 
-    return buildDeck(mode).map((slide) => ({
-        ...slide,
-        element: document.getElementById(`slide-${slide.id}`),
-        title: browser.i18n.getMessage(`welcomeStep_${slide.id}`) || slide.id,
-    }));
+        return { ...slide, element, title: browser.i18n.getMessage(`welcomeStep_${slide.id}`) || slide.id };
+    });
 }
 
 /**
@@ -234,54 +240,123 @@ function followNewsSites() {
 
 document.addEventListener('DOMContentLoaded', () => {
     const mode = modeOf(location.search);
+    // The page owns the scroll position, so the browser must not restore a second one of its own.
+    history.scrollRestoration = 'manual';
     document.documentElement.dataset.mode = mode;
     document.documentElement.dataset.browser = browserKind();
     drawHowFigures();
     drawRewriteTicks();
     localizeDocument();
 
-    const slides = buildSlides(mode);
+    const deck = buildDeck();
+    const ids = slideIds();
+    const flow = flowIds(mode).map((id) => deck.findIndex((slide) => slide.id === id));
     const indicator = document.getElementById('steps');
     const back = document.getElementById('back');
     const next = document.getElementById('next');
-    const last = slides.length - 1;
     let settleTimer = 0;
 
-    const deck = createNavigator({ count: slides.length, onChange: render });
+    const start = indexOfFragment(ids, location.hash);
+    const cursor = createNavigator({ count: deck.length, initial: start >= 0 ? start : 0, onChange: render });
 
+    /** Show one slide in the address, in the buttons and in the indicator. Runs when the index changes. */
     function render(index) {
-        indicator.update(slides, index);
-        back.hidden = index === 0;
-        const finishing = index === last;
-        next.textContent = browser.i18n.getMessage(finishing ? 'welcomeFinish' : 'welcomeNext') || (finishing ? 'Finish' : 'Next');
+        writeAddress(index);
+
+        const nextIndex = nextInFlow(flow, index);
+        back.hidden = previousInFlow(flow, index) === null;
+        next.textContent = browser.i18n.getMessage(nextIndex === null ? 'welcomeFinish' : 'welcomeNext')
+            || (nextIndex === null ? 'Finish' : 'Next');
+        indicator.update({ deck, flow, current: index });
     }
 
-    /** A move that the user asked for: set the index, scroll to the slide, and hand focus to its heading. */
-    function go(target) {
-        const index = deck.request(target);
-        const slide = slides[index].element;
-        slide.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
-        slide.querySelector('.slide-heading').focus({ preventScroll: true });
+    /** Make the address name the slide that the page shows. Nothing to do when it already does. */
+    function writeAddress(index) {
+        const fragment = fragmentOf(ids, index);
+        if (location.hash !== fragment) history.replaceState(null, '', fragment);
+    }
 
+    /** Put one slide at the top of the viewport. Changes neither the index, the address nor the focus. */
+    function align(index, animate) {
+        deck[index].element.scrollIntoView({ behavior: animate ? 'smooth' : 'auto', block: 'start' });
+    }
+
+    /** Start the lock's fallback timer. A `scrollend` ends the lock sooner. */
+    function settle() {
         clearTimeout(settleTimer);
-        settleTimer = setTimeout(() => deck.settled(), SCROLL_SETTLE_MS);
+        settleTimer = setTimeout(() => cursor.settled(), SCROLL_SETTLE_MS);
     }
 
-    // The scroll position leads when the user scrolls by hand, and it asks the navigator to follow.
+    /**
+     * Show one slide.
+     *
+     * A move that the code starts pushes a history entry; a scroll of the page does not. A move to the slide
+     * that is already current scrolls but does not push and does not lock, so a segment click on the current
+     * slide adds nothing to the history and blocks nothing.
+     *
+     * @param {number} index - A deck index. Out-of-range values stop at the ends.
+     * @param {{animate: boolean, push: boolean, focus?: boolean}} options - `focus` defaults to true.
+     */
+    function moveTo(index, { animate, push, focus = true }) {
+        const chosen = clampIndex(deck.length, index);
+
+        if (chosen !== cursor.index) {
+            if (push) history.pushState(null, '', fragmentOf(ids, chosen));
+            cursor.request(chosen);
+            settle();
+        }
+
+        align(chosen, animate);
+        writeAddress(chosen);
+        if (focus) deck[chosen].element.querySelector('.slide-heading').focus({ preventScroll: true });
+    }
+
+    /** Show the flow step that the reader asked for. A call with no step, at an end of the flow, does nothing. */
+    const go = (target) => {
+        if (target !== null) moveTo(target, { animate: !reducedMotion(), push: true });
+    };
+
+    // The browser scrolls to the fragment itself, and it scrolls again after `load`, when the figures and the
+    // bars have their real heights. Neither position is a slide that the reader chose, so the page follows the
+    // scroll position only from the reader's own input, or from the frame after the page has loaded.
+    let followsScroll = false;
+    const follow = () => { followsScroll = true; };
+    for (const type of ['wheel', 'touchstart', 'keydown', 'pointerdown']) {
+        addEventListener(type, follow, { capture: true, passive: true, once: true });
+    }
+    addEventListener('load', () => {
+        if (!followsScroll) align(cursor.index, false);
+        requestAnimationFrame(follow);
+    }, { once: true });
+
+    // The scroll position leads when the reader scrolls by hand, and it asks the navigator to follow.
     let frame = 0;
     addEventListener('scroll', () => {
+        if (!followsScroll) return;
+
         cancelAnimationFrame(frame);
         frame = requestAnimationFrame(() => {
-            deck.scrolled(slideAtLine(slides.map(({ element }) => element.getBoundingClientRect()), innerHeight / 2));
+            cursor.scrolled(slideAtLine(deck.map(({ element }) => element.getBoundingClientRect()), innerHeight / 2));
         });
     }, { passive: true });
     addEventListener('scrollend', () => {
         clearTimeout(settleTimer);
-        deck.settled();
+        cursor.settled();
     });
 
-    back.addEventListener('click', () => go(deck.index - 1));
-    next.addEventListener('click', () => (deck.index === last ? finish() : go(deck.index + 1)));
+    // Every entry of this page differs from its neighbour only in the fragment, so a Back, a Forward and a
+    // hand-edited address all arrive here. The page's own writes fire no event, so there is no loop.
+    addEventListener('hashchange', () => {
+        const index = indexOfFragment(ids, location.hash);
+        moveTo(index >= 0 ? index : 0, { animate: false, push: false });
+    });
+
+    back.addEventListener('click', () => go(previousInFlow(flow, cursor.index)));
+    next.addEventListener('click', () => {
+        const target = nextInFlow(flow, cursor.index);
+        if (target === null) finish();
+        else go(target);
+    });
     indicator.addEventListener('step-select', (event) => go(event.detail));
     document.getElementById('skip').addEventListener('click', finish);
     document.getElementById('all-settings').addEventListener('click', () => browser.runtime.openOptionsPage());
@@ -292,13 +367,13 @@ document.addEventListener('DOMContentLoaded', () => {
         openNewsSite(link.href);
     });
 
-    // Arrow keys move through the deck. A move hands the focus to a heading, so the target is not the body: only
+    // Arrow keys move through the flow. A move hands the focus to a heading, so the target is not the body: only
     // a control that uses the arrows itself (a slider, a field, a link, a folded block) keeps them.
     document.addEventListener('keydown', (event) => {
         if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
         if (event.target.closest('input, select, textarea, button, a, summary, [contenteditable]')) return;
-        if (event.key === 'ArrowRight') go(deck.index + 1);
-        if (event.key === 'ArrowLeft') go(deck.index - 1);
+        if (event.key === 'ArrowRight') go(nextInFlow(flow, cursor.index));
+        if (event.key === 'ArrowLeft') go(previousInFlow(flow, cursor.index));
     });
 
     followNewsSites();
@@ -306,5 +381,9 @@ document.addEventListener('DOMContentLoaded', () => {
     fitInfoDots();
     followStrictness();
     followMarkers();
-    render(0);
+
+    // Last: the bars and the figures set the heights that the start slide lands against. The index is already
+    // right, so this only draws and scrolls; it does not lock, and a reader who scrolls at once is not ignored.
+    render(cursor.index);
+    align(cursor.index, false);
 });

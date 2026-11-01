@@ -3,6 +3,9 @@
  *
  * Sizes are relative, so the bar follows the user's font size. The colour of the current segment is the
  * wizard's accent (--welcome-accent, set in welcome.css); the rest comes from the shared tokens.
+ *
+ * The host carries `data-flow="on"` when the current slide is in the flow, and `data-flow="off"` when it is
+ * not. Off the flow there is no count to show, so the line carries the title alone.
  */
 
 step-indicator {
@@ -80,6 +83,12 @@ step-indicator .step-segment:focus-visible {
     }
 
     step-indicator .step-count-short {
+        display: inline;
+    }
+
+    /* Off the flow there is no count, so the title is the whole line and must not leave it empty. */
+    step-indicator[data-flow="off"] .step-title,
+    step-indicator[data-flow="off"] .step-tour-tag {
         display: inline;
     }
 
