@@ -1591,6 +1591,10 @@
     "message": "Klikkikuri Paatti works only on the supported sites, and not on every topic.",
     "description": "One reason in the folded list on the mistakes step."
   },
+  "welcomeWrongStill6": {
+    "message": "News sites test headlines and personalize them, so the headline the Klikkikuri service saw can differ from the one you are served.",
+    "description": "One reason in the folded list on the mistakes step. Testing means A/B testing of headlines."
+  },
   "welcomeWrongCaption": {
     "message": "Giving feedback on a rewrite",
     "description": "Caption of the mistakes figure."
@@ -1672,23 +1676,23 @@
     "description": "Link in the About section that opens the setup wizard."
   },
   "welcomeSample0": {
-    "message": "Employers' federation EK opposes Manna Sari's tax proposal",
+    "message": "Employers' federation EK opposes Manna Sarin's tax proposal",
     "description": "Illustrative sample headline for clickbait level 0, as a site would write it. It is fiction: not a claim about real statements or events."
   },
   "welcomeSample1": {
-    "message": "EK warns Manna Sari of the consequences of the tax plan",
+    "message": "EK warns Manna Sarin of the consequences of the tax plan",
     "description": "Illustrative sample headline for clickbait level 1, as a site would write it. It is fiction: not a claim about real statements or events."
   },
   "welcomeSample2": {
-    "message": "EK snapped at Manna Sari: “The economy does not run on wishful thinking”",
+    "message": "EK snapped at Manna Sarin: “The economy does not run on wishful thinking”",
     "description": "Illustrative sample headline for clickbait level 2, as a site would write it. It is fiction: not a claim about real statements or events."
   },
   "welcomeSample3": {
-    "message": "EK thundered at Manna Sari: “Now is the time to learn how the economy really works”",
+    "message": "EK thundered at Manna Sarin: “Now is the time to learn how the economy really works”",
     "description": "Illustrative sample headline for clickbait level 3, as a site would write it. It is fiction: not a claim about real statements or events."
   },
   "welcomeSample4": {
-    "message": "EK delivers a knockout to Manna Sari: “Grow up – businesses do not live in a fairy-tale world!”",
+    "message": "EK delivers a knockout to Manna Sarin: “Grow up – businesses do not live in a fairy-tale world!”",
     "description": "Illustrative sample headline for clickbait level 4, as a site would write it. It is fiction: not a claim about real statements or events."
   },
   "welcomeInfoTitle": {
