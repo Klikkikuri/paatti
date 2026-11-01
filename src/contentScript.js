@@ -184,6 +184,42 @@ let hrefSigns;
     ////////////////////////////////////////////////////////////////////////////
     // Processing subroutines.
 
+    let introCardOffered = false;
+    let waitingForVisibleTab = false;
+
+    /**
+     * Ask once per page load for the first-activation card, when this page is in front. The background script
+     * says yes one time, ever, so of several pages that activate together only one shows it. The card module is
+     * imported only on a yes.
+     */
+    const offerIntroCard = async () => {
+        if (introCardOffered) return;
+
+        // The card lasts ten seconds. A hidden tab would spend the one claim where nobody sees it, so wait for
+        // the user to bring this page to the front.
+        if (document.visibilityState !== "visible") {
+            if (waitingForVisibleTab) return;
+            waitingForVisibleTab = true;
+            document.addEventListener("visibilitychange", () => {
+                waitingForVisibleTab = false;
+                offerIntroCard();
+            }, { once: true });
+            return;
+        }
+
+        introCardOffered = true;
+
+        try {
+            const { claimed } = await browser.runtime.sendMessage({ action: "claimIntroCard" });
+            if (!claimed) return;
+
+            const { showIntroCard } = await import(browser.runtime.getURL("src/components/intro-card.js"));
+            await showIntroCard({ browser, log });
+        } catch (err) {
+            log("Could not show the intro card (non-fatal):", err);
+        }
+    };
+
     /**
      * The scan for one site: the shared link semantics plus the container set that the stale-status cleanup needs.
      * A rule can match a container and still find no link in it; that container counts as matched, so its status
@@ -406,6 +442,11 @@ let hrefSigns;
             },
             { converted: 0, original: 0, skipped: 0, error: errors.length }
         );
+
+        // Headlines of the page are in the data, rewritten or not: offer the setup now, before anything below can
+        // delay or fail. A rewrite is not a safe condition: every headline can be under the level, or can have no
+        // converted title. The card still tells the user that the extension ran on this page.
+        if (stats.converted + stats.original > 0) offerIntroCard();
 
         // Build live page snapshot from all reasons currently on page
         const pageSnapshot = buildPageSnapshot(reasons);

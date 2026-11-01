@@ -116,6 +116,22 @@ body {
     box-sizing: border-box;
 }
 
+/* The home view's own column, centred in the well. `min-height`, not `height`: a fixed height would let content
+ * that is taller than the well overflow equally upwards and downwards, and the part above the top edge cannot be
+ * scrolled to. It would sit out of sight, under the header. With `min-height` and no shrinking, the column grows and the well scrolls. */
+#homeview-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9375rem;
+    width: 100%;
+    min-height: 100%;
+    /* The well is a flex column too, and would shrink this back to its own height. */
+    flex-shrink: 0;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+}
+
 /* Home view carries the sea artwork, drawn by its <page-background> child. How the
  * artwork looks travels with the component -- see
  * src/options/components/page-background.css. What is left here is what that
@@ -607,10 +623,6 @@ img.icon {
 
 /* Misc */
 
-.error {
-    color: var(--color-danger);
-}
-
 /*
  * The companion the home view shows when it has nothing to report yet: while it waits for the page,
  * and on a site Paatti does not cover. It is the very artwork <page-background> draws its easter egg
@@ -699,4 +711,45 @@ iframe {
     width: 100%;
     height: 100%;
     border: 0;
+}
+
+/* The offer of the setup wizard, at the top of the home view until the wizard is done or the offer is hidden. */
+.setup-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 0.0625rem solid var(--color-border-strong);
+    border-radius: 0.375rem;
+    background: var(--color-surface);
+    font-size: 0.875rem;
+    font-weight: bold;
+}
+
+.setup-line-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.setup-line .push-button {
+    margin: 0;
+    padding: 0.375rem 0.75rem;
+    min-height: 2rem;
+    min-width: 0;
+    font-size: 0.875rem;
+}
+
+.setup-line-hide {
+    padding: 0.25rem;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-weight: normal;
+    text-decoration: underline;
+    cursor: pointer;
 }

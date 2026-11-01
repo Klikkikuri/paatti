@@ -63,4 +63,34 @@ describe('site-list-setting', () => {
         assert.equal(row(list), before);
         list.remove();
     });
+
+    test('shows a missing permission as a tag beside the name', async () => {
+        const contains = fake.browser.permissions.contains;
+        fake.browser.permissions.contains = async () => false;
+        try {
+            await seedSite([`https://${SITE}/*`]);
+            const list = document.createElement('site-list-setting');
+            document.body.append(list);
+            await new Promise((resolve) => setTimeout(resolve, 10));
+
+            const siteRow = row(list);
+            const tag = siteRow.querySelector('.site-status-tag');
+            assert.equal(tag.hidden, false);
+            assert.equal(tag.textContent, 'Needs permission');
+            assert.equal(siteRow.querySelector('.site-status'), null);
+            list.remove();
+        } finally {
+            fake.browser.permissions.contains = contains;
+        }
+    });
+
+    test('shows no tag when the site is on', async () => {
+        await seedSite([`https://${SITE}/*`]);
+        const list = document.createElement('site-list-setting');
+        document.body.append(list);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        assert.equal(row(list).querySelector('.site-status-tag').hidden, true);
+        list.remove();
+    });
 });

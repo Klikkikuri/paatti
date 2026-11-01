@@ -91,48 +91,6 @@ legend {
     font-size: 1rem;
 }
 
-.setting-group {
-    margin-bottom: 20px;
-}
-
-.setting-label {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px;
-    background: var(--color-surface-muted);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.setting-label:hover {
-    background: var(--color-surface-hover);
-}
-
-.setting-label input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-}
-
-.label-text {
-    flex: 1;
-    margin-right: 15px;
-}
-
-.label-text strong {
-    display: block;
-    margin-bottom: 5px;
-    color: var(--color-text-heading);
-}
-
-.label-text span {
-    font-size: 0.95rem;
-    color: var(--color-text-secondary);
-}
-
-
 /* Environment selector */
 .env-selector {
     display: grid;
@@ -274,29 +232,6 @@ footer a:hover {
     margin-top: 25px;
 }
 
-/* The invitation field: an .input-group with a leading mail icon. */
-.email-input-wrapper {
-    margin-top: 15px;
-}
-
-.email-input-wrapper .email-icon {
-    display: flex;
-    align-items: center;
-    padding-left: 10px;
-    pointer-events: none;
-}
-
-.email-icon svg {
-    width: 20px;
-    height: 20px;
-    color: var(--color-text-secondary);
-}
-
-.email-submit-btn.success {
-    background: var(--color-success);
-    color: var(--color-on-accent);
-}
-
 /* Mobile responsiveness */
 @media (max-width: 600px) {
     body {
@@ -332,9 +267,6 @@ footer a:hover {
         max-width: 100%;
         white-space: normal;
         line-height: 1.4;
-    }
-    .detail-button {
-        padding: 6px 12px;
     }
 }
 

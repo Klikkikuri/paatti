@@ -24,14 +24,32 @@ detailedTemplate.innerHTML = `
         <div class="site-info">
             <favicon-img class="site-favicon" size="24"></favicon-img>
             <div class="site-details">
-                <div class="site-name"></div>
-                <div class="site-domain"></div>
-                <div class="site-details-container"></div>
+                <div class="site-title-line">
+                    <div class="site-name"></div>
+                    <span class="site-status-tag" role="status" hidden></span>
+                </div>
+                <div class="site-domain-line">
+                    <div class="site-domain"></div>
+                    <div class="site-details-container"></div>
+                </div>
             </div>
         </div>
     </div>
     <toggle-button></toggle-button>
 `;
+
+/**
+ * The message key and English text for the state of a site, in words, so that the toggle is not the only signal.
+ *
+ * @param {boolean} enabled - Whether the user has the site on.
+ * @param {boolean} hasPermission - Whether the browser has granted the site's origins.
+ * @returns {{key: string, fallback: string}}
+ */
+export function siteStatusOf(enabled, hasPermission) {
+    if (enabled) return { key: 'siteStatusOn', fallback: 'On' };
+    if (!hasPermission) return { key: 'siteStatusNeedsPermission', fallback: 'Needs permission' };
+    return { key: 'siteStatusOff', fallback: 'Off' };
+}
 
 /**
  * Custom element representing a site-specific toggle setting.
@@ -42,6 +60,18 @@ class SiteToggleSetting extends HTMLElement {
     constructor() {
         super();
         this.initialized = false;
+        this.state = { enabled: false, hasPermission: false };
+    }
+
+    /** Show beside the name the one state that the user must act on. The toggle itself carries on and off. */
+    renderStatus(state) {
+        this.state = { ...this.state, ...state };
+        const { key, fallback } = siteStatusOf(this.state.enabled, this.state.hasPermission);
+        const tagEl = this.querySelector('.site-status-tag');
+        if (!tagEl) return;
+
+        tagEl.hidden = key !== 'siteStatusNeedsPermission';
+        tagEl.textContent = tagEl.hidden ? '' : browser.i18n.getMessage(key) || fallback;
     }
 
     /**
@@ -120,6 +150,7 @@ class SiteToggleSetting extends HTMLElement {
 
         toggleBtn.checked = isEnabled;
         toggleBtn.dataset.hasPermission = String(hasPermission);
+        this.renderStatus({ enabled: isEnabled, hasPermission });
 
         // Populate dataset on the inner checkbox for backward compatibility (e.g. read-only class selection)
         const innerCheckbox = toggleBtn.querySelector('input');
@@ -155,6 +186,7 @@ class SiteToggleSetting extends HTMLElement {
                 layout === 'compact',
                 {
                     onSuccess: (enabled, message) => {
+                        this.renderStatus({ enabled });
                         this.dispatchEvent(new CustomEvent('site-toggled', {
                             bubbles: true,
                             detail: { domain, enabled, success: true, message }
@@ -162,12 +194,14 @@ class SiteToggleSetting extends HTMLElement {
                     },
                     onFailure: (revertState, message) => {
                         toggleBtn.checked = revertState;
+                        this.renderStatus({ enabled: revertState });
                         this.dispatchEvent(new CustomEvent('site-toggled', {
                             bubbles: true,
                             detail: { domain, enabled: revertState, success: false, message }
                         }));
                     },
                     onPermissionGranted: () => {
+                        this.renderStatus({ hasPermission: true });
                         toggleBtn.dataset.hasPermission = 'true';
                         if (innerCheckbox) innerCheckbox.dataset.hasPermission = 'true';
                     }

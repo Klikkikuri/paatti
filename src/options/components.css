@@ -1,7 +1,8 @@
 /**
- * Rules shared by both extension pages, for the Web Components that appear on
- * each of them. Loaded after theme.css by popup.html and index.html; anything
- * that only one page needs belongs in styles.css or options.css instead.
+ * Rules shared by every extension page, for the Web Components that appear on
+ * each of them. Loaded after theme.css by popup.html, index.html and
+ * welcome.html; anything that only one page needs belongs in styles.css or
+ * options.css instead.
  */
 
 /* Raised container: lifts a block off a sunken surface. Add the class, or extend
@@ -12,6 +13,39 @@
     border: 1px solid var(--color-border-strong);
     border-radius: 6px;
     box-shadow: var(--push-shadow) var(--raised-offset) var(--raised-offset);
+}
+
+/* An external link, as a small outlined button: a site's policy links, the About store links, the provider links,
+ * and the wizard's ready links. The arrow is part of the text. */
+.detail-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--color-brand);
+    border: 1.2px solid var(--color-brand);
+    border-radius: 4px;
+    padding: 2px 8px;
+    text-decoration: none;
+    font-weight: bold;
+    line-height: 1.2;
+    transition: all 0.2s;
+    background: transparent;
+    cursor: pointer;
+}
+
+.detail-button:hover {
+    background: var(--color-brand);
+    color: var(--color-on-brand);
+}
+
+/* A narrow screen is likely a touch screen, so the link gets a larger target. */
+@media (max-width: 600px) {
+    .detail-button {
+        padding: 6px 12px;
+    }
 }
 
 /* A small round badge that opens an explanation: the statistics table's "How to read", the popup's level
@@ -60,9 +94,57 @@
     border-radius: 8px;
 }
 
+/* The labelled setting card that the toggle and the interval components build, on every page that hosts them.
+ * The compact rows of the popup wear .label-text too, with a layout of their own, so they are left out. */
+.setting-group {
+    margin-bottom: 1.25rem;
+}
+
+.setting-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.9375rem;
+    background: var(--color-surface-muted);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.setting-label:hover {
+    background: var(--color-surface-hover);
+}
+
+.setting-label input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    cursor: pointer;
+}
+
+:not(.compact-setting-row) > .label-text {
+    flex: 1;
+    margin-right: 0.9375rem;
+}
+
+:not(.compact-setting-row) > .label-text strong {
+    display: block;
+    margin-bottom: 0.3125rem;
+    color: var(--color-text-heading);
+}
+
+:not(.compact-setting-row) > .label-text span {
+    font-size: 0.95rem;
+    color: var(--color-text-secondary);
+}
+
 .text-muted-small {
     font-size: 0.85em;
     color: var(--color-text-secondary);
+}
+
+/* Text that reports a failure or a condition that blocks the user. */
+.error {
+    color: var(--color-danger);
 }
 
 .hidden {
@@ -161,6 +243,27 @@ input:checked+.push-button:hover {
     }
 }
 
+/* Primary push button: the one action a screen asks for. It is the filled key to the grey keys around it,
+ * with the same flat face and hard shadow, so it reads as part of the same panel. */
+.push-button.primary {
+    background: var(--push-primary-bg);
+    color: var(--push-primary-text);
+    border-radius: 0.375rem;
+}
+
+.push-button.primary:hover {
+    color: var(--push-primary-text);
+    outline-color: var(--color-info);
+}
+
+/* The press keeps the key's colour: the shared .push-button would otherwise flash its grey fill. */
+.push-button.primary:active,
+input:checked+.push-button.primary {
+    background: var(--push-primary-bg);
+    color: var(--push-primary-text);
+    animation-name: none;
+}
+
 /* A text field with its action button joined to it on the right, as in the feedback card's input. */
 .input-group {
     display: flex;
@@ -209,29 +312,4 @@ input:checked+.push-button:hover {
 .input-group button:disabled {
     opacity: 0.6;
     cursor: wait;
-}
-
-/* A small bordered button-like link with the external-link arrow: the About section's store links on
- * the options page and the devmode privacy notice link on either page wear it. */
-.detail-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    font-size: 0.9rem;
-    color: var(--color-brand);
-    border: 1.2px solid var(--color-brand);
-    border-radius: 4px;
-    padding: 2px 8px;
-    text-decoration: none;
-    font-weight: bold;
-    line-height: 1.2;
-    transition: all 0.2s;
-    background: transparent;
-    cursor: pointer;
-}
-
-.detail-button:hover {
-    background: var(--color-brand);
-    color: var(--color-on-brand);
 }

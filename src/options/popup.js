@@ -8,6 +8,7 @@ import { getConfig, onConfigValue } from "../config.js";
 import { computeGaugeValue, computeCollectingPeriod, sharePercent, summarizeLevels } from "../stats.js";
 import { isSiteEnabled, getClickbaitLevelInfo, levelToI18nKey, localizeDocument } from "./utils.js";
 import { homeStatus } from "./home-status.js";
+import { initSetupLine } from "./setup-line.js";
 import { setupDevCapture, refreshDevCapture } from "./dev-capture.js";
 import { CAPTURE_REL } from "./capture-target.js";
 import { VIEW_SELECTORS, VIEW_LABELS } from "./views.js";
@@ -825,6 +826,8 @@ const _setUpView = async (e) => {
     log("Setting up UI");
 
     databaseIsEmpty = await model.read.getDatabaseEntryCount() === 0;
+
+    initSetupLine(document.getElementById("setup-line")).catch((err) => log("Could not set up the setup line:", err));
 
     // Connect directly to the content script in the active tab.
     // The connection automatically signals visibility, and disconnection signals closure.

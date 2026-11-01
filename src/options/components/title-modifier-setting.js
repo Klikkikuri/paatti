@@ -18,7 +18,7 @@ defineComponent('klikkikuri-converted-badge', KlikkikuriConvertedBadge);
  * Per-modifier metadata used to populate labels, descriptions, and badge previews.
  * When registering a new modifier, add an entry here and register the matching badge above, so `badgeTag` is defined.
  *
- * @type {Record<string, {labelKey: string, labelFallback: string, titleKey: string, titleFallback: string, descKey: string, descFallback: string, badgeTag: string}>}
+ * @type {Record<string, {labelKey: string, labelFallback: string, titleKey: string, titleFallback: string, descKey: string, descFallback: string, briefKey: string, briefFallback: string, badgeTag: string}>}
  */
 const MODIFIER_META = {
     aiSlop: {
@@ -28,6 +28,8 @@ const MODIFIER_META = {
         titleFallback: 'AI Content Marker',
         descKey:       'modifierAiSlopDesc',
         descFallback:  'Adds AI indicator to headlines when the content is primarily created or translated using AI.',
+        briefKey:      'modifierAiSlopBrief',
+        briefFallback: 'The article looks AI-written or AI-translated.',
         badgeTag:      'klikkikuri-ai-badge',
     },
     video: {
@@ -37,6 +39,8 @@ const MODIFIER_META = {
         titleFallback: 'Video Content Marker',
         descKey:       'modifierVideoDesc',
         descFallback:  'Shows a video icon next to headlines when the link is mostly video rather than a written article.',
+        briefKey:      'modifierVideoBrief',
+        briefFallback: 'The link leads mostly to a video.',
         badgeTag:      'klikkikuri-video-badge',
     },
     converted: {
@@ -46,6 +50,8 @@ const MODIFIER_META = {
         titleFallback: 'Converted Headline Marker',
         descKey:       'modifierConvertedDesc',
         descFallback:  'Shows an indicator next to headlines whose text Paatti has replaced with the aligned version.',
+        briefKey:      'modifierConvertedBrief',
+        briefFallback: 'Klikkikuri rewrote this headline. Click it to give feedback.',
         badgeTag:      'klikkikuri-converted-badge',
     },
 };
@@ -57,7 +63,12 @@ const modifierOf = (el) => el.getAttribute('modifier') || 'aiSlop';
 const text = (meta, key, fallback, whenUnknown) =>
     (meta ? (browser.i18n.getMessage(meta[key]) || meta[fallback]) : whenUnknown);
 
-/** Title modifier options (Tekoälymerkintä / AI Slop, Videomerkintä / Video). */
+/**
+ * Title modifier options (Tekoälymerkintä / AI Slop, Videomerkintä / Video).
+ *
+ * An instance with the `brief` attribute shows one short phrase in place of the full description, for a page
+ * that has little room to explain, such as the setup wizard.
+ */
 const TitleModifierSetting = createToggleSetting({
     settingKey: (el) => `modifier-${modifierOf(el)}`,
 
@@ -72,7 +83,9 @@ const TitleModifierSetting = createToggleSetting({
         return {
             compact: text(meta, 'labelKey', 'labelFallback', modifier),
             title: text(meta, 'titleKey', 'titleFallback', modifier),
-            description: text(meta, 'descKey', 'descFallback', ''),
+            description: el.hasAttribute('brief')
+                ? text(meta, 'briefKey', 'briefFallback', '')
+                : text(meta, 'descKey', 'descFallback', ''),
         };
     },
 

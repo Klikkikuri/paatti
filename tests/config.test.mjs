@@ -232,6 +232,7 @@ describe('providers folded into siteConfigs', () => {
                     assert.equal(await isSiteEnabled('www.hs.fi'), true);
                     fake.browser.permissions.contains = async () => true;
                     assert.equal(await isSiteEnabled('new.example.fi'), true);
+                    assert.equal(await isSiteEnabled('new.example.fi', config), true, 'accepts a read config');
                 } finally {
                     fake.browser.permissions.contains = original;
                 }

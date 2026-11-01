@@ -141,6 +141,11 @@
     --push-accent: #3399df;
     --push-accent-bright: #73d9ff;
 
+    /* Primary push button: the filled key to the grey keys around it. It borrows the brand gradient
+     * from the logo, so it reads as the same family without introducing a new hue. */
+    --push-primary-bg: var(--gradient-brand);
+    --push-primary-text: #ffffff;
+
     /* Feedback items */
     --feedback-vote-yes-bg: #ecfdf5;
     --feedback-vote-yes-text: #065f46;
@@ -214,6 +219,7 @@
         --push-shadow: #0b0d12;
         --push-accent: #6ec1ff;
         --push-accent-bright: #a8e0ff;
+
 
         --feedback-vote-yes-bg: #14342a;
         --feedback-vote-yes-text: #6ee7b7;
