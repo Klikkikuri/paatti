@@ -204,6 +204,27 @@ input:checked+.push-button:hover {
     }
 }
 
+/* Primary push button: the one action a screen asks for. It is the filled key to the grey keys around it,
+ * with the same flat face and hard shadow, so it reads as part of the same panel. */
+.push-button.primary {
+    background: var(--push-primary-bg);
+    color: var(--push-primary-text);
+    border-radius: 0.375rem;
+}
+
+.push-button.primary:hover {
+    color: var(--push-primary-text);
+    outline-color: var(--color-info);
+}
+
+/* The press keeps the key's colour: the shared .push-button would otherwise flash its grey fill. */
+.push-button.primary:active,
+input:checked+.push-button.primary {
+    background: var(--push-primary-bg);
+    color: var(--push-primary-text);
+    animation-name: none;
+}
+
 /* A text field with its action button joined to it on the right, as in the feedback card's input. */
 .input-group {
     display: flex;

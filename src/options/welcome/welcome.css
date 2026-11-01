@@ -134,16 +134,26 @@ body {
     box-shadow: 0.1875rem 0.1875rem 0 var(--welcome-accent);
 }
 
-.welcome-button:disabled {
+/* The footer's Back and Next wear the shared .push-button. They keep the 44 px target, and a hidden one keeps its
+ * place, so that Next stays on the right while there is no Back. */
+.bar-bottom .push-button {
+    min-height: 2.75rem;
+    min-width: 7rem;
+    padding: 0.375rem 1.25rem;
+}
+
+.bar-bottom .push-button[hidden] {
+    display: inline-block;
     visibility: hidden;
 }
 
-/* Hidden but still in the layout, so that Next stays on the right when there is no Back. */
+/* As above, for the news sites of the ready step: a site that is not enabled keeps its slot. */
 .welcome-button[hidden] {
     display: inline-block;
     visibility: hidden;
 }
 
+.push-button:focus-visible,
 .welcome-button:focus-visible,
 .welcome-link:focus-visible,
 a:focus-visible,
