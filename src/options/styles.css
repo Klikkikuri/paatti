@@ -582,10 +582,6 @@ img.icon {
 
 /* Misc */
 
-.error {
-    color: var(--color-danger);
-}
-
 /*
  * The companion the home view shows when it has nothing to report yet: while it waits for the page,
  * and on a site Paatti does not cover. It is the very artwork <page-background> draws its easter egg

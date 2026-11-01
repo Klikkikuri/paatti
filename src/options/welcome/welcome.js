@@ -1,5 +1,5 @@
 import browser from '../../browser-api.js';
-import { onConfigValue } from '../../config.js';
+import { getConfig, onConfigValue } from '../../config.js';
 import { Clickbaitiness, model } from '../../model.js';
 import { controller } from '../../controller.js';
 import { localizeDocument, getClickbaitLevelInfo } from '../utils.js';
@@ -15,6 +15,9 @@ import './step-indicator.js';
 /** Level of each sample headline in the strictness figure: all five of the slider. */
 const SAMPLE_LEVELS = [0, 1, 2, 3, 4];
 const DEFAULT_LEVEL = 2;
+
+/** How many enabled sites the last slide offers. */
+const NEWS_SITE_LIMIT = 3;
 
 /** How long a move that the code started may take to reach its slide before the scroll position leads again. */
 const SCROLL_SETTLE_MS = 900;
@@ -158,27 +161,75 @@ async function finish() {
     if (tab) await browser.tabs.remove(tab.id);
 }
 
-/** The news site buttons are for the sites that are on. A site that the user switched off has no button. */
-function followNewsSites() {
-    const buttons = [...document.querySelectorAll('.news-button')];
-    const group = document.getElementById('news-sites');
-    let generation = 0;
-
-    onConfigValue((config) => JSON.stringify(Object.entries(config.siteConfigs ?? {}).map(([domain, site]) => [domain, site.enabled])), async () => {
-        const current = ++generation;
-        const enabled = await model.read.getSitesEnabled();
-        const domains = await Promise.all(buttons.map((button) => model.read.getMatchingSiteDomain(new URL(button.dataset.url).hostname)));
-        if (current !== generation) return;
-
-        buttons.forEach((button, index) => { button.hidden = !(domains[index] && enabled[domains[index]]); });
-        group.hidden = buttons.every((button) => button.hidden);
-    });
-}
-
 /** Open a news site in a new tab and keep the wizard where it is. The flag is written first. */
 async function openNewsSite(url) {
     await markWizardDone();
     await browser.tabs.create({ url, active: true });
+}
+
+/** The site that a tab of this URL is on, or null. */
+async function siteDomainOf(url) {
+    try {
+        return await model.read.getMatchingSiteDomain(new URL(url).hostname);
+    } catch {
+        return null;
+    }
+}
+
+/** At most NEWS_SITE_LIMIT enabled domains, those with an open tab first. */
+async function offerSites(config) {
+    const domains = Object.entries(config.siteConfigs || {})
+        .filter(([, site]) => site.enabled)
+        .map(([domain]) => domain);
+    if (domains.length === 0) return [];
+
+    const openDomains = new Set();
+    for (const tab of await browser.tabs.query({})) {
+        const domain = await siteDomainOf(tab.url);
+        if (domain) openDomains.add(domain);
+    }
+
+    const rank = (domain) => (openDomains.has(domain) ? 0 : 1);
+    return domains.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b)).slice(0, NEWS_SITE_LIMIT);
+}
+
+/** One site as a list item with an external link. The arrow is part of the label, as on every detail link. */
+function siteItem(domain) {
+    const icon = document.createElement('favicon-img');
+    icon.setAttribute('domain', domain);
+    icon.setAttribute('size', '16');
+
+    const link = document.createElement('a');
+    link.className = 'detail-button news-button';
+    link.href = `https://${domain}/`;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.append(icon, `${domain} ↗`);
+
+    const item = document.createElement('li');
+    item.appendChild(link);
+    return item;
+}
+
+/** Fill the last slide with the enabled sites, most relevant first. */
+function followNewsSites() {
+    const container = document.querySelector('.news-buttons');
+    const open = document.getElementById('news-sites-open');
+    const empty = document.getElementById('news-sites-empty');
+    let generation = 0;
+
+    onConfigValue((config) => JSON.stringify(Object.entries(config.siteConfigs ?? {})
+        .map(([domain, site]) => [domain, site.enabled])), async () => {
+        const current = ++generation;
+        const domains = await offerSites(await getConfig());
+        if (current !== generation) return;
+
+        const hasSites = domains.length > 0;
+        container.replaceChildren(...domains.map(siteItem));
+        container.hidden = !hasSites;
+        open.hidden = !hasSites;
+        empty.hidden = hasSites;
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -234,8 +285,11 @@ document.addEventListener('DOMContentLoaded', () => {
     indicator.addEventListener('step-select', (event) => go(event.detail));
     document.getElementById('skip').addEventListener('click', finish);
     document.getElementById('all-settings').addEventListener('click', () => browser.runtime.openOptionsPage());
-    document.querySelectorAll('.news-button').forEach((button) => {
-        button.addEventListener('click', () => openNewsSite(button.dataset.url));
+    document.querySelector('.news-buttons').addEventListener('click', (event) => {
+        const link = event.target.closest('.news-button');
+        if (!link) return;
+        event.preventDefault();
+        openNewsSite(link.href);
     });
 
     // Arrow keys move through the deck. A move hands the focus to a heading, so the target is not the body: only

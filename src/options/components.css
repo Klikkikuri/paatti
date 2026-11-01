@@ -1,7 +1,8 @@
 /**
- * Rules shared by both extension pages, for the Web Components that appear on
- * each of them. Loaded after theme.css by popup.html and index.html; anything
- * that only one page needs belongs in styles.css or options.css instead.
+ * Rules shared by every extension page, for the Web Components that appear on
+ * each of them. Loaded after theme.css by popup.html, index.html and
+ * welcome.html; anything that only one page needs belongs in styles.css or
+ * options.css instead.
  */
 
 /* Raised container: lifts a block off a sunken surface. Add the class, or extend
@@ -12,6 +13,39 @@
     border: 1px solid var(--color-border-strong);
     border-radius: 6px;
     box-shadow: var(--push-shadow) var(--raised-offset) var(--raised-offset);
+}
+
+/* An external link, as a small outlined button: a site's policy links, the About store links, the provider links,
+ * and the wizard's ready links. The arrow is part of the text. */
+.detail-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--color-brand);
+    border: 1.2px solid var(--color-brand);
+    border-radius: 4px;
+    padding: 2px 8px;
+    text-decoration: none;
+    font-weight: bold;
+    line-height: 1.2;
+    transition: all 0.2s;
+    background: transparent;
+    cursor: pointer;
+}
+
+.detail-button:hover {
+    background: var(--color-brand);
+    color: var(--color-on-brand);
+}
+
+/* A narrow screen is likely a touch screen, so the link gets a larger target. */
+@media (max-width: 600px) {
+    .detail-button {
+        padding: 6px 12px;
+    }
 }
 
 /* A small round badge that opens an explanation: the statistics table's "How to read", the popup's level
@@ -106,6 +140,11 @@
 .text-muted-small {
     font-size: 0.85em;
     color: var(--color-text-secondary);
+}
+
+/* Text that reports a failure or a condition that blocks the user. */
+.error {
+    color: var(--color-danger);
 }
 
 .hidden {

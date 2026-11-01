@@ -1437,6 +1437,10 @@
     "message": "Avaa käytössä oleva uutissivusto:",
     "description": "Label before the news site buttons. The buttons are the supported sites that the user has switched on."
   },
+  "welcomeReadyNoSites": {
+    "message": "⚠️ Klikkikuri Paatti ei ole käytössä millään sivustolla. Mitään sivustoa ei muuteta, kunnes otat sen käyttöön sivustokohtaisesti.",
+    "description": "Shown instead of the news site buttons when the user has no site switched on."
+  },
   "welcomeReadyPinChromium": {
     "message": "Kiinnitä Klikkikuri Paatti helpompaa käyttöä varten: avaa työkalupalkin palapelivalikko ja valitse nastakuvake.",
     "description": "Hint to pin the extension in Chromium browsers."

@@ -24,10 +24,14 @@ detailedTemplate.innerHTML = `
         <div class="site-info">
             <favicon-img class="site-favicon" size="24"></favicon-img>
             <div class="site-details">
-                <div class="site-name"></div>
-                <div class="site-domain"></div>
-                <div class="site-status" role="status"></div>
-                <div class="site-details-container"></div>
+                <div class="site-title-line">
+                    <div class="site-name"></div>
+                    <span class="site-status-tag" role="status" hidden></span>
+                </div>
+                <div class="site-domain-line">
+                    <div class="site-domain"></div>
+                    <div class="site-details-container"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -59,14 +63,15 @@ class SiteToggleSetting extends HTMLElement {
         this.state = { enabled: false, hasPermission: false };
     }
 
-    /** Write the state of the site as text, in the detailed layout. The compact layout has no room for it. */
+    /** Show beside the name the one state that the user must act on. The toggle itself carries on and off. */
     renderStatus(state) {
         this.state = { ...this.state, ...state };
-        const statusEl = this.querySelector('.site-status');
-        if (!statusEl) return;
-
         const { key, fallback } = siteStatusOf(this.state.enabled, this.state.hasPermission);
-        statusEl.textContent = browser.i18n.getMessage(key) || fallback;
+        const tagEl = this.querySelector('.site-status-tag');
+        if (!tagEl) return;
+
+        tagEl.hidden = key !== 'siteStatusNeedsPermission';
+        tagEl.textContent = tagEl.hidden ? '' : browser.i18n.getMessage(key) || fallback;
     }
 
     /**

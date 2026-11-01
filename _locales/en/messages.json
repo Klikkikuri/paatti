@@ -1607,6 +1607,10 @@
     "message": "Open an enabled news site:",
     "description": "Label before the news site buttons. The buttons are the supported sites that the user has switched on."
   },
+  "welcomeReadyNoSites": {
+    "message": "⚠️ No sites are enabled. Klikkikuri Paatti won't affect any sites until you enable it on per-site basis.",
+    "description": "Shown instead of the news site buttons when the user has no site switched on."
+  },
   "welcomeReadyPinChromium": {
     "message": "Pin Klikkikuri Paatti for easier access: open the puzzle-piece menu in the toolbar and select the pin.",
     "description": "Hint to pin the extension in Chromium browsers."

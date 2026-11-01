@@ -109,31 +109,6 @@ body {
     cursor: pointer;
 }
 
-.welcome-button {
-    min-height: 2.75rem;
-    min-width: 7rem;
-    padding: 0.375rem 1.25rem;
-    border: 0.125rem solid var(--welcome-ink);
-    border-radius: 0.25rem;
-    background: transparent;
-    color: var(--welcome-ink);
-    font: inherit;
-    font-family: var(--font-display);
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    cursor: pointer;
-}
-
-.welcome-button.primary {
-    background: var(--welcome-ink);
-    color: var(--welcome-paper);
-}
-
-.welcome-button:hover {
-    box-shadow: 0.1875rem 0.1875rem 0 var(--welcome-accent);
-}
-
 /* The footer's Back and Next wear the shared .push-button. They keep the 44 px target, and a hidden one keeps its
  * place, so that Next stays on the right while there is no Back. */
 .bar-bottom .push-button {
@@ -147,14 +122,8 @@ body {
     visibility: hidden;
 }
 
-/* As above, for the news sites of the ready step: a site that is not enabled keeps its slot. */
-.welcome-button[hidden] {
-    display: inline-block;
-    visibility: hidden;
-}
-
 .push-button:focus-visible,
-.welcome-button:focus-visible,
+.news-button:focus-visible,
 .welcome-link:focus-visible,
 a:focus-visible,
 summary:focus-visible,
@@ -786,14 +755,28 @@ a {
 
 /* --- last slide --- */
 
-.news-buttons [hidden] {
-    display: none;
-}
-
 .news-buttons {
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* The item is a flex box, so the link does not sit on the text baseline: a real icon and a letter fallback
+   then line up on every row. */
+.news-buttons li {
+    display: flex;
+}
+
+.news-button favicon-img {
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.news-button favicon-img img {
+    border-radius: 0.25rem;
 }
 
 .pin-hint {
@@ -909,12 +892,6 @@ html[data-mode="tour"] #slide-ready .slide-grid {
 
     .bar-bottom {
         gap: 0.5rem;
-    }
-
-    .bar-bottom .welcome-button {
-        flex: 1;
-        min-width: 0;
-        padding-inline: 0.5rem;
     }
 
     .slide-grid {
