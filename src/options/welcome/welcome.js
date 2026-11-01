@@ -2,7 +2,7 @@ import browser from '../../browser-api.js';
 import { getConfig, onConfigValue } from '../../config.js';
 import { Clickbaitiness, model } from '../../model.js';
 import { controller } from '../../controller.js';
-import { localizeDocument, getClickbaitLevelInfo } from '../utils.js';
+import { localizeDocument, getClickbaitLevelInfo, isSiteEnabled } from '../utils.js';
 import { markWizardDone } from '../../welcome-state.js';
 import {
     SLIDES, clampIndex, createNavigator, flowIds, fragmentOf, indexOfFragment, modeOf, nextInFlow,
@@ -182,11 +182,12 @@ async function siteDomainOf(url) {
     }
 }
 
-/** At most NEWS_SITE_LIMIT enabled domains, those with an open tab first. */
+/** At most NEWS_SITE_LIMIT sites that this browser can run, those with an open tab first. */
 async function offerSites(config) {
-    const domains = Object.entries(config.siteConfigs || {})
-        .filter(([, site]) => site.enabled)
-        .map(([domain]) => domain);
+    const domains = [];
+    for (const domain of Object.keys(config.siteConfigs || {})) {
+        if (await isSiteEnabled(domain, config)) domains.push(domain);
+    }
     if (domains.length === 0) return [];
 
     const openDomains = new Set();
@@ -217,25 +218,36 @@ function siteItem(domain) {
     return item;
 }
 
-/** Fill the last slide with the enabled sites, most relevant first. */
+/** Fill the last slide with the sites that work here, most relevant first. */
 function followNewsSites() {
     const container = document.querySelector('.news-buttons');
     const open = document.getElementById('news-sites-open');
     const empty = document.getElementById('news-sites-empty');
     let generation = 0;
 
-    onConfigValue((config) => JSON.stringify(Object.entries(config.siteConfigs ?? {})
-        .map(([domain, site]) => [domain, site.enabled])), async () => {
+    const render = async () => {
         const current = ++generation;
-        const domains = await offerSites(await getConfig());
-        if (current !== generation) return;
+        try {
+            const domains = await offerSites(await getConfig());
+            if (current !== generation) return;
 
-        const hasSites = domains.length > 0;
-        container.replaceChildren(...domains.map(siteItem));
-        container.hidden = !hasSites;
-        open.hidden = !hasSites;
-        empty.hidden = hasSites;
-    });
+            const hasSites = domains.length > 0;
+            container.replaceChildren(...domains.map(siteItem));
+            container.hidden = !hasSites;
+            open.hidden = !hasSites;
+            empty.hidden = hasSites;
+        } catch (err) {
+            console.error('Failed to list the sites that the setup offers:', err);
+        }
+    };
+    const refresh = () => { render(); };
+
+    onConfigValue((config) => JSON.stringify(Object.entries(config.siteConfigs ?? {})
+        .map(([domain, site]) => [domain, site.enabled])), render);
+    // A site that the sites slide turns on asks for permission. The answer changes which sites work here and no
+    // config value, so the config subscription above does not fire again.
+    browser.permissions.onAdded.addListener(refresh);
+    browser.permissions.onRemoved.addListener(refresh);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

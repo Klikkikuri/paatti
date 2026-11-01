@@ -4,20 +4,20 @@ import { getConfig } from '../config.js';
 
 const log = getLogger('options/utils');
 
-const isSiteEnabled = async (domain) => {
-    const config = await getConfig();
-    const siteConfig = config.siteConfigs ? config.siteConfigs[domain] || {} : {};
+/**
+ * Whether a site is on and this browser has granted its origins.
+ *
+ * @param {string} domain
+ * @param {object} [config] - An already-read config, so a caller does not read it again.
+ * @returns {Promise<boolean>}
+ */
+const isSiteEnabled = async (domain, config) => {
+    config ??= await getConfig();
+    const siteConfig = config.siteConfigs?.[domain];
+    if (!siteConfig?.enabled) return false;
 
-    if (!siteConfig) {
-        log(`No site config for ${domain}, returning false`);
-        return false;
-    }
-
-    const enabled = siteConfig.enabled !== undefined ? siteConfig.enabled : false;
     const origins = siteConfig.origins || [];
-    const hasPermission = origins.length > 0 ? await browser.permissions.contains({ origins }) : false;
-
-    return enabled && hasPermission;
+    return origins.length > 0 && await browser.permissions.contains({ origins });
 };
 
 /**

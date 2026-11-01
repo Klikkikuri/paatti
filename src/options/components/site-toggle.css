@@ -120,7 +120,8 @@ site-toggle-setting .site-status-tag {
     border: 1px solid var(--color-warning);
     border-radius: 999px;
     background: color-mix(in srgb, var(--color-warning) 12%, transparent);
-    color: var(--color-warning);
+    /* The warning colour is below 4.5:1 as small text on the light theme, so it stays on the border and the tint. */
+    color: var(--color-text-heading);
     font-size: 0.75rem;
     font-weight: bold;
     line-height: 1.4;

@@ -380,9 +380,11 @@ export async function showIntroCard({ browser, log }) {
     shadow.appendChild(fade);
 
     let closed = false;
+    const keys = new AbortController();
     function close() {
         if (closed) return;
         closed = true;
+        keys.abort();
 
         const remove = () => {
             try { host.hidePopover(); } catch { /* not shown, or already hidden */ }
@@ -396,9 +398,10 @@ export async function showIntroCard({ browser, log }) {
     }
 
     bar.addEventListener("animationend", close);
-    card.addEventListener("keydown", (event) => {
+    // The card takes no focus, so Escape has to reach it from the page. Capture, as the feedback dialog does.
+    window.addEventListener("keydown", (event) => {
         if (event.key === "Escape") close();
-    });
+    }, { capture: true, signal: keys.signal });
 
     document.documentElement.appendChild(host);
     host.showPopover();

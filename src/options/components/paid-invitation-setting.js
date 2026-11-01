@@ -36,6 +36,10 @@ class PaidInvitationSetting extends ComponentBase {
     #input;
     #button;
     #status;
+    #idleLabel = '';
+    /** `idle`: Send works; `sending`: a request is in flight; `sent`: the address went out a moment ago. */
+    #state = 'idle';
+    #submittedEmail = '';
 
     onConnect() {
         this.replaceChildren(template.content.cloneNode(true));
@@ -44,12 +48,22 @@ class PaidInvitationSetting extends ComponentBase {
         this.#input = this.querySelector('input');
         this.#button = this.querySelector('.email-submit-btn');
         this.#status = this.querySelector('.invitation-status');
+        this.#idleLabel = this.#button.textContent;
+        this.#state = 'idle';
+        this.#submittedEmail = '';
         this.#syncButton();
 
         const { signal } = this;
-        this.#input.addEventListener('input', () => this.#syncButton(), { signal });
+        this.#input.addEventListener('input', () => {
+            // A different address is a new submission: leave Sent, but never cancel a request in flight.
+            if (this.#state === 'sent' && this.#input.value.trim() !== this.#submittedEmail) {
+                this.#resetButton();
+                return;
+            }
+            this.#syncButton();
+        }, { signal });
         this.#input.addEventListener('keydown', (event) => {
-            if (event.key !== 'Enter') return;
+            if (event.key !== 'Enter' || this.#button.disabled) return;
             event.preventDefault();
             this.#submit();
         }, { signal });
@@ -65,7 +79,7 @@ class PaidInvitationSetting extends ComponentBase {
 
     #syncButton() {
         const value = this.#input.value.trim();
-        this.#button.disabled = value === '' || this.#input.validity.typeMismatch;
+        this.#button.disabled = this.#state !== 'idle' || value === '' || this.#input.validity.typeMismatch;
     }
 
     #show(text, isError = false) {
@@ -73,14 +87,25 @@ class PaidInvitationSetting extends ComponentBase {
         this.#status.classList.toggle('error', isError);
     }
 
+    /** Return the button to the state in which it sends again. */
+    #resetButton() {
+        this.#state = 'idle';
+        this.#button.textContent = this.#idleLabel;
+        this.#button.classList.remove('success');
+        this.#syncButton();
+    }
+
     async #submit() {
+        if (this.#state !== 'idle') return;
+
         const email = this.#input.value.trim();
         if (!email) {
             this.#show(browser.i18n.getMessage('invitationEmailRequired') || 'Please enter an email address', true);
             return;
         }
 
-        const label = this.#button.textContent;
+        const { signal } = this;
+        this.#state = 'sending';
         this.#button.disabled = true;
         this.#button.textContent = browser.i18n.getMessage('invitationEmailSending') || 'Sending...';
         this.#show('');
@@ -89,13 +114,18 @@ class PaidInvitationSetting extends ComponentBase {
             await registerInvitation(email);
             await model.write.setEmail(email, 'paid');
         } catch (error) {
+            if (signal.aborted) return;
             console.error('Error registering email:', error);
-            this.#button.textContent = label;
-            this.#syncButton();
+            this.#resetButton();
             this.#show(browser.i18n.getMessage('invitationEmailError') || 'Error registering email', true);
             return;
         }
 
+        // The request went out, so the address is kept even when this component is gone by now.
+        if (signal.aborted) return;
+
+        this.#state = 'sent';
+        this.#submittedEmail = email;
         this.#button.textContent = browser.i18n.getMessage('invitationEmailSent') || '✓ Sent';
         this.#button.classList.add('success');
         this.#show(browser.i18n.getMessage('invitationEmailSuccess') || 'Email registered successfully!');
@@ -106,12 +136,10 @@ class PaidInvitationSetting extends ComponentBase {
             fallback: 'Email registered successfully!',
         });
 
-        setTimeout(() => {
-            if (!this.isConnected) return;
-            this.#button.textContent = label;
-            this.#button.classList.remove('success');
-            this.#syncButton();
+        const timer = setTimeout(() => {
+            if (this.#state === 'sent') this.#resetButton();
         }, SENT_MS);
+        this.addTeardown(() => clearTimeout(timer));
     }
 }
 

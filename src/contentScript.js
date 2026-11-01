@@ -185,13 +185,28 @@ let hrefSigns;
     // Processing subroutines.
 
     let introCardOffered = false;
+    let waitingForVisibleTab = false;
 
     /**
-     * Ask once per page load for the first-activation card. The background script says yes one time, ever, so
-     * of several pages that activate together only one shows it. The card module is imported only on a yes.
+     * Ask once per page load for the first-activation card, when this page is in front. The background script
+     * says yes one time, ever, so of several pages that activate together only one shows it. The card module is
+     * imported only on a yes.
      */
     const offerIntroCard = async () => {
         if (introCardOffered) return;
+
+        // The card lasts ten seconds. A hidden tab would spend the one claim where nobody sees it, so wait for
+        // the user to bring this page to the front.
+        if (document.visibilityState !== "visible") {
+            if (waitingForVisibleTab) return;
+            waitingForVisibleTab = true;
+            document.addEventListener("visibilitychange", () => {
+                waitingForVisibleTab = false;
+                offerIntroCard();
+            }, { once: true });
+            return;
+        }
+
         introCardOffered = true;
 
         try {
@@ -423,8 +438,8 @@ let hrefSigns;
         );
 
         // Headlines of the page are in the data, rewritten or not: offer the setup now, before anything below can
-        // delay or fail. Waiting for a rewrite would leave a user with no card while every headline is under
-        // their level.
+        // delay or fail. A rewrite is not a safe condition: every headline can be under the level, or can have no
+        // converted title. The card still tells the user that the extension ran on this page.
         if (stats.converted + stats.original > 0) offerIntroCard();
 
         // Build live page snapshot from all reasons currently on page

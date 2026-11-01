@@ -116,13 +116,19 @@ describe('the buttons', () => {
 });
 
 describe('closing', () => {
-    test('Escape closes the card', async () => {
-        await showIntroCard({ browser: fake.browser, log });
-        shadow().querySelector('.later').dispatchEvent(Object.assign(new Event('keydown', { bubbles: true }), { key: 'Escape' }));
-        await flush(450);
+    const ESCAPE = { key: 'Escape', bubbles: true, composed: true };
+    for (const [name, target] of [
+        ['with focus on the page', () => document.body],
+        ['with focus in the card', () => shadow().querySelector('.later')],
+    ]) {
+        test(`Escape closes the card ${name}`, async () => {
+            await showIntroCard({ browser: fake.browser, log });
+            target().dispatchEvent(new dom.window.KeyboardEvent('keydown', ESCAPE));
+            await flush(450);
 
-        assert.equal(cardHost(), null);
-    });
+            assert.equal(cardHost(), null);
+        });
+    }
 
     test('the card hides itself when its bar has run out', async () => {
         await showIntroCard({ browser: fake.browser, log });
