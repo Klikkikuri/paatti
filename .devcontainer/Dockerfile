@@ -1,15 +1,23 @@
-# Shim package (equivs-style, but dpkg-deb needs no extra tooling) that
-# satisfies chromium dependencies headless CDP use never touches:
-#  - mesa-libgallium: Mesa's private shared-infrastructure library holding
-#    the gallium driver code, loaded at runtime by libgbm1 and the GL/EGL
-#    front-ends; drags in libllvm19 + libz3-4. Headless chromium renders
-#    with its bundled ANGLE/SwiftShader and never loads it. libgbm1 pins
-#    it with (= version), so mirror that version exactly.
-#  - xdg-desktop-portal-backend: satisfies the "libgtk-3-0t64 | ..."
-#    alternative, dropping the GTK/dconf/dbus/adwaita chain (GTK is
-#    dlopen'd only when a real UI exists).
-#  - x11-utils, xdg-utils: script tools from chromium-common.
-# Together: ~70 MB less download, ~300 MB smaller image.
+# Stages:
+#  - shim-build: a shim package (equivs-style, but dpkg-deb needs no extra tooling) that
+#    satisfies chromium dependencies headless CDP use never touches:
+#     - mesa-libgallium: Mesa's private shared-infrastructure library holding
+#       the gallium driver code, loaded at runtime by libgbm1 and the GL/EGL
+#       front-ends; drags in libllvm19 + libz3-4. Headless chromium renders
+#       with its bundled ANGLE/SwiftShader and never loads it. libgbm1 pins
+#       it with (= version), so mirror that version exactly.
+#     - xdg-desktop-portal-backend: satisfies the "libgtk-3-0t64 | ..."
+#       alternative, dropping the GTK/dconf/dbus/adwaita chain (GTK is
+#       dlopen'd only when a real UI exists).
+#     - x11-utils, xdg-utils: script tools from chromium-common.
+#    Together: ~70 MB less download, ~300 MB smaller image.
+#  - test: everything the project's test targets need -- make, python3, chromium and
+#    its illustrated deps, uv and jsdom. The Build workflow's `suites` job builds this
+#    stage and runs `make test-devserver` and `make test-e2e` in the image. The dev
+#    container's final stage builds on this stage, so both use one environment.
+#  - dev (final, picked up by devcontainer.json): the dev container itself -- agent
+#    tooling (rsvg, imagemagick, ripgrep, fd, jq, yq, shellcheck, gh, eslint, web-ext)
+#    on top of test, running as user node without passwordless sudo.
 FROM mcr.microsoft.com/devcontainers/typescript-node:5-24-trixie AS shim-build
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
@@ -28,7 +36,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && dpkg-deb -b /shim /chromium-headless-shims.deb
 
 
-FROM mcr.microsoft.com/devcontainers/typescript-node:5-24-trixie
+FROM mcr.microsoft.com/devcontainers/typescript-node:5-24-trixie AS test
 
 # See the shim-build stage: placeholders for heavy chromium deps that
 # headless use never touches. Must be registered before chromium installs.
@@ -46,9 +54,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         zip \
         python3 \
         wamerican \
-        # For image processing
-        librsvg2-bin \
-        imagemagick \
+        curl \
         # Headless browser for chrome-devtools-mcp, which drives Chromium over
         # CDP and needs no webdriver. Point automation at
         # /usr/lib/chromium/chromium, not /usr/bin/chromium: the latter is a
@@ -56,7 +62,27 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         # /etc/chromium.d/ (including an empty --load-extension=).
         chromium \
         # Emoji glyphs, or popup screenshots render tofu boxes
-        fonts-noto-color-emoji \
+        fonts-noto-color-emoji
+
+# uv runs the development server in packages/karikko (`make serve`, `make test-devserver`, `make test-e2e`).
+COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /uvx /usr/local/bin/
+
+# jsdom is installed rather than imported -- `make test` and `make test-devserver` point
+# NODE_PATH at the global root, and support files reach it through the CJS resolver.
+# The cache mount is keyed by its target path, so the dev stage shares it. The cache
+# stays out of the image; --no-audit and --no-fund drop unneeded registry requests.
+RUN --mount=type=cache,target=/root/.npm,sharing=shared \
+    npm install --global --no-audit --no-fund jsdom@27
+
+# Development stage
+FROM test AS dev
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get update && export DEBIAN_FRONTEND=noninteractive \
+    && apt-get -y install --no-install-recommends \
+        # Image processing
+        librsvg2-bin \
+        imagemagick \
         # Agent tools
         ripgrep bat \
         fd-find \
@@ -79,12 +105,14 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends gh
 
-# Linters behind `make lint`: eslint enforces the browser-namespace import rule,
-# web-ext the AMO checks. run.sh uses web-ext too. jsdom is imported rather than run --
-# the `make test` target points NODE_PATH at the global root so the tests can reach it.
-RUN npm install -g eslint@10 web-ext@10 jsdom@27
-
+# Linters: `make lint` runs eslint, which enforces the browser-namespace import rule;
+# `make lint-webext` runs web-ext on the Firefox tree. run.sh uses web-ext too. This is
+# the cache mount that the test stage fills.
+RUN --mount=type=cache,target=/root/.npm,sharing=shared \
+    npm install --global --no-audit --no-fund eslint@10 web-ext@10
 # Disable passwordless sudo
 RUN rm -f /etc/sudoers.d/node
+
+WORKDIR /app
 
 USER node

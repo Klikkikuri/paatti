@@ -41,6 +41,9 @@ const HOST_STYLE = {
     border: "0",
     padding: "0",
     display: "block",
+    // `inherit`, so a page's `:not(:defined)` guard cannot hide the unregistered host. The value is what the
+    // host would have had without that rule, so the overlay follows the document root and nothing else.
+    visibility: "inherit",
     // The maximum. Nothing here has to leave room for the feedback dialog this overlay opens: that one is a
     // popover and paints in the top layer, which no z-index competes with.
     "z-index": "2147483647",

@@ -1,0 +1,45 @@
+name: Release Checks
+
+# The strict tier. The Build workflow tests any commit on any branch; this workflow guards the release
+# branch, where a publish must stay possible. A green Build run therefore does not say that the commit
+# can be released; this check says that.
+#
+# The rule and its reasons are in docs/release.md, "Submodule Pointers". This file only applies it.
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pointers:
+    name: "🏷️ Submodule Pointers"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "🔄 Checkout Repository"
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      # The checkout does not fetch submodule tags, and git describe needs them.
+      - name: "🏷️ Fetch Suola Tags"
+        run: |
+          git -C suola fetch --tags
+
+      - name: "🏷️ Check the Pointers"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          make check-submodule-pointers

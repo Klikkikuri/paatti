@@ -445,25 +445,67 @@
     "message": "Settings for nerds",
     "description": "Title-attribute of the hidden devmode activation button"
   },
-  "devmodeCopyLinkSignaturesTitle": {
-    "message": "Copy link signatures on this site to your clipboard",
-    "description": "Title-attribute of the hidden devmode link signature copying button"
-  },
   "devmodeSetDebugVisualsLabel": {
     "message": "Visual Highlight",
     "description": "Label of the devmode debug visuals toggle"
   },
-  "devmodeDumpLinkHashLabel": {
-    "message": "Salt Signatures",
-    "description": "Label for the devmode dump signatures section"
+  "devmodeCaptureLabel": {
+    "message": "Development server",
+    "description": "devmode (development-only; wired from src/options/dev-capture.js): Label of the capture row that sends the page to the development server"
   },
-  "devmodeDumpLinkHashBtn": {
-    "message": "Copy to Clipboard",
-    "description": "Button text to copy link signatures to clipboard"
+  "devmodeCaptureBtn": {
+    "message": "Send page",
+    "description": "devmode (development-only): Button that sends the links and headlines of the page to the development server"
+  },
+  "devmodeCaptureSending": {
+    "message": "Sending…",
+    "description": "devmode (development-only): Shown while the page is sent to the development server and the database is updated"
+  },
+  "devmodeCaptureDone": {
+    "message": "Done: $COUNT$ links got test corrections.",
+    "description": "devmode (development-only): Result of sending the page to the development server",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "42"
+      }
+    }
+  },
+  "devmodeCaptureFailed": {
+    "message": "Not sent: $ERROR$",
+    "description": "devmode (development-only): Shown when sending the page to the development server fails",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "No Rahti site covers www.example.com"
+      }
+    }
+  },
+  "devmodeCaptureNoReply": {
+    "message": "The page did not answer the capture request.",
+    "description": "devmode (development-only): Shown when the content script or the injected scan returns nothing usable"
+  },
+  "devmodeCaptureNoUpdate": {
+    "message": "The database update gave no answer.",
+    "description": "devmode (development-only): Shown when the updateDatabase request comes back without a result"
+  },
+  "devmodeCaptureNoProvider": {
+    "message": "No provider supplies the site of $URL$.",
+    "description": "devmode (development-only): Shown when the captured page's host is supplied by no provider after the update",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "https://www.example.com/"
+      }
+    }
   },
   "settingsviewDevmodeTitle": {
     "message": "Developer Settings",
     "description": "Title of the settings view developer mode section"
+  },
+  "devmodePrivacyPolicyLink": {
+    "message": "Privacy notice for development versions ↗",
+    "description": "devmode (development-only): Link text that opens the privacy notice for the development versions"
   },
   "settingsviewDatabaseStatusTitle": {
     "message": "Database Update",

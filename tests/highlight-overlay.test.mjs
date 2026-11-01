@@ -30,6 +30,16 @@ beforeEach(() => {
     for (const host of document.querySelectorAll('klikkikuri-highlight-overlay')) host.remove();
 });
 
+describe('the overlay host', () => {
+    test('forces visibility inline, so a page rule that hides an undefined element cannot hide the overlay', () => {
+        createHighlightOverlay();
+        const host = document.querySelector('klikkikuri-highlight-overlay');
+
+        // jsdom drops the priority from its `visibility` serialization, so the hostile-css e2e proves the cascade.
+        assert.equal(host.style.getPropertyValue('visibility'), 'inherit');
+    });
+});
+
 describe('highlight sources', () => {
     test('clearing the hover keeps the card highlight', async () => {
         const overlay = createHighlightOverlay();

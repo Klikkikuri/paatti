@@ -29,8 +29,16 @@ Options:
   --light               Force light theme
   --dark                Force dark theme
   -s, --source-dir DIR  Run this directory as-is instead of building build/dist
-  -u, --url URL         Page to open on startup (default: http://yle.fi/uutiset)
+  -u, --url URL         Page to open on startup (default: Ilta-Pulu when the providers are added, otherwise
+                        http://yle.fi/uutiset). --start-url is accepted as a web-ext alias.
+  --devserver           Add the Ilta-Pulu and captured-sites providers of the development server (make serve)
+  --no-devserver        Do not add them
   -h, --help            Show this help
+
+Without -s, the providers are added when the development server answers on port DEVSERVER_PORT (default: 3000).
+When they are added, web-ext runs a staged copy in build/run-devserver that installs them on first run
+(tools/devserver-stage.mjs; README.md, section "Development Server"). With -s, the directory runs as-is unless
+--devserver is given, which stages it the same way.
 
 Unrecognised arguments are passed through to web-ext run.
 USAGE
@@ -40,8 +48,12 @@ TARGET="firefox-default"
 SOURCE_DIR=""
 ARGS=()
 THEME_ARGS=()
-START_URL="http://yle.fi/uutiset"
+START_URL=""
 LOG_FILE="build/run.log"
+DEVSERVER="auto"
+DEVSERVER_URL="http://localhost:${DEVSERVER_PORT:-3000}"
+DEVSERVER_MANIFEST="$DEVSERVER_URL/manifest/ilta-pulu/manifest.json"
+CAPTURED_MANIFEST="$DEVSERVER_URL/manifest/captured-sites/manifest.json"
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
@@ -69,6 +81,14 @@ while [[ $# -gt 0 ]]; do
                 --pref ui.systemUsesDarkTheme=1
                 --pref extensions.activeThemeID=firefox-compact-dark@mozilla.org
             )
+            shift
+            ;;
+        --devserver)
+            DEVSERVER="on"
+            shift
+            ;;
+        --no-devserver)
+            DEVSERVER="off"
             shift
             ;;
         -h|--help)
@@ -103,7 +123,25 @@ if [[ -z "$SOURCE_DIR" ]]; then
     make dist
 elif [[ ! -d "$SOURCE_DIR" ]]; then
     die "source dir not found: $SOURCE_DIR"
+elif [[ "$DEVSERVER" == "auto" ]]; then
+    DEVSERVER="off"
 fi
+
+if [[ "$DEVSERVER" == "auto" ]]; then
+    if curl -sf -o /dev/null --max-time 2 "$DEVSERVER_MANIFEST"; then
+        DEVSERVER="on"
+    else
+        DEVSERVER="off"
+        echo "run.sh: no development server at $DEVSERVER_MANIFEST, so its providers are not added"
+    fi
+fi
+if [[ "$DEVSERVER" == "on" ]]; then
+    node tools/devserver-stage.mjs "$SOURCE_DIR" build/run-devserver "$DEVSERVER_MANIFEST" "$CAPTURED_MANIFEST"
+    SOURCE_DIR="build/run-devserver"
+    START_URL="${START_URL:-$DEVSERVER_URL/}"
+    echo "run.sh: added $DEVSERVER_MANIFEST and $CAPTURED_MANIFEST to a copy in $SOURCE_DIR"
+fi
+START_URL="${START_URL:-http://yle.fi/uutiset}"
 
 ARGS=(-s "$SOURCE_DIR" "${ARGS[@]}")
 

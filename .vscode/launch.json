@@ -23,8 +23,8 @@
             },
             "url": "https://www.yle.fi/uutiset/",
             "addonPath": "${workspaceFolder}",
-            // "preLaunchTask": "Start HTTP data server",
-            // "postDebugTask": "Stop HTTP data server",
+            // "preLaunchTask": "Start development server",
+            // "postDebugTask": "Stop development server",
         }
     ]
 }

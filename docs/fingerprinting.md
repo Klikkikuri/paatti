@@ -67,7 +67,7 @@ background script for the card, and the background script answers yes one time f
 
 ## Requests to other servers
 
-Paatti makes three types of request. Each one obeys the same three rules:
+Paatti makes four types of request. Each one obeys the same three rules:
 
 * It sends no cookies (`credentials: "omit"`).
 * It sends no referrer (`referrerPolicy: "no-referrer"`).
@@ -86,6 +86,11 @@ cannot use the extension to examine the network of the user.
 **Feedback.** Paatti sends feedback only when the user pushes the button. Before it sends the address of
 the page, it removes the tracking keys from that address: each `utm_*` key, and the other keys in the
 list in `src/utils.js`.
+
+**A page sent to a development server.** Only a development build sends it, only when the user pushes **Send
+page** in the popup, and only to a capture address on the user's own computer that a local provider names
+(`src/options/capture-target.js`). It carries the address of the page and the links and headlines that the site
+rules find. The request goes from the popup, not from the page, and nothing of it enters the page.
 
 ## What a page cannot do
 

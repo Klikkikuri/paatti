@@ -445,25 +445,67 @@
     "message": "Asetuksia nörteille",
     "description": "Title-attribute of the hidden devmode activation button"
   },
-  "devmodeCopyLinkSignaturesTitle": {
-    "message": "Kopioi tämän sivun linkkien suolaukset leikepöydällesi",
-    "description": "Title-attribute of the hidden devmode link signature copying button"
-  },
   "devmodeSetDebugVisualsLabel": {
     "message": "Visuaalinen korostus",
     "description": "Label of the devmode debug visuals toggle"
   },
-  "devmodeDumpLinkHashLabel": {
-    "message": "Linkkien suolaukset",
-    "description": "Label for the devmode dump signatures section"
+  "devmodeCaptureLabel": {
+    "message": "Kehityspalvelin",
+    "description": "devmode (development-only; wired from src/options/dev-capture.js): Label of the capture row that sends the page to the development server"
   },
-  "devmodeDumpLinkHashBtn": {
-    "message": "Kopioi leikepöydälle",
-    "description": "Button text to copy link signatures to clipboard"
+  "devmodeCaptureBtn": {
+    "message": "Lähetä sivu",
+    "description": "devmode (development-only): Button that sends the links and headlines of the page to the development server"
+  },
+  "devmodeCaptureSending": {
+    "message": "Lähetetään…",
+    "description": "devmode (development-only): Shown while the page is sent to the development server and the database is updated"
+  },
+  "devmodeCaptureDone": {
+    "message": "Valmis: $COUNT$ linkkiä sai testikorjauksen.",
+    "description": "devmode (development-only): Result of sending the page to the development server",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "42"
+      }
+    }
+  },
+  "devmodeCaptureFailed": {
+    "message": "Ei lähetetty: $ERROR$",
+    "description": "devmode (development-only): Shown when sending the page to the development server fails",
+    "placeholders": {
+      "error": {
+        "content": "$1",
+        "example": "No Rahti site covers www.example.com"
+      }
+    }
+  },
+  "devmodeCaptureNoReply": {
+    "message": "Sivu ei vastannut tallennuspyyntöön.",
+    "description": "devmode (development-only): Shown when the content script or the injected scan returns nothing usable"
+  },
+  "devmodeCaptureNoUpdate": {
+    "message": "Tietokannan päivitys ei antanut vastausta.",
+    "description": "devmode (development-only): Shown when the updateDatabase request comes back without a result"
+  },
+  "devmodeCaptureNoProvider": {
+    "message": "Mikään palveluntarjoaja ei kata sivuston $URL$ osoitetta.",
+    "description": "devmode (development-only): Shown when the captured page's host is supplied by no provider after the update",
+    "placeholders": {
+      "url": {
+        "content": "$1",
+        "example": "https://www.example.com/"
+      }
+    }
   },
   "settingsviewDevmodeTitle": {
     "message": "Kehittäjäasetukset",
     "description": "Title of the settings view developer mode section"
+  },
+  "devmodePrivacyPolicyLink": {
+    "message": "Kehitysversioiden tietosuojailmoitus ↗",
+    "description": "devmode (development-only): Link text that opens the privacy notice for the development versions"
   },
   "settingsviewDatabaseStatusTitle": {
     "message": "Tietokannan tila",

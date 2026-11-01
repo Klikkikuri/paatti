@@ -1,0 +1,18 @@
+{
+ "schema_version": "0.1.0",
+ "sites": {
+  "www.example.fi": {
+   "name": "www.example.fi",
+   "origins": [
+    "https://www.example.fi/*"
+   ],
+   "rules": [
+    {
+     "container": "a[href]",
+     "link": "self",
+     "title": "self"
+    }
+   ]
+  }
+ }
+}

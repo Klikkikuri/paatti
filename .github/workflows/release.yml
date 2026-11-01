@@ -77,6 +77,14 @@ jobs:
         run: |
           make check-sites check-sites-published
 
+      # A publish ships the suola release of the pinned tag. The Build workflow may test any commit;
+      # this workflow may not, so the check runs before anything is built.
+      - name: "🏷️ Suola pointer is a released tag"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          make check-suola-release
+
       - name: "🏗️ Build Extension Package"
         run: |
           make package dist-firefox USE_RELEASE_ARTIFACTS=1 NON_OSS=1

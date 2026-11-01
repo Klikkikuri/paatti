@@ -640,6 +640,32 @@ describe('refreshProviders', () => {
         assert.deepEqual(first, second);
     });
 
+    test('a call that joins a pass also refreshes a provider added after that pass read the list', async () => {
+        const first = 'https://first.example/manifest.json';
+        const added = 'https://added.example/manifest.json';
+        await addProvider(first);
+        let release;
+        const slow = new Promise((resolve) => { release = resolve; });
+        const original = globalThis.fetch;
+        const calls = [];
+        globalThis.fetch = async (url) => {
+            calls.push(String(url));
+            if (String(url) === first) await slow;
+            return jsonResponse(manifestDoc([]));
+        };
+        installed = { restore: () => { globalThis.fetch = original; } };
+
+        const running = refreshProviders();
+        while (!calls.includes(first)) await new Promise((resolve) => setTimeout(resolve, 1));
+        await addProvider(added);
+        const joined = refreshProviders();
+        release();
+
+        assert.deepEqual((await running).map((result) => result.url), [first]);
+        assert.deepEqual((await joined).map((result) => result.url), [first, added]);
+        assert.ok(calls.includes(added), 'the provider added during the pass was not fetched');
+    });
+
     describe('refreshProviders({force}) vs. the single-flight guard', () => {
         test('a forced call issued while a non-forced pass is in-flight does not return its (possibly stale) results', async () => {
             const url = 'https://provider.example/manifest.json';
