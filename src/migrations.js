@@ -127,31 +127,40 @@ async function recordFailure(migration, error) {
  * @returns {Promise<void>}
  */
 async function runMigrations(list = migrations) {
+    let stamp;
     try {
-        const stamp = await readStamp();
-        const latest = list.reduce((max, migration) => Math.max(max, migration.id), 0);
-        if (stamp > latest) {
-            log(`Stored schema version ${stamp} is newer than this build's ${latest}; nothing to do.`);
-            return;
-        }
-
-        for (const migration of list) {
-            if (migration.id <= stamp) continue;
-            try {
-                await migration.run();
-            } catch (error) {
-                log(`Migration ${migration.id} (${migration.name}) failed:`, error);
-                await recordFailure(migration, error);
-                return;
-            }
-            await browser.storage.local.set({ [VERSION_KEY]: migration.id });
-        }
-
-        await browser.storage.local.remove(FAILURE_KEY);
+        stamp = await readStamp();
     } catch (error) {
-        // The stamp read threw, so no migration could start.
+        // No migration started, so there is no id to name.
         log("Could not read the stored schema version:", error);
         await recordFailure(null, error);
+        return;
+    }
+
+    const latest = list.reduce((max, migration) => Math.max(max, migration.id), 0);
+    if (stamp > latest) {
+        log(`Stored schema version ${stamp} is newer than this build's ${latest}; nothing to do.`);
+        return;
+    }
+
+    for (const migration of list) {
+        if (migration.id <= stamp) continue;
+        try {
+            await migration.run();
+            await browser.storage.local.set({ [VERSION_KEY]: migration.id });
+        } catch (error) {
+            // The stamp stays put, so this migration runs again on the next start.
+            log(`Migration ${migration.id} (${migration.name}) failed:`, error);
+            await recordFailure(migration, error);
+            return;
+        }
+    }
+
+    try {
+        await browser.storage.local.remove(FAILURE_KEY);
+    } catch (error) {
+        // The chain succeeded. A record that cannot be cleared is not a migration failure.
+        log("Could not clear the migration failure record:", error);
     }
 }
 

@@ -246,4 +246,38 @@ describe('failure handling', () => {
             LOCAL.set = original;
         }
     });
+
+    test('a failing version write is attributed to the migration that ran', async () => {
+        const original = LOCAL.set;
+        LOCAL.set = async (items) => {
+            if (STAMP_KEY in items) throw new Error('storage is gone');
+            return original(items);
+        };
+        try {
+            await assert.doesNotReject(runMigrations([{ id: 1, name: 'writes-nothing', run: async () => {} }]));
+        } finally {
+            LOCAL.set = original;
+        }
+
+        const failure = (await LOCAL.get(FAILURE_KEY))[FAILURE_KEY];
+        assert.equal(failure.failedId, 1);
+        assert.equal(failure.name, 'writes-nothing');
+    });
+
+    test('a record that cannot be cleared after a successful chain is not a migration failure', async () => {
+        const original = LOCAL.remove;
+        LOCAL.remove = async (keys) => {
+            if ([].concat(keys).includes(FAILURE_KEY)) throw new Error('storage is gone');
+            return original(keys);
+        };
+        try {
+            await assert.doesNotReject(runMigrations());
+        } finally {
+            LOCAL.remove = original;
+        }
+
+        const stored = await LOCAL.get(null);
+        assert.equal(stored[STAMP_KEY], LATEST_ID);
+        assert.ok(!(FAILURE_KEY in stored), 'no failure is recorded for a chain that succeeded');
+    });
 });
