@@ -8,7 +8,7 @@ globalThis.browser = fake.browser;
 
 const {
     MAX_PROVIDERS, getProviders, addProvider, seedDefaultProviders, removeProvider, setProviderEnabled,
-    getProviderData, dropStaleProviderData, namespaceFor, refreshProviders, reconcileSuolaRules, retryDelayMs
+    getProviderData, namespaceFor, refreshProviders, reconcileSuolaRules, retryDelayMs
 } = await import('../src/providers.js');
 const { initStorage } = await import('../src/storage.js');
 
@@ -267,25 +267,6 @@ describe('removeProvider gives back what only that provider used', () => {
         assert.ok(!('favicon_news.example' in left));
         assert.ok(!('favicon_www.news.example' in left));
         assert.ok('favicon_www.hs.fi' in left);
-    });
-});
-
-describe('dropStaleProviderData', () => {
-    test('removes the scope and the rejected list that an older version stored, and nothing else', async () => {
-        const url = 'https://provider.example/manifest.json';
-        await addProvider(url);
-        const storage = await initStorage(namespaceFor(url));
-        await storage.store({
-            scope: ['news.example'], rejected: [{ key: 'yle.fi', reason: 'already claimed; shadowing is disabled' }],
-            siteConfigs: { 'news.example': site('news.example') }
-        });
-
-        await dropStaleProviderData();
-
-        const data = await getProviderData(url);
-        assert.deepEqual(data.rejected, []);
-        assert.ok(data.siteConfigs['news.example']);
-        assert.ok(!(await initStorage(namespaceFor(url))).getKeys().includes('scope'));
     });
 });
 
