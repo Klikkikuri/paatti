@@ -3,7 +3,8 @@
 import browser from "./browser-api.js";
 import { getLogger, getActiveTab } from "./utils.js";
 import { getConfig, PROVIDER_KEY_PREFIX } from "./config.js";
-import { refreshProviders, retryDelayMs, reconcileSuolaRules, seedDefaultProviders, dropStaleProviderData } from "./providers.js";
+import { refreshProviders, retryDelayMs, reconcileSuolaRules, seedDefaultProviders } from "./providers.js";
+import { runMigrations } from "./migrations.js";
 import { model, signUrls } from "./model.js";
 import { controller } from "./controller.js";
 import { storeFavicon } from "./favicon-fetch.js";
@@ -32,6 +33,26 @@ const environmentReady = new Promise((resolveEnvironment) => {
 });
 export { environmentReady };
 
+/**
+ * The migration chain of the stored data, started at every service-worker start. Gated callers await it.
+ *
+ * Top level and not inside a listener: a worker started by a message, an alarm or a storage change must
+ * retry a migration that failed, and `runtime.onInstalled` fires for none of those. It never rejects, so
+ * it needs no `catch`.
+ *
+ * @type {Promise<void>}
+ */
+const migrationsReady = runMigrations();
+
+/**
+ * Run `run` once the migrations have settled. Call it for its effect and never `return` it: a message
+ * listener keeps its response channel open with a strict `true`, and a promise is not one.
+ *
+ * @param {() => unknown} run
+ * @returns {Promise<unknown>}
+ */
+const whenMigrated = (run) => migrationsReady.then(run);
+
 
 /**
  * Re-registers the dynamic content script based on current configuration.
@@ -48,6 +69,9 @@ export { environmentReady };
  */
 async function updateDynamicContentScripts() {
     try {
+        // A migration can write a provider namespace, which matches the storage.onChanged listener below.
+        // Nothing awaits that listener, so this waits for the chain without blocking it.
+        await migrationsReady;
         const config = await getConfig();
         const enabledOrigins = [];
 
@@ -146,6 +170,7 @@ async function refreshAndScheduleRetry(options = {}, attempt = 1) {
  */
 async function seedAndRefresh(reason, attempt = 1) {
     try {
+        await migrationsReady;
         await seedDefaultProviders((await getConfig()).defaultProviders || [])
             .catch((err) => log("Failed to seed the default providers:", err));
         await refreshAndScheduleRetry({}, attempt);
@@ -264,14 +289,6 @@ browser.runtime.onInstalled.addListener(async ({ reason }) => {
         environmentReadyResolve(null);
     }
 
-    if (reason === "update") {
-        try {
-            await dropStaleProviderData();
-        } catch (error) {
-            log("Error dropping stale provider data on update:", error);
-        }
-    }
-
     // On an update too, so that an existing install gets the default provider of its environment.
     await seedAndRefresh("install");
 
@@ -364,10 +381,14 @@ async function submitFeedback(payload) {
     return fetch(url, init);
 }
 
+/**
+ * The single message entry point. Every branch that reads or writes stored data goes through
+ * `whenMigrated`, so it cannot act on a shape that a migration is about to change.
+ */
 browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "updateDatabase") {
         log("Manual database update requested.");
-        refreshAndScheduleRetry({ force: true })
+        whenMigrated(() => refreshAndScheduleRetry({ force: true }))
             .then(async (results) => {
                 const config = await getConfig();
                 const defaultUrls = new Set(config.enabledDefaultProviderUrls);
@@ -397,7 +418,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.action === "hashUrls") {
-        reconcileSuola().then(async () => {
+        whenMigrated(reconcileSuola).then(async () => {
             if (typeof globalThis.hashUrl !== "function") {
                 sendResponse({ success: false, error: "hashUrl function not found after initialization" });
                 return;
@@ -417,7 +438,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "submitFeedback") {
         // One path for the popup and the in-page dialog both, in the one context that does not depend on
         // the visited page. `mode: "no-cors"` makes the response opaque: success means the request left.
-        submitFeedback(message.payload)
+        whenMigrated(() => submitFeedback(message.payload))
             .then(() => sendResponse({ success: true }))
             .catch((err) => {
                 log("Failed to submit feedback:", err);
@@ -429,7 +450,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "claimIntroCard") {
         // Only a page of ours can be the sender of a content script message, but any of them may ask.
         // The answer is yes once, so two tabs that activate together cannot both show the card.
-        claimIntroCard()
+        whenMigrated(claimIntroCard)
             .then((claimed) => sendResponse({ claimed }))
             .catch((err) => {
                 log("Failed to claim the intro card:", err);
@@ -451,7 +472,7 @@ browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "storeFavicon") {
         // The page chose this URL, so nothing here is taken from the message but the URL itself:
         // favicon-fetch.js writes under the sender's domain and validates the URL against it.
-        storeFavicon(sender?.url, message.url);
+        whenMigrated(() => storeFavicon(sender?.url, message.url));
         // No return true — sendResponse is never called for this action
         return;
     }

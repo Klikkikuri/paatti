@@ -195,21 +195,6 @@ async function getProviderData(url) {
 }
 
 /**
- * Drop the stored data that an older version wrote and this one does not read: the declared `scope`, and the
- * `rejected` list, which can name a refusal that this version no longer makes. The next refresh writes the list again.
- *
- * TODO: this is the first migration. Move it into the migration system (see TODO.md).
- */
-async function dropStaleProviderData() {
-    for (const { url } of await getProviders()) {
-        if (!url) continue;
-        const storage = await initStorage(namespaceFor(url));
-        const stale = ["scope", "rejected"].filter((key) => storage.getKeys().includes(key));
-        if (stale.length > 0) await storage.remove(stale);
-    }
-}
-
-/**
  * Record why a refresh stopped, and keep the provider's last resolved content.
  *
  * @param {object} storage - The provider's namespace.
@@ -533,5 +518,5 @@ async function _reconcileSuolaRules() {
 
 export {
     MAX_PROVIDERS, namespaceFor, getProviders, addProvider, seedDefaultProviders, removeProvider, setProviderEnabled,
-    getProviderData, dropStaleProviderData, errorText, refreshProviders, retryDelayMs, reconcileSuolaRules
+    getProviderData, errorText, refreshProviders, retryDelayMs, reconcileSuolaRules
 };

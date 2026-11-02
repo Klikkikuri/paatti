@@ -75,6 +75,12 @@ The dev container provides `git`, `make`, `curl`, `wget`, `tree`, `node`/`npm`/`
 - Commit format: Use convention commits format: `type(scope): description` — e.g. `fix(transport): handle connection timeout`
 - When a fix commit corrects an earlier commit, add the trailer `Fixes: <short sha> ("<subject>")`.
 
+### stored data
+
+A change to the shape of a value in `storage.local` needs a new entry in the ordered list in
+`src/migrations.js`. The header of that module holds the rules for the entry. The chain runs at every
+service-worker start, so a message handler goes through `whenMigrated()`.
+
 ### the browser namespace
 
 Import the extension API — never reach for a bare `browser` or `chrome` global:
@@ -210,8 +216,8 @@ from outside means the child is missing an API.
   the unsubscribe to give `addTeardown`. Select narrowly — the value is compared by its JSON shape, so a whole
   sub-tree re-fires whenever anything inside it moves. Return a primitive or a flat tuple.
 - A raw `storage.onChanged` listener is for keys *outside* the merged config — `statistics`,
-  `visualHighlightEnabled`, `lastDatabaseUpdate`. Filter it by `areaName` *and* changed key: statistics are written
-  constantly, and nothing should re-render on every one of those writes.
+  `visualHighlightEnabled`. Filter it by `areaName` *and* changed key: statistics are written constantly, and
+  nothing should re-render on every one of those writes.
 - Never float an async lifecycle call. Catch it, and after any `await` re-check `isConnected` before touching the DOM
   — an `onConfigValue` callback always runs a turn after the subscription, so the element may already be gone.
   Where two updates can overlap, carry a generation counter so a late read cannot overwrite a newer one.

@@ -28,6 +28,10 @@ link's host (`signUrls()`). A provider with its own Suola rule set gets its own 
 sign of the built-in rules. The content script looks up those signs (`getRahtiEntries()`).
 [providers.md](providers.md#signs-and-lookups) tells the order of the sources.
 
+`src/migrations.js` owns the version stamp of the stored data and the ordered migrations that change its shape.
+The service worker awaits the chain before it seeds or refreshes providers, and before it answers a message that
+touches stored data. The module header carries the rules for adding a migration; read them there.
+
 When a developer runs `make sites-sync`, `tools/sites.mjs` resolves the default provider with `src/provider.js`.
 It writes the site origins into `manifest.json`, because a store build can request only the origins that
 `manifest.json` declares, and pins the Rahti commit in `sites.lock.json`. The extension contains no sites.
@@ -44,6 +48,7 @@ the one network call. `src/feedback.js` explains why.
 | `Config` | `src/config.js` |
 | `Controller` | `src/controller.js` |
 | `ProvidersModule` | `src/providers.js` |
+| `MigrationsModule` | `src/migrations.js` |
 | `ProviderResolver` | `src/provider.js` |
 | `SafeFetch` | `src/safe-fetch.js` |
 | `Origins` | `src/options/origins.js` |
@@ -126,7 +131,10 @@ classDiagram
         +refreshProviders(options)
         +retryDelayMs(results, defaultUrls, attempt, intervalMs)
         +reconcileSuolaRules()
-        +dropStaleProviderData()
+    }
+    class MigrationsModule {
+        +migrations
+        +runMigrations(list)
     }
     class ProviderResolver {
         +fetchManifest(url, loopbackProvidersEnabled)
